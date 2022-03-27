@@ -1,0 +1,114 @@
+# Prerequisites
+*.d
+
+# Applications
+step-3
+step-3_trilinos
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+ 
+# LaTeX
+*.aux
+*.glo
+*.idx
+*.log
+*.toc
+*.ist
+*.acn
+*.acr
+*.alg
+*.bbl
+*.blg
+*.dvi
+*.glg
+*.gls
+*.ilg
+*.ind
+*.lof
+*.lot
+*.maf
+*.mtc
+*.mtc1
+*.out
+*.synctex.gz
+
+# CMake
+Bytes
+CMakeDoxyfile.in
+CMakeDoxygenDefaults.cmake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+/build/
+
+# IDE
+.cproject
+.metadata
+.project
+.settings
+.vscode
+
+# Meshes and Output
+*.med
+*.xml
+*.vtk
+*.msh
+*.vtu
+*.pvtu
+*.visit
+*.pvd
+*.gpl
+
+# Python compiled modules
+*.pyc
+*.pyo
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Doxygen
+doc/html/*
+doc/latex/*
