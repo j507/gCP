@@ -1,5 +1,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/base/work_stream.h>
 
 #include <deal.II/distributed/tria.h>
@@ -323,6 +324,9 @@ public:
   void run();
 
 private:
+  dealii::ConditionalOStream                        pcout;
+
+  dealii::TimerOutput                               timer_output;
 
   dealii::parallel::distributed::Triangulation<dim> triangulation;
 
@@ -384,6 +388,12 @@ private:
 template<int dim>
 LinearCrystalPlasticity<dim>::LinearCrystalPlasticity()
 :
+pcout(std::cout,
+      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
+timer_output(MPI_COMM_WORLD,
+             pcout,
+             dealii::TimerOutput::summary,
+             dealii::TimerOutput::wall_times),
 triangulation(MPI_COMM_WORLD,
                typename dealii::Triangulation<dim>::MeshSmoothing(
                 dealii::Triangulation<dim>::smoothing_on_refinement |
@@ -399,7 +409,7 @@ template<int dim>
 void LinearCrystalPlasticity<dim>::make_grid()
 {
   dealii::GridGenerator::hyper_cube(triangulation,-1,1);
-  triangulation.refine_global(5);
+  triangulation.refine_global(8);
 
   std::cout << "Number of active cells:       "
             << triangulation.n_active_cells()
