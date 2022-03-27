@@ -2,7 +2,10 @@
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/work_stream.h>
 
+#include <deal.II/distributed/tria.h>
+
 #include <deal.II/dofs/dof_handler.h>
+#include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -16,6 +19,7 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/full_matrix.h>
+#include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_matrix.h>
@@ -206,15 +210,15 @@ struct Scratch : ScratchBase<dim>
   dealii::FEValues<dim>               fe_values;
 
   dealii::FEFaceValues<dim>           fe_face_values;
-      
+
   const unsigned int                  n_face_q_points;
 
   std::vector<double>                 supply_term_values;
-      
+
   std::vector<double>                 neumann_bc_values;
-      
+
   std::vector<double>                 phi;
-      
+
   std::vector<double>                 face_phi;
 
   std::vector<dealii::Tensor<1,dim>>  grad_phi;
@@ -304,7 +308,7 @@ double SupplyTerm<dim>::value(const dealii::Point<dim> &p,
 {
   (void)p;
   (void)component;
-  
+
   return 1.0;
 }
 
@@ -320,25 +324,29 @@ public:
 
 private:
 
-  dealii::Triangulation<dim>        triangulation;
+  dealii::parallel::distributed::Triangulation<dim> triangulation;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+  std::shared_ptr<dealii::Mapping<dim>>             mapping;
 
-  dealii::FE_Q<dim>                 finite_element;
+  dealii::FE_Q<dim>                                 finite_element;
 
-  dealii::DoFHandler<dim>           dof_handler;
+  dealii::DoFHandler<dim>                           dof_handler;
 
-  dealii::AffineConstraints<double> affine_constraints;
+  dealii::IndexSet                                  locally_owned_dofs;
 
-  dealii::SparsityPattern           sparsity_pattern;
+  dealii::IndexSet                                  locally_relevant_dofs;
 
-  dealii::SparseMatrix<double>      system_matrix;
+  dealii::AffineConstraints<double>                 hanging_node_constraints;
 
-  dealii::Vector<double>            system_rhs;
+  dealii::AffineConstraints<double>                 affine_constraints;
 
-  dealii::Vector<double>            solution;
+  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  system_matrix;
 
-  SupplyTerm<dim>                   supply_term;
+  dealii::LinearAlgebraTrilinos::MPI::Vector        system_rhs;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
+
+  SupplyTerm<dim>                                   supply_term;
 
   void make_grid();
 
@@ -376,6 +384,10 @@ private:
 template<int dim>
 LinearCrystalPlasticity<dim>::LinearCrystalPlasticity()
 :
+triangulation(MPI_COMM_WORLD,
+               typename dealii::Triangulation<dim>::MeshSmoothing(
+                dealii::Triangulation<dim>::smoothing_on_refinement |
+                dealii::Triangulation<dim>::smoothing_on_coarsening)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
 finite_element(1),
 dof_handler(triangulation)
@@ -399,39 +411,56 @@ void LinearCrystalPlasticity<dim>::make_grid()
 template<int dim>
 void LinearCrystalPlasticity<dim>::setup()
 {
-  dof_handler.distribute_dofs(finite_element);
+  dof_handler.initialize(triangulation, finite_element);
+  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
+
+  locally_owned_dofs = dof_handler.locally_owned_dofs();
+  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
+                                                  locally_relevant_dofs);
+
+  hanging_node_constraints.clear();
+  {
+    hanging_node_constraints.reinit(locally_relevant_dofs);
+    dealii::DoFTools::make_hanging_node_constraints(dof_handler,
+                                                    hanging_node_constraints);
+  }
+  hanging_node_constraints.close();
 
   affine_constraints.clear();
-
-  dealii::DoFTools::make_hanging_node_constraints(dof_handler, 
-                                                  affine_constraints);
-
-  dealii::VectorTools::interpolate_boundary_values(
-    dof_handler,
-    0,
-    dealii::Functions::ZeroFunction<dim>(),
-    affine_constraints);
-
+  {
+    affine_constraints.reinit(locally_relevant_dofs);
+    affine_constraints.merge(hanging_node_constraints);
+    dealii::VectorTools::interpolate_boundary_values(
+      dof_handler,
+      0,
+      dealii::Functions::ZeroFunction<dim>(),
+      affine_constraints);
+  }
   affine_constraints.close();
 
-  dealii::DynamicSparsityPattern dynamic_sparsity_pattern(
-                                          dof_handler.n_dofs());
-  
-  dealii::DoFTools::make_sparsity_pattern(dof_handler, 
-                                          dynamic_sparsity_pattern,
-                                          affine_constraints,
-                                          false);
+  dealii::TrilinosWrappers::SparsityPattern
+    sparsity_pattern_(locally_owned_dofs,
+                      locally_owned_dofs,
+                      locally_relevant_dofs,
+                      MPI_COMM_WORLD);
 
-  sparsity_pattern.copy_from(dynamic_sparsity_pattern);
+  dealii::DoFTools::make_sparsity_pattern(
+    dof_handler,
+    sparsity_pattern_,
+    affine_constraints,
+    false,
+    dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
-  system_matrix.reinit(sparsity_pattern);
+  sparsity_pattern_.compress();
 
-  solution.reinit(dof_handler.n_dofs());
-  system_rhs.reinit(dof_handler.n_dofs());
+  system_matrix.reinit(sparsity_pattern_);
 
-  std::cout << "Number of degrees of freedom: "
-          << dof_handler.n_dofs()
-          << std::endl;
+  system_rhs.reinit(locally_owned_dofs,
+                     locally_relevant_dofs,
+                     MPI_COMM_WORLD,
+                     true);
+  solution.reinit(locally_relevant_dofs,
+                   MPI_COMM_WORLD);
 }
 
 
@@ -454,7 +483,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
   const dealii::QGauss<dim> quadrature_formula(
                               finite_element.get_degree() + 1);
 
-  using cell_iterator = 
+  using cell_iterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
 
   auto worker = [this](const cell_iterator  &cell,
@@ -476,7 +505,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
   using CellFilter =
     dealii::FilteredIterator<
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
-  
+
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
                dof_handler.begin_active()),
@@ -490,7 +519,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
                          update_flags),
     Matrix::Copy(finite_element.dofs_per_cell));
 
-    system_matrix.compress(dealii::VectorOperation::add);
+  system_matrix.compress(dealii::VectorOperation::add);
 }
 
 
@@ -523,8 +552,8 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
       for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
       {
-        data.local_matrix(i,j) += 
-          scratch.grad_phi[i] * 
+        data.local_matrix(i,j) +=
+          scratch.grad_phi[i] *
           scratch.grad_phi[j] *
           scratch.fe_values.JxW(q);
       } // Loop over local degrees of freedom
@@ -556,7 +585,7 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
   const dealii::QGauss<dim-1> face_quadrature_formula(
                                 finite_element.get_degree() + 1);
 
-  using cell_iterator = 
+  using cell_iterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
 
 
@@ -572,12 +601,12 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
     this->copy_local_to_global_system_rhs(data);
   };
 
-  const dealii::UpdateFlags update_flags  = 
+  const dealii::UpdateFlags update_flags  =
     dealii::update_JxW_values |
     dealii::update_values |
     dealii::update_quadrature_points;
 
-  const dealii::UpdateFlags face_update_flags  = 
+  const dealii::UpdateFlags face_update_flags  =
     dealii::update_JxW_values;
 
   using CellFilter =
@@ -598,7 +627,7 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
                                 update_flags,
                                 face_update_flags),
     RightHandSide::Copy(finite_element.dofs_per_cell));
-  
+
   system_rhs.compress(dealii::VectorOperation::add);
 }
 
@@ -674,13 +703,57 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
 template<int dim>
 void LinearCrystalPlasticity<dim>::solve()
 {
-  dealii::SolverControl                     solver_control(1000, 1e-12);
-  dealii::SolverCG<dealii::Vector<double>>  solver(solver_control);
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
 
-  solver.solve(system_matrix, 
-               solution, 
-               system_rhs,
-               dealii::PreconditionIdentity());
+  distributed_solution.reinit(locally_owned_dofs,
+                              locally_relevant_dofs,
+                              MPI_COMM_WORLD,
+                              true);
+
+  distributed_solution = solution;
+
+  dealii::SolverControl                     solver_control(1000, 1e-12);
+
+  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+
+  dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+
+  preconditioner.initialize(system_matrix);
+
+  try
+  {
+    solver.solve(system_matrix,
+                 distributed_solution,
+                 system_rhs,
+                 preconditioner);
+  }
+  catch (std::exception &exc)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Exception in the solve method: " << std::endl
+              << exc.what() << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Unknown exception in the solve method!" << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+
+  affine_constraints.distribute(distributed_solution);
+
+  solution = distributed_solution;
 }
 
 
@@ -697,11 +770,24 @@ template<int dim>
 void LinearCrystalPlasticity<dim>::data_output()
 {
   dealii::DataOut<dim> data_out;
-  data_out.attach_dof_handler(dof_handler);
-  data_out.add_data_vector(solution, "solution");
-  data_out.build_patches();
-  std::ofstream output("solution.vtk");
-  data_out.write_vtk(output);
+
+  data_out.add_data_vector(dof_handler,
+                           solution,
+                           "Solution");
+
+  data_out.build_patches(*mapping,
+                         finite_element.get_degree(),
+                         dealii::DataOut<dim>::curved_inner_cells);
+
+  static int out_index = 0;
+
+  data_out.write_vtu_with_pvtu_record("./",
+                                      "Solution",
+                                      out_index,
+                                      MPI_COMM_WORLD,
+                                      5);
+
+  out_index++;
 }
 
 
@@ -740,7 +826,7 @@ int main(int argc, char *argv[])
     step3::LinearCrystalPlasticity<2> problem;
 
     problem.run();
-    
+
   }
   catch (std::exception &exc)
   {
