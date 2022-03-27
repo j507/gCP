@@ -61,6 +61,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 SET(SOURCE_FILES
     step-3.cc
+    step-3_trilinos.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
