@@ -654,6 +654,10 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
       if (affine_constraints.is_inhomogeneously_constrained(
         data.local_dof_indices[i]))
       {
+        // Extract test function values at the quadrature points
+        for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
+          scratch.grad_phi[j] = scratch.fe_values.shape_grad(j,q);
+          
         for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
         {
           data.local_matrix_for_inhomogeneous_bcs(j,i) +=
