@@ -36,7 +36,7 @@
 
 
 
-namespace step3
+namespace CPFM
 {
 
 
@@ -287,10 +287,13 @@ class SupplyTerm : public dealii::Function<dim>
 public:
   SupplyTerm();
 
-  virtual double value(const dealii::Point<dim> &p,
-                       const unsigned int component = 0) const override;
+  virtual double value(
+    const dealii::Point<dim>  &point,
+    const unsigned int        component = 0) const override;
 
 private:
+
+  const double R;
 };
 
 
@@ -298,28 +301,90 @@ private:
 template<int dim>
 SupplyTerm<dim>::SupplyTerm()
 :
-dealii::Function<dim>(1,dim)
+dealii::Function<dim>(1, 0.0),
+R(0.5)
 {}
 
 
 
 template<int dim>
-double SupplyTerm<dim>::value(const dealii::Point<dim> &p,
-                              const unsigned int component) const
+double SupplyTerm<dim>::value(
+  const dealii::Point<dim>  &point,
+  const unsigned int        /*component*/) const
 {
-  (void)p;
-  (void)component;
+  const double x = point(0);
+  const double y = point(1);
 
-  return 1.0;
+  return (-4*std::cos((4*y)/R) + std::cos((2*x)/R)*(-1 + 5*std::cos((4*y)/R)))/std::pow(R,2);
+}
+
+
+
+template <int dim>
+class ManufacturedSolution : public dealii::Function<dim>
+{
+public:
+  ManufacturedSolution();
+
+  virtual double value(
+    const dealii::Point<dim>  &point,
+    const unsigned int        component = 0) const override;
+
+  virtual dealii::Tensor<1,dim> gradient(
+    const dealii::Point<dim>  &point,
+    const unsigned int        component = 0) const override;
+
+private:
+
+  const double R;
+};
+
+
+
+template<int dim>
+ManufacturedSolution<dim>::ManufacturedSolution()
+:
+dealii::Function<dim>(1, 0.0),
+R(0.5)
+{}
+
+
+
+template<int dim>
+double ManufacturedSolution<dim>::value(
+  const dealii::Point<dim>  &point,
+  const unsigned int        /*component*/) const
+{
+  const double x = point(0);
+  const double y = point(1);
+
+  return (1 + std::pow(std::sin(x/R),2)*std::pow(std::sin((2*y)/R),2));
 }
 
 
 
 template<int dim>
-class LinearCrystalPlasticity
+dealii::Tensor<1,dim> ManufacturedSolution<dim>::gradient(
+  const dealii::Point<dim>  &point,
+  const unsigned int        /*component*/) const
+{
+  dealii::Tensor<1,dim> gradient;
+
+  const double x = point(0);
+  const double y = point(1);
+
+  gradient[0] = (std::sin((2*x)/R)*std::pow(std::sin((2*y)/R),2))/R;
+  gradient[1] = (2*std::pow(std::sin(x/R),2)*std::sin((4*y)/R))/R;
+
+  return gradient;
+}
+
+
+template<int dim>
+class ConvergenceTest
 {
 public:
-  LinearCrystalPlasticity();
+  ConvergenceTest();
 
   void run();
 
@@ -348,9 +413,15 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        system_rhs;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector        numerical_solution;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        analytical_solution;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        error;
 
   SupplyTerm<dim>                                   supply_term;
+
+  ManufacturedSolution<dim>                         manufactured_solution;
 
   void make_grid();
 
@@ -386,7 +457,7 @@ private:
 
 
 template<int dim>
-LinearCrystalPlasticity<dim>::LinearCrystalPlasticity()
+ConvergenceTest<dim>::ConvergenceTest()
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -406,10 +477,10 @@ dof_handler(triangulation)
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::make_grid()
+void ConvergenceTest<dim>::make_grid()
 {
   dealii::GridGenerator::hyper_cube(triangulation,-1,1);
-  triangulation.refine_global(8);
+  triangulation.refine_global(6);
 
   std::cout << "Number of active cells:       "
             << triangulation.n_active_cells()
@@ -419,20 +490,25 @@ void LinearCrystalPlasticity<dim>::make_grid()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::setup()
+void ConvergenceTest<dim>::setup()
 {
-  dof_handler.initialize(triangulation, finite_element);
+  dof_handler.distribute_dofs(finite_element);
+
   dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
 
   locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
+
+  dealii::DoFTools::extract_locally_relevant_dofs(
+    dof_handler,
+    locally_relevant_dofs);
 
   hanging_node_constraints.clear();
   {
     hanging_node_constraints.reinit(locally_relevant_dofs);
-    dealii::DoFTools::make_hanging_node_constraints(dof_handler,
-                                                    hanging_node_constraints);
+
+    dealii::DoFTools::make_hanging_node_constraints(
+      dof_handler,
+      hanging_node_constraints);
   }
   hanging_node_constraints.close();
 
@@ -443,40 +519,44 @@ void LinearCrystalPlasticity<dim>::setup()
     dealii::VectorTools::interpolate_boundary_values(
       dof_handler,
       0,
-      dealii::Functions::ZeroFunction<dim>(),
+      manufactured_solution,
       affine_constraints);
   }
   affine_constraints.close();
 
   dealii::TrilinosWrappers::SparsityPattern
-    sparsity_pattern_(locally_owned_dofs,
-                      locally_owned_dofs,
-                      locally_relevant_dofs,
-                      MPI_COMM_WORLD);
+    sparsity_pattern(locally_owned_dofs,
+                     locally_owned_dofs,
+                     locally_relevant_dofs,
+                     MPI_COMM_WORLD);
 
   dealii::DoFTools::make_sparsity_pattern(
     dof_handler,
-    sparsity_pattern_,
+    sparsity_pattern,
     affine_constraints,
     false,
     dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
-  sparsity_pattern_.compress();
+  sparsity_pattern.compress();
 
-  system_matrix.reinit(sparsity_pattern_);
+  system_matrix.reinit(sparsity_pattern);
 
   system_rhs.reinit(locally_owned_dofs,
                      locally_relevant_dofs,
                      MPI_COMM_WORLD,
                      true);
-  solution.reinit(locally_relevant_dofs,
+
+  numerical_solution.reinit(locally_relevant_dofs,
                    MPI_COMM_WORLD);
+  
+  analytical_solution.reinit(numerical_solution);
+  error.reinit(numerical_solution);
 }
 
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_linear_system()
+void ConvergenceTest<dim>::assemble_linear_system()
 {
   assemble_system_matrix();
 
@@ -486,7 +566,7 @@ void LinearCrystalPlasticity<dim>::assemble_linear_system()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_system_matrix()
+void ConvergenceTest<dim>::assemble_system_matrix()
 {
   system_matrix = 0.0;
 
@@ -535,7 +615,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
+void ConvergenceTest<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   Matrix::Scratch<dim>                                          &scratch,
   Matrix::Copy                                                  &data)
@@ -573,7 +653,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
+void ConvergenceTest<dim>::copy_local_to_global_system_matrix(
   const Matrix::Copy  &data)
 {
   affine_constraints.distribute_local_to_global(
@@ -585,12 +665,12 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_rhs()
+void ConvergenceTest<dim>::assemble_rhs()
 {
   system_rhs  = 0.0;
 
   const dealii::QGauss<dim>   quadrature_formula(
-                                finite_element.get_degree() + 1);
+                                finite_element.get_degree() + 2);
 
   const dealii::QGauss<dim-1> face_quadrature_formula(
                                 finite_element.get_degree() + 1);
@@ -614,6 +694,7 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
   const dealii::UpdateFlags update_flags  =
     dealii::update_JxW_values |
     dealii::update_values |
+    dealii::update_gradients |
     dealii::update_quadrature_points;
 
   const dealii::UpdateFlags face_update_flags  =
@@ -644,11 +725,10 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
+void ConvergenceTest<dim>::assemble_local_system_rhs(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
-  RightHandSide::Copy                                           &data
-)
+  RightHandSide::Copy                                           &data)
 {
   data.local_rhs                          = 0.0;
   data.local_matrix_for_inhomogeneous_bcs = 0.0;
@@ -674,8 +754,8 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       data.local_rhs(i) +=
-        scratch.supply_term_values[q] *
         scratch.phi[i] *
+        scratch.supply_term_values[q] *
         scratch.fe_values.JxW(q);
 
       // Loop over the i-th column's rows of the local matrix
@@ -683,6 +763,11 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
       if (affine_constraints.is_inhomogeneously_constrained(
         data.local_dof_indices[i]))
       {
+        // Extract test function values at the quadrature points
+        for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
+          scratch.grad_phi[j] = scratch.fe_values.shape_grad(j,q);
+
+        // Loop over the degrees of freedom
         for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
         {
           data.local_matrix_for_inhomogeneous_bcs(j,i) +=
@@ -698,7 +783,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
+void ConvergenceTest<dim>::copy_local_to_global_system_rhs(
   const RightHandSide::Copy  &data)
 {
   affine_constraints.distribute_local_to_global(
@@ -711,18 +796,18 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::solve()
+void ConvergenceTest<dim>::solve()
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_numerical_solution;
 
-  distributed_solution.reinit(locally_owned_dofs,
+  distributed_numerical_solution.reinit(locally_owned_dofs,
                               locally_relevant_dofs,
                               MPI_COMM_WORLD,
                               true);
 
-  distributed_solution = solution;
+  distributed_numerical_solution = numerical_solution;
 
-  dealii::SolverControl                     solver_control(1000, 1e-12);
+  dealii::SolverControl solver_control(1000, 1e-12);
 
   dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
@@ -733,7 +818,7 @@ void LinearCrystalPlasticity<dim>::solve()
   try
   {
     solver.solve(system_matrix,
-                 distributed_solution,
+                 distributed_numerical_solution,
                  system_rhs,
                  preconditioner);
   }
@@ -761,29 +846,69 @@ void LinearCrystalPlasticity<dim>::solve()
     std::abort();
   }
 
-  affine_constraints.distribute(distributed_solution);
+  affine_constraints.distribute(distributed_numerical_solution);
 
-  solution = distributed_solution;
+  numerical_solution = distributed_numerical_solution;
 }
 
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::postprocessing()
+void ConvergenceTest<dim>::postprocessing()
 {
+  dealii::VectorTools::interpolate(*mapping,
+                                  dof_handler,
+                                  manufactured_solution,
+                                  analytical_solution);
 
+  hanging_node_constraints.distribute(analytical_solution);
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_numerical_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_analytical_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_error;
+
+  distributed_numerical_solution.reinit(locally_owned_dofs,
+                                        locally_relevant_dofs,
+                                        MPI_COMM_WORLD,
+                                        true);
+  distributed_analytical_solution.reinit(distributed_numerical_solution);
+  distributed_error.reinit(distributed_numerical_solution);
+
+  distributed_numerical_solution  = numerical_solution;
+  distributed_analytical_solution = analytical_solution;
+  distributed_error               = 0.;
+
+  distributed_error = distributed_analytical_solution;
+  distributed_error -= distributed_numerical_solution;
+
+  for (unsigned int i = distributed_error.local_range().first;
+       i < distributed_error.local_range().second; ++i)
+    if (distributed_error(i) < 0)
+      distributed_error(i) *= -1.0;
+  
+  error = distributed_error;
 }
 
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::data_output()
+void ConvergenceTest<dim>::data_output()
 {
   dealii::DataOut<dim> data_out;
 
   data_out.add_data_vector(dof_handler,
-                           solution,
-                           "Solution");
+                           numerical_solution,
+                           "NumericalSolution");
+
+  data_out.add_data_vector(dof_handler,
+                           analytical_solution,
+                           "AnalyticalSolution");
+
+  data_out.add_data_vector(dof_handler,
+                           error,
+                           "Error");
+
+
 
   data_out.build_patches(*mapping,
                          finite_element.get_degree(),
@@ -803,7 +928,7 @@ void LinearCrystalPlasticity<dim>::data_output()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::run()
+void ConvergenceTest<dim>::run()
 {
   make_grid();
   setup();
@@ -815,7 +940,7 @@ void LinearCrystalPlasticity<dim>::run()
 
 
 
-} // namespace step3
+} // namespace CPFM
 
 
 int main(int argc, char *argv[])
@@ -827,15 +952,9 @@ int main(int argc, char *argv[])
 
     dealii::deallog.depth_console(2);
 
+    CPFM::ConvergenceTest<2> convergence_test;
 
-    /*AssertThrow(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD) == 1,
-                ExcMessage(
-                  "This program can only be run in serial"));
-    */
-    std::cout << "Hello world" << std::endl;
-    step3::LinearCrystalPlasticity<2> problem;
-
-    problem.run();
+    convergence_test.run();
 
   }
   catch (std::exception &exc)
