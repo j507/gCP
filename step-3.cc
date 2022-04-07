@@ -316,10 +316,10 @@ double SupplyTerm<dim>::value(const dealii::Point<dim> &p,
 
 
 template<int dim>
-class LinearCrystalPlasticity
+class step3
 {
 public:
-  LinearCrystalPlasticity();
+  step3();
 
   void run();
 
@@ -386,7 +386,7 @@ private:
 
 
 template<int dim>
-LinearCrystalPlasticity<dim>::LinearCrystalPlasticity()
+step3<dim>::step3()
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -406,7 +406,7 @@ dof_handler(triangulation)
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::make_grid()
+void step3<dim>::make_grid()
 {
   dealii::GridGenerator::hyper_cube(triangulation,-1,1);
   triangulation.refine_global(8);
@@ -419,7 +419,7 @@ void LinearCrystalPlasticity<dim>::make_grid()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::setup()
+void step3<dim>::setup()
 {
   dof_handler.distribute_dofs(finite_element);
 
@@ -477,7 +477,7 @@ void LinearCrystalPlasticity<dim>::setup()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_linear_system()
+void step3<dim>::assemble_linear_system()
 {
   assemble_system_matrix();
 
@@ -487,7 +487,7 @@ void LinearCrystalPlasticity<dim>::assemble_linear_system()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_system_matrix()
+void step3<dim>::assemble_system_matrix()
 {
   system_matrix = 0.0;
 
@@ -536,7 +536,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
+void step3<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   Matrix::Scratch<dim>                                          &scratch,
   Matrix::Copy                                                  &data)
@@ -574,7 +574,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
+void step3<dim>::copy_local_to_global_system_matrix(
   const Matrix::Copy  &data)
 {
   affine_constraints.distribute_local_to_global(
@@ -586,7 +586,7 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_rhs()
+void step3<dim>::assemble_rhs()
 {
   system_rhs  = 0.0;
 
@@ -645,7 +645,7 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
+void step3<dim>::assemble_local_system_rhs(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
   RightHandSide::Copy                                           &data)
@@ -702,7 +702,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
+void step3<dim>::copy_local_to_global_system_rhs(
   const RightHandSide::Copy  &data)
 {
   affine_constraints.distribute_local_to_global(
@@ -715,7 +715,7 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::solve()
+void step3<dim>::solve()
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
 
@@ -773,7 +773,7 @@ void LinearCrystalPlasticity<dim>::solve()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::postprocessing()
+void step3<dim>::postprocessing()
 {
 
 }
@@ -781,7 +781,7 @@ void LinearCrystalPlasticity<dim>::postprocessing()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::data_output()
+void step3<dim>::data_output()
 {
   dealii::DataOut<dim> data_out;
 
@@ -807,7 +807,7 @@ void LinearCrystalPlasticity<dim>::data_output()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::run()
+void step3<dim>::run()
 {
   make_grid();
   setup();
@@ -837,7 +837,7 @@ int main(int argc, char *argv[])
                   "This program can only be run in serial"));
     */
     std::cout << "Hello world" << std::endl;
-    step3::LinearCrystalPlasticity<2> problem;
+    step3::step3<2> problem;
 
     problem.run();
 
