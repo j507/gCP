@@ -336,10 +336,10 @@ double DirichletBoundaryFunction<dim>::value(
 
 
 template<int dim>
-class LinearCrystalPlasticity
+class step15
 {
 public:
-  LinearCrystalPlasticity();
+  step15();
 
   void run();
 
@@ -431,7 +431,7 @@ private:
 
 
 template<int dim>
-LinearCrystalPlasticity<dim>::LinearCrystalPlasticity()
+step15<dim>::step15()
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -452,7 +452,7 @@ relaxation_parameter(0.1)
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::make_grid()
+void step15<dim>::make_grid()
 {
   dealii::GridGenerator::hyper_ball(triangulation);
   triangulation.refine_global(2);
@@ -466,7 +466,7 @@ void LinearCrystalPlasticity<dim>::make_grid()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::refine_grid()
+void step15<dim>::refine_grid()
 {
   // Initiate the solution transfer object
   dealii::parallel::distributed::SolutionTransfer<dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
@@ -540,7 +540,7 @@ void LinearCrystalPlasticity<dim>::refine_grid()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::setup()
+void step15<dim>::setup()
 {
   dof_handler.distribute_dofs(finite_element);
 
@@ -611,9 +611,6 @@ void LinearCrystalPlasticity<dim>::setup()
   newton_update.reinit(solution);
   trial_solution.reinit(solution);
 
-  //newton_method_constraints.distribute(newton_update);
-  //affine_constraints.distribute(trial_solution);
-  //affine_constraints.distribute(solution);
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
 
   distributed_vector.reinit(locally_owned_dofs,
@@ -641,7 +638,7 @@ void LinearCrystalPlasticity<dim>::setup()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_linear_system()
+void step15<dim>::assemble_linear_system()
 {
   assemble_system_matrix();
 
@@ -651,7 +648,7 @@ void LinearCrystalPlasticity<dim>::assemble_linear_system()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_system_matrix()
+void step15<dim>::assemble_system_matrix()
 {
   system_matrix = 0.0;
 
@@ -701,7 +698,7 @@ void LinearCrystalPlasticity<dim>::assemble_system_matrix()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
+void step15<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   Matrix::Scratch<dim>                                          &scratch,
   Matrix::Copy                                                  &data)
@@ -754,7 +751,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
+void step15<dim>::copy_local_to_global_system_matrix(
   const Matrix::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -766,7 +763,7 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_matrix(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_rhs()
+void step15<dim>::assemble_rhs()
 {
   system_rhs  = 0.0;
 
@@ -826,7 +823,7 @@ void LinearCrystalPlasticity<dim>::assemble_rhs()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
+void step15<dim>::assemble_local_system_rhs(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
   RightHandSide::Copy                                           &data)
@@ -873,7 +870,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_system_rhs(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
+void step15<dim>::copy_local_to_global_system_rhs(
   const RightHandSide::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -886,7 +883,7 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_system_rhs(
 
 
 template<int dim>
-double LinearCrystalPlasticity<dim>::compute_residual(const double alpha)
+double step15<dim>::compute_residual(const double alpha)
 {
   residual = 0.0;
 
@@ -964,7 +961,7 @@ double LinearCrystalPlasticity<dim>::compute_residual(const double alpha)
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::assemble_local_residual(
+void step15<dim>::assemble_local_residual(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
   RightHandSide::Copy                                           &data)
@@ -1008,7 +1005,7 @@ void LinearCrystalPlasticity<dim>::assemble_local_residual(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::copy_local_to_global_residual(
+void step15<dim>::copy_local_to_global_residual(
   const RightHandSide::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -1021,7 +1018,7 @@ void LinearCrystalPlasticity<dim>::copy_local_to_global_residual(
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::solve()
+void step15<dim>::solve()
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
@@ -1086,7 +1083,7 @@ void LinearCrystalPlasticity<dim>::solve()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::postprocessing()
+void step15<dim>::postprocessing()
 {
 
 }
@@ -1094,7 +1091,7 @@ void LinearCrystalPlasticity<dim>::postprocessing()
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::data_output(const unsigned int refinement_cycle)
+void step15<dim>::data_output(const unsigned int refinement_cycle)
 {
   dealii::DataOut<dim> data_out;
 
@@ -1124,7 +1121,7 @@ void LinearCrystalPlasticity<dim>::data_output(const unsigned int refinement_cyc
 
 
 template<int dim>
-void LinearCrystalPlasticity<dim>::run()
+void step15<dim>::run()
 {
   make_grid();
   setup();
@@ -1179,7 +1176,7 @@ int main(int argc, char *argv[])
                 ExcMessage(
                   "This program can only be run in serial"));
     */
-    step15::LinearCrystalPlasticity<2> problem;
+    step15::step15<2> problem;
 
     problem.run();
 
