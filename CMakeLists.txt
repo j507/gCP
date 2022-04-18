@@ -63,6 +63,7 @@ SET(SOURCE_FILES
     step-3.cc
     convergence_test.cc
     step-15.cc
+    elasticity.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
