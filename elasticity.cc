@@ -43,7 +43,7 @@
 
 
 
-namespace step15
+namespace Elasticity
 {
 
 
@@ -508,10 +508,10 @@ dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
 
 
 template<int dim>
-class step15
+class Elasticity
 {
 public:
-  step15();
+  Elasticity();
 
   void run();
 
@@ -609,7 +609,7 @@ private:
 
 
 template<int dim>
-step15<dim>::step15()
+Elasticity<dim>::Elasticity()
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -635,7 +635,7 @@ stiffness_tetrad(1e5, 0.3)
 
 
 template<int dim>
-void step15<dim>::make_grid()
+void Elasticity<dim>::make_grid()
 {
   const double length = 25.0;
   const double height = 1.0;
@@ -667,16 +667,18 @@ void step15<dim>::make_grid()
 
   triangulation.refine_global(0);
 
-  this->pcout << "Number of active cells:       "
-              << triangulation.n_active_cells()
-              << std::endl;
+  this->pcout << "Triangulation:"
+              << std::endl
+              << " Number of active cells       = "
+              << triangulation.n_global_active_cells()
+              << std::endl << std::endl;
 }
 
 
 
 
 template<int dim>
-void step15<dim>::refine_grid()
+void Elasticity<dim>::refine_grid()
 {
   // Initiate the solution transfer object
   dealii::parallel::distributed::SolutionTransfer<dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
@@ -709,12 +711,12 @@ void step15<dim>::refine_grid()
     // Prepare the triangulation for the coarsening and refining
     triangulation.prepare_coarsening_and_refinement();
 
-    // Store the pertinent vectors in the solution transfer object
+    // Gather the pertinent vectors to prepare them for the coarsening
+    // and refining
     std::vector<const dealii::LinearAlgebraTrilinos::MPI::Vector *>
       transfer_vectors(1);
     transfer_vectors[0] = &solution;
 
-    // Prepare the perinent vectors for the coarsening and refining
     solution_transfer.prepare_for_coarsening_and_refinement(transfer_vectors);
 
     // Execute the coarsening and refinement of the triangulation
@@ -730,19 +732,17 @@ void step15<dim>::refine_grid()
     // coarsening and refineming
     dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_solution(system_rhs);
 
-    // Store the pertinent distributed vectors in an std::vector
+    // Gather the pertinent distributed vectors in an std::vector to 
+    // interpolate them
     std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector *> distributed_vectors(1);
     distributed_vectors[0] = &distributed_solution;
 
-    // Interpolate the vectors prior to the coarsening and refinement
-    // into the distributed vectors
     solution_transfer.interpolate(distributed_vectors);
 
     // Apply the constraints of the field variables to the vectors
     affine_constraints.distribute(distributed_solution);
 
-    // Finally, pass the distributed vectors to their counterparts with
-    // locally relevant dofs
+    // Finally, pass the distributed vectors to their ghost counterparts
     solution = distributed_solution;
   }
 }
@@ -750,7 +750,7 @@ void step15<dim>::refine_grid()
 
 
 template<int dim>
-void step15<dim>::setup()
+void Elasticity<dim>::setup()
 {
   dof_handler.distribute_dofs(finite_element);
 
@@ -844,12 +844,19 @@ void step15<dim>::setup()
   affine_constraints.distribute(distributed_vector);
 
   trial_solution = distributed_vector;
+
+
+  this->pcout << "Spatial discretization:"
+              << std::endl
+              << " Number of degrees of freedom = "
+              << dof_handler.n_dofs()
+              << std::endl << std::endl;
 }
 
 
 
 template<int dim>
-void step15<dim>::assemble_linear_system()
+void Elasticity<dim>::assemble_linear_system()
 {
   assemble_system_matrix();
 
@@ -859,7 +866,7 @@ void step15<dim>::assemble_linear_system()
 
 
 template<int dim>
-void step15<dim>::assemble_system_matrix()
+void Elasticity<dim>::assemble_system_matrix()
 {
   system_matrix = 0.0;
 
@@ -907,7 +914,7 @@ void step15<dim>::assemble_system_matrix()
 
 
 template<int dim>
-void step15<dim>::assemble_local_system_matrix(
+void Elasticity<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   Matrix::Scratch<dim>                                          &scratch,
   Matrix::Copy                                                  &data)
@@ -936,7 +943,7 @@ void step15<dim>::assemble_local_system_matrix(
       for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
       {
         data.local_matrix(i,j) -=
-          scratch.sym_grad_phi[i] *
+          scratch.sym_grad_phi[i] * -1.0 *
           stiffness_tetrad.get_stiffness_tetrad() *
           scratch.sym_grad_phi[j] *
           scratch.fe_values.JxW(q);
@@ -947,7 +954,7 @@ void step15<dim>::assemble_local_system_matrix(
 
 
 template<int dim>
-void step15<dim>::copy_local_to_global_system_matrix(
+void Elasticity<dim>::copy_local_to_global_system_matrix(
   const Matrix::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -959,9 +966,9 @@ void step15<dim>::copy_local_to_global_system_matrix(
 
 
 template<int dim>
-void step15<dim>::assemble_rhs()
+void Elasticity<dim>::assemble_rhs()
 {
-  system_rhs  = 0.0;
+  system_rhs = 0.0;
 
   const dealii::QGauss<dim>   quadrature_formula(3);
 
@@ -1019,7 +1026,7 @@ void step15<dim>::assemble_rhs()
 
 
 template<int dim>
-void step15<dim>::assemble_local_system_rhs(
+void Elasticity<dim>::assemble_local_system_rhs(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
   RightHandSide::Copy                                           &data)
@@ -1065,9 +1072,9 @@ void step15<dim>::assemble_local_system_rhs(
     {
       data.local_rhs(i) +=
         (scratch.sym_grad_phi[i] *
-         scratch.stress_tensor_values[q]
+         scratch.stress_tensor_values[q] * 0.0
          -
-         scratch.phi[i] *
+         scratch.phi[i] * -1.0 * 
          scratch.supply_term_values[q]) *
         scratch.fe_values.JxW(q);
     } // Loop over the degrees of freedom
@@ -1107,7 +1114,7 @@ void step15<dim>::assemble_local_system_rhs(
 
 
 template<int dim>
-void step15<dim>::copy_local_to_global_system_rhs(
+void Elasticity<dim>::copy_local_to_global_system_rhs(
   const RightHandSide::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -1120,7 +1127,7 @@ void step15<dim>::copy_local_to_global_system_rhs(
 
 
 template<int dim>
-double step15<dim>::compute_residual(const double alpha)
+double Elasticity<dim>::compute_residual(const double alpha)
 {
   residual = 0.0;
 
@@ -1198,7 +1205,7 @@ double step15<dim>::compute_residual(const double alpha)
 
 
 template<int dim>
-void step15<dim>::assemble_local_residual(
+void Elasticity<dim>::assemble_local_residual(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   RightHandSide::Scratch<dim>                                   &scratch,
   RightHandSide::Copy                                           &data)
@@ -1286,7 +1293,7 @@ void step15<dim>::assemble_local_residual(
 
 
 template<int dim>
-void step15<dim>::copy_local_to_global_residual(
+void Elasticity<dim>::copy_local_to_global_residual(
   const RightHandSide::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -1299,7 +1306,7 @@ void step15<dim>::copy_local_to_global_residual(
 
 
 template<int dim>
-void step15<dim>::solve()
+void Elasticity<dim>::solve()
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
@@ -1315,28 +1322,22 @@ void step15<dim>::solve()
 
   dealii::SolverControl solver_control(
     1000,
-    std::max(system_rhs.l2_norm() * 1e-10, 1e-11));
+    std::max(system_rhs.l2_norm() * 1e-6, 1e-8));
 
-  // The Newton-Raphson method breakdowns when solving a linear
-  // problem with an iterative solver
-  /*dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
   dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
 
-  preconditioner.initialize(system_matrix);*/
+  preconditioner.initialize(system_matrix);
 
   dealii::TrilinosWrappers::SolverDirect direct_solver(solver_control);
 
   try
   {
-    /*solver.solve(system_matrix,
+    solver.solve(system_matrix,
                  distributed_newton_update,
                  system_rhs,
-                 preconditioner);*/
-
-    direct_solver.solve(system_matrix,
-                        distributed_newton_update,
-                        system_rhs);
+                 preconditioner);
   }
   catch (std::exception &exc)
   {
@@ -1373,7 +1374,7 @@ void step15<dim>::solve()
 
 
 template<int dim>
-void step15<dim>::postprocessing()
+void Elasticity<dim>::postprocessing()
 {
   dealii::Vector<double>  point_value(dim);
 
@@ -1381,11 +1382,19 @@ void step15<dim>::postprocessing()
 
   try
   {
-    dealii::VectorTools::point_value(*mapping,
-                             dof_handler,
-                             solution,
-                             dealii::Point<dim>(25.,.5),
-                             point_value);
+    if constexpr(dim == 2)
+      dealii::VectorTools::point_value(*mapping,
+                              dof_handler,
+                              solution,
+                              dealii::Point<dim>(25.,.5),
+                              point_value);
+    else if constexpr(dim == 3)
+      dealii::VectorTools::point_value(*mapping,
+                              dof_handler,
+                              solution,
+                              dealii::Point<dim>(25.,.5,.5),
+                              point_value);
+
     point_found = true;
   }
   catch (const dealii::VectorTools::ExcPointNotAvailableHere &)
@@ -1393,11 +1402,12 @@ void step15<dim>::postprocessing()
     // ignore
   }
 
-  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0, MPI_COMM_WORLD);
+  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0, 
+                                                  MPI_COMM_WORLD);
 
   dealii::Utilities::MPI::sum(point_value,
-                      MPI_COMM_WORLD,
-                      point_value);
+                              MPI_COMM_WORLD,
+                              point_value);
 
   // Normalize in cases where points are claimed by multiple processors
   if (n_procs > 1)
@@ -1413,7 +1423,7 @@ void step15<dim>::postprocessing()
 
 
 template<int dim>
-void step15<dim>::data_output()
+void Elasticity<dim>::data_output()
 {
   // Explicit declaration of the velocity as a vector
   std::vector<std::string> displacement_names(dim, "Displacement");
@@ -1452,7 +1462,7 @@ void step15<dim>::data_output()
 
 
 template<int dim>
-void step15<dim>::run()
+void Elasticity<dim>::run()
 {
   make_grid();
 
@@ -1481,6 +1491,11 @@ void step15<dim>::run()
 
       solve();
 
+      data_output();
+      postprocessing();
+
+      return;
+
       double current_residual = compute_residual(0);
 
       this->pcout << "  Residual: " << current_residual << std::endl;
@@ -1504,7 +1519,7 @@ void step15<dim>::run()
 
 
 
-} // namespace step15
+} // namespace Elasticity
 
 
 int main(int argc, char *argv[])
@@ -1514,7 +1529,7 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    step15::step15<2> problem;
+    Elasticity::Elasticity<2> problem;
 
     problem.run();
 
