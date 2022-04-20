@@ -63,10 +63,6 @@ ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
-    step-3.cc
-    convergence_test.cc
-    step-15.cc
-    elasticity.cc
     gCPFEM.cc
     )
 
