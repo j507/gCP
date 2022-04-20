@@ -55,15 +55,19 @@ SET(CLEAN_UP_FILES *.vtu *.pvtu *.visit *.vtk)
 
 
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
-PROJECT(CPFM)
+PROJECT(gCP)
 ENABLE_TESTING()
+INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
+ADD_SUBDIRECTORY(src)
+ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
     step-3.cc
     convergence_test.cc
     step-15.cc
     elasticity.cc
+    gCPFEM.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
@@ -71,4 +75,5 @@ FOREACH(sourcefile ${SOURCE_FILES})
   PROJECT(${executablename})
   ADD_EXECUTABLE(${executablename} ${sourcefile})
   DEAL_II_SETUP_TARGET(${executablename})
+  TARGET_LINK_LIBRARIES(${executablename} gCP stdc++fs)
 ENDFOREACH(sourcefile ${APP_SOURCES})
