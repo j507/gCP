@@ -1,5 +1,5 @@
-#include <gCP/constitutive_equations.h>
 #include <gCP/assembly_data.h>
+#include <gCP/constitutive_equations.h>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
@@ -86,10 +86,16 @@ void DirichletBoundaryFunction<dim>::vector_value(
   return_vector[0] = x*0;
   return_vector[1] = y*0;
 
-  if constexpr(dim == 3)
+  switch (dim)
   {
-    const double z = point(2);
-    return_vector[2] = z*0;
+    case 3:
+      {      
+        const double z = point(2);
+        return_vector[2] = z*0;
+      }
+      break;
+    default:
+      break;
   }
 }
 
@@ -125,13 +131,19 @@ dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
   const double x = point(0);
   const double y = point(1);
 
-  return_vector[0] = 0.0*x;
+  return_vector[0] = 0.0*x*y;
   return_vector[1] = -1e-3;
 
-  if constexpr(dim == 3)
+  switch (dim)
   {
-    const double z = point(2);
-    return_vector[2] = z*0;
+    case 3:
+      {      
+        const double z = point(2);
+        return_vector[2] = z*0;
+      }
+      break;
+    default:
+      break;
   }
 
   return return_vector;
@@ -173,10 +185,16 @@ dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
   return_vector[0] = 0.0*x;
   return_vector[1] = 0.0*y;
 
-  if constexpr(dim == 3)
+  switch (dim)
   {
-    const double z = point(2);
-    return_vector[2] = 0.0*z;
+    case 3:
+      {      
+        const double z = point(2);
+        return_vector[2] = z*0;
+      }
+      break;
+    default:
+      break;
   }
 
   return return_vector;
@@ -321,27 +339,31 @@ void Elasticity<dim>::make_grid()
   std::vector<unsigned int> repetitions(dim, 10);
   repetitions[0] = 250;
 
-  if constexpr(dim == 2)
-    dealii::GridGenerator::subdivided_hyper_rectangle(triangulation,
-                                           repetitions,
-                                           dealii::Point<dim>(0,0),
-                                           dealii::Point<dim>(length,
-                                                               height),
-                                           true);
-  else if constexpr(dim == 3)
+  switch (dim)
   {
-    const double width  = 1.0;
-    dealii::GridGenerator::subdivided_hyper_rectangle(triangulation,
-    repetitions,
-                                           dealii::Point<dim>(0,0,0),
-                                           dealii::Point<dim>(length,
-                                                               height,
-                                                               width),
-                                           true);
-  }
-  else
+  case 2:
+    dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation,
+      repetitions,
+      dealii::Point<dim>(0,0),
+      dealii::Point<dim>(length, height),
+      true);
+    break;
+  case 3:
+    {
+      const double width  = 1.0;
+      dealii::GridGenerator::subdivided_hyper_rectangle(
+        triangulation,
+        repetitions,
+        dealii::Point<dim>(0,0,0),
+        dealii::Point<dim>(length, height, width),
+        true);
+    }
+    break;
+  default:
     Assert(false, dealii::ExcNotImplemented());
-
+    break;
+  }
 
   triangulation.refine_global(0);
 
@@ -1060,18 +1082,25 @@ void Elasticity<dim>::postprocessing()
 
   try
   {
-    if constexpr(dim == 2)
+    switch (dim)
+    {
+    case 2:
       dealii::VectorTools::point_value(*mapping,
-                              dof_handler,
-                              solution,
-                              dealii::Point<dim>(25.,.5),
-                              point_value);
-    else if constexpr(dim == 3)
+                                       dof_handler,
+                                       solution,
+                                       dealii::Point<dim>(25.,.5),
+                                       point_value);
+      break;
+    case 3:
       dealii::VectorTools::point_value(*mapping,
-                              dof_handler,
-                              solution,
-                              dealii::Point<dim>(25.,.5,.5),
-                              point_value);
+                                       dof_handler,
+                                       solution,
+                                       dealii::Point<dim>(25.,.5,.5),
+                                       point_value);
+      break;
+    default:
+      break;
+    }
 
     point_found = true;
   }

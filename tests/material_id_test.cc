@@ -46,7 +46,7 @@ private:
 
   std::vector<unsigned int>                         repetitions;
 
-  gCP::ConstitutiveEquations::HookeLaw<dim>              stiffness_tetrad;
+  gCP::ConstitutiveEquations::HookeLaw<dim>         stiffness_tetrad;
 
   void make_grid();
 
@@ -93,22 +93,28 @@ void MaterialID<dim>::run()
 template<int dim>
 void MaterialID<dim>::make_grid()
 {
-  if constexpr(dim == 2)
+  switch (dim)
+  {
+  case 2:
     dealii::GridGenerator::subdivided_hyper_rectangle(
       triangulation,
       repetitions,
       dealii::Point<dim>(0,0),
       dealii::Point<dim>(length,height),
       true);
-  else if constexpr(dim == 3)
+    break;
+  case 3:
     dealii::GridGenerator::subdivided_hyper_rectangle(
       triangulation,
       repetitions,
       dealii::Point<dim>(0,0,0),
       dealii::Point<dim>(length,height,width),
       true);
-  else 
-    Assert(false, dealii::ExcMessage("This test does not run in 1-D"))
+    break;
+  default:
+    Assert(false, dealii::ExcMessage("This only runs in 2-D and 3-D"))
+    break;
+  } 
 
   this->pcout << "Triangulation:"
               << std::endl

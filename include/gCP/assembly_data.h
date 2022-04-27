@@ -1,5 +1,5 @@
-#ifndef INCLUDE_GRADIENT_CRYSTAL_PLASTICITY_H_
-#define INCLUDE_GRADIENT_CRYSTAL_PLASTICITY_H_
+#ifndef INCLUDE_ASSEMBLY_DATA_H_
+#define INCLUDE_ASSEMBLY_DATA_H_
 
 #include <deal.II/base/quadrature.h>
 
@@ -144,4 +144,4 @@ struct Scratch : ScratchBase<dim>
 
 
 
-#endif /* INCLUDE_GRADIENT_CRYSTAL_PLASTICITY_H_ */
+#endif /* INCLUDE_ASSEMBLY_DATA_H_ */

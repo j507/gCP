@@ -1093,6 +1093,8 @@ void step15<dim>::postprocessing()
 template<int dim>
 void step15<dim>::data_output(const unsigned int refinement_cycle)
 {
+  (void)refinement_cycle;
+  
   dealii::DataOut<dim> data_out;
 
   data_out.add_data_vector(dof_handler,
