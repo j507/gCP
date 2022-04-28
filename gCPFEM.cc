@@ -207,10 +207,10 @@ dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
 
 
 template<int dim>
-class Elasticity
+class GradientCrystalPlasticitySolver
 {
 public:
-  Elasticity();
+  GradientCrystalPlasticitySolver();
 
   void run();
 
@@ -226,10 +226,6 @@ private:
   dealii::hp::MappingCollection<dim>                mapping_collection;
 
   dealii::hp::FECollection<dim>                     finite_element_collection;
-
-  dealii::FESystem<dim>                             finite_element;
-
-  //dealii::FEValuesExtractors::Vector                displacement_extractor;
 
   dealii::DoFHandler<dim>                           dof_handler;
 
@@ -255,17 +251,17 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
 
+  std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
+
   DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
 
   NeumannBoundaryFunction<dim>                      neumann_boundary_function;
 
   SupplyTermFunction<dim>                           supply_term_function;
 
-  double                                            relaxation_parameter;
-
   ConstitutiveEquations::HookeLaw<dim>              stiffness_tetrad;
 
-  std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
+  double                                            relaxation_parameter;
 
   void make_grid();
 
@@ -314,7 +310,7 @@ private:
 
 
 template<int dim>
-Elasticity<dim>::Elasticity()
+GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver()
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -328,14 +324,12 @@ triangulation(MPI_COMM_WORLD,
                 dealii::Triangulation<dim>::smoothing_on_coarsening)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
 mapping_collection(*mapping),
-finite_element(dealii::FE_Q<dim>(2), dim),
-//displacement_extractor(0),
 dof_handler(triangulation),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
-relaxation_parameter(0.1),
-stiffness_tetrad(1e5, 0.3)
+stiffness_tetrad(1e5, 0.3),
+relaxation_parameter(0.1)
 {
   const unsigned int n_crystals = 1;
 
@@ -367,7 +361,7 @@ stiffness_tetrad(1e5, 0.3)
 
 
 template<int dim>
-void Elasticity<dim>::make_grid()
+void GradientCrystalPlasticitySolver<dim>::make_grid()
 {
   const double length = 25.0;
   const double height = 1.0;
@@ -414,7 +408,7 @@ void Elasticity<dim>::make_grid()
 
 
 template<int dim>
-void Elasticity<dim>::refine_grid()
+void GradientCrystalPlasticitySolver<dim>::refine_grid()
 {
   // Initiate the solution transfer object
   dealii::parallel::distributed::SolutionTransfer<dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
@@ -486,7 +480,7 @@ void Elasticity<dim>::refine_grid()
 
 
 template<int dim>
-void Elasticity<dim>::setup()
+void GradientCrystalPlasticitySolver<dim>::setup()
 {
   // The finite element collection contains the finite element systems
   // corresponding to each crystal
@@ -494,15 +488,19 @@ void Elasticity<dim>::setup()
     if (cell->is_locally_owned())
       cell->set_active_fe_index(0);
 
-
+  // Distribute degrees of freedom based on the defined finite elements
   dof_handler.distribute_dofs(finite_element_collection);
 
+  // Renumbering of the degrees of freedom
   dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
 
+  // Get the locally owned and relevant degrees of freedom of each processor
   locally_owned_dofs = dof_handler.locally_owned_dofs();
+  
   dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
                                                   locally_relevant_dofs);
 
+  // Initiate the hanging node constraints
   hanging_node_constraints.clear();
   {
     hanging_node_constraints.reinit(locally_relevant_dofs);
@@ -511,6 +509,7 @@ void Elasticity<dim>::setup()
   }
   hanging_node_constraints.close();
 
+  // Initiate the actual constraints – boundary conditions – of the problem
   affine_constraints.clear();
   {
     affine_constraints.reinit(locally_relevant_dofs);
@@ -525,6 +524,7 @@ void Elasticity<dim>::setup()
   }
   affine_constraints.close();
 
+  // Inhomogeneous constraints are zero-ed out for the Newton Rhapson method
   newton_method_constraints.clear();
   {
     newton_method_constraints.reinit(locally_relevant_dofs);
@@ -539,56 +539,67 @@ void Elasticity<dim>::setup()
   }
   newton_method_constraints.close();
 
-  dealii::TrilinosWrappers::SparsityPattern
-    sparsity_pattern(locally_owned_dofs,
-                      locally_owned_dofs,
+  // Initiate the matrices
+  {
+    dealii::TrilinosWrappers::SparsityPattern
+      sparsity_pattern(locally_owned_dofs,
+                        locally_owned_dofs,
+                        locally_relevant_dofs,
+                        MPI_COMM_WORLD);
+
+    dealii::DoFTools::make_sparsity_pattern(
+      dof_handler,
+      sparsity_pattern,
+      newton_method_constraints,
+      false,
+      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
+
+    sparsity_pattern.compress();
+
+    system_matrix.reinit(sparsity_pattern);
+  }
+
+  // Initiate the vectors
+  {
+    system_rhs.reinit(locally_owned_dofs,
                       locally_relevant_dofs,
-                      MPI_COMM_WORLD);
+                      MPI_COMM_WORLD,
+                      true);
+    residual.reinit(system_rhs);
 
-  dealii::DoFTools::make_sparsity_pattern(
-    dof_handler,
-    sparsity_pattern,
-    newton_method_constraints,
-    false,
-    dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
+    solution.reinit(locally_relevant_dofs,
+                    MPI_COMM_WORLD);
+    newton_update.reinit(solution);
+    trial_solution.reinit(solution);
+  }
 
-  sparsity_pattern.compress();
+  // Distribute the constraints to the pertinenet vectors
+  // The distribute() method only works on distributed vectors.
+  {
+    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
 
-  system_matrix.reinit(sparsity_pattern);
-
-  system_rhs.reinit(locally_owned_dofs,
-                     locally_relevant_dofs,
-                     MPI_COMM_WORLD,
-                     true);
-  residual.reinit(system_rhs);
-
-  solution.reinit(locally_relevant_dofs,
-                   MPI_COMM_WORLD);
-  newton_update.reinit(solution);
-  trial_solution.reinit(solution);
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
-
-  distributed_vector.reinit(locally_owned_dofs,
+    distributed_vector.reinit(locally_owned_dofs,
                               locally_relevant_dofs,
                               MPI_COMM_WORLD,
                               true);
 
-  distributed_vector = solution;
+    distributed_vector = solution;
 
-  affine_constraints.distribute(distributed_vector);
+    affine_constraints.distribute(distributed_vector);
 
-  solution = distributed_vector;
+    solution = distributed_vector;
 
-  distributed_vector = newton_update;
+    distributed_vector = newton_update;
 
-  newton_method_constraints.distribute(distributed_vector);
+    newton_method_constraints.distribute(distributed_vector);
 
-  distributed_vector = trial_solution;
+    distributed_vector = trial_solution;
 
-  affine_constraints.distribute(distributed_vector);
+    affine_constraints.distribute(distributed_vector);
 
-  trial_solution = distributed_vector;
+    trial_solution = distributed_vector;
+  }
+
 
   this->pcout << "Spatial discretization:"
               << std::endl
@@ -600,7 +611,7 @@ void Elasticity<dim>::setup()
 
 
 template<int dim>
-void Elasticity<dim>::assemble_linear_system()
+void GradientCrystalPlasticitySolver<dim>::assemble_linear_system()
 {
   assemble_system_matrix();
 
@@ -610,47 +621,57 @@ void Elasticity<dim>::assemble_linear_system()
 
 
 template<int dim>
-void Elasticity<dim>::assemble_system_matrix()
+void GradientCrystalPlasticitySolver<dim>::assemble_system_matrix()
 {
+  // Set up local aliases
+  using cell_iterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Reset data
   system_matrix = 0.0;
 
+  // Create instances of the quadrature collection classes
   dealii::hp::QCollection<dim>    quadrature_collection;
 
   dealii::hp::QCollection<dim-1>  face_quadrature_collection;
 
+  // Initiate the quadrature formula for exact numerical integration
   const dealii::QGauss<dim>       quadrature_formula(3);
 
   const dealii::QGauss<dim-1>     face_quadrature_formula(3);
 
+  // Add the initiated quadrature formulas to the collections
   quadrature_collection.push_back(quadrature_formula);
 
   face_quadrature_collection.push_back(face_quadrature_formula);
 
-  using cell_iterator =
-    typename dealii::DoFHandler<dim>::active_cell_iterator;
-
-  auto worker = [this](const cell_iterator  &cell,
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](const cell_iterator                       &cell,
                        gCP::AssemblyData::Jacobian::Scratch<dim> &scratch,
                        gCP::AssemblyData::Jacobian::Copy         &data)
   {
     this->assemble_local_system_matrix(cell, scratch, data);
   };
 
+  // Set up the lambda function for the copy local to global operation
   auto copier = [this](const gCP::AssemblyData::Jacobian::Copy &data)
   {
     this->copy_local_to_global_system_matrix(data);
   };
 
-  dealii::UpdateFlags update_flags =  dealii::update_JxW_values |
-                                      dealii::update_gradients |
-                                      dealii::update_quadrature_points;
+  // Define the update flags for the FEValues instances
+  const dealii::UpdateFlags update_flags =  
+    dealii::update_JxW_values |
+    dealii::update_gradients |
+    dealii::update_quadrature_points;
 
   //dealii::UpdateFlags face_update_flags = dealii::update_JxW_values;
 
-  using CellFilter =
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
+  // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
                dof_handler.begin_active()),
@@ -666,13 +687,14 @@ void Elasticity<dim>::assemble_system_matrix()
     gCP::AssemblyData::Jacobian::Copy(
       finite_element_collection.max_dofs_per_cell()));
 
+  // Compress global data
   system_matrix.compress(dealii::VectorOperation::add);
 }
 
 
 
 template<int dim>
-void Elasticity<dim>::assemble_local_system_matrix(
+void GradientCrystalPlasticitySolver<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   gCP::AssemblyData::Jacobian::Scratch<dim>                     &scratch,
   gCP::AssemblyData::Jacobian::Copy                             &data)
@@ -683,7 +705,7 @@ void Elasticity<dim>::assemble_local_system_matrix(
   // Reset local data
   data.local_matrix = 0.0;
 
-  // Reset hp finite element values to those of the current cell
+  // Update the hp::FEValues instance to the values of the current cell
   scratch.hp_fe_values.reinit(cell);
 
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
@@ -717,7 +739,7 @@ void Elasticity<dim>::assemble_local_system_matrix(
 
 
 template<int dim>
-void Elasticity<dim>::copy_local_to_global_system_matrix(
+void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_system_matrix(
   const gCP::AssemblyData::Jacobian::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -729,38 +751,49 @@ void Elasticity<dim>::copy_local_to_global_system_matrix(
 
 
 template<int dim>
-void Elasticity<dim>::assemble_rhs()
+void GradientCrystalPlasticitySolver<dim>::assemble_rhs()
 {
+  // Set up local aliases
+  using cell_iterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Reset data
   system_rhs = 0.0;
 
+  // Create instances of the quadrature collection classes
   dealii::hp::QCollection<dim>    quadrature_collection;
 
   dealii::hp::QCollection<dim-1>  face_quadrature_collection;
 
+  // Initiate the quadrature formula for exact numerical integration
   const dealii::QGauss<dim>       quadrature_formula(3);
 
   const dealii::QGauss<dim-1>     face_quadrature_formula(3);
 
+  // Add the initiated quadrature formulas to the collections
   quadrature_collection.push_back(quadrature_formula);
 
   face_quadrature_collection.push_back(face_quadrature_formula);
 
-  using cell_iterator =
-    typename dealii::DoFHandler<dim>::active_cell_iterator;
-
-
-  auto worker = [this](const cell_iterator          &cell,
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](const cell_iterator                        &cell,
                        gCP::AssemblyData::Residual::Scratch<dim>  &scratch,
                        gCP::AssemblyData::Residual::Copy          &data)
   {
     this->assemble_local_system_rhs(cell, scratch, data);
   };
 
+  // Set up the lambda function for the copy local to global operation
   auto copier = [this](const gCP::AssemblyData::Residual::Copy  &data)
   {
     this->copy_local_to_global_system_rhs(data);
   };
 
+  // Define the update flags for the FEValues instances
   const dealii::UpdateFlags update_flags  =
     dealii::update_JxW_values |
     dealii::update_values |
@@ -772,10 +805,7 @@ void Elasticity<dim>::assemble_rhs()
     dealii::update_values |
     dealii::update_quadrature_points;
 
-  using CellFilter =
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
+  // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
                dof_handler.begin_active()),
@@ -793,13 +823,14 @@ void Elasticity<dim>::assemble_rhs()
     gCP::AssemblyData::Residual::Copy(
       finite_element_collection.max_dofs_per_cell()));
 
+  // Compress global data
   system_rhs.compress(dealii::VectorOperation::add);
 }
 
 
 
 template<int dim>
-void Elasticity<dim>::assemble_local_system_rhs(
+void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   gCP::AssemblyData::Residual::Scratch<dim>                                   &scratch,
   gCP::AssemblyData::Residual::Copy                                           &data)
@@ -814,7 +845,7 @@ void Elasticity<dim>::assemble_local_system_rhs(
   // Local to global mapping of the indices of the degrees of freedom
   cell->get_dof_indices(data.local_dof_indices);
 
-  // Reset hp finite element values to those of the current cell
+  // Update the hp::FEValues instance to the values of the current cell
   scratch.hp_fe_values.reinit(cell);
  
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
@@ -863,7 +894,7 @@ void Elasticity<dim>::assemble_local_system_rhs(
     for (const auto &face : cell->face_iterators())
       if (face->at_boundary() && face->boundary_id() == 1)
       {
-        // Reset hp finite element values to those of the current cell
+        // Update the hp::FEFaceValues instance to the values of the current cell
         scratch.hp_fe_face_values.reinit(cell, face);
 
         const dealii::FEFaceValues<dim> &fe_face_values = 
@@ -896,7 +927,7 @@ void Elasticity<dim>::assemble_local_system_rhs(
 
 
 template<int dim>
-void Elasticity<dim>::copy_local_to_global_system_rhs(
+void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_system_rhs(
   const gCP::AssemblyData::Residual::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -909,7 +940,7 @@ void Elasticity<dim>::copy_local_to_global_system_rhs(
 
 
 template<int dim>
-double Elasticity<dim>::compute_residual(const double alpha)
+double GradientCrystalPlasticitySolver<dim>::compute_residual(const double alpha)
 {
   residual = 0.0;
 
@@ -997,7 +1028,7 @@ double Elasticity<dim>::compute_residual(const double alpha)
 
 
 template<int dim>
-void Elasticity<dim>::assemble_local_residual(
+void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   gCP::AssemblyData::Residual::Scratch<dim>                                   &scratch,
   gCP::AssemblyData::Residual::Copy                                           &data)
@@ -1012,9 +1043,10 @@ void Elasticity<dim>::assemble_local_residual(
   // Local to global mapping of the indices of the degrees of freedom
   cell->get_dof_indices(data.local_dof_indices);
 
-  // Reset hp finite element values to those of the current cell
+  // Update the hp::FEValues instance to those of the current cell
   scratch.hp_fe_values.reinit(cell);
  
+  // Get the pertinent FEValues instance
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
@@ -1061,7 +1093,7 @@ void Elasticity<dim>::assemble_local_residual(
     for (const auto &face : cell->face_iterators())
       if (face->at_boundary() && face->boundary_id() == 1)
       {
-        // Reset hp finite element values to those of the current cell
+        // Update the hp::FEFaceValues instance to the values of the current cell
         scratch.hp_fe_face_values.reinit(cell, face);
 
         const dealii::FEFaceValues<dim> &fe_face_values = 
@@ -1093,7 +1125,7 @@ void Elasticity<dim>::assemble_local_residual(
 
 
 template<int dim>
-void Elasticity<dim>::copy_local_to_global_residual(
+void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy  &data)
 {
   newton_method_constraints.distribute_local_to_global(
@@ -1106,8 +1138,11 @@ void Elasticity<dim>::copy_local_to_global_residual(
 
 
 template<int dim>
-void Elasticity<dim>::solve()
+void GradientCrystalPlasticitySolver<dim>::solve()
 {
+  // In this method we create temporal non ghosted copies
+  // of the pertinent vectors to be able to perform the solve()
+  // operation.
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
 
@@ -1120,18 +1155,20 @@ void Elasticity<dim>::solve()
   distributed_solution      = solution;
   distributed_newton_update = newton_update;
 
+  // The solver's tolerances are passed to the SolverControl instance
+  // used to initialize the solver
   dealii::SolverControl solver_control(
     1000,
     std::max(system_rhs.l2_norm() * 1e-6, 1e-8));
 
   dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
+  // The preconditioner is instanciated and initialized
   dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
 
   preconditioner.initialize(system_matrix);
 
-  dealii::TrilinosWrappers::SolverDirect direct_solver(solver_control);
-
+  // try-catch scope for the solve() call
   try
   {
     solver.solve(system_matrix,
@@ -1163,10 +1200,13 @@ void Elasticity<dim>::solve()
     std::abort();
   }
 
+  // Zero out the Dirichlet boundary conditions
   newton_method_constraints.distribute(distributed_newton_update);
 
+  // Compute the updated solution
   distributed_solution.add(relaxation_parameter, distributed_newton_update);
 
+  // Pass the distributed vectors to their ghosted counterpart
   newton_update = distributed_newton_update;
   solution      = distributed_solution;
 }
@@ -1174,7 +1214,7 @@ void Elasticity<dim>::solve()
 
 
 template<int dim>
-void Elasticity<dim>::postprocessing()
+void GradientCrystalPlasticitySolver<dim>::postprocessing()
 {
   dealii::Vector<double>  point_value(dim);
 
@@ -1230,7 +1270,7 @@ void Elasticity<dim>::postprocessing()
 
 
 template<int dim>
-void Elasticity<dim>::data_output()
+void GradientCrystalPlasticitySolver<dim>::data_output()
 {
   // Explicit declaration of the velocity as a vector
   std::vector<std::string> displacement_names(dim, "Displacement");
@@ -1269,7 +1309,7 @@ void Elasticity<dim>::data_output()
 
 
 template<int dim>
-void Elasticity<dim>::run()
+void GradientCrystalPlasticitySolver<dim>::run()
 {
   make_grid();
 
@@ -1336,7 +1376,7 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::Elasticity<2> problem;
+    gCP::GradientCrystalPlasticitySolver<2> problem;
 
     problem.run();
 
