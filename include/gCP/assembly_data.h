@@ -6,6 +6,9 @@
 #include <deal.II/fe/fe.h>
 #include <deal.II/fe/fe_values.h>
 
+#include <deal.II/hp/fe_collection.h>
+#include <deal.II/hp/fe_values.h>
+
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/vector.h>
 
@@ -33,8 +36,8 @@ struct CopyBase
 template <int dim>
 struct ScratchBase
 {
-  ScratchBase(const dealii::Quadrature<dim>     &quadrature_formula,
-              const dealii::FiniteElement<dim>  &finite_element);
+  ScratchBase(const dealii::hp::QCollection<dim>     &quadrature_collection,
+              const dealii::hp::FECollection<dim> &finite_element);
 
   ScratchBase(const ScratchBase<dim>  &data);
 
@@ -62,14 +65,14 @@ struct Copy : CopyBase
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::Mapping<dim>        &mapping,
-          const dealii::Quadrature<dim>     &quadrature_formula,
-          const dealii::FiniteElement<dim>  &finite_element,
-          const dealii::UpdateFlags         update_flags);
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element,
+          const dealii::UpdateFlags                 update_flags);
 
   Scratch(const Scratch<dim>  &data);
 
-  dealii::FEValues<dim>                       fe_values;
+  dealii::hp::FEValues<dim>                   hp_fe_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>> sym_grad_phi;
 };
@@ -99,18 +102,18 @@ struct Copy : CopyBase
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::Mapping<dim>        &mapping,
-          const dealii::Quadrature<dim>     &quadrature_formula,
-          const dealii::Quadrature<dim-1>   &face_quadrature_formula,
-          const dealii::FiniteElement<dim>  &finite_element,
-          const dealii::UpdateFlags         update_flags,
-          const dealii::UpdateFlags         face_update_flags);
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element,
+          const dealii::UpdateFlags                 update_flags,
+          const dealii::UpdateFlags                 face_update_flags);
 
   Scratch(const Scratch<dim>  &data);
 
-  dealii::FEValues<dim>                       fe_values;
+  dealii::hp::FEValues<dim>                   hp_fe_values;
 
-  dealii::FEFaceValues<dim>                   fe_face_values;
+  dealii::hp::FEFaceValues<dim>               hp_fe_face_values;
 
   const unsigned int                          n_face_q_points;
 

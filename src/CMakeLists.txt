@@ -4,7 +4,7 @@ SET(TARGET_SRC
     #crystal_data.cc
     #postprocessing.cc 
     #run_time_parameters.cc
-    gradient_crystal_plasticity/assembly.cc
+    gradient_crystal_plasticity/assembly_data.cc
     #gradient_crystal_plasticity/gradient_crystal_plasticity.cc 
     #gradient_crystal_plasticity/setup.cc
 )

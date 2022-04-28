@@ -21,6 +21,9 @@
 #include <deal.II/fe/mapping_manifold.h>
 #include <deal.II/fe/mapping_q.h>
 
+#include <deal.II/hp/fe_collection.h>
+#include <deal.II/hp/fe_values.h>
+
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_refinement.h>
 #include <deal.II/grid/tria.h>
@@ -220,9 +223,13 @@ private:
 
   std::shared_ptr<dealii::Mapping<dim>>             mapping;
 
+  dealii::hp::MappingCollection<dim>                mapping_collection;
+
+  dealii::hp::FECollection<dim>                     finite_element_collection;
+
   dealii::FESystem<dim>                             finite_element;
 
-  dealii::FEValuesExtractors::Vector                displacement_extractor;
+  //dealii::FEValuesExtractors::Vector                displacement_extractor;
 
   dealii::DoFHandler<dim>                           dof_handler;
 
@@ -257,6 +264,8 @@ private:
   double                                            relaxation_parameter;
 
   ConstitutiveEquations::HookeLaw<dim>              stiffness_tetrad;
+
+  std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
 
   void make_grid();
 
@@ -318,15 +327,42 @@ triangulation(MPI_COMM_WORLD,
                 dealii::Triangulation<dim>::smoothing_on_refinement |
                 dealii::Triangulation<dim>::smoothing_on_coarsening)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
+mapping_collection(*mapping),
 finite_element(dealii::FE_Q<dim>(2), dim),
-displacement_extractor(0),
+//displacement_extractor(0),
 dof_handler(triangulation),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
 relaxation_parameter(0.1),
 stiffness_tetrad(1e5, 0.3)
-{}
+{
+  const unsigned int n_crystals = 1;
+
+  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  {
+    std::vector<const dealii::FiniteElement<dim>*>  finite_elements;
+
+    for (unsigned int j = 0; j < dim; ++j)
+      finite_elements.push_back(
+        new dealii::FE_Q<dim>(2));
+
+    finite_element_collection.push_back(
+      dealii::FESystem<dim>(
+        finite_elements, 
+        std::vector<unsigned int>(finite_elements.size(), 1)));
+
+    // Delete in order to avoid memory leaks
+    for (auto finite_element: finite_elements)
+      delete finite_element;
+    finite_elements.clear();
+  }
+
+  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  {
+    displacement_extractors.push_back(dealii::FEValuesExtractors::Vector(i*dim));
+  }
+}
 
 
 
@@ -452,7 +488,14 @@ void Elasticity<dim>::refine_grid()
 template<int dim>
 void Elasticity<dim>::setup()
 {
-  dof_handler.distribute_dofs(finite_element);
+  // The finite element collection contains the finite element systems
+  // corresponding to each crystal
+  for (const auto &cell : dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned())
+      cell->set_active_fe_index(0);
+
+
+  dof_handler.distribute_dofs(finite_element_collection);
 
   dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
 
@@ -477,7 +520,8 @@ void Elasticity<dim>::setup()
       dof_handler,
       0,
       DirichletBoundaryFunction<dim>(),
-      affine_constraints);
+      affine_constraints,
+      finite_element_collection.component_mask(displacement_extractors[0]));
   }
   affine_constraints.close();
 
@@ -490,7 +534,8 @@ void Elasticity<dim>::setup()
       dof_handler,
       0,
       dealii::Functions::ZeroFunction<dim>(dim),
-      newton_method_constraints);
+      newton_method_constraints,
+      finite_element_collection.component_mask(displacement_extractors[0]));
   }
   newton_method_constraints.close();
 
@@ -545,7 +590,6 @@ void Elasticity<dim>::setup()
 
   trial_solution = distributed_vector;
 
-
   this->pcout << "Spatial discretization:"
               << std::endl
               << " Number of degrees of freedom = "
@@ -570,7 +614,17 @@ void Elasticity<dim>::assemble_system_matrix()
 {
   system_matrix = 0.0;
 
-  const dealii::QGauss<dim> quadrature_formula(3);
+  dealii::hp::QCollection<dim>    quadrature_collection;
+
+  dealii::hp::QCollection<dim-1>  face_quadrature_collection;
+
+  const dealii::QGauss<dim>       quadrature_formula(3);
+
+  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
+
+  quadrature_collection.push_back(quadrature_formula);
+
+  face_quadrature_collection.push_back(face_quadrature_formula);
 
   using cell_iterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
@@ -591,6 +645,8 @@ void Elasticity<dim>::assemble_system_matrix()
                                       dealii::update_gradients |
                                       dealii::update_quadrature_points;
 
+  //dealii::UpdateFlags face_update_flags = dealii::update_JxW_values;
+
   using CellFilter =
     dealii::FilteredIterator<
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
@@ -602,11 +658,13 @@ void Elasticity<dim>::assemble_system_matrix()
                dof_handler.end()),
     worker,
     copier,
-    gCP::AssemblyData::Jacobian::Scratch<dim>(*mapping,
-                         quadrature_formula,
-                         finite_element,
-                         update_flags),
-    gCP::AssemblyData::Jacobian::Copy(finite_element.dofs_per_cell));
+    gCP::AssemblyData::Jacobian::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      finite_element_collection,
+      update_flags),
+    gCP::AssemblyData::Jacobian::Copy(
+      finite_element_collection.max_dofs_per_cell()));
 
   system_matrix.compress(dealii::VectorOperation::add);
 }
@@ -616,14 +674,19 @@ void Elasticity<dim>::assemble_system_matrix()
 template<int dim>
 void Elasticity<dim>::assemble_local_system_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
-  gCP::AssemblyData::Jacobian::Scratch<dim>                                          &scratch,
-  gCP::AssemblyData::Jacobian::Copy                                                  &data)
+  gCP::AssemblyData::Jacobian::Scratch<dim>                     &scratch,
+  gCP::AssemblyData::Jacobian::Copy                             &data)
 {
+  // Get the crystal identifier for the current cell
+  const unsigned int crystal_id = cell->active_fe_index();
+
   // Reset local data
   data.local_matrix = 0.0;
 
-  // Reset finite element values to those of the current cell
-  scratch.fe_values.reinit(cell);
+  // Reset hp finite element values to those of the current cell
+  scratch.hp_fe_values.reinit(cell);
+
+  const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Local to global indices mapping
   cell->get_dof_indices(data.local_dof_indices);
@@ -635,7 +698,7 @@ void Elasticity<dim>::assemble_local_system_matrix(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.sym_grad_phi[i] =
-        scratch.fe_values[displacement_extractor].symmetric_gradient(i,q);
+        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
     }
 
     // Loop over local degrees of freedom
@@ -646,7 +709,7 @@ void Elasticity<dim>::assemble_local_system_matrix(
           scratch.sym_grad_phi[i] * -1.0 *
           stiffness_tetrad.get_stiffness_tetrad() *
           scratch.sym_grad_phi[j] *
-          scratch.fe_values.JxW(q);
+          fe_values.JxW(q);
       } // Loop over local degrees of freedom
   } // Loop over quadrature points
 }
@@ -670,9 +733,17 @@ void Elasticity<dim>::assemble_rhs()
 {
   system_rhs = 0.0;
 
-  const dealii::QGauss<dim>   quadrature_formula(3);
+  dealii::hp::QCollection<dim>    quadrature_collection;
 
-  const dealii::QGauss<dim-1> face_quadrature_formula(3);
+  dealii::hp::QCollection<dim-1>  face_quadrature_collection;
+
+  const dealii::QGauss<dim>       quadrature_formula(3);
+
+  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
+
+  quadrature_collection.push_back(quadrature_formula);
+
+  face_quadrature_collection.push_back(face_quadrature_formula);
 
   using cell_iterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
@@ -712,13 +783,15 @@ void Elasticity<dim>::assemble_rhs()
                dof_handler.end()),
     worker,
     copier,
-    gCP::AssemblyData::Residual::Scratch<dim>(*mapping,
-                                quadrature_formula,
-                                face_quadrature_formula,
-                                finite_element,
-                                update_flags,
-                                face_update_flags),
-    gCP::AssemblyData::Residual::Copy(finite_element.dofs_per_cell));
+    gCP::AssemblyData::Residual::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      face_quadrature_collection,
+      finite_element_collection,
+      update_flags,
+      face_update_flags),
+    gCP::AssemblyData::Residual::Copy(
+      finite_element_collection.max_dofs_per_cell()));
 
   system_rhs.compress(dealii::VectorOperation::add);
 }
@@ -731,6 +804,9 @@ void Elasticity<dim>::assemble_local_system_rhs(
   gCP::AssemblyData::Residual::Scratch<dim>                                   &scratch,
   gCP::AssemblyData::Residual::Copy                                           &data)
 {
+  // Get the crystal identifier for the current cell
+  const unsigned int crystal_id = cell->active_fe_index();
+
   // Reset local data
   data.local_rhs                          = 0.0;
   data.local_matrix_for_inhomogeneous_bcs = 0.0;
@@ -738,17 +814,19 @@ void Elasticity<dim>::assemble_local_system_rhs(
   // Local to global mapping of the indices of the degrees of freedom
   cell->get_dof_indices(data.local_dof_indices);
 
-  // Update the FEValues instance with the values of the current cell
-  scratch.fe_values.reinit(cell);
+  // Reset hp finite element values to those of the current cell
+  scratch.hp_fe_values.reinit(cell);
+ 
+  const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
-  scratch.fe_values[displacement_extractor].get_function_symmetric_gradients(
+  fe_values[displacement_extractors[crystal_id]].get_function_symmetric_gradients(
     solution,
     scratch.strain_tensor_values);
 
   // Compute the supply term at the quadrature points
   supply_term_function.value_list(
-    scratch.fe_values.get_quadrature_points(),
+    fe_values.get_quadrature_points(),
     scratch.supply_term_values);
 
   // Loop over quadrature points
@@ -762,9 +840,10 @@ void Elasticity<dim>::assemble_local_system_rhs(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.phi[i] =
-        scratch.fe_values[displacement_extractor].value(i,q);
+        fe_values[displacement_extractors[crystal_id]].value(i,q);
+      
       scratch.sym_grad_phi[i] =
-        scratch.fe_values[displacement_extractor].symmetric_gradient(i,q);
+        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
     }
 
     // Loop over the degrees of freedom
@@ -776,7 +855,7 @@ void Elasticity<dim>::assemble_local_system_rhs(
          -
          scratch.phi[i] * -1.0 * 
          scratch.supply_term_values[q]) *
-        scratch.fe_values.JxW(q);
+        fe_values.JxW(q);
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
 
@@ -784,13 +863,16 @@ void Elasticity<dim>::assemble_local_system_rhs(
     for (const auto &face : cell->face_iterators())
       if (face->at_boundary() && face->boundary_id() == 1)
       {
-        // Update the FEValues instance with the values of the current cell
-        scratch.fe_face_values.reinit(cell, face);
+        // Reset hp finite element values to those of the current cell
+        scratch.hp_fe_face_values.reinit(cell, face);
 
+        const dealii::FEFaceValues<dim> &fe_face_values = 
+          scratch.hp_fe_face_values.get_present_fe_values();
+        
         // Compute the Neumann boundary function values at the
         // quadrature points
         neumann_boundary_function.value_list(
-          scratch.fe_face_values.get_quadrature_points(),
+          fe_face_values.get_quadrature_points(),
           scratch.neumann_boundary_values);
 
         // Loop over face quadrature points
@@ -799,16 +881,16 @@ void Elasticity<dim>::assemble_local_system_rhs(
           // Extract the test function's values at the face quadrature points
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             scratch.face_phi[i] =
-              scratch.fe_face_values[displacement_extractor].value(i,q);
+              fe_face_values[displacement_extractors[crystal_id]].value(i,q);
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             data.local_rhs(i) -=
               scratch.face_phi[i] *
               scratch.neumann_boundary_values[q] *
-              scratch.fe_face_values.JxW(q);
+              fe_face_values.JxW(q);
         } // Loop over face quadrature points
-      } // if (face->at_boundary() && face->boundary_id() == 3)
+      } // if (face->at_boundary() && face->boundary_id() == 3) 
 }
 
 
@@ -847,9 +929,17 @@ double Elasticity<dim>::compute_residual(const double alpha)
 
   trial_solution = distributed_trial_solution;
 
-  const dealii::QGauss<dim>   quadrature_formula(3);
+  dealii::hp::QCollection<dim>    quadrature_collection;
 
-  const dealii::QGauss<dim-1> face_quadrature_formula(3);
+  dealii::hp::QCollection<dim-1>  face_quadrature_collection;
+
+  const dealii::QGauss<dim>       quadrature_formula(3);
+
+  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
+
+  quadrature_collection.push_back(quadrature_formula);
+
+  face_quadrature_collection.push_back(face_quadrature_formula);
 
   using cell_iterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
@@ -889,13 +979,15 @@ double Elasticity<dim>::compute_residual(const double alpha)
                dof_handler.end()),
     worker,
     copier,
-    gCP::AssemblyData::Residual::Scratch<dim>(*mapping,
-                                quadrature_formula,
-                                face_quadrature_formula,
-                                finite_element,
-                                update_flags,
-                                face_update_flags),
-    gCP::AssemblyData::Residual::Copy(finite_element.dofs_per_cell));
+    gCP::AssemblyData::Residual::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      face_quadrature_collection,
+      finite_element_collection,
+      update_flags,
+      face_update_flags),
+    gCP::AssemblyData::Residual::Copy(
+      finite_element_collection.max_dofs_per_cell()));
 
   residual.compress(dealii::VectorOperation::add);
 
@@ -910,6 +1002,9 @@ void Elasticity<dim>::assemble_local_residual(
   gCP::AssemblyData::Residual::Scratch<dim>                                   &scratch,
   gCP::AssemblyData::Residual::Copy                                           &data)
 {
+  // Get the crystal identifier for the current cell
+  const unsigned int crystal_id = cell->active_fe_index();
+
   // Reset local data
   data.local_rhs                          = 0.0;
   data.local_matrix_for_inhomogeneous_bcs = 0.0;
@@ -917,17 +1012,19 @@ void Elasticity<dim>::assemble_local_residual(
   // Local to global mapping of the indices of the degrees of freedom
   cell->get_dof_indices(data.local_dof_indices);
 
-  // Update the FEValues instance with the values of the current cell
-  scratch.fe_values.reinit(cell);
+  // Reset hp finite element values to those of the current cell
+  scratch.hp_fe_values.reinit(cell);
+ 
+  const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
-  scratch.fe_values[displacement_extractor].get_function_symmetric_gradients(
+  fe_values[displacement_extractors[crystal_id]].get_function_symmetric_gradients(
     trial_solution,
     scratch.strain_tensor_values);
 
   // Compute the supply term at the quadrature points
   supply_term_function.value_list(
-    scratch.fe_values.get_quadrature_points(),
+    fe_values.get_quadrature_points(),
     scratch.supply_term_values);
 
   // Loop over quadrature points
@@ -941,9 +1038,9 @@ void Elasticity<dim>::assemble_local_residual(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.phi[i] =
-        scratch.fe_values[displacement_extractor].value(i,q);
+        fe_values[displacement_extractors[crystal_id]].value(i,q);
       scratch.sym_grad_phi[i] =
-        scratch.fe_values[displacement_extractor].symmetric_gradient(i,q);
+        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
     }
 
     // Loop over the degrees of freedom
@@ -955,7 +1052,7 @@ void Elasticity<dim>::assemble_local_residual(
          -
          scratch.phi[i] *
          scratch.supply_term_values[q]) *
-        scratch.fe_values.JxW(q);
+        fe_values.JxW(q);
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
 
@@ -964,12 +1061,15 @@ void Elasticity<dim>::assemble_local_residual(
     for (const auto &face : cell->face_iterators())
       if (face->at_boundary() && face->boundary_id() == 1)
       {
-        // Update the FEValues instance with the values of the current cell
-        scratch.fe_face_values.reinit(cell, face);
+        // Reset hp finite element values to those of the current cell
+        scratch.hp_fe_face_values.reinit(cell, face);
+
+        const dealii::FEFaceValues<dim> &fe_face_values = 
+          scratch.hp_fe_face_values.get_present_fe_values();
 
         // Compute the Neumann boundary values at the quadrature points
         neumann_boundary_function.value_list(
-          scratch.fe_face_values.get_quadrature_points(),
+          fe_face_values.get_quadrature_points(),
           scratch.neumann_boundary_values);
 
         // Loop over face quadrature points
@@ -978,14 +1078,14 @@ void Elasticity<dim>::assemble_local_residual(
           // Extract the test function's values at the face quadrature points
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             scratch.face_phi[i] =
-              scratch.fe_face_values[displacement_extractor].value(i,q);
+              fe_face_values[displacement_extractors[crystal_id]].value(i,q);
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             data.local_rhs(i) -=
               scratch.face_phi[i] *
               scratch.neumann_boundary_values[q] *
-              scratch.fe_face_values.JxW(q);
+              fe_face_values.JxW(q);
         } // Loop over face quadrature points
       } // if (face->at_boundary() && face->boundary_id() == 3)
 }
