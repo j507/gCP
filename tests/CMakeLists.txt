@@ -7,6 +7,7 @@ INCLUDE_DIRECTORIES(
 
 SET(SOURCE_FILES
     material_id_test.cc
+    fe_collection_test.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
