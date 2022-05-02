@@ -93,7 +93,7 @@ void DirichletBoundaryFunction<dim>::vector_value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -141,7 +141,7 @@ dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -192,7 +192,7 @@ dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -226,15 +226,7 @@ private:
 
   dealii::hp::MappingCollection<dim>                mapping_collection;
 
-  dealii::hp::FECollection<dim>                     finite_element_collection;
-
-  dealii::DoFHandler<dim>                           dof_handler;
-
-  dealii::IndexSet                                  locally_owned_dofs;
-
-  dealii::IndexSet                                  locally_relevant_dofs;
-
-  dealii::AffineConstraints<double>                 hanging_node_constraints;
+  std::shared_ptr<FEField<dim>>                     fe_field;
 
   dealii::AffineConstraints<double>                 newton_method_constraints;
 
@@ -244,15 +236,11 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        system_rhs;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
-
   dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
-
-  std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
 
   DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
 
@@ -264,11 +252,7 @@ private:
 
   double                                            relaxation_parameter;
 
-  std::shared_ptr<FEField<dim>>                     fe_field;
-
   void make_grid();
-
-  void refine_grid();
 
   void set_boundary_values();
 
@@ -327,46 +311,21 @@ triangulation(MPI_COMM_WORLD,
                 dealii::Triangulation<dim>::smoothing_on_coarsening)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
 mapping_collection(*mapping),
-dof_handler(triangulation),
+fe_field(std::make_shared<FEField<dim>>(triangulation, 2, 1)),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
 stiffness_tetrad(1e5, 0.3),
-relaxation_parameter(0.1),
-fe_field(std::make_shared<FEField<dim>>(triangulation, 2, 1))
-{
-  const unsigned int n_crystals = 1;
-
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    std::vector<const dealii::FiniteElement<dim>*>  finite_elements;
-
-    for (unsigned int j = 0; j < dim; ++j)
-      finite_elements.push_back(
-        new dealii::FE_Q<dim>(2));
-
-    finite_element_collection.push_back(
-      dealii::FESystem<dim>(
-        finite_elements, 
-        std::vector<unsigned int>(finite_elements.size(), 1)));
-
-    // Delete in order to avoid memory leaks
-    for (auto finite_element: finite_elements)
-      delete finite_element;
-    finite_elements.clear();
-  }
-
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    displacement_extractors.push_back(dealii::FEValuesExtractors::Vector(i*dim));
-  }
-}
+relaxation_parameter(0.1)
+{}
 
 
 
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::make_grid()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Discrete domain");
+
   const double length = 25.0;
   const double height = 1.0;
 
@@ -409,143 +368,52 @@ void GradientCrystalPlasticitySolver<dim>::make_grid()
 }
 
 
-
-
-template<int dim>
-void GradientCrystalPlasticitySolver<dim>::refine_grid()
-{
-  // Initiate the solution transfer object
-  dealii::parallel::distributed::SolutionTransfer<dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
-  solution_transfer(dof_handler);
-
-  // Scope of the refinement process
-  {
-    // Initiate vector storing the estimed error per cell
-    dealii::Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
-
-    // Compute the estimated error
-    dealii::KellyErrorEstimator<dim>::estimate(
-      dof_handler,
-      dealii::QGauss<dim - 1>(2),
-      std::map<dealii::types::boundary_id, const dealii::Function<dim> *>(),
-      fe_field->solution,
-      estimated_error_per_cell,
-      dealii::ComponentMask(),
-      nullptr,
-      0,
-      triangulation.locally_owned_subdomain());
-
-    // Set refine or coarse flags in each cell
-    dealii::GridRefinement::refine_and_coarsen_fixed_number(
-      triangulation,
-      estimated_error_per_cell,
-      0.3,
-      0.03);
-
-    // Prepare the triangulation for the coarsening and refining
-    triangulation.prepare_coarsening_and_refinement();
-
-    // Gather the pertinent vectors to prepare them for the coarsening
-    // and refining
-    std::vector<const dealii::LinearAlgebraTrilinos::MPI::Vector *>
-      transfer_vectors(1);
-    transfer_vectors[0] = &fe_field->solution;
-
-    solution_transfer.prepare_for_coarsening_and_refinement(transfer_vectors);
-
-    // Execute the coarsening and refinement of the triangulation
-    triangulation.execute_coarsening_and_refinement();
-  }
-
-  // Initialize linear algebra corresponding to the new triangulation
-  setup();
-
-  // Scope of the transfer process
-  {
-    // Initiate distributed vectors to recieve the vectors prior to the
-    // coarsening and refineming
-    dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_solution(system_rhs);
-
-    // Gather the pertinent distributed vectors in an std::vector to 
-    // interpolate them
-    std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector *> distributed_vectors(1);
-    distributed_vectors[0] = &distributed_solution;
-
-    solution_transfer.interpolate(distributed_vectors);
-
-    // Apply the constraints of the field variables to the vectors
-    affine_constraints.distribute(distributed_solution);
-
-    // Finally, pass the distributed vectors to their ghost counterparts
-    fe_field->solution = distributed_solution;
-  }
-}
-
-
-
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::setup()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Solver: Setup");
+
   fe_field->setup_extractors(1, 0);
   fe_field->setup_dofs();
 
   // The finite element collection contains the finite element systems
   // corresponding to each crystal
-  for (const auto &cell : dof_handler.active_cell_iterators())
+  for (const auto &cell :
+       fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned())
       cell->set_active_fe_index(0);
-
-  // Distribute degrees of freedom based on the defined finite elements
-  dof_handler.distribute_dofs(finite_element_collection);
-
-  // Renumbering of the degrees of freedom
-  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
-
-  // Get the locally owned and relevant degrees of freedom of each processor
-  locally_owned_dofs = dof_handler.locally_owned_dofs();
-  
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
-
-  // Initiate the hanging node constraints
-  hanging_node_constraints.clear();
-  {
-    hanging_node_constraints.reinit(locally_relevant_dofs);
-    dealii::DoFTools::make_hanging_node_constraints(dof_handler,
-                                                    hanging_node_constraints);
-  }
-  hanging_node_constraints.close();
 
   // Initiate the actual constraints – boundary conditions – of the problem
   affine_constraints.clear();
   {
-    affine_constraints.reinit(locally_relevant_dofs);
-    affine_constraints.merge(hanging_node_constraints);
+    affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
+    affine_constraints.merge(fe_field->get_hanging_node_constraints());
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
-      dof_handler,
+      fe_field->get_dof_handler(),
       0,
       DirichletBoundaryFunction<dim>(),
       affine_constraints,
-      finite_element_collection.component_mask(displacement_extractors[0]));
+      fe_field->get_fe_collection().component_mask(
+        fe_field->get_displacement_extractor(0)));
   }
   affine_constraints.close();
 
   // Inhomogeneous constraints are zero-ed out for the Newton Rhapson method
   newton_method_constraints.clear();
   {
-    newton_method_constraints.reinit(locally_relevant_dofs);
-    newton_method_constraints.merge(hanging_node_constraints);
+    newton_method_constraints.reinit(fe_field->get_locally_relevant_dofs());
+    newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
-      dof_handler,
+      fe_field->get_dof_handler(),
       0,
       dealii::Functions::ZeroFunction<dim>(dim),
       newton_method_constraints,
-      finite_element_collection.component_mask(displacement_extractors[0]));
+      fe_field->get_fe_collection().component_mask(
+      fe_field->get_displacement_extractor(0)));
   }
   newton_method_constraints.close();
-
 
   fe_field->set_affine_constraints(affine_constraints);
   fe_field->set_newton_method_constraints(newton_method_constraints);
@@ -553,15 +421,15 @@ void GradientCrystalPlasticitySolver<dim>::setup()
   // Initiate the matrices
   {
     dealii::TrilinosWrappers::SparsityPattern
-      sparsity_pattern(locally_owned_dofs,
-                        locally_owned_dofs,
-                        locally_relevant_dofs,
-                        MPI_COMM_WORLD);
+      sparsity_pattern(fe_field->get_locally_owned_dofs(),
+                       fe_field->get_locally_owned_dofs(),
+                       fe_field->get_locally_relevant_dofs(),
+                       MPI_COMM_WORLD);
 
     dealii::DoFTools::make_sparsity_pattern(
-      dof_handler,
+      fe_field->get_dof_handler(),
       sparsity_pattern,
-      newton_method_constraints,
+      fe_field->get_newton_method_constraints(),
       false,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
@@ -570,18 +438,15 @@ void GradientCrystalPlasticitySolver<dim>::setup()
     system_matrix.reinit(sparsity_pattern);
   }
 
+  fe_field->setup_vectors();
+
   // Initiate the vectors
   {
-    system_rhs.reinit(locally_owned_dofs,
-                      locally_relevant_dofs,
-                      MPI_COMM_WORLD,
-                      true);
+    system_rhs.reinit(fe_field->distributed_vector);
     residual.reinit(system_rhs);
 
-    solution.reinit(locally_relevant_dofs,
-                    MPI_COMM_WORLD);
-    newton_update.reinit(solution);
-    trial_solution.reinit(solution);
+    newton_update.reinit(fe_field->solution);
+    trial_solution.reinit(fe_field->solution);
   }
 
   // Distribute the constraints to the pertinenet vectors
@@ -589,44 +454,29 @@ void GradientCrystalPlasticitySolver<dim>::setup()
   {
     dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
 
-    distributed_vector.reinit(locally_owned_dofs,
-                              locally_relevant_dofs,
-                              MPI_COMM_WORLD,
-                              true);
-
-    distributed_vector = solution;
-
-    affine_constraints.distribute(distributed_vector);
-
-    solution = distributed_vector;
-
-    distributed_vector = newton_update;
-
-    newton_method_constraints.distribute(distributed_vector);
-
-    distributed_vector = trial_solution;
-
-    affine_constraints.distribute(distributed_vector);
-
-    trial_solution = distributed_vector;
-  }
-
-  fe_field->setup_vectors();
-
-  {
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
-
     distributed_vector.reinit(fe_field->distributed_vector);
 
     fe_field->get_affine_constraints().distribute(distributed_vector);
 
-    fe_field->solution = distributed_vector;
+    fe_field->solution  = distributed_vector;
+
+    distributed_vector  = newton_update;
+
+    fe_field->get_newton_method_constraints().distribute(distributed_vector);
+
+    newton_update       = distributed_vector;
+
+    distributed_vector  = trial_solution;
+
+    fe_field->get_affine_constraints().distribute(distributed_vector);
+
+    trial_solution      = distributed_vector;
   }
 
   this->pcout << "Spatial discretization:"
               << std::endl
               << " Number of degrees of freedom = "
-              << dof_handler.n_dofs()
+              << fe_field->n_dofs()
               << std::endl << std::endl;
 }
 
@@ -645,8 +495,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_linear_system()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_system_matrix()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Solver: Jacobian assembly");
+
   // Set up local aliases
-  using cell_iterator =
+  using CellIterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
 
   using CellFilter =
@@ -672,9 +524,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_system_matrix()
   face_quadrature_collection.push_back(face_quadrature_formula);
 
   // Set up the lambda function for the local assembly operation
-  auto worker = [this](const cell_iterator                       &cell,
-                       gCP::AssemblyData::Jacobian::Scratch<dim> &scratch,
-                       gCP::AssemblyData::Jacobian::Copy         &data)
+  auto worker = [this](const CellIterator                         &cell,
+                       gCP::AssemblyData::Jacobian::Scratch<dim>  &scratch,
+                       gCP::AssemblyData::Jacobian::Copy          &data)
   {
     this->assemble_local_system_matrix(cell, scratch, data);
   };
@@ -686,7 +538,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_system_matrix()
   };
 
   // Define the update flags for the FEValues instances
-  const dealii::UpdateFlags update_flags =  
+  const dealii::UpdateFlags update_flags =
     dealii::update_JxW_values |
     dealii::update_gradients |
     dealii::update_quadrature_points;
@@ -778,8 +630,10 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_system_matrix(
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_rhs()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Solver: Residual assembly");
+
   // Set up local aliases
-  using cell_iterator =
+  using CellIterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
 
   using CellFilter =
@@ -805,7 +659,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_rhs()
   face_quadrature_collection.push_back(face_quadrature_formula);
 
   // Set up the lambda function for the local assembly operation
-  auto worker = [this](const cell_iterator                        &cell,
+  auto worker = [this](const CellIterator                         &cell,
                        gCP::AssemblyData::Residual::Scratch<dim>  &scratch,
                        gCP::AssemblyData::Residual::Copy          &data)
   {
@@ -872,7 +726,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
 
   // Update the hp::FEValues instance to the values of the current cell
   scratch.hp_fe_values.reinit(cell);
- 
+
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
@@ -897,7 +751,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
     {
       scratch.phi[i] =
         fe_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q);
-      
+
       scratch.sym_grad_phi[i] =
         fe_values[fe_field->get_displacement_extractor(crystal_id)].symmetric_gradient(i,q);
     }
@@ -912,8 +766,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
         (scratch.sym_grad_phi[i] *
          scratch.stress_tensor_values[q] * 0.0
          -
-         scratch.phi[i] * -1.0 * 
-         scratch.supply_term_values[q]) * 
+         scratch.phi[i] * -1.0 *
+         scratch.supply_term_values[q]) *
          dv;
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
@@ -925,9 +779,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
         // Update the hp::FEFaceValues instance to the values of the current cell
         scratch.hp_fe_face_values.reinit(cell, face);
 
-        const dealii::FEFaceValues<dim> &fe_face_values = 
+        const dealii::FEFaceValues<dim> &fe_face_values =
           scratch.hp_fe_face_values.get_present_fe_values();
-        
+
         // Compute the Neumann boundary function values at the
         // quadrature points
         neumann_boundary_function.value_list(
@@ -949,10 +803,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             data.local_rhs(i) -=
               scratch.face_phi[i] *
-              scratch.neumann_boundary_values[q] * 
+              scratch.neumann_boundary_values[q] *
               da;
         } // Loop over face quadrature points
-      } // if (face->at_boundary() && face->boundary_id() == 3) 
+      } // if (face->at_boundary() && face->boundary_id() == 3)
 }
 
 
@@ -1000,11 +854,11 @@ double GradientCrystalPlasticitySolver<dim>::compute_residual(const double alpha
 
   face_quadrature_collection.push_back(face_quadrature_formula);
 
-  using cell_iterator =
+  using CellIterator =
     typename dealii::DoFHandler<dim>::active_cell_iterator;
 
 
-  auto worker = [this](const cell_iterator          &cell,
+  auto worker = [this](const CellIterator                         &cell,
                        gCP::AssemblyData::Residual::Scratch<dim>  &scratch,
                        gCP::AssemblyData::Residual::Copy          &data)
   {
@@ -1073,7 +927,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Update the hp::FEValues instance to those of the current cell
   scratch.hp_fe_values.reinit(cell);
- 
+
   // Get the pertinent FEValues instance
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
@@ -1124,7 +978,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         // Update the hp::FEFaceValues instance to the values of the current cell
         scratch.hp_fe_face_values.reinit(cell, face);
 
-        const dealii::FEFaceValues<dim> &fe_face_values = 
+        const dealii::FEFaceValues<dim> &fe_face_values =
           scratch.hp_fe_face_values.get_present_fe_values();
 
         // Compute the Neumann boundary values at the quadrature points
@@ -1168,6 +1022,8 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::solve()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Solver: Solve ");
+
   // In this method we create temporal non ghosted copies
   // of the pertinent vectors to be able to perform the solve()
   // operation.
@@ -1230,7 +1086,7 @@ void GradientCrystalPlasticitySolver<dim>::solve()
     distributed_newton_update);
 
   // Compute the updated solution
-  distributed_solution.add(relaxation_parameter, 
+  distributed_solution.add(relaxation_parameter,
                            distributed_newton_update);
 
   // Pass the distributed vectors to their ghosted counterpart
@@ -1243,6 +1099,8 @@ void GradientCrystalPlasticitySolver<dim>::solve()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::postprocessing()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Postprocessing: Point evaluation");
+
   dealii::Vector<double>  point_value(dim);
 
   bool point_found = false;
@@ -1276,7 +1134,7 @@ void GradientCrystalPlasticitySolver<dim>::postprocessing()
     // ignore
   }
 
-  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0, 
+  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0,
                                                   MPI_COMM_WORLD);
 
   dealii::Utilities::MPI::sum(point_value,
@@ -1299,6 +1157,8 @@ void GradientCrystalPlasticitySolver<dim>::postprocessing()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::data_output()
 {
+  dealii::TimerOutput::Scope  t(timer_output, "Solver: Data output");
+
   // Explicit declaration of the velocity as a vector
   std::vector<std::string> displacement_names(dim, "Displacement");
   std::vector<std::string> newton_update_names(dim, "NewtonUpdate");
@@ -1349,9 +1209,6 @@ void GradientCrystalPlasticitySolver<dim>::run()
   do
   {
     this->pcout << "Mesh refinement step " << refinement_cycle << std::endl;
-
-    if (refinement_cycle != 0)
-      refine_grid();
 
     this->pcout << "  Initial residual: " << compute_residual(0) << std::endl;
 
