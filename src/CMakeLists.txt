@@ -2,6 +2,7 @@
 SET(TARGET_SRC
     constitutive_equations.cc
     #crystal_data.cc
+    fe_field.cc
     #postprocessing.cc 
     #run_time_parameters.cc
     gradient_crystal_plasticity/assembly_data.cc

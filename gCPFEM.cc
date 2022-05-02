@@ -1,5 +1,6 @@
 #include <gCP/assembly_data.h>
 #include <gCP/constitutive_equations.h>
+#include <gCP/fe_field.h>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
@@ -263,6 +264,8 @@ private:
 
   double                                            relaxation_parameter;
 
+  std::shared_ptr<FEField<dim>>                     fe_field;
+
   void make_grid();
 
   void refine_grid();
@@ -329,7 +332,8 @@ dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
 stiffness_tetrad(1e5, 0.3),
-relaxation_parameter(0.1)
+relaxation_parameter(0.1),
+fe_field(std::make_shared<FEField<dim>>(triangulation, 2, 1))
 {
   const unsigned int n_crystals = 1;
 
@@ -424,7 +428,7 @@ void GradientCrystalPlasticitySolver<dim>::refine_grid()
       dof_handler,
       dealii::QGauss<dim - 1>(2),
       std::map<dealii::types::boundary_id, const dealii::Function<dim> *>(),
-      solution,
+      fe_field->solution,
       estimated_error_per_cell,
       dealii::ComponentMask(),
       nullptr,
@@ -445,7 +449,7 @@ void GradientCrystalPlasticitySolver<dim>::refine_grid()
     // and refining
     std::vector<const dealii::LinearAlgebraTrilinos::MPI::Vector *>
       transfer_vectors(1);
-    transfer_vectors[0] = &solution;
+    transfer_vectors[0] = &fe_field->solution;
 
     solution_transfer.prepare_for_coarsening_and_refinement(transfer_vectors);
 
@@ -473,7 +477,7 @@ void GradientCrystalPlasticitySolver<dim>::refine_grid()
     affine_constraints.distribute(distributed_solution);
 
     // Finally, pass the distributed vectors to their ghost counterparts
-    solution = distributed_solution;
+    fe_field->solution = distributed_solution;
   }
 }
 
@@ -482,6 +486,9 @@ void GradientCrystalPlasticitySolver<dim>::refine_grid()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::setup()
 {
+  fe_field->setup_extractors(1, 0);
+  fe_field->setup_dofs();
+
   // The finite element collection contains the finite element systems
   // corresponding to each crystal
   for (const auto &cell : dof_handler.active_cell_iterators())
@@ -538,6 +545,10 @@ void GradientCrystalPlasticitySolver<dim>::setup()
       finite_element_collection.component_mask(displacement_extractors[0]));
   }
   newton_method_constraints.close();
+
+
+  fe_field->set_affine_constraints(affine_constraints);
+  fe_field->set_newton_method_constraints(newton_method_constraints);
 
   // Initiate the matrices
   {
@@ -600,6 +611,17 @@ void GradientCrystalPlasticitySolver<dim>::setup()
     trial_solution = distributed_vector;
   }
 
+  fe_field->setup_vectors();
+
+  {
+    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
+
+    distributed_vector.reinit(fe_field->distributed_vector);
+
+    fe_field->get_affine_constraints().distribute(distributed_vector);
+
+    fe_field->solution = distributed_vector;
+  }
 
   this->pcout << "Spatial discretization:"
               << std::endl
@@ -674,18 +696,18 @@ void GradientCrystalPlasticitySolver<dim>::assemble_system_matrix()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
+               fe_field->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
+               fe_field->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::Jacobian::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
-      finite_element_collection,
+      fe_field->get_fe_collection(),
       update_flags),
     gCP::AssemblyData::Jacobian::Copy(
-      finite_element_collection.max_dofs_per_cell()));
+      fe_field->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
   system_matrix.compress(dealii::VectorOperation::add);
@@ -720,8 +742,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_matrix(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.sym_grad_phi[i] =
-        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
+        fe_values[fe_field->get_displacement_extractor(crystal_id)].symmetric_gradient(i,q);
     }
+
+    // Mapped quadrature weight
+    double dv = fe_values.JxW(q);
 
     // Loop over local degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -731,7 +756,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_matrix(
           scratch.sym_grad_phi[i] * -1.0 *
           stiffness_tetrad.get_stiffness_tetrad() *
           scratch.sym_grad_phi[j] *
-          fe_values.JxW(q);
+          dv;
       } // Loop over local degrees of freedom
   } // Loop over quadrature points
 }
@@ -742,7 +767,7 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_system_matrix(
   const gCP::AssemblyData::Jacobian::Copy  &data)
 {
-  newton_method_constraints.distribute_local_to_global(
+  fe_field->get_newton_method_constraints().distribute_local_to_global(
     data.local_matrix,
     data.local_dof_indices,
     system_matrix);
@@ -808,20 +833,20 @@ void GradientCrystalPlasticitySolver<dim>::assemble_rhs()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
+               fe_field->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
+               fe_field->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::Residual::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
       face_quadrature_collection,
-      finite_element_collection,
+      fe_field->get_fe_collection(),
       update_flags,
       face_update_flags),
     gCP::AssemblyData::Residual::Copy(
-      finite_element_collection.max_dofs_per_cell()));
+      fe_field->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
   system_rhs.compress(dealii::VectorOperation::add);
@@ -851,8 +876,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
-  fe_values[displacement_extractors[crystal_id]].get_function_symmetric_gradients(
-    solution,
+  fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
+    fe_field->solution,
     scratch.strain_tensor_values);
 
   // Compute the supply term at the quadrature points
@@ -871,11 +896,14 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.phi[i] =
-        fe_values[displacement_extractors[crystal_id]].value(i,q);
+        fe_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q);
       
       scratch.sym_grad_phi[i] =
-        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
+        fe_values[fe_field->get_displacement_extractor(crystal_id)].symmetric_gradient(i,q);
     }
+
+    // Mapped quadrature weight
+    double dv = fe_values.JxW(q);
 
     // Loop over the degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -885,8 +913,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
          scratch.stress_tensor_values[q] * 0.0
          -
          scratch.phi[i] * -1.0 * 
-         scratch.supply_term_values[q]) *
-        fe_values.JxW(q);
+         scratch.supply_term_values[q]) * 
+         dv;
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
 
@@ -912,14 +940,17 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
           // Extract the test function's values at the face quadrature points
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             scratch.face_phi[i] =
-              fe_face_values[displacement_extractors[crystal_id]].value(i,q);
+              fe_face_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q);
+
+          // Mapped quadrature weight
+          double da = fe_face_values.JxW(q);
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             data.local_rhs(i) -=
               scratch.face_phi[i] *
-              scratch.neumann_boundary_values[q] *
-              fe_face_values.JxW(q);
+              scratch.neumann_boundary_values[q] * 
+              da;
         } // Loop over face quadrature points
       } // if (face->at_boundary() && face->boundary_id() == 3) 
 }
@@ -930,7 +961,7 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_system_rhs(
   const gCP::AssemblyData::Residual::Copy  &data)
 {
-  newton_method_constraints.distribute_local_to_global(
+  fe_field->get_newton_method_constraints().distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
     system_rhs,
@@ -947,13 +978,10 @@ double GradientCrystalPlasticitySolver<dim>::compute_residual(const double alpha
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
 
-  distributed_trial_solution.reinit(locally_owned_dofs,
-                              locally_relevant_dofs,
-                              MPI_COMM_WORLD,
-                              true);
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
   distributed_newton_update.reinit(distributed_trial_solution);
 
-  distributed_trial_solution  = solution;
+  distributed_trial_solution  = fe_field->solution;
   distributed_newton_update   = newton_update;
 
   distributed_trial_solution.add(alpha, distributed_newton_update);
@@ -1005,20 +1033,20 @@ double GradientCrystalPlasticitySolver<dim>::compute_residual(const double alpha
 
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
+               fe_field->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
+               fe_field->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::Residual::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
       face_quadrature_collection,
-      finite_element_collection,
+      fe_field->get_fe_collection(),
       update_flags,
       face_update_flags),
     gCP::AssemblyData::Residual::Copy(
-      finite_element_collection.max_dofs_per_cell()));
+      fe_field->get_fe_collection().max_dofs_per_cell()));
 
   residual.compress(dealii::VectorOperation::add);
 
@@ -1050,7 +1078,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   const dealii::FEValues<dim> &fe_values = scratch.hp_fe_values.get_present_fe_values();
 
   // Compute the linear strain tensor at the quadrature points
-  fe_values[displacement_extractors[crystal_id]].get_function_symmetric_gradients(
+  fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
     trial_solution,
     scratch.strain_tensor_values);
 
@@ -1070,9 +1098,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
       scratch.phi[i] =
-        fe_values[displacement_extractors[crystal_id]].value(i,q);
+        fe_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q);
       scratch.sym_grad_phi[i] =
-        fe_values[displacement_extractors[crystal_id]].symmetric_gradient(i,q);
+        fe_values[fe_field->get_displacement_extractor(crystal_id)].symmetric_gradient(i,q);
     }
 
     // Loop over the degrees of freedom
@@ -1110,7 +1138,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
           // Extract the test function's values at the face quadrature points
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             scratch.face_phi[i] =
-              fe_face_values[displacement_extractors[crystal_id]].value(i,q);
+              fe_face_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q);
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -1128,7 +1156,7 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy  &data)
 {
-  newton_method_constraints.distribute_local_to_global(
+  fe_field->get_newton_method_constraints().distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
     residual,
@@ -1146,13 +1174,10 @@ void GradientCrystalPlasticitySolver<dim>::solve()
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
 
-  distributed_solution.reinit(locally_owned_dofs,
-                              locally_relevant_dofs,
-                              MPI_COMM_WORLD,
-                              true);
+  distributed_solution.reinit(fe_field->distributed_vector);
   distributed_newton_update.reinit(distributed_solution);
 
-  distributed_solution      = solution;
+  distributed_solution      = fe_field->solution;
   distributed_newton_update = newton_update;
 
   // The solver's tolerances are passed to the SolverControl instance
@@ -1201,14 +1226,16 @@ void GradientCrystalPlasticitySolver<dim>::solve()
   }
 
   // Zero out the Dirichlet boundary conditions
-  newton_method_constraints.distribute(distributed_newton_update);
+  fe_field->get_newton_method_constraints().distribute(
+    distributed_newton_update);
 
   // Compute the updated solution
-  distributed_solution.add(relaxation_parameter, distributed_newton_update);
+  distributed_solution.add(relaxation_parameter, 
+                           distributed_newton_update);
 
   // Pass the distributed vectors to their ghosted counterpart
-  newton_update = distributed_newton_update;
-  solution      = distributed_solution;
+  newton_update       = distributed_newton_update;
+  fe_field->solution  = distributed_solution;
 }
 
 
@@ -1226,15 +1253,15 @@ void GradientCrystalPlasticitySolver<dim>::postprocessing()
     {
     case 2:
       dealii::VectorTools::point_value(*mapping,
-                                       dof_handler,
-                                       solution,
+                                       fe_field->get_dof_handler(),
+                                       fe_field->solution,
                                        dealii::Point<dim>(25.,.5),
                                        point_value);
       break;
     case 3:
       dealii::VectorTools::point_value(*mapping,
-                                       dof_handler,
-                                       solution,
+                                       fe_field->get_dof_handler(),
+                                       fe_field->solution,
                                        dealii::Point<dim>(25.,.5,.5),
                                        point_value);
       break;
@@ -1281,12 +1308,12 @@ void GradientCrystalPlasticitySolver<dim>::data_output()
 
   dealii::DataOut<dim> data_out;
 
-  data_out.add_data_vector(dof_handler,
-                           solution,
+  data_out.add_data_vector(fe_field->get_dof_handler(),
+                           fe_field->solution,
                            displacement_names,
                            component_interpretation);
 
-  data_out.add_data_vector(dof_handler,
+  data_out.add_data_vector(fe_field->get_dof_handler(),
                            newton_update,
                            newton_update_names,
                            component_interpretation);
