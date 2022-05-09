@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SOURCE_FILES
+    crystal_data_test.cc
     material_id_test.cc
     fe_collection_test.cc
     )
