@@ -29,7 +29,7 @@ public:
 
   const unsigned int &get_n_slips() const;
 
-  const dealii::Tensor<2,dim> &get_rotation_matrix(
+  const dealii::Tensor<2,dim> &get_rotation_tensor(
     const unsigned int crystal_id) const;
 
   const dealii::Tensor<1,dim> &get_slip_direction(
@@ -52,6 +52,8 @@ public:
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
 
+  const bool &is_initialized() const;
+
 private:
   dealii::ConditionalOStream                      pcout;
 
@@ -61,7 +63,7 @@ private:
 
   std::vector<dealii::Tensor<1,dim>>              euler_angles;
 
-  std::vector<dealii::Tensor<2,dim>>              rotation_matrices;
+  std::vector<dealii::Tensor<2,dim>>              rotation_tensors;
 
   std::vector<dealii::Tensor<1,dim>>              reference_slip_directions;
 
@@ -92,8 +94,6 @@ private:
 
   void compute_slip_systems();
 
-  bool is_initialized();
-
   bool orthogonality_check(const dealii::Tensor<1,dim> a,
                            const dealii::Tensor<1,dim> b);
 
@@ -121,10 +121,10 @@ inline const unsigned int
 
 template <int dim>
 inline const dealii::Tensor<2,dim>
-&CrystalsData<dim>::get_rotation_matrix(const unsigned int crystal_id) const
+&CrystalsData<dim>::get_rotation_tensor(const unsigned int crystal_id) const
 {
   dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  return (rotation_matrices[crystal_id]);
+  return (rotation_tensors[crystal_id]);
 }
 
 
@@ -188,6 +188,14 @@ inline const dealii::Tensor<2,dim>
   return (symmetrized_schmid_tensors[crystal_id][slip_id]);
 }
 
+
+
+template <int dim>
+inline const bool
+&CrystalsData<dim>::is_initialized() const
+{
+  return (flag_init_was_called);
+}
 
 
 }  // namespace gCP

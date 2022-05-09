@@ -231,7 +231,7 @@ void CrystalsData<dim>::compute_rotation_matrices()
 {
   for (unsigned int crystal_id = 0; crystal_id < n_crystals; crystal_id++)
   {
-    dealii::Tensor<2,dim> rotation_matrix;
+    dealii::Tensor<2,dim> rotation_tensor;
 
     switch (dim)
     {
@@ -239,10 +239,10 @@ void CrystalsData<dim>::compute_rotation_matrices()
       {
         const double theta  = euler_angles[crystal_id][0];
 
-        rotation_matrix[0][0] = std::cos(theta);
-        rotation_matrix[0][1] = -std::sin(theta);
-        rotation_matrix[1][0] = std::sin(theta);
-        rotation_matrix[1][1] = std::cos(theta);
+        rotation_tensor[0][0] = std::cos(theta);
+        rotation_tensor[0][1] = -std::sin(theta);
+        rotation_tensor[1][0] = std::sin(theta);
+        rotation_tensor[1][1] = std::cos(theta);
       }
       break;
     case 3:
@@ -253,33 +253,33 @@ void CrystalsData<dim>::compute_rotation_matrices()
         const double beta   = euler_angles[crystal_id][1] * grad_to_rad;
         const double gamma  = euler_angles[crystal_id][2] * grad_to_rad;
 
-        dealii::Tensor<2,dim> rotation_matrix_alpha;
-        dealii::Tensor<2,dim> rotation_matrix_beta;
-        dealii::Tensor<2,dim> rotation_matrix_gamma;
+        dealii::Tensor<2,dim> rotation_tensor_alpha;
+        dealii::Tensor<2,dim> rotation_tensor_beta;
+        dealii::Tensor<2,dim> rotation_tensor_gamma;
 
-        rotation_matrix_alpha[0][0] = 1.0;
-        rotation_matrix_alpha[1][1] = std::cos(alpha);
-        rotation_matrix_alpha[1][2] = -std::sin(alpha);
-        rotation_matrix_alpha[2][1] = std::sin(alpha);
-        rotation_matrix_alpha[2][2] = std::cos(alpha);
+        rotation_tensor_alpha[0][0] = 1.0;
+        rotation_tensor_alpha[1][1] = std::cos(alpha);
+        rotation_tensor_alpha[1][2] = -std::sin(alpha);
+        rotation_tensor_alpha[2][1] = std::sin(alpha);
+        rotation_tensor_alpha[2][2] = std::cos(alpha);
 
-        rotation_matrix_beta[0][0] = std::cos(beta);
-        rotation_matrix_beta[0][2] = std::sin(beta);
-        rotation_matrix_beta[1][1] = 1.0;
-        rotation_matrix_beta[2][0] = -std::sin(beta);
-        rotation_matrix_beta[2][2] = std::cos(beta);
+        rotation_tensor_beta[0][0] = std::cos(beta);
+        rotation_tensor_beta[0][2] = std::sin(beta);
+        rotation_tensor_beta[1][1] = 1.0;
+        rotation_tensor_beta[2][0] = -std::sin(beta);
+        rotation_tensor_beta[2][2] = std::cos(beta);
 
-        rotation_matrix_gamma[0][0] = std::cos(gamma);
-        rotation_matrix_gamma[0][1] = -std::sin(gamma);
-        rotation_matrix_gamma[1][0] = std::sin(gamma);
-        rotation_matrix_gamma[1][1] = std::cos(gamma);
-        rotation_matrix_gamma[2][2] = 1.0;
+        rotation_tensor_gamma[0][0] = std::cos(gamma);
+        rotation_tensor_gamma[0][1] = -std::sin(gamma);
+        rotation_tensor_gamma[1][0] = std::sin(gamma);
+        rotation_tensor_gamma[1][1] = std::cos(gamma);
+        rotation_tensor_gamma[2][2] = 1.0;
 
-        rotation_matrix = dealii::contract<1,0>(
-                            rotation_matrix_gamma,
+        rotation_tensor = dealii::contract<1,0>(
+                            rotation_tensor_gamma,
                             dealii::contract<1,0>(
-                              rotation_matrix_beta,
-                              rotation_matrix_alpha));
+                              rotation_tensor_beta,
+                              rotation_tensor_alpha));
       }
       break;
     default:
@@ -287,7 +287,7 @@ void CrystalsData<dim>::compute_rotation_matrices()
       break;
     }
 
-    rotation_matrices.push_back(rotation_matrix);
+    rotation_tensors.push_back(rotation_tensor);
   }
 }
 
@@ -304,17 +304,16 @@ void CrystalsData<dim>::compute_slip_systems()
     std::vector<dealii::Tensor<2,dim>> rotated_schmid_tensor(n_slips);
     std::vector<dealii::Tensor<2,dim>> rotated_symmetrized_schmid_tensor(n_slips);
 
-
     for (unsigned int slip_id = 0; slip_id < n_slips; slip_id++)
     {
       rotated_slip_directions[slip_id] =
-        rotation_matrices[crystal_id] *
+        rotation_tensors[crystal_id] *
         reference_slip_directions[slip_id];
       rotated_slip_normals[slip_id] =
-        rotation_matrices[crystal_id] *
+        rotation_tensors[crystal_id] *
         reference_slip_normals[slip_id];
       rotated_slip_orthogonals[slip_id] =
-        rotation_matrices[crystal_id] *
+        rotation_tensors[crystal_id] *
         reference_slip_orthogonals[slip_id];
 
       rotated_schmid_tensor[slip_id] =
