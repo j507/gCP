@@ -20,7 +20,7 @@
 
 #include <deal.II/numerics/data_out.h>
 
-#include <string> 
+#include <string>
 
 namespace Tests
 {
@@ -33,7 +33,7 @@ class FE_Collection
 public:
 
   FE_Collection();
-  
+
   void run();
 
 private:
@@ -60,7 +60,8 @@ private:
 
   std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
 
-  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>  slips_extractors;
+  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
+                                                    slips_extractors;
 
   std::vector<unsigned int>                         dof_mapping;
 
@@ -154,18 +155,18 @@ void FE_Collection<dim>::setup()
 
 
   // Get number of crystals in the triangulation
-  // Here material_id is being misused to assign identifiers to the 
+  // Here material_id is being misused to assign identifiers to the
   // different crystals
   {
     std::set<dealii::types::material_id> crystal_id_set;
-    
+
     for (const auto &cell : triangulation.active_cell_iterators())
       if (cell->is_locally_owned())
         if (!crystal_id_set.count(cell->material_id()))
           crystal_id_set.emplace(cell->material_id());
-    
+
     n_crystals = crystal_id_set.size();
-  
+
     this->pcout << "Gradient crystal plasticity: " << std::endl
                 << " Number of crystals = " << n_crystals << std::endl
                 << " Number of slips    = " << n_slips << std::endl
@@ -182,9 +183,9 @@ void FE_Collection<dim>::setup()
   const unsigned int displacement_finite_element_degree = 1;
   const unsigned int slip_finite_element_degree         = 1;
 
-  // The FESystem of the i-th crystal is divided into [ A | B ] with 
-  // dimensions [ dim x n_crystals | n_slips x n_crystals ] where 
-  //  A = FE_Nothing^dim     ... FE_Q^dim_i       ... FE_Nothing^dim 
+  // The FESystem of the i-th crystal is divided into [ A | B ] with
+  // dimensions [ dim x n_crystals | n_slips x n_crystals ] where
+  //  A = FE_Nothing^dim     ... FE_Q^dim_i       ... FE_Nothing^dim
   //  B = FE_Nothing^n_slips ... FE_Q^{n_slips}_i ... FE_Nothing^n_slips
   // If the displacment is continuous across crystalls then [ A | B ] has
   // the dimensiones [ dim | n_slips x n_crystals ] where A = FE_Q^dim
@@ -199,10 +200,10 @@ void FE_Collection<dim>::setup()
           if (i == j)
             finite_elements.push_back(
               new dealii::FE_Q<dim>(displacement_finite_element_degree));
-          else 
+          else
             finite_elements.push_back(
               new dealii::FE_Nothing<dim>());
-    else 
+    else
       for (unsigned int j = 0; j < dim; ++j)
         finite_elements.push_back(
           new dealii::FE_Q<dim>(displacement_finite_element_degree));
@@ -213,14 +214,14 @@ void FE_Collection<dim>::setup()
         if (i == j)
           finite_elements.push_back(
             new dealii::FE_Q<dim>(slip_finite_element_degree));
-        else 
+        else
           finite_elements.push_back(
             new dealii::FE_Nothing<dim>());
 
     // Add [ A | B ] of the i-th crystal to the FECollection
     fe_collection.push_back(
       dealii::FESystem<dim>(
-        finite_elements, 
+        finite_elements,
         std::vector<unsigned int>(finite_elements.size(), 1)));
 
     // Delete in order to avoid memory leaks
@@ -241,8 +242,8 @@ void FE_Collection<dim>::setup()
 
   // displacement_extractors contains Vector extractors which can be
   // thought as the ComponentMasks of size n_crystals x (n_slips + dim)
-  // [true  x dim  false x (n_crystals - 1) false x n_crystals x n_slips] 
-  // [false x dim  true x dim               false x (n_crystals - 2) ...] 
+  // [true  x dim  false x (n_crystals - 1) false x n_crystals x n_slips]
+  // [false x dim  true x dim               false x (n_crystals - 2) ...]
   // and so on
   // slip_extractors_per_crystal contains for the first crystal
   // [false x dim x n_crystals  true   false  false ...]
@@ -275,7 +276,7 @@ void FE_Collection<dim>::setup()
   {
     for (unsigned int j = 0; j < dim; ++j)
       dof_mapping[i * dim + j] = j;
-    
+
     for (unsigned int j = 0; j < n_slips; ++j)
       dof_mapping[n_crystals * dim + i * n_slips + j] = dim + j;
   }
@@ -292,11 +293,11 @@ template<int dim>
 void FE_Collection<dim>::output()
 {
   dealii::DataOut<dim> data_out;
-  
+
   data_out.attach_dof_handler(dof_handler);
 
   dealii::Vector<float> subdomain_per_cell(triangulation.n_active_cells());
-  
+
   for (unsigned int i = 0; i < subdomain_per_cell.size(); ++i)
     subdomain_per_cell(i) = triangulation.locally_owned_subdomain();
 
@@ -311,16 +312,16 @@ void FE_Collection<dim>::output()
   data_out.add_data_vector(material_id_per_cell, "MaterialID");
 
   data_out.build_patches();
-  
+
   static int out_index = 0;
-  
+
   data_out.write_vtu_with_pvtu_record(
-    "./", 
-    "solution_" + std::to_string(dim), 
-    out_index, 
-    MPI_COMM_WORLD, 
+    "./",
+    "solution_" + std::to_string(dim),
+    out_index,
+    MPI_COMM_WORLD,
     5);
-  
+
   out_index++;
 }
 
