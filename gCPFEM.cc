@@ -317,7 +317,9 @@ neumann_boundary_function(0.0),
 supply_term_function(0.0),
 stiffness_tetrad(1e5, 0.3),
 relaxation_parameter(0.1)
-{}
+{
+  stiffness_tetrad.init();
+}
 
 
 
