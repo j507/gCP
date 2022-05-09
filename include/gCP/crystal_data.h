@@ -29,6 +29,9 @@ public:
 
   const unsigned int &get_n_slips() const;
 
+  const dealii::Tensor<2,dim> &get_rotation_matrix(
+    const unsigned int crystal_id) const;
+
   const dealii::Tensor<1,dim> &get_slip_direction(
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
@@ -48,10 +51,6 @@ public:
   const dealii::Tensor<2,dim> &get_symmetrized_schmid_tensor(
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
-
-  //const double &get_hardening_variable(const unsigned int crystal_id) const;
-
-  //const double &get_old_hardening_variable(const unsigned int crystal_id) const;
 
 private:
   dealii::ConditionalOStream                      pcout;
@@ -79,10 +78,6 @@ private:
   std::vector<std::vector<dealii::Tensor<2,dim>>> schmid_tensors;
 
   std::vector<std::vector<dealii::Tensor<2,dim>>> symmetrized_schmid_tensors;
-
-  //std::vector<double>                 hardening_variables;
-
-  //std::vector<double>                 old_hardening_variables;
 
   bool                                            flag_init_was_called;
 
@@ -120,6 +115,16 @@ inline const unsigned int
 &CrystalsData<dim>::get_n_slips() const
 {
   return (n_slips);
+}
+
+
+
+template <int dim>
+inline const dealii::Tensor<2,dim>
+&CrystalsData<dim>::get_rotation_matrix(const unsigned int crystal_id) const
+{
+  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
+  return (rotation_matrices[crystal_id]);
 }
 
 
@@ -183,28 +188,6 @@ inline const dealii::Tensor<2,dim>
   return (symmetrized_schmid_tensors[crystal_id][slip_id]);
 }
 
-
-
-/*
-template <int dim>
-inline const double
-&CrystalsData<dim>::get_hardening_variable(const unsigned int crystal_id,
-                                          const unsigned int slip_id) const
-{
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_slips);
-  return (hardening_variables[crystal_id]);
-}
-
-
-
-template <int dim>
-inline const double
-&CrystalsData<dim>::get_old_hardening_variable(const unsigned int crystal_id) const
-{
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_slips);
-  return (old_hardening_variables[crystal_id]);
-}
-*/
 
 
 }  // namespace gCP

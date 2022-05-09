@@ -1,6 +1,11 @@
 #include <gCP/crystal_data.h>
+
 #include <deal.II/base/tensor.h>
+
 #include <fstream>
+#include <math.h>
+
+
 
 namespace gCP
 {
@@ -242,9 +247,11 @@ void CrystalsData<dim>::compute_rotation_matrices()
       break;
     case 3:
       {
-        const double alpha  = euler_angles[crystal_id][0];
-        const double beta   = euler_angles[crystal_id][1];
-        const double gamma  = euler_angles[crystal_id][2];
+        const double grad_to_rad = M_PI / 180.0;
+
+        const double alpha  = euler_angles[crystal_id][0] * grad_to_rad;
+        const double beta   = euler_angles[crystal_id][1] * grad_to_rad;
+        const double gamma  = euler_angles[crystal_id][2] * grad_to_rad;
 
         dealii::Tensor<2,dim> rotation_matrix_alpha;
         dealii::Tensor<2,dim> rotation_matrix_beta;
@@ -318,7 +325,7 @@ void CrystalsData<dim>::compute_slip_systems()
         dealii::symmetrize(rotated_schmid_tensor[slip_id]);
     }
 
-    slip_directions.push_back(rotated_slip_normals);
+    slip_directions.push_back(rotated_slip_directions);
     slip_normals.push_back(rotated_slip_normals);
     slip_orthogonals.push_back(rotated_slip_orthogonals);
     schmid_tensors.push_back(rotated_schmid_tensor);
