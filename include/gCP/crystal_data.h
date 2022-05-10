@@ -123,7 +123,7 @@ template <int dim>
 inline const dealii::Tensor<2,dim>
 &CrystalsData<dim>::get_rotation_tensor(const unsigned int crystal_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
+  AssertIndexRange(crystal_id, n_crystals);
   return (rotation_tensors[crystal_id]);
 }
 
@@ -134,8 +134,8 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_direction(const unsigned int crystal_id,
                                        const unsigned int slip_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  dealii::ExcIndexRangeType<int>(slip_id,0,n_slips);
+  AssertIndexRange(crystal_id, n_crystals);
+  AssertIndexRange(slip_id, n_slips);
   return (slip_directions[crystal_id][slip_id]);
 }
 
@@ -146,8 +146,8 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_normal(const unsigned int crystal_id,
                                     const unsigned int slip_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  dealii::ExcIndexRangeType<int>(slip_id,0,n_slips);
+  AssertIndexRange(crystal_id, n_crystals);
+  AssertIndexRange(slip_id, n_slips);
   return (slip_normals[crystal_id][slip_id]);
 }
 
@@ -158,8 +158,8 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_orthogonal(const unsigned int crystal_id,
                                         const unsigned int slip_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  dealii::ExcIndexRangeType<int>(slip_id,0,n_slips);
+  AssertIndexRange(crystal_id, n_crystals);
+  AssertIndexRange(slip_id, n_slips);
   return (slip_orthogonals[crystal_id][slip_id]);
 }
 
@@ -170,8 +170,8 @@ inline const dealii::Tensor<2,dim>
 &CrystalsData<dim>::get_schmid_tensor(const unsigned int crystal_id,
                                       const unsigned int slip_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  dealii::ExcIndexRangeType<int>(slip_id,0,n_slips);
+  AssertIndexRange(crystal_id, n_crystals);
+  AssertIndexRange(slip_id, n_slips);
   return (schmid_tensors[crystal_id][slip_id]);
 }
 
@@ -183,8 +183,8 @@ inline const dealii::Tensor<2,dim>
   const unsigned int crystal_id,
   const unsigned int slip_id) const
 {
-  dealii::ExcIndexRangeType<int>(crystal_id,0,n_crystals);
-  dealii::ExcIndexRangeType<int>(slip_id,0,n_slips);
+  AssertIndexRange(crystal_id, n_crystals);
+  AssertIndexRange(slip_id, n_slips);
   return (symmetrized_schmid_tensors[crystal_id][slip_id]);
 }
 
