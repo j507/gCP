@@ -298,11 +298,12 @@ void CrystalsData<dim>::compute_slip_systems()
 {
   for (unsigned int crystal_id = 0; crystal_id < n_crystals; crystal_id++)
   {
-    std::vector<dealii::Tensor<1,dim>> rotated_slip_directions(n_slips);
-    std::vector<dealii::Tensor<1,dim>> rotated_slip_normals(n_slips);
-    std::vector<dealii::Tensor<1,dim>> rotated_slip_orthogonals(n_slips);
-    std::vector<dealii::Tensor<2,dim>> rotated_schmid_tensor(n_slips);
-    std::vector<dealii::Tensor<2,dim>> rotated_symmetrized_schmid_tensor(n_slips);
+    std::vector<dealii::Tensor<1,dim>>  rotated_slip_directions(n_slips);
+    std::vector<dealii::Tensor<1,dim>>  rotated_slip_normals(n_slips);
+    std::vector<dealii::Tensor<1,dim>>  rotated_slip_orthogonals(n_slips);
+    std::vector<dealii::Tensor<2,dim>>  rotated_schmid_tensor(n_slips);
+    std::vector<dealii::SymmetricTensor<2,dim>>
+                                        rotated_symmetrized_schmid_tensor(n_slips);
 
     for (unsigned int slip_id = 0; slip_id < n_slips; slip_id++)
     {

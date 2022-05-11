@@ -48,7 +48,7 @@ public:
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
 
-  const dealii::Tensor<2,dim> &get_symmetrized_schmid_tensor(
+  const dealii::SymmetricTensor<2,dim> &get_symmetrized_schmid_tensor(
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
 
@@ -79,7 +79,8 @@ private:
 
   std::vector<std::vector<dealii::Tensor<2,dim>>> schmid_tensors;
 
-  std::vector<std::vector<dealii::Tensor<2,dim>>> symmetrized_schmid_tensors;
+  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
+                                                  symmetrized_schmid_tensors;
 
   bool                                            flag_init_was_called;
 
@@ -96,7 +97,6 @@ private:
 
   bool orthogonality_check(const dealii::Tensor<1,dim> a,
                            const dealii::Tensor<1,dim> b);
-
 };
 
 
@@ -105,6 +105,10 @@ template <int dim>
 inline const unsigned int
 &CrystalsData<dim>::get_n_crystals() const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   return (n_crystals);
 }
 
@@ -114,6 +118,10 @@ template <int dim>
 inline const unsigned int
 &CrystalsData<dim>::get_n_slips() const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   return (n_slips);
 }
 
@@ -123,6 +131,10 @@ template <int dim>
 inline const dealii::Tensor<2,dim>
 &CrystalsData<dim>::get_rotation_tensor(const unsigned int crystal_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   return (rotation_tensors[crystal_id]);
 }
@@ -134,6 +146,10 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_direction(const unsigned int crystal_id,
                                        const unsigned int slip_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
   return (slip_directions[crystal_id][slip_id]);
@@ -146,6 +162,10 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_normal(const unsigned int crystal_id,
                                     const unsigned int slip_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
   return (slip_normals[crystal_id][slip_id]);
@@ -158,6 +178,10 @@ inline const dealii::Tensor<1,dim>
 &CrystalsData<dim>::get_slip_orthogonal(const unsigned int crystal_id,
                                         const unsigned int slip_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
   return (slip_orthogonals[crystal_id][slip_id]);
@@ -170,6 +194,10 @@ inline const dealii::Tensor<2,dim>
 &CrystalsData<dim>::get_schmid_tensor(const unsigned int crystal_id,
                                       const unsigned int slip_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
   return (schmid_tensors[crystal_id][slip_id]);
@@ -178,11 +206,15 @@ inline const dealii::Tensor<2,dim>
 
 
 template <int dim>
-inline const dealii::Tensor<2,dim>
+inline const dealii::SymmetricTensor<2,dim>
 &CrystalsData<dim>::get_symmetrized_schmid_tensor(
   const unsigned int crystal_id,
   const unsigned int slip_id) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
   return (symmetrized_schmid_tensors[crystal_id][slip_id]);
