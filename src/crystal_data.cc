@@ -75,7 +75,7 @@ void CrystalsData<dim>::read_and_store_data(
     [&](std::ifstream                       &input_file,
         std::vector<dealii::Tensor<1,dim>>  &write_into)
     {
-      unsigned int j;
+      unsigned int component;
 
       std::string line;
 
@@ -87,8 +87,8 @@ void CrystalsData<dim>::read_and_store_data(
 
           line_with_no_spaces.erase(
             remove(line_with_no_spaces.begin(),
-                  line_with_no_spaces.end(),
-                  ' '),
+                   line_with_no_spaces.end(),
+                   ' '),
             line_with_no_spaces.end());
 
           if (line_with_no_spaces.empty())
@@ -101,15 +101,15 @@ void CrystalsData<dim>::read_and_store_data(
 
         std::string           vector_component;
 
-        j = 0;
+        component = 0;
 
         while(std::getline(line_as_stream_input,
                             vector_component,
                             ','))
         {
-          //dealii::AssertIndexRange(j, dim);
+          AssertIndexRange(component, dim);
 
-          vector[j++] = std::stod(vector_component);
+          vector[component++] = std::stod(vector_component);
         }
 
         write_into.push_back(vector);
