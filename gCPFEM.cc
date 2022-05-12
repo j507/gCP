@@ -49,6 +49,20 @@
 #include <iostream>
 #include <memory>
 
+#ifndef __has_include
+  static_assert(false, "__has_include not supported");
+#else
+#  if __cplusplus >= 201703L && __has_include(<filesystem>)
+#    include <filesystem>
+     namespace fs = std::filesystem;
+#  elif __has_include(<experimental/filesystem>)
+#    include <experimental/filesystem>
+     namespace fs = std::experimental::filesystem;
+#  elif __has_include(<boost/filesystem.hpp>)
+#    include <boost/filesystem.hpp>
+     namespace fs = boost::filesystem;
+#  endif
+#endif
 
 
 namespace gCP
@@ -220,6 +234,8 @@ private:
 
   dealii::TimerOutput                               timer_output;
 
+  const std::string                                 output_directory;
+
   dealii::parallel::distributed::Triangulation<dim> triangulation;
 
   std::shared_ptr<dealii::Mapping<dim>>             mapping;
@@ -227,6 +243,8 @@ private:
   dealii::hp::MappingCollection<dim>                mapping_collection;
 
   std::shared_ptr<FEField<dim>>                     fe_field;
+
+  std::shared_ptr<CrystalsData<dim>>                crystals_data;
 
   dealii::AffineConstraints<double>                 newton_method_constraints;
 
@@ -305,6 +323,7 @@ timer_output(MPI_COMM_WORLD,
              pcout,
              dealii::TimerOutput::summary,
              dealii::TimerOutput::wall_times),
+output_directory("results/"),
 triangulation(MPI_COMM_WORLD,
                typename dealii::Triangulation<dim>::MeshSmoothing(
                 dealii::Triangulation<dim>::smoothing_on_refinement |
@@ -312,12 +331,52 @@ triangulation(MPI_COMM_WORLD,
 mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
 mapping_collection(*mapping),
 fe_field(std::make_shared<FEField<dim>>(triangulation, 2, 1)),
+crystals_data(std::make_shared<CrystalsData<dim>>()),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
 stiffness_tetrad(1e5, 0.3),
-relaxation_parameter(0.1)
+relaxation_parameter(1.0)
 {
+  if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+  {
+    if (fs::exists(output_directory))
+      for (const auto& entry : fs::directory_iterator(output_directory))
+        fs::remove_all(entry.path());
+    else
+    {
+      try
+      {
+        fs::create_directories(output_directory);
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the creation of the output directory: "
+                  << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                    << std::endl;
+        std::cerr << "Unknown exception in the creation of the output directory!"
+                  << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
+  }
+
   stiffness_tetrad.init();
 }
 
@@ -362,6 +421,12 @@ void GradientCrystalPlasticitySolver<dim>::make_grid()
 
   triangulation.refine_global(0);
 
+  // Set material ids
+  for (const auto &cell : triangulation.active_cell_iterators())
+    if (cell->is_locally_owned())
+      cell->set_material_id(0);
+
+
   this->pcout << "Triangulation:"
               << std::endl
               << " Number of active cells       = "
@@ -375,7 +440,13 @@ void GradientCrystalPlasticitySolver<dim>::setup()
 {
   dealii::TimerOutput::Scope  t(timer_output, "Solver: Setup");
 
-  fe_field->setup_extractors(1, 0);
+  crystals_data->init(triangulation,
+                      "input/euler_angles",
+                      "input/slip_directions",
+                      "input/slip_normals");
+
+  fe_field->setup_extractors(crystals_data->get_n_crystals(),
+                             crystals_data->get_n_slips());
   fe_field->setup_dofs();
 
   // The finite element collection contains the finite element systems
@@ -420,7 +491,9 @@ void GradientCrystalPlasticitySolver<dim>::setup()
   fe_field->set_affine_constraints(affine_constraints);
   fe_field->set_newton_method_constraints(newton_method_constraints);
 
-  // Initiate the matrices
+  fe_field->setup_vectors();
+
+  // Initiate the solver's matrices
   {
     dealii::TrilinosWrappers::SparsityPattern
       sparsity_pattern(fe_field->get_locally_owned_dofs(),
@@ -440,9 +513,7 @@ void GradientCrystalPlasticitySolver<dim>::setup()
     system_matrix.reinit(sparsity_pattern);
   }
 
-  fe_field->setup_vectors();
-
-  // Initiate the vectors
+  // Initiate the solver's vectors
   {
     system_rhs.reinit(fe_field->distributed_vector);
     residual.reinit(system_rhs);
@@ -1041,13 +1112,13 @@ void GradientCrystalPlasticitySolver<dim>::solve()
   // The solver's tolerances are passed to the SolverControl instance
   // used to initialize the solver
   dealii::SolverControl solver_control(
-    1000,
+    2000,
     std::max(system_rhs.l2_norm() * 1e-6, 1e-8));
 
   dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
   // The preconditioner is instanciated and initialized
-  dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+  dealii::LinearAlgebraTrilinos::MPI::PreconditionAMG preconditioner;
 
   preconditioner.initialize(system_matrix);
 
@@ -1055,7 +1126,7 @@ void GradientCrystalPlasticitySolver<dim>::solve()
   try
   {
     solver.solve(system_matrix,
-                 distributed_newton_update,
+                 distributed_solution,
                  system_rhs,
                  preconditioner);
   }
@@ -1082,14 +1153,17 @@ void GradientCrystalPlasticitySolver<dim>::solve()
               << std::endl;
     std::abort();
   }
-
+  /*
   // Zero out the Dirichlet boundary conditions
   fe_field->get_newton_method_constraints().distribute(
     distributed_newton_update);
 
   // Compute the updated solution
   distributed_solution.add(relaxation_parameter,
-                           distributed_newton_update);
+                           distributed_newton_update);*/
+
+  fe_field->get_affine_constraints().distribute(
+    distributed_solution);
 
   // Pass the distributed vectors to their ghosted counterpart
   newton_update       = distributed_newton_update;
@@ -1181,13 +1255,13 @@ void GradientCrystalPlasticitySolver<dim>::data_output()
                            component_interpretation);
 
   data_out.build_patches(*mapping,
-                         2,
+                         fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
 
-  data_out.write_vtu_with_pvtu_record("./",
-                                      "Solution",
+  data_out.write_vtu_with_pvtu_record(output_directory,
+                                      "solution",
                                       out_index,
                                       MPI_COMM_WORLD,
                                       5);
@@ -1265,7 +1339,6 @@ int main(int argc, char *argv[])
     gCP::GradientCrystalPlasticitySolver<2> problem;
 
     problem.run();
-
   }
   catch (std::exception &exc)
   {
