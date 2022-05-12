@@ -107,7 +107,7 @@ inline const unsigned int
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   return (n_crystals);
 }
@@ -120,7 +120,7 @@ inline const unsigned int
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   return (n_slips);
 }
@@ -133,7 +133,7 @@ inline const dealii::Tensor<2,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   return (rotation_tensors[crystal_id]);
@@ -148,7 +148,7 @@ inline const dealii::Tensor<1,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
@@ -164,7 +164,7 @@ inline const dealii::Tensor<1,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
@@ -180,7 +180,7 @@ inline const dealii::Tensor<1,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
@@ -196,7 +196,7 @@ inline const dealii::Tensor<2,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
@@ -213,7 +213,7 @@ inline const dealii::SymmetricTensor<2,dim>
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The CrystalsData<dim>"
-                                  " instance has not been "
+                                  " instance has not been"
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   AssertIndexRange(slip_id, n_slips);
