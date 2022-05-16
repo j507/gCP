@@ -1,5 +1,3 @@
-#include <gCP/constitutive_equations.h>
-
 #include <deal.II/base/conditional_ostream.h>
 
 #include <deal.II/distributed/tria.h>
@@ -14,7 +12,7 @@
 
 #include <deal.II/numerics/data_out.h>
 
-#include <string> 
+#include <string>
 
 namespace Tests
 {
@@ -27,7 +25,7 @@ class MaterialID
 public:
 
   MaterialID();
-  
+
   void run();
 
 private:
@@ -45,8 +43,6 @@ private:
   const double                                      width;
 
   std::vector<unsigned int>                         repetitions;
-
-  gCP::ConstitutiveEquations::HookeLaw<dim>         stiffness_tetrad;
 
   void make_grid();
 
@@ -114,7 +110,7 @@ void MaterialID<dim>::make_grid()
   default:
     Assert(false, dealii::ExcMessage("This only runs in 2-D and 3-D"))
     break;
-  } 
+  }
 
   this->pcout << "Triangulation:"
               << std::endl
@@ -141,11 +137,11 @@ template<int dim>
 void MaterialID<dim>::output()
 {
   dealii::DataOut<dim> data_out;
-  
+
   data_out.attach_dof_handler(dof_handler);
 
   dealii::Vector<float> subdomain_per_cell(triangulation.n_active_cells());
-  
+
   for (unsigned int i = 0; i < subdomain_per_cell.size(); ++i)
     subdomain_per_cell(i) = triangulation.locally_owned_subdomain();
 
@@ -159,16 +155,16 @@ void MaterialID<dim>::output()
   data_out.add_data_vector(material_id_per_cell, "MaterialID");
 
   data_out.build_patches();
-  
+
   static int out_index = 0;
-  
+
   data_out.write_vtu_with_pvtu_record(
-    "./", 
-    "solution_" + std::to_string(dim), 
-    out_index, 
-    MPI_COMM_WORLD, 
+    "./",
+    "solution_" + std::to_string(dim),
+    out_index,
+    MPI_COMM_WORLD,
     5);
-  
+
   out_index++;
 }
 

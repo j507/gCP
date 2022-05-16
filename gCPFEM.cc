@@ -266,7 +266,7 @@ private:
 
   SupplyTermFunction<dim>                           supply_term_function;
 
-  ConstitutiveEquations::HookeLaw<dim>              stiffness_tetrad;
+  ConstitutiveLaws::HookeLaw<dim>                   stiffness_tetrad;
 
   double                                            relaxation_parameter;
 
@@ -817,7 +817,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_system_rhs(
   {
     // Compute the stress tensor at the quadrature points
     scratch.stress_tensor_values[q] =
-      stiffness_tetrad.compute_stress_tensor(scratch.strain_tensor_values[q]);
+      stiffness_tetrad.get_stress_tensor(scratch.strain_tensor_values[q]);
 
     // Extract test function values at the quadrature points
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -1019,7 +1019,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   {
     // Compute the stress tensor at the quadrature points
     scratch.stress_tensor_values[q] =
-      stiffness_tetrad.compute_stress_tensor(scratch.strain_tensor_values[q]);
+      stiffness_tetrad.get_stress_tensor(scratch.strain_tensor_values[q]);
 
     // Extract test function values at the quadrature points
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)

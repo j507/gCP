@@ -17,9 +17,9 @@ namespace gCP
 
 
 /**
- * @brief 
- * 
- * @tparam dim 
+ * @brief
+ *
+ * @tparam dim
  */
 template <int dim>
 class FEField
@@ -27,10 +27,10 @@ class FEField
 public:
   /**
    * @brief Construct a new FEField object
-   * 
-   * @param triangulation 
-   * @param displacement_fe_degree 
-   * @param slips_fe_degree 
+   *
+   * @param triangulation
+   * @param displacement_fe_degree
+   * @param slips_fe_degree
    */
   FEField(const dealii::Triangulation<dim>  &triangulation,
           const unsigned int                displacement_fe_degree,
@@ -39,13 +39,21 @@ public:
   /*!
    * @brief The solution vector
    *
-   * @details It contains the nodal values of the displacement and slips
+   * @details It contains the nodal values of the displacements and slips
    * fields.
    */
   dealii::LinearAlgebraTrilinos::MPI::Vector  solution;
 
   /*!
-   * @brief The vector-valued finite element field's corresponding 
+   * @brief The solution vector of the previous time-step
+   *
+   * @details It contains the nodal values of the displacements and slips
+   * fields.
+   */
+  dealii::LinearAlgebraTrilinos::MPI::Vector  old_solution;
+
+  /*!
+   * @brief The vector-valued finite element field's corresponding
    * distributed vector.
    *
    * @details It is used to initiate distributed vectors using the copy
@@ -55,12 +63,12 @@ public:
 
   /**
    * @brief Set the up extractors object
-   * 
-   * @param n_crystals 
-   * @param n_slips 
+   *
+   * @param n_crystals
+   * @param n_slips
    * @todo Docu
    */
-  void setup_extractors(const unsigned n_crystals, 
+  void setup_extractors(const unsigned n_crystals,
                         const unsigned n_slips);
 
   /*!
@@ -71,8 +79,8 @@ public:
 
   /**
    * @brief Set the affine constraints object
-   * 
-   * @param affine_constraints 
+   *
+   * @param affine_constraints
    * @todo Docu
    * @attention This method is only a temporary solution
    */
@@ -81,8 +89,8 @@ public:
 
   /**
    * @brief Set the newton constraints object
-   * 
-   * @param newton_method_constraints 
+   *
+   * @param newton_method_constraints
    * @todo Docu
    * @attention This method is only a temporary solution
    */
@@ -97,32 +105,32 @@ public:
 
   /**
    * @brief Get the displacement fe degree object
-   * 
-   * @return const unsigned int 
+   *
+   * @return const unsigned int
    * @todo Docu
    */
   unsigned int get_displacement_fe_degree() const;
-  
+
   /**
    * @brief Get the slips fe degree object
-   * 
-   * @return const unsigned int 
+   *
+   * @return const unsigned int
    * @todo Docu
    */
   unsigned int get_slips_fe_degree() const;
 
   /**
    * @brief Get the n crystals object
-   * 
-   * @return unsigned int 
+   *
+   * @return unsigned int
    * @todo Docu
    */
   unsigned int get_n_crystals() const;
 
   /**
    * @brief Get the n slips object
-   * 
-   * @return unsinged 
+   *
+   * @return unsinged
    * @todo Docu
    */
   unsigned int get_n_slips() const;
@@ -143,22 +151,22 @@ public:
   const dealii::hp::FECollection<dim>& get_fe_collection() const;
 
   /*!
-   * @brief Returns a const reference to the 
+   * @brief Returns a const reference to the
    * @ref hanging_node_constraints
    */
-  const dealii::AffineConstraints<double>& 
+  const dealii::AffineConstraints<double>&
     get_hanging_node_constraints() const;
 
   /*!
    * @brief Returns a const reference to the @ref affine_constraints
    */
-  const dealii::AffineConstraints<double>& 
+  const dealii::AffineConstraints<double>&
     get_affine_constraints() const;
 
   /*!
    * @brief Returns a const reference to the @ref newton_constraints
    */
-  const dealii::AffineConstraints<double>& 
+  const dealii::AffineConstraints<double>&
     get_newton_method_constraints() const;
 
 
@@ -168,14 +176,14 @@ public:
   const dealii::IndexSet& get_locally_owned_dofs() const;
 
   /*!
-   * @brief Returns a const reference to the 
+   * @brief Returns a const reference to the
    * @ref locally_relevant_owned_dofs
    */
   const dealii::IndexSet& get_locally_relevant_dofs() const;
 
   /**
-   * @brief Returns the global component 
-   * 
+   * @brief Returns the global component
+   *
    * @param local_component The component index
    * @todo Docu
    */
@@ -183,25 +191,38 @@ public:
 
   /**
    * @brief Get the displacement extractor object
-   * 
-   * @param crystal_id 
-   * @return const dealii::FEValuesExtractors::Vector& 
+   *
+   * @param crystal_id
+   * @return const dealii::FEValuesExtractors::Vector&
    * @todo Docu
    */
-  const dealii::FEValuesExtractors::Vector& 
+  const dealii::FEValuesExtractors::Vector&
     get_displacement_extractor(const unsigned int crystal_id) const;
 
   /**
    * @brief Get the slip extractor object
-   * 
-   * @param crystal_id 
-   * @param slip_id 
-   * @return const dealii::FEValuesExtractors::Scalar& 
+   *
+   * @param crystal_id
+   * @param slip_id
+   * @return const dealii::FEValuesExtractors::Scalar&
    * @todo Docu
    */
-  const dealii::FEValuesExtractors::Scalar& 
+  const dealii::FEValuesExtractors::Scalar&
     get_slip_extractor(const unsigned int crystal_id,
                        const unsigned int slip_id) const;
+
+  /*!
+   * @brief Get the extractors object
+   *
+   * @return const std::pair<
+   * const std::vector<dealii::FEValuesExtractors::Vector>,
+   * const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
+   * @todo Docu
+   */
+  const std::pair<
+    const std::vector<dealii::FEValuesExtractors::Vector>,
+    const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
+      get_extractors() const;
 
   /*!
    * @brief Returns the number of degrees of freedom.
@@ -209,7 +230,7 @@ public:
   dealii::types::global_dof_index n_dofs() const;
 
   /*!
-   * @brief Returns the number of components of the vector-valued 
+   * @brief Returns the number of components of the vector-valued
    * finite element field.
    */
   unsigned int n_components() const;
@@ -217,43 +238,43 @@ public:
 private:
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   const unsigned int                displacement_fe_degree;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   const unsigned int                slips_fe_degree;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   unsigned int                      n_crystals;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   unsigned int                      n_slips;
 
   /*!
-   * @brief The DoFHandler<dim> instance of the  vector-valued 
+   * @brief The DoFHandler<dim> instance of the  vector-valued
    * finite element field.
    */
   dealii::DoFHandler<dim>           dof_handler;
 
   /*!
-   * @brief The FECollection<dim> instance of the vector-valued 
+   * @brief The FECollection<dim> instance of the vector-valued
    * finite element field.
-   * 
+   *
    * @todo Further explain
    */
   dealii::hp::FECollection<dim>     fe_collection;
@@ -272,7 +293,7 @@ private:
 
   /*!
    * @brief The AffineConstraints<double> mirrors @ref affine_constraints
-   * with the exception that all inhomogeneous constriants due to 
+   * with the exception that all inhomogeneous constriants due to
    * Dirichlet boundary conditions are zero'ed out.
    */
   dealii::AffineConstraints<double> newton_method_constraints;
@@ -289,52 +310,52 @@ private:
   dealii::IndexSet                  locally_relevant_dofs;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   std::vector<unsigned int>         global_component_mapping;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
-  std::vector<dealii::FEValuesExtractors::Vector>   
+  std::vector<dealii::FEValuesExtractors::Vector>
                                     displacement_extractors;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
-  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>  
+  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
                                     slips_extractors;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   bool                              flag_setup_extractors;
-  
+
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   bool                              flag_setup_dofs;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   bool                              flag_set_affine_constraints;
 
   /**
-   * @brief 
-   * 
+   * @brief
+   *
    * @todo Docu
    */
   bool                              flag_setup_vectors;
@@ -474,6 +495,17 @@ FEField<dim>::get_slip_extractor(const unsigned int crystal_id,
                                  const unsigned int slip_id) const
 {
   return (slips_extractors[crystal_id][slip_id]);
+}
+
+
+
+template <int dim>
+inline const std::pair<
+  const std::vector<dealii::FEValuesExtractors::Vector>,
+  const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
+    FEField<dim>::get_extractors() const
+{
+  return std::make_pair(displacement_extractors, slips_extractors);
 }
 
 
