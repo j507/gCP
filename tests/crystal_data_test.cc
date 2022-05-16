@@ -1,4 +1,3 @@
-#include <gCP/constitutive_equations.h>
 #include <gCP/crystal_data.h>
 
 #include <deal.II/base/conditional_ostream.h>

@@ -66,8 +66,7 @@ dof_handler(triangulation),
 length(10.0),
 height(1.0),
 width(1.0),
-repetitions(dim, 10),
-stiffness_tetrad(1e5,.3)
+repetitions(dim, 10)
 {}
 
 

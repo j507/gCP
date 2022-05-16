@@ -1,5 +1,3 @@
-#include <gCP/constitutive_equations.h>
-
 #include <deal.II/base/conditional_ostream.h>
 
 #include <deal.II/distributed/tria.h>

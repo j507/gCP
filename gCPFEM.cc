@@ -1,5 +1,5 @@
 #include <gCP/assembly_data.h>
-#include <gCP/constitutive_equations.h>
+#include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 
 #include <deal.II/base/function.h>
