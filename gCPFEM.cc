@@ -1,6 +1,7 @@
 #include <gCP/assembly_data.h>
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
+#include <gCP/run_time_parameters.h>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
@@ -48,6 +49,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <string>
 
 #ifndef __has_include
   static_assert(false, "__has_include not supported");
@@ -225,16 +227,17 @@ template<int dim>
 class GradientCrystalPlasticitySolver
 {
 public:
-  GradientCrystalPlasticitySolver();
+  GradientCrystalPlasticitySolver(
+    const RunTimeParameters::Parameters &parameters);
 
   void run();
 
 private:
+  const RunTimeParameters::Parameters               parameters;
+
   dealii::ConditionalOStream                        pcout;
 
   dealii::TimerOutput                               timer_output;
-
-  const std::string                                 output_directory;
 
   dealii::parallel::distributed::Triangulation<dim> triangulation;
 
@@ -315,22 +318,25 @@ private:
 
 
 template<int dim>
-GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver()
+GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
+  const RunTimeParameters::Parameters &parameters)
 :
+parameters(parameters),
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
 timer_output(MPI_COMM_WORLD,
              pcout,
              dealii::TimerOutput::summary,
              dealii::TimerOutput::wall_times),
-output_directory("results/"),
 triangulation(MPI_COMM_WORLD,
                typename dealii::Triangulation<dim>::MeshSmoothing(
                 dealii::Triangulation<dim>::smoothing_on_refinement |
                 dealii::Triangulation<dim>::smoothing_on_coarsening)),
-mapping(std::make_shared<dealii::MappingQ<dim>>(1)),
+mapping(std::make_shared<dealii::MappingQ<dim>>(parameters.mapping_degree)),
 mapping_collection(*mapping),
-fe_field(std::make_shared<FEField<dim>>(triangulation, 2, 1)),
+fe_field(std::make_shared<FEField<dim>>(triangulation,
+                                        parameters.fe_degree_displacements,
+                                        parameters.fe_degree_slips)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
@@ -340,14 +346,18 @@ relaxation_parameter(1.0)
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
-    if (fs::exists(output_directory))
-      for (const auto& entry : fs::directory_iterator(output_directory))
-        fs::remove_all(entry.path());
+    if (fs::exists(parameters.graphical_output_directory))
+    {
+      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory))
+        if (entry.path().extension() == ".vtu" ||
+            entry.path().extension() == ".pvtu")
+          fs::remove(entry.path());
+    }
     else
     {
       try
       {
-        fs::create_directories(output_directory);
+        fs::create_directories(parameters.graphical_output_directory);
       }
       catch (std::exception &exc)
       {
@@ -1112,8 +1122,9 @@ void GradientCrystalPlasticitySolver<dim>::solve()
   // The solver's tolerances are passed to the SolverControl instance
   // used to initialize the solver
   dealii::SolverControl solver_control(
-    2000,
-    std::max(system_rhs.l2_norm() * 1e-6, 1e-8));
+    parameters.n_maximum_iterations,
+    std::max(system_rhs.l2_norm() * parameters.relative_tolerance,
+             parameters.absolute_tolerance));
 
   dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
@@ -1260,7 +1271,7 @@ void GradientCrystalPlasticitySolver<dim>::data_output()
 
   static int out_index = 0;
 
-  data_out.write_vtu_with_pvtu_record(output_directory,
+  data_out.write_vtu_with_pvtu_record(parameters.graphical_output_directory,
                                       "solution",
                                       out_index,
                                       MPI_COMM_WORLD,
@@ -1336,7 +1347,9 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::GradientCrystalPlasticitySolver<2> problem;
+    gCP::RunTimeParameters::Parameters  parameters("input/prm.prm");
+
+    gCP::GradientCrystalPlasticitySolver<2> problem(parameters);
 
     problem.run();
   }
