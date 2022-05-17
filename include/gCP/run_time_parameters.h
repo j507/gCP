@@ -36,6 +36,49 @@ enum class RegularizationFunction
 
 
 
+struct HookeLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  HookeLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  C1111;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  C1122;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  C1212;
+};
+
+
+
 struct Parameters
 {
   /*!
@@ -84,6 +127,8 @@ struct Parameters
   double                  absolute_tolerance;
 
   unsigned int            n_maximum_iterations;
+
+  HookeLawParameters      hooke_law_parameters;
 
   unsigned int            graphical_output_frequency;
 

@@ -29,6 +29,59 @@ namespace RunTimeParameters
 
 
 
+
+HookeLawParameters::HookeLawParameters()
+:
+C1111(134615),
+C1122(57692.3),
+C1212(38461.5)
+{}
+
+
+
+void HookeLawParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hooke-Law's parameters");
+  {
+    prm.declare_entry("C1111",
+                      "134615.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("C1122",
+                      "57692.3",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("C1212",
+                      "38461.5",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hooke-Law's parameters");
+  {
+    C1111 = prm.get_double("C1111");
+    C1122 = prm.get_double("C1122");
+    C1212 = prm.get_double("C1212");
+
+    AssertThrow(C1111 > 0.0,
+                dealii::ExcLowerRangeType<double>(C1111, 0.0));
+    AssertThrow(C1122 > 0.0,
+                dealii::ExcLowerRangeType<double>(C1122, 0.0));
+    AssertThrow(C1212 > 0.0,
+                dealii::ExcLowerRangeType<double>(C1212, 0.0));
+    AssertIsFinite(C1111);
+    AssertIsFinite(C1122);
+    AssertIsFinite(C1212);
+  }
+  prm.leave_subsection();
+}
+
+
 Parameters::Parameters()
 :
 dim(2),
@@ -74,7 +127,7 @@ Parameters()
     std::ofstream parameter_out(parameter_filename.c_str());
 
     prm.print_parameters(parameter_out,
-                         dealii::ParameterHandler::OutputStyle::Text);
+                         dealii::ParameterHandler::OutputStyle::PRM);
 
     AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
   }
@@ -133,6 +186,12 @@ void Parameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Absolute tolerance",
                       "1e-8",
                       dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    HookeLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -209,6 +268,12 @@ void Parameters::parse_parameters(dealii::ParameterHandler &prm)
     AssertThrow(relative_tolerance > absolute_tolerance,
                 dealii::ExcLowerRangeType<double>(
                   relative_tolerance , absolute_tolerance));
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    hooke_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 
