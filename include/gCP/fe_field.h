@@ -250,7 +250,7 @@ public:
    * @return false
    * @todo Docu
    */
-  bool was_init() const;
+  bool is_initialized() const;
 
 private:
 
@@ -554,7 +554,7 @@ FEField<dim>::n_components() const
 
 template <int dim>
 inline bool
-FEField<dim>::was_init() const
+FEField<dim>::is_initialized() const
 {
   return (flag_setup_vectors_was_called &&
           flag_affine_constraints_were_set &&
