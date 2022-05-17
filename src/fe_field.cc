@@ -23,10 +23,11 @@ FEField<dim>::FEField(
 displacement_fe_degree(displacement_fe_degree),
 slips_fe_degree(slips_fe_degree),
 dof_handler(triangulation),
-flag_setup_extractors(true),
-flag_setup_dofs(true),
-flag_set_affine_constraints(true),
-flag_setup_vectors(true)
+flag_setup_extractors_was_called(false),
+flag_setup_dofs_was_called(false),
+flag_affine_constraints_were_set(false),
+flag_newton_method_constraints_were_set(false),
+flag_setup_vectors_was_called(false)
 {}
 
 
@@ -69,7 +70,7 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
     slips_extractors.push_back(slip_extractors_per_crystal);
   }
 
-  flag_setup_extractors = false;
+  flag_setup_extractors_was_called = true;
 }
 
 
@@ -77,9 +78,9 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
 template<int dim>
 void FEField<dim>::setup_dofs()
 {
-  Assert(!flag_setup_extractors,
-         dealii::ExcMessage("The method setup_extractors() has to be "
-                            " called before setup_dofs()"))
+  AssertThrow(flag_setup_extractors_was_called,
+              dealii::ExcMessage("The method setup_extractors() has to "
+                                 "be called before setup_dofs()"));
 
   // The FESystem of the i-th crystal is divided into [ A | B ] with
   // dimensions [ dim x n_crystals | n_slips x n_crystals ] where
@@ -183,7 +184,7 @@ void FEField<dim>::setup_dofs()
   }
 
   // Modify flag because the dofs are setup
-  flag_setup_dofs = false;
+  flag_setup_dofs_was_called = true;
 }
 
 
@@ -192,11 +193,15 @@ template<int dim>
 void FEField<dim>::set_affine_constraints(
   const dealii::AffineConstraints<double> &affine_constraints)
 {
-    this->affine_constraints.merge(
-      affine_constraints,
-      dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+  AssertThrow(flag_setup_dofs_was_called,
+              dealii::ExcMessage("The method setup_dofs() has to be "
+                                 "called before setting the constriants"));
 
-  flag_set_affine_constraints = false;
+  this->affine_constraints.merge(
+    affine_constraints,
+    dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+
+  flag_affine_constraints_were_set = true;
 }
 
 
@@ -205,11 +210,15 @@ template<int dim>
 void FEField<dim>::set_newton_method_constraints(
   const dealii::AffineConstraints<double> &newton_method_constraints)
 {
-    this->newton_method_constraints.merge(
-      newton_method_constraints,
-      dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+  AssertThrow(flag_setup_dofs_was_called,
+              dealii::ExcMessage("The method setup_dofs() has to be "
+                                 "called before setting the constriants"));
 
-  flag_set_affine_constraints = false;
+  this->newton_method_constraints.merge(
+    newton_method_constraints,
+    dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+
+  flag_newton_method_constraints_were_set = false;
 }
 
 
@@ -230,7 +239,19 @@ void FEField<dim>::setup_vectors()
   solution            = 0.;
   old_solution        = 0.;
   distributed_vector  = 0.;
+
+  flag_setup_vectors_was_called = true;
 }
+
+
+
+template<int dim>
+void FEField<dim>::update_solution_vectors()
+{
+  old_solution = solution;
+}
+
+
 
 
 

@@ -103,6 +103,13 @@ public:
    */
   void setup_vectors();
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  void update_solution_vectors();
+
   /**
    * @brief Get the displacement fe degree object
    *
@@ -187,7 +194,8 @@ public:
    * @param local_component The component index
    * @todo Docu
    */
-  unsigned int get_global_component(const unsigned int local_component) const;
+  unsigned int get_global_component(
+    const unsigned int local_component) const;
 
   /**
    * @brief Get the displacement extractor object
@@ -234,6 +242,15 @@ public:
    * finite element field.
    */
   unsigned int n_components() const;
+
+  /*!
+   * @brief
+   *
+   * @return true
+   * @return false
+   * @todo Docu
+   */
+  bool was_init() const;
 
 private:
 
@@ -337,28 +354,35 @@ private:
    *
    * @todo Docu
    */
-  bool                              flag_setup_extractors;
+  bool                              flag_setup_extractors_was_called;
 
   /**
    * @brief
    *
    * @todo Docu
    */
-  bool                              flag_setup_dofs;
+  bool                              flag_setup_dofs_was_called;
 
   /**
    * @brief
    *
    * @todo Docu
    */
-  bool                              flag_set_affine_constraints;
+  bool                              flag_affine_constraints_were_set;
 
   /**
    * @brief
    *
    * @todo Docu
    */
-  bool                              flag_setup_vectors;
+  bool                              flag_newton_method_constraints_were_set;
+
+  /**
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                              flag_setup_vectors_was_called;
 };
 
 
@@ -524,6 +548,17 @@ inline unsigned int
 FEField<dim>::n_components() const
 {
   return (fe_collection.n_components());
+}
+
+
+
+template <int dim>
+inline bool
+FEField<dim>::was_init() const
+{
+  return (flag_setup_vectors_was_called &&
+          flag_affine_constraints_were_set &&
+          flag_newton_method_constraints_were_set);
 }
 
 
