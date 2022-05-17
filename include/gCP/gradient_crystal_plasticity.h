@@ -37,11 +37,11 @@ public:
   void init();
 
   void set_supply_term(
-    std::shared_ptr<dealii::TensorFunction<1,dim>> &supply_term);
+    std::shared_ptr<dealii::Function<dim>> &supply_term);
 
   void solve();
 
-  void get_residual_norm() const;
+  double get_residual_norm() const;
 
 private:
   const RunTimeParameters::Parameters               &parameters;
@@ -58,6 +58,8 @@ private:
 
   std::shared_ptr<const CrystalsData<dim>>          crystals_data;
 
+  std::shared_ptr<dealii::Function<dim>>            supply_term;
+
   std::shared_ptr<Kinematics::ElasticStrain<dim>>   elastic_strain;
 
   std::shared_ptr<ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
@@ -71,7 +73,9 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>
                                                     vector_microscopic_stress_law;
 
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian_matrix;
+  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
@@ -80,8 +84,37 @@ private:
   double                                            residual_norm;
 
   bool                                              flag_init_was_called;
+
+  void setup_linear_algebra();
+
+  void assemble_jacobian();
+
+  void assemble_local_jacobian(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::Jacobian::Scratch<dim>                     &scratch,
+    gCP::AssemblyData::Jacobian::Copy                             &data);
+
+  void copy_local_to_global_jacobian(
+    const gCP::AssemblyData::Jacobian::Copy &data);
+
+  void assemble_residual();
+
+  void assemble_local_residual(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::Residual::Scratch<dim>                     &scratch,
+    gCP::AssemblyData::Residual::Copy                             &data);
+
+  void copy_local_to_global_residual(
+    const gCP::AssemblyData::Residual::Copy &data);
 };
 
+
+
+template <int dim>
+inline double GradientCrystalPlasticitySolver<dim>::get_residual_norm() const
+{
+  return (residual_norm);
+}
 
 
 
