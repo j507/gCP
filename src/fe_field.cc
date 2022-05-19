@@ -218,7 +218,7 @@ void FEField<dim>::set_newton_method_constraints(
     newton_method_constraints,
     dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
 
-  flag_newton_method_constraints_were_set = false;
+  flag_newton_method_constraints_were_set = true;
 }
 
 
@@ -226,6 +226,11 @@ void FEField<dim>::set_newton_method_constraints(
 template<int dim>
 void FEField<dim>::setup_vectors()
 {
+  AssertThrow(flag_setup_dofs_was_called,
+              dealii::ExcMessage("The setup_dofs() method has to be "
+                                 "called before the setup_vectors() "
+                                 " method."))
+
   solution.reinit(locally_relevant_dofs,
                   MPI_COMM_WORLD);
 
