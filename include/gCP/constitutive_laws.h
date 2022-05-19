@@ -2,6 +2,7 @@
 #define INCLUDE_CONSTITUTIVE_EQUATIONS_H_
 
 #include <gCP/crystal_data.h>
+#include <gCP/run_time_parameters.h>
 
 #include <deal.II/base/symmetric_tensor.h>
 
@@ -65,13 +66,10 @@ template<int dim>
 class HookeLaw
 {
 public:
-  HookeLaw(const double youngs_modulus,
-           const double poissons_ratio);
+  HookeLaw(const RunTimeParameters::HookeLawParameters  parameters);
 
-  HookeLaw(const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-           const double                             C_1111,
-           const double                             C_1122,
-           const double                             C_1212);
+  HookeLaw(const std::shared_ptr<CrystalsData<dim>>     &crystals_data,
+           const RunTimeParameters::HookeLawParameters  parameters);
 
   void init();
 
@@ -88,21 +86,21 @@ public:
     const dealii::SymmetricTensor<2,dim>  strain_tensor_values) const;
 
 private:
-  enum class CrystalSystem
+  enum class Crystallite
   {
-    Isotropic,
-    Cubic
+    Monocrystalline,
+    Polycrystalline
   };
 
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 
-  CrystalSystem                               crystal_system;
+  Crystallite                                 crystallite;
 
-  const double                                C_1111;
+  const double                                C1111;
 
-  const double                                C_1122;
+  const double                                C1122;
 
-  const double                                C_1212;
+  const double                                C1212;
 
   dealii::SymmetricTensor<4,dim>              reference_stiffness_tetrad;
 
@@ -117,6 +115,13 @@ template <int dim>
 inline const dealii::SymmetricTensor<4,dim>
 &HookeLaw<dim>::get_stiffness_tetrad() const
 {
+  AssertThrow(crystallite == Crystallite::Monocrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a monocrystalline."
+                                 " Nonetheless a CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The HookeLaw<dim> instance has not"
                                  " been initialized."));
@@ -130,6 +135,13 @@ template <int dim>
 inline const dealii::SymmetricTensor<4,dim>
 &HookeLaw<dim>::get_stiffness_tetrad(const unsigned int crystal_id) const
 {
+  AssertThrow(crystallite == Crystallite::Polycrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a polycrystalline."
+                                 " Nonetheless no CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The HookeLaw<dim> instance has not"
                                  " been initialized."));

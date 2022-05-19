@@ -104,34 +104,30 @@ namespace ConstitutiveLaws
 
 
 template<int dim>
-HookeLaw<dim>::HookeLaw(const double youngs_modulus,
-                        const double poissons_ratio)
+HookeLaw<dim>::HookeLaw(
+  const RunTimeParameters::HookeLawParameters  parameters)
 :
-crystal_system(CrystalSystem::Isotropic),
-C_1111(youngs_modulus * poissons_ratio /
-       ((1.0 + poissons_ratio) * (1.0 - 2.0 * poissons_ratio))
-       +
-       youngs_modulus / (1.0 + poissons_ratio)),
-C_1122(youngs_modulus * poissons_ratio /
-       ((1.0 + poissons_ratio) * (1.0 - 2.0 * poissons_ratio))),
-C_1212(youngs_modulus / 2.0 / (1.0 + poissons_ratio)),
+crystallite(Crystallite::Monocrystalline),
+C1111(parameters.C1111),
+C1122(parameters.C1122),
+C1212(parameters.C1212),
 flag_init_was_called(false)
-{}
+{
+  crystals_data = nullptr;
+}
 
 
 
 template<int dim>
 HookeLaw<dim>::HookeLaw(
-  const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const double                             C_1111,
-  const double                             C_1122,
-  const double                             C_1212)
+  const std::shared_ptr<CrystalsData<dim>>    &crystals_data,
+  const RunTimeParameters::HookeLawParameters parameters)
 :
 crystals_data(crystals_data),
-crystal_system(CrystalSystem::Cubic),
-C_1111(C_1111),
-C_1122(C_1122),
-C_1212(C_1212),
+crystallite(Crystallite::Polycrystalline),
+C1111(parameters.C1111),
+C1122(parameters.C1122),
+C1212(parameters.C1212),
 flag_init_was_called(false)
 {}
 
@@ -145,18 +141,18 @@ void HookeLaw<dim>::init()
       for (unsigned int k = 0; k < dim; k++)
         for (unsigned int l = 0; l < dim; l++)
           if (i == j && j == k && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C_1111;
+            reference_stiffness_tetrad[i][j][k][l] = C1111;
           else if (i == k && j == l)
-            reference_stiffness_tetrad[i][j][k][l] = C_1212;
+            reference_stiffness_tetrad[i][j][k][l] = C1212;
           else if (i == j && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C_1122;
+            reference_stiffness_tetrad[i][j][k][l] = C1122;
 
-  switch (crystal_system)
+  switch (crystallite)
   {
-  case CrystalSystem::Isotropic:
+  case Crystallite::Monocrystalline:
     break;
 
-  case CrystalSystem::Cubic:
+  case Crystallite::Polycrystalline:
     {
       AssertThrow(crystals_data->is_initialized(),
                   dealii::ExcMessage("The underlying CrystalsData<dim>"
@@ -209,6 +205,13 @@ const dealii::SymmetricTensor<2,dim> HookeLaw<dim>::
 get_stress_tensor(
   const dealii::SymmetricTensor<2,dim> strain_tensor_values) const
 {
+  AssertThrow(crystallite == Crystallite::Monocrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a monocrystalline."
+                                 " Nonetheless a CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The HookeLaw<dim> instance has not"
                                  " been initialized."));
@@ -224,6 +227,13 @@ get_stress_tensor(
   const unsigned int                    crystal_id,
   const dealii::SymmetricTensor<2,dim>  strain_tensor_values) const
 {
+  AssertThrow(crystallite == Crystallite::Polycrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a polycrystalline."
+                                 " Nonetheless no CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
   AssertThrow(crystals_data.get() != nullptr,
               dealii::ExcMessage("This overloaded method requires a "
                                  "constructor called where a "
