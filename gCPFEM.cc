@@ -14,11 +14,6 @@
 #include <deal.II/numerics/vector_tools.h>
 
 
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-
 #ifndef __has_include
   static_assert(false, "__has_include not supported");
 #else
@@ -207,25 +202,23 @@ private:
 
   std::shared_ptr<dealii::TimerOutput>              timer_output;
 
-  dealii::parallel::distributed::Triangulation<dim> triangulation;
-
   std::shared_ptr<dealii::Mapping<dim>>             mapping;
 
-  dealii::hp::MappingCollection<dim>                mapping_collection;
+  dealii::DiscreteTime                              discrete_time;
+
+  dealii::parallel::distributed::Triangulation<dim> triangulation;
 
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<CrystalsData<dim>>                crystals_data;
 
-  dealii::DiscreteTime                              discrete_time;
+  GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
   DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
 
   NeumannBoundaryFunction<dim>                      neumann_boundary_function;
 
   std::shared_ptr<SupplyTermFunction<dim>>          supply_term_function;
-
-  GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
   void make_grid();
 
@@ -255,28 +248,30 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   *pcout,
   dealii::TimerOutput::summary,
   dealii::TimerOutput::wall_times)),
-triangulation(MPI_COMM_WORLD,
-               typename dealii::Triangulation<dim>::MeshSmoothing(
-                dealii::Triangulation<dim>::smoothing_on_refinement |
-                dealii::Triangulation<dim>::smoothing_on_coarsening)),
-mapping(std::make_shared<dealii::MappingQ<dim>>(parameters.mapping_degree)),
-mapping_collection(*mapping),
-fe_field(std::make_shared<FEField<dim>>(triangulation,
-                                        parameters.fe_degree_displacements,
-                                        parameters.fe_degree_slips)),
-crystals_data(std::make_shared<CrystalsData<dim>>()),
+mapping(std::make_shared<dealii::MappingQ<dim>>(
+  parameters.mapping_degree)),
 discrete_time(0.0, 1.0, 1e-3),
-dirichlet_boundary_function(0.0),
-neumann_boundary_function(0.0),
-supply_term_function(
-  std::make_shared<SupplyTermFunction<dim>>(0.0)),
+triangulation(
+  MPI_COMM_WORLD,
+  typename dealii::Triangulation<dim>::MeshSmoothing(
+  dealii::Triangulation<dim>::smoothing_on_refinement |
+  dealii::Triangulation<dim>::smoothing_on_coarsening)),
+fe_field(std::make_shared<FEField<dim>>(
+  triangulation,
+  parameters.fe_degree_displacements,
+  parameters.fe_degree_slips)),
+crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters,
            discrete_time,
            fe_field,
            crystals_data,
            mapping,
            pcout,
-           timer_output)
+           timer_output),
+dirichlet_boundary_function(0.0),
+neumann_boundary_function(0.0),
+supply_term_function(
+  std::make_shared<SupplyTermFunction<dim>>(0.0))
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
