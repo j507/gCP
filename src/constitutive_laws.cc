@@ -2,6 +2,8 @@
 
 #include <deal.II/base/symmetric_tensor.h>
 
+#include <iomanip>
+
 namespace gCP
 {
 
@@ -110,9 +112,9 @@ C_1111(youngs_modulus * poissons_ratio /
        ((1.0 + poissons_ratio) * (1.0 - 2.0 * poissons_ratio))
        +
        youngs_modulus / (1.0 + poissons_ratio)),
-C_1212(youngs_modulus / 2.0 / (1.0 + poissons_ratio)),
 C_1122(youngs_modulus * poissons_ratio /
        ((1.0 + poissons_ratio) * (1.0 - 2.0 * poissons_ratio))),
+C_1212(youngs_modulus / 2.0 / (1.0 + poissons_ratio)),
 flag_init_was_called(false)
 {}
 
@@ -122,14 +124,14 @@ template<int dim>
 HookeLaw<dim>::HookeLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
   const double                             C_1111,
-  const double                             C_1212,
-  const double                             C_1122)
+  const double                             C_1122,
+  const double                             C_1212)
 :
 crystals_data(crystals_data),
 crystal_system(CrystalSystem::Cubic),
 C_1111(C_1111),
-C_1212(C_1212),
 C_1122(C_1122),
+C_1212(C_1212),
 flag_init_was_called(false)
 {}
 
@@ -170,15 +172,19 @@ void HookeLaw<dim>::init()
           dealii::Tensor<2,dim> rotation_tensor =
             crystals_data->get_rotation_tensor(crystal_id);
 
+          // The indices j and l do not start at zero due to the
+          // nature of the dealii::SymmetricTensor<4,dim> class, where
+          // for example [0][1][2][1] points to the same memory location
+          // as [1][0][2][1]
           for (unsigned int i = 0; i < dim; i++)
-            for (unsigned int j = 0; j < dim; j++)
+            for (unsigned int j = i; j < dim; j++)
               for (unsigned int k = 0; k < dim; k++)
-                for (unsigned int l = 0; l < dim; l++)
+                for (unsigned int l = k; l < dim; l++)
                   for (unsigned int o = 0; o < dim; o++)
                     for (unsigned int p = 0; p < dim; p++)
                       for (unsigned int q = 0; q < dim; q++)
                         for (unsigned int r = 0; r < dim; r++)
-                          stiffness_tetrad[i][j][k][l] =
+                          stiffness_tetrad[i][j][k][l] +=
                             rotation_tensor[i][o] *
                             rotation_tensor[j][p] *
                             rotation_tensor[k][q] *

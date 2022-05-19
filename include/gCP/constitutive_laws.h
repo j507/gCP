@@ -70,8 +70,8 @@ public:
 
   HookeLaw(const std::shared_ptr<CrystalsData<dim>> &crystals_data,
            const double                             C_1111,
-           const double                             C_1212,
-           const double                             C_1122);
+           const double                             C_1122,
+           const double                             C_1212);
 
   void init();
 
@@ -100,9 +100,9 @@ private:
 
   const double                                C_1111;
 
-  const double                                C_1212;
-
   const double                                C_1122;
+
+  const double                                C_1212;
 
   dealii::SymmetricTensor<4,dim>              reference_stiffness_tetrad;
 
@@ -133,6 +133,8 @@ inline const dealii::SymmetricTensor<4,dim>
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The HookeLaw<dim> instance has not"
                                  " been initialized."));
+
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
 
   return (stiffness_tetrads[crystal_id]);
 }
