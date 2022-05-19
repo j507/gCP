@@ -37,7 +37,7 @@ public:
   void init();
 
   void set_supply_term(
-    std::shared_ptr<dealii::Function<dim>> &supply_term);
+    std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term);
 
   void solve();
 
@@ -54,11 +54,13 @@ private:
 
   std::shared_ptr<dealii::Mapping<dim>>             mapping;
 
+  dealii::hp::MappingCollection<dim>                mapping_collection;
+
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<const CrystalsData<dim>>          crystals_data;
 
-  std::shared_ptr<dealii::Function<dim>>            supply_term;
+  std::shared_ptr<dealii::TensorFunction<1,dim>>    supply_term;
 
   std::shared_ptr<Kinematics::ElasticStrain<dim>>   elastic_strain;
 
@@ -84,8 +86,6 @@ private:
   double                                            residual_norm;
 
   bool                                              flag_init_was_called;
-
-  void setup_linear_algebra();
 
   void assemble_jacobian();
 

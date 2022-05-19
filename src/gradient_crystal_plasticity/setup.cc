@@ -10,6 +10,9 @@ namespace gCP
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::init()
 {
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Initialize");
+
   AssertThrow(fe_field->is_initialized(),
               dealii::ExcMessage("The underlying FEField<dim> instance"
                                  " has not been initialized."))
@@ -68,7 +71,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
     newton_update       = distributed_vector;
   }
 
-  // Initiate
+  // Initiate constitutive laws
+  hooke_law->init();
 
   flag_init_was_called = true;
 }
@@ -76,9 +80,20 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::set_supply_term(
-  std::shared_ptr<dealii::Function<dim>> &supply_term)
+  std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term)
 {
   this->supply_term = supply_term;
 }
 
 } // namespace gCP
+
+
+
+// Explicit instantiations
+template void gCP::GradientCrystalPlasticitySolver<2>::init();
+template void gCP::GradientCrystalPlasticitySolver<3>::init();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::set_supply_term(
+  std::shared_ptr<dealii::TensorFunction<1,2>>);
+template void gCP::GradientCrystalPlasticitySolver<3>::set_supply_term(
+  std::shared_ptr<dealii::TensorFunction<1,3>>);

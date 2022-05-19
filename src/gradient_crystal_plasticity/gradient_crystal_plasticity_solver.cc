@@ -21,21 +21,27 @@ parameters(parameters),
 discrete_time(discrete_time),
 fe_field(fe_field),
 crystals_data(crystals_data),
+hooke_law(std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
+  crystals_data,
+  parameters.hooke_law_parameters)),
 residual_norm(std::numeric_limits<double>::min()),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,
          dealii::ExcMessage("The FEField<dim>'s shared pointer has "
-                            "not be initialized."));
+                            "contains a nullptr."));
   Assert(crystals_data.get() != nullptr,
          dealii::ExcMessage("The CrystalsData<dim>'s shared pointer "
-                            "has not be initialized."));
+                            "contains a nullptr."));
 
-  // Initiating the internal Mapping instance.
+  // Initiating the internal Mapping instances.
   if (external_mapping.get() != nullptr)
     mapping = external_mapping;
   else
     mapping = std::make_shared<dealii::MappingQ<dim>>(1);
+
+  mapping_collection =
+    dealii::hp::MappingCollection<dim>(*mapping);
 
   // Initiating the internal ConditionalOStream instance.
   if (external_pcout.get() != nullptr)
