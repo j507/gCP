@@ -6,10 +6,10 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SOURCE_FILES
-    convergence_test.cc
     elasticity.cc
     step-3.cc
     step-15.cc
+    step-15_mod.cc
     step-77.cc
     )
 
