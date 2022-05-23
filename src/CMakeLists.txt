@@ -8,6 +8,7 @@ SET(TARGET_SRC
     gradient_crystal_plasticity/assembly.cc
     gradient_crystal_plasticity/assembly_data.cc
     gradient_crystal_plasticity/gradient_crystal_plasticity_solver.cc
+    gradient_crystal_plasticity/quadrature_point_history.cc
     gradient_crystal_plasticity/setup.cc
     gradient_crystal_plasticity/solve.cc
 )

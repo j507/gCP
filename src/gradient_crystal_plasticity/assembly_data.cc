@@ -159,6 +159,64 @@ neumann_boundary_values(n_face_q_points)
 
 
 
+namespace QuadraturePointHistory
+{
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(
+  const dealii::hp::MappingCollection<dim>  &mapping,
+  const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::FECollection<dim>       &finite_element_collection,
+  const dealii::UpdateFlags                 update_flags,
+  const unsigned int                        n_slips)
+:
+ScratchBase<dim>(quadrature_collection, finite_element_collection),
+hp_fe_values(mapping,
+             finite_element_collection,
+             quadrature_collection,
+             update_flags),
+n_slips(n_slips),
+slips(n_slips, std::vector<double>(this->n_q_points, 0.0)),
+old_slips(n_slips, std::vector<double>(this->n_q_points, 0.0))
+{}
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(const Scratch<dim> &data)
+:
+ScratchBase<dim>(data),
+hp_fe_values(data.hp_fe_values.get_mapping_collection(),
+             data.hp_fe_values.get_fe_collection(),
+             data.hp_fe_values.get_quadrature_collection(),
+             data.hp_fe_values.get_update_flags()),
+n_slips(data.n_slips),
+slips(n_slips, std::vector<double>(this->n_q_points, 0.0)),
+old_slips(n_slips, std::vector<double>(this->n_q_points, 0.0))
+{}
+
+
+
+template <int dim>
+void Scratch<dim>::reset()
+{
+  const unsigned int n_q_points = slips.size();
+
+  for (unsigned int slip_id = 0; slip_id < n_slips; ++slip_id)
+    for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    {
+      slips[slip_id][q_point]     = 0.0;
+      old_slips[slip_id][q_point] = 0.0;
+    }
+}
+
+
+} // namespace QuadraturePointHistory
+
+
+
 } // namespace AssemblyData
 
 
@@ -175,3 +233,6 @@ template struct gCP::AssemblyData::Jacobian::Scratch<3>;
 
 template struct gCP::AssemblyData::Residual::Scratch<2>;
 template struct gCP::AssemblyData::Residual::Scratch<3>;
+
+template struct gCP::AssemblyData::QuadraturePointHistory::Scratch<2>;
+template struct gCP::AssemblyData::QuadraturePointHistory::Scratch<3>;

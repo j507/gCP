@@ -78,12 +78,39 @@ void GradientCrystalPlasticitySolver<dim>::init()
 }
 
 
+
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term)
 {
   this->supply_term = supply_term;
 }
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::setup_quadrature_point_history()
+{
+  quadrature_point_history.initialize(triangulation.begin_active(),
+                                      triangulation.end(),
+                                      n_q_points);
+
+  for (const auto &cell : triangulation.active_cell_iterators())
+    {
+      const std::vector<std::shared_ptr<PointHistory<dim>>>
+        local_quadrature_point_history =
+          quadrature_point_history.get_data(cell);
+
+      Assert(local_quadrature_point_history.size() == n_q_points,
+             dealii::ExcInternalError());
+
+      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+        local_quadrature_point_history[q_point]->setup_lqp(parameters);
+    }
+}
+
+
+
 
 } // namespace gCP
 

@@ -36,7 +36,7 @@ struct CopyBase
 template <int dim>
 struct ScratchBase
 {
-  ScratchBase(const dealii::hp::QCollection<dim>     &quadrature_collection,
+  ScratchBase(const dealii::hp::QCollection<dim>  &quadrature_collection,
               const dealii::hp::FECollection<dim> &finite_element);
 
   ScratchBase(const ScratchBase<dim>  &data);
@@ -136,6 +136,48 @@ struct Scratch : ScratchBase<dim>
 
 
 } // namespace Residual
+
+
+
+namespace QuadraturePointHistory
+{
+
+
+
+struct Copy
+{
+  void reset(){}
+};
+
+
+
+template <int dim>
+struct Scratch : ScratchBase<dim>
+{
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element,
+          const dealii::UpdateFlags                 update_flags,
+          const unsigned int                        n_slips);
+
+  Scratch(const Scratch<dim>  &data);
+
+  void reset();
+
+  dealii::hp::FEValues<dim>         hp_fe_values;
+
+  unsigned int                      n_slips;
+
+  std::vector<std::vector<double>>  slips;
+
+  std::vector<std::vector<double>>  old_slips;
+};
+
+
+
+
+} // namespace QuadraturePointHistory
+
 
 
 

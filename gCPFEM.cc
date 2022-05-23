@@ -191,12 +191,12 @@ class ProblemClass
 {
 public:
   ProblemClass(
-    const RunTimeParameters::Parameters &parameters);
+    const RunTimeParameters::ProblemParameters &parameters);
 
   void run();
 
 private:
-  const RunTimeParameters::Parameters               parameters;
+  const RunTimeParameters::ProblemParameters        parameters;
 
   std::shared_ptr<dealii::ConditionalOStream>       pcout;
 
@@ -237,7 +237,7 @@ private:
 
 template<int dim>
 ProblemClass<dim>::ProblemClass(
-  const RunTimeParameters::Parameters &parameters)
+  const RunTimeParameters::ProblemParameters &parameters)
 :
 parameters(parameters),
 pcout(std::make_shared<dealii::ConditionalOStream>(
@@ -261,7 +261,7 @@ fe_field(std::make_shared<FEField<dim>>(
   parameters.fe_degree_displacements,
   parameters.fe_degree_slips)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
-gCP_solver(parameters,
+gCP_solver(parameters.solver_parameters,
            discrete_time,
            fe_field,
            crystals_data,
@@ -567,7 +567,7 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::RunTimeParameters::Parameters  parameters("input/prm.prm");
+    gCP::RunTimeParameters::ProblemParameters parameters("input/prm.prm");
 
     gCP::ProblemClass<2> problem(parameters);
 

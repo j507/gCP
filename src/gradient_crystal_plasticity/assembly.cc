@@ -1,5 +1,5 @@
-#include <gCP/gradient_crystal_plasticity.h>
 #include <gCP/assembly_data.h>
+#include <gCP/gradient_crystal_plasticity.h>
 
 #include <deal.II/base/work_stream.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -352,6 +352,122 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
     residual,
     data.local_matrix_for_inhomogeneous_bcs);
 }
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
+{
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Update quadrature point history");
+
+  // Set up local aliases
+  using CellIterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Create instances of the quadrature collection classes
+  dealii::hp::QCollection<dim>    quadrature_collection;
+
+  // Initiate the quadrature formula for exact numerical integration
+  const dealii::QGauss<dim>       quadrature_formula(3);
+
+  // Add the initiated quadrature formulas to the collections
+  quadrature_collection.push_back(quadrature_formula);
+
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](
+    const CellIterator                                      &cell,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim> &scratch,
+    gCP::AssemblyData::QuadraturePointHistory::Copy         &data)
+  {
+    this->update_local_quadrature_point_history(cell, scratch, data);
+  };
+
+  // Set up the lambda function for the copy local to global operation
+  auto copier = [this](const gCP::AssemblyData::Residual::Copy  &data)
+  {
+    this->copy_local_to_global_residual(data);
+  };
+
+  // Define the update flags for the FEValues instances
+  const dealii::UpdateFlags update_flags  =
+    dealii::update_default;
+
+  // Assemble using the WorkStream approach
+  dealii::WorkStream::run(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().end()),
+    worker,
+    copier,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      fe_field->get_fe_collection(),
+      update_flags),
+    gCP::AssemblyData::QuadraturePointHistory::Copy());
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+update_local_quadrature_point_history(
+  const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
+  gCP::AssemblyData::QuadraturePointHistory::Copy               &data)
+{
+  // Get the crystal identifier for the current cell
+  const unsigned int crystal_id = cell->active_fe_index();
+
+  //
+  const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
+    local_quadrature_point_history =
+      quadrature_point_history.get_data(cell);
+
+  Assert(local_quadrature_point_history.size() == scratch.n_q_points,
+         dealii::ExcInternalError());
+
+  // Update the hp::FEValues instance to the values of the current cell
+  scratch.hp_fe_values.reinit(cell);
+
+  const dealii::FEValues<dim> &fe_values =
+    scratch.hp_fe_values.get_present_fe_values();
+
+  // Reset local data
+  scratch.reset();
+
+  // Compute the linear strain tensor at the quadrature points
+  for (unsigned int slip_id = 0;
+       slip_id < fe_values->get_n_slips();
+       ++slip_id)
+  {
+    fe_values[fe_field->get_slip_extractor(crystal_id,
+                                           slip_id)].get_function_values(
+      fe_field->solution,
+      scratch.slips_values[slip_id]);
+
+    fe_values[fe_field->get_slip_extractor(crystal_id,
+                                           slip_id)].get_function_values(
+      fe_field->old_solution,
+      scratch.old_slips_values[slip_id]);
+  }
+
+  // Loop over quadrature points
+  for (const unsigned int q_point : fe_values.quadrature_point_indices())
+  {
+    local_quadrature_point_history[q_point]->update_values(
+      q_point,
+      scratch.slips_values,
+      scratch.old_slips_values);
+  } // Loop over quadrature points
+}
+
 
 
 

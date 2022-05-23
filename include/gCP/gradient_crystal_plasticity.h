@@ -4,10 +4,12 @@
 #include <gCP/assembly_data.h>
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
+#include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 
 #include <deal.II/base/discrete_time.h>
 #include <deal.II/base/tensor_function.h>
+#include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/base/utilities.h>
 
@@ -23,7 +25,7 @@ class GradientCrystalPlasticitySolver
 {
 public:
   GradientCrystalPlasticitySolver(
-    const RunTimeParameters::Parameters               &parameters,
+    const RunTimeParameters::SolverParameters         &parameters,
     dealii::DiscreteTime                              &discrete_time,
     std::shared_ptr<FEField<dim>>                     &fe_field,
     std::shared_ptr<CrystalsData<dim>>                &crystals_data,
@@ -44,7 +46,7 @@ public:
   double get_residual_norm() const;
 
 private:
-  const RunTimeParameters::Parameters               &parameters;
+  const RunTimeParameters::SolverParameters         &parameters;
 
   const dealii::DiscreteTime                        &discrete_time;
 
@@ -75,6 +77,10 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>
                                                     vector_microscopic_stress_law;
 
+  dealii::CellDataStorage<
+    typename dealii::Triangulation<dim>::cell_iterator,
+    QuadraturePointHistory<dim>>                    quadrature_point_history;
+
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
@@ -86,6 +92,8 @@ private:
   double                                            residual_norm;
 
   bool                                              flag_init_was_called;
+
+  void setup_quadrature_point_history();
 
   void assemble_jacobian();
 
@@ -106,6 +114,16 @@ private:
 
   void copy_local_to_global_residual(
     const gCP::AssemblyData::Residual::Copy &data);
+
+  void update_quadrature_point_history();
+
+  void update_local_quadrature_point_history(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
+    gCP::AssemblyData::QuadraturePointHistory::Copy               &data);
+
+  void copy_local_to_global_quadrature_point_history(
+    const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 };
 
 

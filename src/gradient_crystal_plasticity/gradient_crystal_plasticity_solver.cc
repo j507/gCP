@@ -9,7 +9,7 @@ namespace gCP
 
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
-  const RunTimeParameters::Parameters               &parameters,
+  const RunTimeParameters::SolverParameters         &parameters,
   dealii::DiscreteTime                              &discrete_time,
   std::shared_ptr<FEField<dim>>                     &fe_field,
   std::shared_ptr<CrystalsData<dim>>                &crystals_data,
