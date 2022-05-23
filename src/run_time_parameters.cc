@@ -29,7 +29,6 @@ namespace RunTimeParameters
 
 
 
-
 HookeLawParameters::HookeLawParameters()
 :
 C1111(134615),
@@ -82,7 +81,160 @@ void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 }
 
 
-Parameters::Parameters()
+
+ScalarMicroscopicStressLawParameters::ScalarMicroscopicStressLawParameters()
+:
+regularization_function(RegularizationFunction::Tanh),
+regularization_parameter(3e-4),
+initial_slip_resistance(0.0),
+linear_hardening_modulus(500),
+hardening_parameter(1.4)
+{}
+
+
+
+void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Scalar microscopic stress law's parameters");
+  {
+    prm.declare_entry("Regularization function",
+                      "tanh",
+                      dealii::Patterns::Selection("tanh|power-law"));
+
+    prm.declare_entry("Regularization parameter",
+                      "3e-4",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Initial slip resistance",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Linear hardening modulus",
+                      "500",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Hardening parameter",
+                      "1.4",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Scalar microscopic stress law's parameters");
+  {
+    const std::string string_regularization_function(
+                      prm.get("Regularization function"));
+
+    if (string_regularization_function == std::string("tanh"))
+      regularization_function = RegularizationFunction::Tanh;
+    else if (string_regularization_function == std::string("power-law"))
+      regularization_function = RegularizationFunction::PowerLaw;
+    else
+      AssertThrow(false,
+                  dealii::ExcMessage("Unexpected identifier for the "
+                                    "regularization function."));
+
+    regularization_parameter  = prm.get_double("Regularization parameter");
+    initial_slip_resistance   = prm.get_double("Initial slip resistance");
+    linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
+    hardening_parameter       = prm.get_double("Hardening parameter");
+
+    AssertThrow(regularization_parameter > 0.0,
+                dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
+    AssertThrow(initial_slip_resistance > 0.0,
+                dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
+    AssertThrow(linear_hardening_modulus > 0.0,
+                dealii::ExcLowerRangeType<double>(linear_hardening_modulus, 0.0));
+    AssertThrow(hardening_parameter > 0.0,
+                dealii::ExcLowerRangeType<double>(hardening_parameter, 0.0));
+
+    AssertIsFinite(regularization_parameter);
+    AssertIsFinite(initial_slip_resistance);
+    AssertIsFinite(linear_hardening_modulus);
+    AssertIsFinite(hardening_parameter);
+  }
+  prm.leave_subsection();
+}
+
+
+
+SolverParameters::SolverParameters()
+:
+relative_tolerance(1e-6),
+absolute_tolerance(1e-8),
+n_maximum_iterations(1000)
+{}
+
+
+
+void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Newton-Raphson method's parameters");
+  {
+    prm.declare_entry("Relative tolerance",
+                      "1e-6",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Absolute tolerance",
+                      "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "1000",
+                      dealii::Patterns::Integer(1));
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    HookeLawParameters::declare_parameters(prm);
+    ScalarMicroscopicStressLawParameters::declare_parameters(prm);
+  }
+  prm.leave_subsection();
+
+  prm.declare_entry("Verbose",
+                    "false",
+                    dealii::Patterns::Bool());
+}
+
+
+
+void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Newton-Raphson method's parameters");
+  {
+    relative_tolerance = prm.get_double("Relative tolerance");
+    AssertThrow(relative_tolerance > 0,
+                dealii::ExcLowerRange(relative_tolerance, 0));
+
+    absolute_tolerance = prm.get_double("Absolute tolerance");
+    AssertThrow(relative_tolerance > absolute_tolerance,
+                dealii::ExcLowerRangeType<double>(
+                  relative_tolerance , absolute_tolerance));
+
+    n_maximum_iterations = prm.get_integer("Maximum number of iterations");
+    AssertThrow(n_maximum_iterations > 0,
+                dealii::ExcLowerRange(n_maximum_iterations, 0));
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    hooke_law_parameters.parse_parameters(prm);
+    scalar_microscopic_stress_law_parameters.parse_parameters(prm);
+  }
+  prm.leave_subsection();
+
+  verbose = prm.get_bool("Verbose");
+}
+
+
+
+ProblemParameters::ProblemParameters()
 :
 dim(2),
 mapping_degree(1),
@@ -90,9 +242,6 @@ mapping_interior_cells(false),
 fe_degree_displacements(2),
 fe_degree_slips(1),
 regularization_function(RegularizationFunction::Tanh),
-relative_tolerance(1e-6),
-absolute_tolerance(1e-8),
-n_maximum_iterations(1000),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
 graphical_output_directory("./"),
@@ -101,10 +250,10 @@ verbose(true)
 
 
 
-Parameters::Parameters(
+ProblemParameters::ProblemParameters(
   const std::string &parameter_filename)
 :
-Parameters()
+ProblemParameters()
 {
   dealii::ParameterHandler prm;
 
@@ -139,7 +288,7 @@ Parameters()
 
 
 
-void Parameters::declare_parameters(dealii::ParameterHandler &prm)
+void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Spatial discretization parameters");
   {
@@ -165,33 +314,13 @@ void Parameters::declare_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-  prm.declare_entry("Regularization function",
-                    "tanh",
-                    dealii::Patterns::Selection("tanh|power-law"));
-
   prm.declare_entry("Verbose",
                     "false",
                     dealii::Patterns::Bool());
 
   prm.enter_subsection("Solver parameters");
   {
-    prm.declare_entry("Maximum number of iterations",
-                      "1000",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Relative tolerance",
-                      "1e-6",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Absolute tolerance",
-                      "1e-8",
-                      dealii::Patterns::Double());
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Constitutive laws' parameters");
-  {
-    HookeLawParameters::declare_parameters(prm);
+  SolverParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -214,7 +343,7 @@ void Parameters::declare_parameters(dealii::ParameterHandler &prm)
 
 
 
-void Parameters::parse_parameters(dealii::ParameterHandler &prm)
+void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Spatial discretization parameters");
   {
@@ -239,41 +368,11 @@ void Parameters::parse_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-  const std::string string_regularization_function(
-                    prm.get("Regularization function"));
-
-  if (string_regularization_function == std::string("tanh"))
-    regularization_function = RegularizationFunction::Tanh;
-  else if (string_regularization_function == std::string("power-law"))
-    regularization_function = RegularizationFunction::PowerLaw;
-  else
-    AssertThrow(false,
-                dealii::ExcMessage("Unexpected identifier for the "
-                                   "regularization function."));
-
   verbose = prm.get_bool("Verbose");
-
 
   prm.enter_subsection("Solver parameters");
   {
-    n_maximum_iterations = prm.get_integer("Maximum number of iterations");
-    AssertThrow(n_maximum_iterations > 0,
-                dealii::ExcLowerRange(n_maximum_iterations, 0));
-
-    relative_tolerance = prm.get_double("Relative tolerance");
-    AssertThrow(relative_tolerance > 0,
-                dealii::ExcLowerRange(relative_tolerance, 0));
-
-    absolute_tolerance = prm.get_double("Absolute tolerance");
-    AssertThrow(relative_tolerance > absolute_tolerance,
-                dealii::ExcLowerRangeType<double>(
-                  relative_tolerance , absolute_tolerance));
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Constitutive laws' parameters");
-  {
-    hooke_law_parameters.parse_parameters(prm);
+    solver_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 

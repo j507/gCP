@@ -36,6 +36,49 @@ enum class RegularizationFunction
 
 
 
+struct NewtonRaphsonParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  NewtonRaphsonParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_maximum_iterations;
+};
+
+
+
 struct HookeLawParameters
 {
   /*
@@ -79,18 +122,141 @@ struct HookeLawParameters
 
 
 
-struct Parameters
+struct ScalarMicroscopicStressLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ScalarMicroscopicStressLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  RegularizationFunction  regularization_function;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  regularization_parameter;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  initial_slip_resistance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  linear_hardening_modulus;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  hardening_parameter;
+};
+
+
+
+struct SolverParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SolverParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_maximum_iterations;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  HookeLawParameters  hooke_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  ScalarMicroscopicStressLawParameters
+                      scalar_microscopic_stress_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                verbose;
+};
+
+
+
+
+struct ProblemParameters
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.
    */
-  Parameters();
+  ProblemParameters();
 
   /*!
    * @brief Constructor which sets up the parameters as specified in the
    * parameter file with the filename @p parameter_filename.
    */
-  Parameters(const std::string &parameter_filename);
+  ProblemParameters(const std::string &parameter_filename);
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -122,13 +288,7 @@ struct Parameters
 
   RegularizationFunction  regularization_function;
 
-  double                  relative_tolerance;
-
-  double                  absolute_tolerance;
-
-  unsigned int            n_maximum_iterations;
-
-  HookeLawParameters      hooke_law_parameters;
+  SolverParameters        solver_parameters;
 
   unsigned int            graphical_output_frequency;
 
