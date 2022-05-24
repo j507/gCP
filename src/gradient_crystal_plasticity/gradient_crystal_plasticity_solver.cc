@@ -21,9 +21,21 @@ parameters(parameters),
 discrete_time(discrete_time),
 fe_field(fe_field),
 crystals_data(crystals_data),
-hooke_law(std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
-  crystals_data,
+hooke_law(
+  std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
+    crystals_data,
   parameters.hooke_law_parameters)),
+resolved_shear_stress_law(
+  std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
+    crystals_data)),
+scalar_microscopic_stress_law(
+  std::make_shared<ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>>(
+    crystals_data,
+  parameters.scalar_microscopic_stress_law_parameters)),
+vector_microscopic_stress_law(
+  std::make_shared<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>(
+    crystals_data,
+  parameters.vector_microscopic_stress_law_parameters)),
 residual_norm(std::numeric_limits<double>::min()),
 flag_init_was_called(false)
 {

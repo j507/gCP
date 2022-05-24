@@ -194,12 +194,8 @@ class ScalarMicroscopicStressLaw
 {
 public:
   ScalarMicroscopicStressLaw(
-    const std::shared_ptr<CrystalsData<dim>>  &crystals_data,
-    const std::string                         regularization_function,
-    const double                              regularization_parameter,
-    const double                              initial_slip_resistance,
-    const double                              linear_hardening_modulus,
-    const double                              hardening_parameter);
+    const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
+    const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters);
 
   void init();
 
@@ -215,15 +211,9 @@ public:
                                 const double        time_step_size);
 
 private:
-  enum class RegularizationFunction
-  {
-    PowerLaw,
-    Tanh,
-  };
-
   std::shared_ptr<const CrystalsData<dim>>  crystals_data;
 
-  RegularizationFunction                    regularization_function;
+  RunTimeParameters::RegularizationFunction regularization_function;
 
   const double                              regularization_parameter;
 
@@ -264,9 +254,8 @@ class VectorMicroscopicStressLaw
 {
 public:
   VectorMicroscopicStressLaw(
-    const std::shared_ptr<CrystalsData<dim>>  &crystals_data,
-    const double                              energetic_length_scale,
-    const double                              initial_slip_resistance);
+    const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
+    const RunTimeParameters::VectorMicroscopicStressLawParameters parameters);
 
   void init();
 

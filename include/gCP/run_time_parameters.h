@@ -179,6 +179,42 @@ struct ScalarMicroscopicStressLawParameters
 
 
 
+struct VectorMicroscopicStressLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  VectorMicroscopicStressLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  energetic_length_scale;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  initial_slip_resistance;
+};
+
+
+
 struct SolverParameters
 {
   /*
@@ -233,6 +269,14 @@ struct SolverParameters
    */
   ScalarMicroscopicStressLawParameters
                       scalar_microscopic_stress_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  VectorMicroscopicStressLawParameters
+                      vector_microscopic_stress_law_parameters;
 
   /*!
    * @brief

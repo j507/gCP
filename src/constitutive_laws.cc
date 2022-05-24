@@ -252,29 +252,33 @@ get_stress_tensor(
 
 
 template<int dim>
+ResolvedShearStressLaw<dim>::ResolvedShearStressLaw(
+  const std::shared_ptr<CrystalsData<dim>> &crystals_data)
+:
+crystals_data(crystals_data)
+{}
+
+
+template<int dim>
 ScalarMicroscopicStressLaw<dim>::ScalarMicroscopicStressLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const std::string                        regularization_function,
-  const double                             regularization_parameter,
-  const double                             initial_slip_resistance,
-  const double                             linear_hardening_modulus,
-  const double                             hardening_parameter)
+  const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters)
 :
 crystals_data(crystals_data),
-regularization_parameter(regularization_parameter),
-initial_slip_resistance(initial_slip_resistance),
-linear_hardening_modulus(linear_hardening_modulus),
-hardening_parameter(hardening_parameter),
+regularization_parameter(parameters.regularization_parameter),
+initial_slip_resistance(parameters.initial_slip_resistance),
+linear_hardening_modulus(parameters.linear_hardening_modulus),
+hardening_parameter(parameters.hardening_parameter),
 flag_init_was_called(false)
 {
-  if (regularization_function == "power_law")
+  /*if (regularization_function == "power_law")
     this->regularization_function = RegularizationFunction::PowerLaw;
   else if (regularization_function == "tanh")
     this->regularization_function = RegularizationFunction::Tanh;
   else
     AssertThrow(false, dealii::ExcMessage("The given regularization "
                                           "function is not currently "
-                                          "implemented."))
+                                          "implemented."))*/
 }
 
 
@@ -289,13 +293,13 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
 
   switch (regularization_function)
   {
-  case RegularizationFunction::PowerLaw:
+  case RunTimeParameters::RegularizationFunction::PowerLaw:
     {
       regularization_factor = std::pow(slip_rate,
                                        1.0 / regularization_parameter);
     }
     break;
-  case RegularizationFunction::Tanh:
+  case RunTimeParameters::RegularizationFunction::Tanh:
     {
       regularization_factor = std::tanh(slip_rate /
                                         regularization_parameter);
@@ -335,14 +339,14 @@ double ScalarMicroscopicStressLaw<dim>::
 
   switch (regularization_function)
   {
-  case RegularizationFunction::PowerLaw:
+  case RunTimeParameters::RegularizationFunction::PowerLaw:
     {
       regularization_factor = std::pow(slip_rate_alpha,
                                        1.0 /
                                         regularization_parameter);
     }
     break;
-  case RegularizationFunction::Tanh:
+  case RunTimeParameters::RegularizationFunction::Tanh:
     {
       regularization_factor = std::tanh(slip_rate_alpha /
                                         regularization_parameter);
@@ -377,12 +381,11 @@ double ScalarMicroscopicStressLaw<dim>::
 template<int dim>
 VectorMicroscopicStressLaw<dim>::VectorMicroscopicStressLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const double                              energetic_length_scale,
-  const double                              initial_slip_resistance)
+  const RunTimeParameters::VectorMicroscopicStressLawParameters parameters)
 :
 crystals_data(crystals_data),
-energetic_length_scale(energetic_length_scale),
-initial_slip_resistance(initial_slip_resistance),
+energetic_length_scale(parameters.energetic_length_scale),
+initial_slip_resistance(parameters.initial_slip_resistance),
 flag_init_was_called(false)
 {}
 

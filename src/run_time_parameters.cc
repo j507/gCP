@@ -162,6 +162,51 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 
 
+VectorMicroscopicStressLawParameters::VectorMicroscopicStressLawParameters()
+:
+energetic_length_scale(0.0),
+initial_slip_resistance(0.0)
+{}
+
+
+
+void VectorMicroscopicStressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Vector microscopic stress law's parameters");
+  {
+    prm.declare_entry("Energetic length scale",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Initial slip resistance",
+                      "0.0",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Vector microscopic stress law's parameters");
+  {
+    energetic_length_scale  = prm.get_double("Energetic length scale");
+    initial_slip_resistance = prm.get_double("Initial slip resistance");
+
+    AssertThrow(energetic_length_scale >= 0.0,
+                dealii::ExcLowerRangeType<double>(energetic_length_scale, 0.0));
+    AssertThrow(initial_slip_resistance >= 0.0,
+                dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
+
+    AssertIsFinite(energetic_length_scale);
+    AssertIsFinite(initial_slip_resistance);
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 relative_tolerance(1e-6),
@@ -193,6 +238,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   {
     HookeLawParameters::declare_parameters(prm);
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
+    VectorMicroscopicStressLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -226,6 +272,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   {
     hooke_law_parameters.parse_parameters(prm);
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
+    vector_microscopic_stress_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -320,7 +367,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Solver parameters");
   {
-  SolverParameters::declare_parameters(prm);
+    SolverParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
