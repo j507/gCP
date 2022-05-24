@@ -261,16 +261,7 @@ initial_slip_resistance(parameters.initial_slip_resistance),
 linear_hardening_modulus(parameters.linear_hardening_modulus),
 hardening_parameter(parameters.hardening_parameter),
 flag_init_was_called(false)
-{
-  /*if (regularization_function == "power_law")
-    this->regularization_function = RegularizationFunction::PowerLaw;
-  else if (regularization_function == "tanh")
-    this->regularization_function = RegularizationFunction::Tanh;
-  else
-    AssertThrow(false, dealii::ExcMessage("The given regularization "
-                                          "function is not currently "
-                                          "implemented."))*/
-}
+{}
 
 
 
