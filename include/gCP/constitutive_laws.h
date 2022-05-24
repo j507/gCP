@@ -27,12 +27,12 @@ class ElasticStrain
 public:
   using ExtractorPair =
     typename std::pair<
-      const std::vector<dealii::FEValuesExtractors::Vector>,
-      const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>;
+      std::vector<dealii::FEValuesExtractors::Vector>,
+      std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>;
 
   ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data);
 
-  void init(ExtractorPair &extractor_pair);
+  void init(const ExtractorPair &extractor_pair);
 
   const std::vector<dealii::SymmetricTensor<2,dim>> get_elastic_strain_tensor(
     const dealii::LinearAlgebraTrilinos::MPI::Vector  solution,

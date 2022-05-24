@@ -72,6 +72,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
   }
 
   // Initiate constitutive laws
+  elastic_strain->init(fe_field->get_extractors());
+
   hooke_law->init();
 
   init_quadrature_point_history();

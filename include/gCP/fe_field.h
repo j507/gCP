@@ -228,8 +228,8 @@ public:
    * @todo Docu
    */
   const std::pair<
-    const std::vector<dealii::FEValuesExtractors::Vector>,
-    const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
+    std::vector<dealii::FEValuesExtractors::Vector>,
+    std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
       get_extractors() const;
 
   /*!
@@ -525,8 +525,8 @@ FEField<dim>::get_slip_extractor(const unsigned int crystal_id,
 
 template <int dim>
 inline const std::pair<
-  const std::vector<dealii::FEValuesExtractors::Vector>,
-  const std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
+  std::vector<dealii::FEValuesExtractors::Vector>,
+  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
     FEField<dim>::get_extractors() const
 {
   return std::make_pair(displacement_extractors, slips_extractors);

@@ -21,6 +21,9 @@ parameters(parameters),
 discrete_time(discrete_time),
 fe_field(fe_field),
 crystals_data(crystals_data),
+elastic_strain(
+  std::make_shared<Kinematics::ElasticStrain<dim>>(
+    crystals_data)),
 hooke_law(
   std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
     crystals_data,

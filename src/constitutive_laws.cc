@@ -25,7 +25,7 @@ flag_init_was_called(false)
 
 
 template <int dim>
-void ElasticStrain<dim>::init(ExtractorPair &extractor_pair)
+void ElasticStrain<dim>::init(const ExtractorPair &extractor_pair)
 {
   displacements_extractors  = extractor_pair.first;
   slips_extractors          = extractor_pair.second;
@@ -53,23 +53,15 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
 
   const unsigned int n_q_points = fe_values.n_quadrature_points;
 
-  std::vector<dealii::SymmetricTensor<2,dim>> strain_tensor_values(
-    n_q_points,
-    dealii::SymmetricTensor<2,dim>());
-
   std::vector<dealii::SymmetricTensor<2,dim>> elastic_strain_tensor_values(
     n_q_points,
     dealii::SymmetricTensor<2,dim>());
-
-  dealii::SymmetricTensor<2,dim>              symmetrized_schmid_tensor;
 
   std::vector<double>                         slip_values(n_q_points, 0);
 
   fe_values[displacements_extractors[crystal_id]].get_function_symmetric_gradients(
     solution,
-    strain_tensor_values);
-
-  elastic_strain_tensor_values  = strain_tensor_values;
+    elastic_strain_tensor_values);
 
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips();
@@ -79,13 +71,12 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
       solution,
       slip_values);
 
-    symmetrized_schmid_tensor =
-      crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
-
     for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
     {
       elastic_strain_tensor_values[q_point] -=
-        slip_values[q_point] * symmetrized_schmid_tensor;
+        slip_values[q_point] *
+        crystals_data->get_symmetrized_schmid_tensor(crystal_id,
+                                                     slip_id);
     }
   }
 
