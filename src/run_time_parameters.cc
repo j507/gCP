@@ -209,26 +209,36 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 SolverParameters::SolverParameters()
 :
-relative_tolerance(1e-6),
-absolute_tolerance(1e-8),
-n_maximum_iterations(1000)
+nonlinear_tolerance(1e-4),
+n_max_nonlinear_iterations(1000),
+krylov_relative_tolerance(1e-6),
+krylov_absolute_tolerance(1e-8),
+n_max_krylov_iterations(1000)
 {}
 
 
 
 void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Newton-Raphson method's parameters");
+  prm.enter_subsection("Nonlinear solver's parameters");
   {
-    prm.declare_entry("Relative tolerance",
-                      "1e-6",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Absolute tolerance",
+    prm.declare_entry("Tolerance of the nonlinear solver",
                       "1e-8",
                       dealii::Patterns::Double());
 
-    prm.declare_entry("Maximum number of iterations",
+    prm.declare_entry("Maximum number of iterations of the nonlinear solver",
+                      "1000",
+                      dealii::Patterns::Integer(1));
+
+    prm.declare_entry("Relative tolerance of the Krylov-solver",
+                      "1e-6",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Absolute tolerance of the Krylov-solver",
+                      "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations of the Krylov-solver",
                       "1000",
                       dealii::Patterns::Integer(1));
   }
@@ -251,20 +261,33 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
 void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Newton-Raphson method's parameters");
+  prm.enter_subsection("Nonlinear solver's parameters");
   {
-    relative_tolerance = prm.get_double("Relative tolerance");
-    AssertThrow(relative_tolerance > 0,
-                dealii::ExcLowerRange(relative_tolerance, 0));
+    nonlinear_tolerance =
+      prm.get_double("Tolerance of the nonlinear solver");
+    AssertThrow(nonlinear_tolerance > 0,
+                dealii::ExcLowerRange(nonlinear_tolerance, 0));
 
-    absolute_tolerance = prm.get_double("Absolute tolerance");
-    AssertThrow(relative_tolerance > absolute_tolerance,
+    n_max_nonlinear_iterations =
+      prm.get_integer("Maximum number of iterations of the nonlinear solver");
+    AssertThrow(n_max_nonlinear_iterations > 0,
+                dealii::ExcLowerRange(n_max_nonlinear_iterations, 0));
+
+    krylov_relative_tolerance =
+      prm.get_double("Relative tolerance of the Krylov-solver");
+    AssertThrow(krylov_relative_tolerance > 0,
+                dealii::ExcLowerRange(krylov_relative_tolerance, 0));
+
+    krylov_absolute_tolerance =
+      prm.get_double("Absolute tolerance of the Krylov-solver");
+    AssertThrow(krylov_relative_tolerance > krylov_absolute_tolerance,
                 dealii::ExcLowerRangeType<double>(
-                  relative_tolerance , absolute_tolerance));
+                  krylov_relative_tolerance , krylov_absolute_tolerance));
 
-    n_maximum_iterations = prm.get_integer("Maximum number of iterations");
-    AssertThrow(n_maximum_iterations > 0,
-                dealii::ExcLowerRange(n_maximum_iterations, 0));
+    n_max_krylov_iterations =
+      prm.get_integer("Maximum number of iterations of the Krylov-solver");
+    AssertThrow(n_max_krylov_iterations > 0,
+                dealii::ExcLowerRange(n_max_krylov_iterations, 0));
   }
   prm.leave_subsection();
 

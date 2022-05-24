@@ -31,9 +31,9 @@ void GradientCrystalPlasticitySolver<dim>::solve()
     // The solver's tolerances are passed to the SolverControl instance
     // used to initialize the solver
     dealii::SolverControl solver_control(
-      parameters.n_maximum_iterations,
-      std::max(residual_norm * parameters.relative_tolerance,
-               parameters.absolute_tolerance));
+      parameters.n_max_krylov_iterations,
+      std::max(residual_norm * parameters.krylov_relative_tolerance,
+               parameters.krylov_absolute_tolerance));
 
     dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 

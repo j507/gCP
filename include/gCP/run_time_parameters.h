@@ -60,21 +60,35 @@ struct NewtonRaphsonParameters
    *
    * @todo Docu
    */
-  double        relative_tolerance;
+  double        newthon_raphson_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double        absolute_tolerance;
+  unsigned int  n_max_newthon_raphson_iterations;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int  n_maximum_iterations;
+  double        krylov_relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        krylov_absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_krylov_iterations;
 };
 
 
@@ -239,21 +253,35 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  double              relative_tolerance;
+  double              nonlinear_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              absolute_tolerance;
+  unsigned int        n_max_nonlinear_iterations;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_maximum_iterations;
+  double              krylov_relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              krylov_absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_max_krylov_iterations;
 
   /*!
    * @brief
