@@ -41,7 +41,7 @@ public:
   void set_supply_term(
     std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term);
 
-  void solve();
+  void solve_nonlinear_system();
 
   double get_residual_norm() const;
 
@@ -128,6 +128,8 @@ private:
 
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
+
+  void solve_linearized_system();
 };
 
 

@@ -548,7 +548,7 @@ void ProblemClass<dim>::run()
 
   gCP_solver.set_supply_term(supply_term_function);
 
-  gCP_solver.solve();
+  gCP_solver.solve_nonlinear_system();
 
   data_output();
 
