@@ -18,7 +18,7 @@ public:
 
   virtual ~QuadraturePointHistory() = default;
 
-  double get_slip_resistance(const unsigned int slip_id);
+  double get_slip_resistance(const unsigned int slip_id) const;
 
   void init(
     const RunTimeParameters::ScalarMicroscopicStressLawParameters
@@ -31,18 +31,50 @@ public:
     const std::vector<std::vector<double>>  &old_slips);
 
 private:
-  const unsigned int  n_slips;
+  unsigned int  n_slips;
 
-  const double        initial_slip_resistance;
+  double              initial_slip_resistance;
 
   std::vector<double> slip_resistances;
 
-  const double        linear_hardening_modulus;
+  double              linear_hardening_modulus;
 
-  const double        hardening_parameter;
+  double              hardening_parameter;
+
+  bool                flag_init_was_called;
 
   double get_hardening_matrix_entry(const bool self_hardening) const;
 };
+
+
+
+template <int dim>
+inline double
+QuadraturePointHistory<dim>::get_slip_resistance(
+  const unsigned int slip_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (get_slip_resistance[slip_id]);
+}
+
+
+
+template <int dim>
+inline double
+QuadraturePointHistory<dim>::get_hardening_matrix_entry(
+  const bool self_hardening) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (linear_hardening_modulus *
+          (hardening_parameter +
+           (self_hardening) ? (1.0 - hardening_parameter) : 0.0));
+}
 
 
 

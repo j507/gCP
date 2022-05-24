@@ -74,6 +74,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
   // Initiate constitutive laws
   hooke_law->init();
 
+  init_quadrature_point_history();
+
   flag_init_was_called = true;
 }
 
@@ -89,23 +91,32 @@ void GradientCrystalPlasticitySolver<dim>::set_supply_term(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::setup_quadrature_point_history()
+void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 {
-  quadrature_point_history.initialize(triangulation.begin_active(),
-                                      triangulation.end(),
-                                      n_q_points);
+  const unsigned int n_q_points =
+    quadrature_collection.max_n_quadrature_points();
 
-  for (const auto &cell : triangulation.active_cell_iterators())
+  quadrature_point_history.initialize(
+    fe_field->get_triangulation().begin_active(),
+    fe_field->get_triangulation().end(),
+    n_q_points);
+
+  for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
+    if (cell->is_locally_owned())
     {
-      const std::vector<std::shared_ptr<PointHistory<dim>>>
+      const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
         local_quadrature_point_history =
           quadrature_point_history.get_data(cell);
 
       Assert(local_quadrature_point_history.size() == n_q_points,
-             dealii::ExcInternalError());
+              dealii::ExcInternalError());
 
-      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-        local_quadrature_point_history[q_point]->setup_lqp(parameters);
+      for (unsigned int q_point = 0;
+            q_point < n_q_points;
+            ++q_point)
+        local_quadrature_point_history[q_point]->init(
+          parameters.scalar_microscopic_stress_law_parameters,
+          crystals_data->get_n_slips());
     }
 }
 

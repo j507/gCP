@@ -7,12 +7,23 @@ namespace gCP
 {
 
 
+
+template <int dim>
+QuadraturePointHistory<dim>::QuadraturePointHistory()
+:
+flag_init_was_called(false)
+{}
+
+
+
 template <int dim>
 void QuadraturePointHistory<dim>::init(
   const RunTimeParameters::ScalarMicroscopicStressLawParameters
     &parameters,
   const unsigned int n_slips)
 {
+  this->n_slips             = n_slips;
+
   initial_slip_resistance   = parameters.initial_slip_resistance;
 
   linear_hardening_modulus  = parameters.linear_hardening_modulus;
@@ -22,6 +33,8 @@ void QuadraturePointHistory<dim>::init(
   slip_resistances          = std::vector<double>(
                                 n_slips,
                                 initial_slip_resistance);
+
+  flag_init_was_called      = true;
 }
 
 
@@ -46,3 +59,22 @@ void QuadraturePointHistory<dim>::update_values(
 
 
 } // namespace gCP
+
+template gCP::QuadraturePointHistory<2>::QuadraturePointHistory();
+template gCP::QuadraturePointHistory<3>::QuadraturePointHistory();
+
+template void gCP::QuadraturePointHistory<2>::init(
+  const RunTimeParameters::ScalarMicroscopicStressLawParameters &,
+  const unsigned int                                            );
+template void gCP::QuadraturePointHistory<3>::init(
+  const RunTimeParameters::ScalarMicroscopicStressLawParameters &,
+  const unsigned int                                            );
+
+template void gCP::QuadraturePointHistory<2>::update_values(
+  const unsigned int,
+  const std::vector<std::vector<double>>  &,
+  const std::vector<std::vector<double>>  &);
+template void gCP::QuadraturePointHistory<3>::update_values(
+  const unsigned int,
+  const std::vector<std::vector<double>>  &,
+  const std::vector<std::vector<double>>  &);
