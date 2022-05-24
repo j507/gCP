@@ -59,6 +59,15 @@ flag_init_was_called(false)
                       *pcout,
                       dealii::TimerOutput::summary,
                       dealii::TimerOutput::wall_times);
+
+  // Initiate the quadrature formula
+  const dealii::QGauss<dim>       quadrature_formula(3);
+
+  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
+
+  quadrature_collection.push_back(quadrature_formula);
+
+  face_quadrature_collection.push_back(face_quadrature_formula);
 }
 
 

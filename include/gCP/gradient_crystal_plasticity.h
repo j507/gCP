@@ -58,6 +58,10 @@ private:
 
   dealii::hp::MappingCollection<dim>                mapping_collection;
 
+  dealii::hp::QCollection<dim>                      quadrature_collection;
+
+  dealii::hp::QCollection<dim-1>                    face_quadrature_collection;
+
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<const CrystalsData<dim>>          crystals_data;
@@ -93,7 +97,7 @@ private:
 
   bool                                              flag_init_was_called;
 
-  void setup_quadrature_point_history();
+  void init_quadrature_point_history();
 
   void assemble_jacobian();
 

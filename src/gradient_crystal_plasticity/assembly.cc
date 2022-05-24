@@ -26,21 +26,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
   // Reset data
   jacobian = 0.0;
 
-  // Create instances of the quadrature collection classes
-  dealii::hp::QCollection<dim>    quadrature_collection;
-
-  dealii::hp::QCollection<dim-1>  face_quadrature_collection;
-
-  // Initiate the quadrature formula for exact numerical integration
-  const dealii::QGauss<dim>       quadrature_formula(3);
-
-  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
-
-  // Add the initiated quadrature formulas to the collections
-  quadrature_collection.push_back(quadrature_formula);
-
-  face_quadrature_collection.push_back(face_quadrature_formula);
-
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
     const CellIterator                         &cell,
@@ -166,21 +151,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   // Reset data
   residual = 0.0;
-
-  // Create instances of the quadrature collection classes
-  dealii::hp::QCollection<dim>    quadrature_collection;
-
-  dealii::hp::QCollection<dim-1>  face_quadrature_collection;
-
-  // Initiate the quadrature formula for exact numerical integration
-  const dealii::QGauss<dim>       quadrature_formula(3);
-
-  const dealii::QGauss<dim-1>     face_quadrature_formula(3);
-
-  // Add the initiated quadrature formulas to the collections
-  quadrature_collection.push_back(quadrature_formula);
-
-  face_quadrature_collection.push_back(face_quadrature_formula);
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -368,15 +338,6 @@ void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
   using CellFilter =
     dealii::FilteredIterator<
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
-  // Create instances of the quadrature collection classes
-  dealii::hp::QCollection<dim>    quadrature_collection;
-
-  // Initiate the quadrature formula for exact numerical integration
-  const dealii::QGauss<dim>       quadrature_formula(3);
-
-  // Add the initiated quadrature formulas to the collections
-  quadrature_collection.push_back(quadrature_formula);
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
