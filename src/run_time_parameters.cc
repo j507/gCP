@@ -145,9 +145,9 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
     AssertThrow(regularization_parameter > 0.0,
                 dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
-    AssertThrow(initial_slip_resistance > 0.0,
+    AssertThrow(initial_slip_resistance >= 0.0,
                 dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
-    AssertThrow(linear_hardening_modulus > 0.0,
+    AssertThrow(linear_hardening_modulus >= 0.0,
                 dealii::ExcLowerRangeType<double>(linear_hardening_modulus, 0.0));
     AssertThrow(hardening_parameter > 0.0,
                 dealii::ExcLowerRangeType<double>(hardening_parameter, 0.0));
