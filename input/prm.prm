@@ -1,0 +1,58 @@
+# Listing of Parameters
+# ---------------------
+set Verbose                 = false
+
+
+subsection Output control parameters
+  set Graphical output directory = results/
+  set Graphical output frequency = 1
+  set Terminal output frequency  = 1
+end
+
+
+subsection Solver parameters
+  set Verbose = true
+
+
+  subsection Constitutive laws' parameters
+    subsection Hooke-Law's parameters
+      set C1111 = 134615.3846153846243396
+      set C1122 = 57692.3076923076878302
+      set C1212 = 38461.5384615384609788
+    end
+
+    subsection Scalar microscopic stress law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 0.0
+      set Linear hardening modulus = 500
+      set Regularization function  = tanh
+      set Regularization parameter = 3e-4
+    end
+
+    subsection Vector microscopic stress law's parameters
+      set Energetic length scale  = 0.0
+      set Initial slip resistance = 0.0
+    end
+
+  end
+
+  subsection Nonlinear solver's parameters
+    set Absolute tolerance of the Krylov-solver              = 1e-9
+    set Maximum number of iterations of the Krylov-solver    = 1000
+    set Maximum number of iterations of the nonlinear solver = 50
+    set Relative tolerance of the Krylov-solver              = 1e-8
+    set Tolerance of the nonlinear solver                    = 1e-9
+  end
+
+end
+
+
+subsection Spatial discretization parameters
+  set FE's polynomial degree - Displacements = 2
+  set FE's polynomial degree - Slips         = 1
+  set Mapping - Apply to interior cells      = false
+  set Mapping - Polynomial degree            = 1
+  set Spatial dimension                      = 2
+end
+
+
