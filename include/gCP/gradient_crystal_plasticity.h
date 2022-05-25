@@ -14,6 +14,7 @@
 #include <deal.II/base/utilities.h>
 
 #include <memory>
+#include <fstream>
 
 namespace gCP
 {
@@ -94,6 +95,8 @@ private:
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
 
   double                                            residual_norm;
+
+  std::ofstream                                     nonlinear_solver_log;
 
   bool                                              flag_init_was_called;
 
