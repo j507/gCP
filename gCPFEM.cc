@@ -85,6 +85,59 @@ void DirichletBoundaryFunction<dim>::vector_value(
 
 
 template <int dim>
+class DisplacementControl : public dealii::Function<dim>
+{
+public:
+  DisplacementControl(const unsigned int  n_components,
+                      const double        time = 0.0);
+
+  virtual void vector_value(
+    const dealii::Point<dim>  &point,
+    dealii::Vector<double>    &return_vector) const override;
+
+private:
+};
+
+
+
+template<int dim>
+DisplacementControl<dim>::DisplacementControl(
+  const unsigned int  n_components,
+  const double        time)
+:
+dealii::Function<dim>(n_components, time)
+{}
+
+
+
+template<int dim>
+void DisplacementControl<dim>::vector_value(
+  const dealii::Point<dim>  &point,
+  dealii::Vector<double>    &return_vector) const
+{
+  const double t = this->get_time();
+  const double x = point(0);
+  const double y = point(1);
+
+  return_vector[0] = x*y*0;
+  return_vector[1] = -t*5e-3;
+
+  switch (dim)
+  {
+    case 3:
+      {
+        const double z = point(2);
+        return_vector[2] = z*0;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+
+
+template <int dim>
 class SupplyTermFunction : public dealii::TensorFunction<1,dim>
 {
 public:
@@ -111,11 +164,12 @@ dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
 {
   dealii::Tensor<1, dim> return_vector;
 
+  const double t = this->get_time();
   const double x = point(0);
   const double y = point(1);
 
   return_vector[0] = 0.0*x*y;
-  return_vector[1] = -1e-3;
+  return_vector[1] = -1e-3 * t;
 
   switch (dim)
   {
@@ -216,13 +270,15 @@ private:
 
   DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
 
+  std::unique_ptr<DisplacementControl<dim>>         displacement_control;
+
   NeumannBoundaryFunction<dim>                      neumann_boundary_function;
 
   std::shared_ptr<SupplyTermFunction<dim>>          supply_term_function;
 
   void make_grid();
 
-  void set_boundary_values();
+  void update_dirichlet_boundary_conditions();
 
   void setup();
 
@@ -250,7 +306,9 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.mapping_degree)),
-discrete_time(0.0, 1.0, 1e-3),
+discrete_time(parameters.start_time,
+              parameters.end_time,
+              parameters.time_step_size),
 triangulation(
   MPI_COMM_WORLD,
   typename dealii::Triangulation<dim>::MeshSmoothing(
@@ -268,10 +326,10 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
-dirichlet_boundary_function(0.0),
-neumann_boundary_function(0.0),
+dirichlet_boundary_function(parameters.start_time),
+neumann_boundary_function(parameters.start_time),
 supply_term_function(
-  std::make_shared<SupplyTermFunction<dim>>(0.0))
+  std::make_shared<SupplyTermFunction<dim>>(parameters.start_time))
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
@@ -435,6 +493,11 @@ void ProblemClass<dim>::setup()
 
   fe_field->setup_vectors();
 
+  displacement_control =
+    std::make_unique<DisplacementControl<dim>>(
+      fe_field->n_components(),
+      discrete_time.get_start_time());
+
   *pcout << "Spatial discretization:"
               << std::endl
               << " Number of degrees of freedom = "
@@ -445,11 +508,35 @@ void ProblemClass<dim>::setup()
 
 
 template<int dim>
+void ProblemClass<dim>::update_dirichlet_boundary_conditions()
+{
+  dealii::AffineConstraints<double> affine_constraints;
+
+  affine_constraints.clear();
+  {
+    affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
+    dealii::VectorTools::interpolate_boundary_values(
+      *mapping,
+      fe_field->get_dof_handler(),
+      0,
+      displacement_control,
+      affine_constraints,
+      fe_field->get_fe_collection().component_mask(
+        fe_field->get_displacement_extractor(0)));
+  }
+  affine_constraints.close();
+
+  fe_field->set_affine_constraints(affine_constraints);
+}
+
+
+
+template<int dim>
 void ProblemClass<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Postprocessing: Point evaluation");
 
-  dealii::Vector<double>  point_value(dim);
+  dealii::Vector<double>  point_value(fe_field->n_components());
 
   bool point_found = false;
 
@@ -548,11 +635,30 @@ void ProblemClass<dim>::run()
 
   gCP_solver.set_supply_term(supply_term_function);
 
-  gCP_solver.solve_nonlinear_system();
+  while(discrete_time.get_current_time() < discrete_time.get_end_time())
+  {
+    supply_term_function->set_time(discrete_time.get_next_time());
 
-  data_output();
+    displacement_control->set_time(discrete_time.get_next_time());
 
-  postprocessing();
+    //update_dirichlet_boundary_conditions();
+
+    gCP_solver.solve_nonlinear_system();
+
+    //gCP_solver.update_quadrature_point_history();
+
+    fe_field->update_solution_vectors();
+
+    discrete_time.advance_time();
+
+    postprocessing();
+
+    if (discrete_time.get_step_number() %
+         parameters.graphical_output_frequency == 0 ||
+        discrete_time.get_current_time() ==
+          discrete_time.get_end_time())
+      data_output();
+  }
 }
 
 
