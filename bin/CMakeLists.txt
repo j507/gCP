@@ -9,7 +9,6 @@ SET(SOURCE_FILES
     elasticity.cc
     step-3.cc
     step-15.cc
-    step-15_mod.cc
     step-77.cc
     )
 
