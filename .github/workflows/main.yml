@@ -1,4 +1,3 @@
-
 name: CI
 
 # Controls when the action will run. 
@@ -22,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: ["Release", "Debug"]
-        dealii_version: ["v9.3.0"]
+        dealii_version: ["v9.3.3"]
     
     # Run steps inside dealii container
     container:
@@ -58,4 +57,4 @@ jobs:
           mkdir build
           cd build
           cmake ../ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          make -j${{ env.COMPILE_JOBS }}# This is a basic workflow to help you get started with Actions
+          make -j${{ env.COMPILE_JOBS }}
