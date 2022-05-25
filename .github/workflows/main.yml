@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: ["Release", "Debug"]
-        dealii_version: ["v9.3.0-focal"]
+        dealii_version: ["v9.3.0"]
     
     # Run steps inside dealii container
     container:
