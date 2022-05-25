@@ -60,14 +60,14 @@ struct NewtonRaphsonParameters
    *
    * @todo Docu
    */
-  double        newthon_raphson_tolerance;
+  double        nonlinear_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int  n_max_newthon_raphson_iterations;
+  unsigned int  n_max_nonlinear_iterations;
 
   /*!
    * @brief
