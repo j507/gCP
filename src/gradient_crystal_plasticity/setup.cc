@@ -10,6 +10,10 @@ namespace gCP
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::init()
 {
+  if (parameters.verbose)
+    *pcout << std::setw(38) << std::left
+           << "  Solver: Initializing solver...";
+
   dealii::TimerOutput::Scope  t(*timer_output,
                                 "Solver: Initialize");
 
@@ -79,6 +83,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
   init_quadrature_point_history();
 
   flag_init_was_called = true;
+
+  if (parameters.verbose)
+    *pcout << " done!" << std::endl;
 }
 
 

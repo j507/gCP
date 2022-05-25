@@ -12,6 +12,10 @@ namespace gCP
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
 {
+  if (parameters.verbose)
+    *pcout << std::setw(38) << std::left
+           << "  Solver: Assembling jacobian...";
+
   dealii::TimerOutput::Scope  t(*timer_output,
                                 "Solver: Jacobian assembly");
 
@@ -67,6 +71,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
 
   // Compress global data
   jacobian.compress(dealii::VectorOperation::add);
+
+  if (parameters.verbose)
+    *pcout << " done!" << std::endl;
 }
 
 
@@ -112,8 +119,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
       for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
       {
-        data.local_matrix(i,j) -=
-          scratch.sym_grad_phi[i] * -1.0 *
+        data.local_matrix(i,j) +=
+          scratch.sym_grad_phi[i] *
           stiffness_tetrad *
           scratch.sym_grad_phi[j] *
           dv;
@@ -138,6 +145,10 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_residual()
 {
+  if (parameters.verbose)
+    *pcout << std::setw(38) << std::left
+           << "  Solver: Assembling residual...";
+
   dealii::TimerOutput::Scope  t(*timer_output,
                                 "Solver: Residual assembly");
 
@@ -201,6 +212,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
   residual.compress(dealii::VectorOperation::add);
 
   residual_norm = residual.l2_norm();
+
+  if (parameters.verbose)
+    *pcout << " done!" << std::endl;
 }
 
 
@@ -229,7 +243,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Compute the linear strain tensor at the quadrature points
   fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    fe_field->solution,
+    solution,
     scratch.strain_tensor_values);
 
   // Compute the supply term at the quadrature points
@@ -243,7 +257,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     // Compute the stress tensor at the quadrature points
     scratch.stress_tensor_values[q] =
       hooke_law->get_stress_tensor(crystal_id,
-                                         scratch.strain_tensor_values[q]);
+                                   scratch.strain_tensor_values[q]);
 
     // Extract test function values at the quadrature points
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -261,11 +275,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     // Loop over the degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
-      data.local_rhs(i) +=
+      data.local_rhs(i) -=
         (scratch.sym_grad_phi[i] *
-         scratch.stress_tensor_values[q] * 0.0
+         scratch.stress_tensor_values[q]
          -
-         scratch.phi[i] * -1.0 *
+         scratch.phi[i] *
          scratch.supply_term_values[q]) *
          dv;
     } // Loop over the degrees of freedom
