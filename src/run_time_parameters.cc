@@ -309,6 +309,9 @@ ProblemParameters::ProblemParameters()
 dim(2),
 mapping_degree(1),
 mapping_interior_cells(false),
+start_time(0.0),
+end_time(1.0),
+time_step_size(0.5),
 fe_degree_displacements(2),
 fe_degree_slips(1),
 regularization_function(RegularizationFunction::Tanh),
@@ -384,6 +387,22 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    prm.declare_entry("Start time",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("End time",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Time step size",
+                      "5e-1",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+
   prm.declare_entry("Verbose",
                     "false",
                     dealii::Patterns::Bool());
@@ -435,6 +454,29 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     fe_degree_slips = prm.get_integer("FE's polynomial degree - Slips");
     AssertThrow(fe_degree_slips > 0,
                 dealii::ExcLowerRange(fe_degree_slips, 0));
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    start_time = prm.get_double("Start time");
+
+    end_time = prm.get_double("End time");
+
+    time_step_size = prm.get_double("Time step size");
+
+    Assert(start_time >= 0.0,
+           dealii::ExcLowerRangeType<double>(start_time, 0.0));
+    Assert(end_time > start_time,
+           dealii::ExcLowerRangeType<double>(end_time, start_time));
+    Assert(time_step_size > 0,
+           dealii::ExcLowerRangeType<double>(time_step_size, 0));
+    Assert(time_step_size > 0,
+           dealii::ExcLowerRangeType<double>(time_step_size, 0));
+    Assert(end_time >= (start_time + time_step_size),
+           dealii::ExcLowerRangeType<double>(end_time,
+                                             start_time + time_step_size));
+
   }
   prm.leave_subsection();
 

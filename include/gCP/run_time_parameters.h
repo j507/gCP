@@ -354,6 +354,12 @@ struct ProblemParameters
 
   bool                    mapping_interior_cells;
 
+  double                  start_time;
+
+  double                  end_time;
+
+  double                  time_step_size;
+
   unsigned int            fe_degree_displacements;
 
   unsigned int            fe_degree_slips;
