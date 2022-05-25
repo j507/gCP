@@ -26,6 +26,7 @@ jobs:
     # Run steps inside dealii container
     container:
       image: dealii/dealii:${{ matrix.dealii_version }}-focal
+      options: --user root
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
