@@ -390,7 +390,7 @@ void VectorMicroscopicStressLaw<dim>::init()
         crystals_data->get_n_slips(),
         dealii::SymmetricTensor<2,dim>());
 
-    for (unsigned int slip_id;
+    for (unsigned int slip_id = 0;
           slip_id < crystals_data->get_n_slips();
           ++slip_id)
     {
