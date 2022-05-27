@@ -411,7 +411,7 @@ void DirichletBoundaryFunction<dim>::vector_value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -459,7 +459,7 @@ dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -510,7 +510,7 @@ dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
   switch (dim)
   {
     case 3:
-      {      
+      {
         const double z = point(2);
         return_vector[2] = z*0;
       }
@@ -646,7 +646,7 @@ dof_handler(triangulation),
 dirichlet_boundary_function(0.0),
 neumann_boundary_function(0.0),
 supply_term_function(0.0),
-relaxation_parameter(0.1),
+relaxation_parameter(1.0),
 stiffness_tetrad(1e5, 0.3)
 {}
 
@@ -755,7 +755,7 @@ void Elasticity<dim>::refine_grid()
     // coarsening and refineming
     dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_solution(system_rhs);
 
-    // Gather the pertinent distributed vectors in an std::vector to 
+    // Gather the pertinent distributed vectors in an std::vector to
     // interpolate them
     std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector *> distributed_vectors(1);
     distributed_vectors[0] = &distributed_solution;
@@ -1097,7 +1097,7 @@ void Elasticity<dim>::assemble_local_system_rhs(
         (scratch.sym_grad_phi[i] *
          scratch.stress_tensor_values[q] * 0.0
          -
-         scratch.phi[i] * -1.0 * 
+         scratch.phi[i] * -1.0 *
          scratch.supply_term_values[q]) *
         scratch.fe_values.JxW(q);
     } // Loop over the degrees of freedom
@@ -1432,7 +1432,7 @@ void Elasticity<dim>::postprocessing()
     // ignore
   }
 
-  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0, 
+  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0,
                                                   MPI_COMM_WORLD);
 
   dealii::Utilities::MPI::sum(point_value,

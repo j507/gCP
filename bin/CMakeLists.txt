@@ -7,6 +7,7 @@ INCLUDE_DIRECTORIES(
 
 SET(SOURCE_FILES
     elasticity.cc
+    elasticity_with_solver.cc
     step-3.cc
     step-15.cc
     step-77.cc
