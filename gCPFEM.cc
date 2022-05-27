@@ -119,8 +119,8 @@ void DisplacementControl<dim>::vector_value(
   const double x = point(0);
   const double y = point(1);
 
-  return_vector[0] = x*y*0;
-  return_vector[1] = -t*5e-3;
+  return_vector[0] = t * 1e-3;
+  return_vector[1] = x*y*0.0;
 
   switch (dim)
   {
@@ -169,7 +169,7 @@ dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
   const double y = point(1);
 
   return_vector[0] = 0.0*x*y;
-  return_vector[1] = -1e-3 * t;
+  return_vector[1] = 0.0 * t;
 
   switch (dim)
   {
@@ -382,39 +382,13 @@ void ProblemClass<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Discrete domain");
 
-  const double length = 25.0;
-  const double height = 1.0;
+  dealii::GridGenerator::hyper_cube(
+    triangulation,
+    0,
+    1,
+    true);
 
-  std::vector<unsigned int> repetitions(dim, 10);
-  repetitions[0] = 250;
-
-  switch (dim)
-  {
-  case 2:
-    dealii::GridGenerator::subdivided_hyper_rectangle(
-      triangulation,
-      repetitions,
-      dealii::Point<dim>(0,0),
-      dealii::Point<dim>(length, height),
-      true);
-    break;
-  case 3:
-    {
-      const double width  = 1.0;
-      dealii::GridGenerator::subdivided_hyper_rectangle(
-        triangulation,
-        repetitions,
-        dealii::Point<dim>(0,0,0),
-        dealii::Point<dim>(length, height, width),
-        true);
-    }
-    break;
-  default:
-    Assert(false, dealii::ExcNotImplemented());
-    break;
-  }
-
-  triangulation.refine_global(0);
+  triangulation.refine_global(5);
 
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -462,7 +436,7 @@ void ProblemClass<dim>::setup()
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
       fe_field->get_dof_handler(),
-      0,
+      2,
       DirichletBoundaryFunction<dim>(),
       affine_constraints,
       fe_field->get_fe_collection().component_mask(
@@ -480,7 +454,17 @@ void ProblemClass<dim>::setup()
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
       fe_field->get_dof_handler(),
-      0,
+      2,
+      dealii::Functions::ZeroFunction<dim>(dim),
+      newton_method_constraints,
+      fe_field->get_fe_collection().component_mask(
+      fe_field->get_displacement_extractor(0)));
+
+    newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
+    dealii::VectorTools::interpolate_boundary_values(
+      *mapping,
+      fe_field->get_dof_handler(),
+      3,
       dealii::Functions::ZeroFunction<dim>(dim),
       newton_method_constraints,
       fe_field->get_fe_collection().component_mask(
@@ -518,8 +502,8 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
       fe_field->get_dof_handler(),
-      0,
-      displacement_control,
+      3,
+      *displacement_control,
       affine_constraints,
       fe_field->get_fe_collection().component_mask(
         fe_field->get_displacement_extractor(0)));
@@ -527,6 +511,14 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
   affine_constraints.close();
 
   fe_field->set_affine_constraints(affine_constraints);
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
+
+  distributed_vector.reinit(fe_field->distributed_vector);
+
+  fe_field->get_affine_constraints().distribute(distributed_vector);
+
+  fe_field->solution = distributed_vector;
 }
 
 
@@ -534,57 +526,7 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void ProblemClass<dim>::postprocessing()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Postprocessing: Point evaluation");
 
-  dealii::Vector<double>  point_value(fe_field->n_components());
-
-  bool point_found = false;
-
-  try
-  {
-    switch (dim)
-    {
-    case 2:
-      dealii::VectorTools::point_value(*mapping,
-                                       fe_field->get_dof_handler(),
-                                       fe_field->solution,
-                                       dealii::Point<dim>(25.,.5),
-                                       point_value);
-      break;
-    case 3:
-      dealii::VectorTools::point_value(*mapping,
-                                       fe_field->get_dof_handler(),
-                                       fe_field->solution,
-                                       dealii::Point<dim>(25.,.5,.5),
-                                       point_value);
-      break;
-    default:
-      break;
-    }
-
-    point_found = true;
-  }
-  catch (const dealii::VectorTools::ExcPointNotAvailableHere &)
-  {
-    // ignore
-  }
-
-  const int n_procs = dealii::Utilities::MPI::sum(point_found ? 1 : 0,
-                                                  MPI_COMM_WORLD);
-
-  dealii::Utilities::MPI::sum(point_value,
-                              MPI_COMM_WORLD,
-                              point_value);
-
-  // Normalize in cases where points are claimed by multiple processors
-  if (n_procs > 1)
-    point_value /= n_procs;
-
-  dealii::Tensor<1, dim> point_value_tensor;
-  for (unsigned i=0; i<dim; ++i)
-    point_value_tensor[i] = point_value[i];
-
-  *pcout << "w = " << point_value_tensor[1] << std::endl;
 }
 
 
@@ -595,10 +537,19 @@ void ProblemClass<dim>::data_output()
   dealii::TimerOutput::Scope  t(*timer_output, "Data output");
 
   // Explicit declaration of the velocity as a vector
-  std::vector<std::string> displacement_names(dim, "Displacement");
+  std::vector<std::string> displacement_names(dim, "displacement");
   std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
     component_interpretation(
       dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips();
+       ++slip_id)
+  {
+    displacement_names.emplace_back("slip_" + std::to_string(slip_id));
+    component_interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+  }
 
   dealii::DataOut<dim> data_out;
 
@@ -641,7 +592,7 @@ void ProblemClass<dim>::run()
 
     displacement_control->set_time(discrete_time.get_next_time());
 
-    //update_dirichlet_boundary_conditions();
+    update_dirichlet_boundary_conditions();
 
     gCP_solver.solve_nonlinear_system();
 
