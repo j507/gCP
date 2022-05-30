@@ -15,15 +15,13 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   unsigned int nonlinear_iteration = 0;
 
-  assemble_residual();
   /*!
    * @todo This loop needs some work. No line search is performed.
    */
   for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
-    if (residual_norm < parameters.nonlinear_tolerance)
-      break;
+    assemble_residual();
 
     assemble_jacobian();
 
@@ -39,6 +37,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
                            << std::showpos << std::setprecision(6)
                            << residual_norm << std::endl;
 
+    if (residual_norm < parameters.nonlinear_tolerance)
+      break;
   }
 
   AssertThrow(nonlinear_iteration <
