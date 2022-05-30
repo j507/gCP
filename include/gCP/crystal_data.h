@@ -52,6 +52,10 @@ public:
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
 
+  const std::vector<dealii::SymmetricTensor<2,dim>>
+    &get_symmetrized_schmid_tensors(
+      const unsigned int crystal_id) const;
+
   const bool &is_initialized() const;
 
 private:
@@ -220,6 +224,20 @@ inline const dealii::SymmetricTensor<2,dim>
   return (symmetrized_schmid_tensors[crystal_id][slip_id]);
 }
 
+
+
+template <int dim>
+inline const std::vector<dealii::SymmetricTensor<2,dim>>
+&CrystalsData<dim>::get_symmetrized_schmid_tensors(
+  const unsigned int crystal_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been"
+                                  " initialized."));
+  AssertIndexRange(crystal_id, n_crystals);
+  return (symmetrized_schmid_tensors[crystal_id]);
+}
 
 
 template <int dim>
