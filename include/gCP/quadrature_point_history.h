@@ -57,7 +57,7 @@ QuadraturePointHistory<dim>::get_slip_resistance(
               dealii::ExcMessage("The QuadraturePointHistory<dim> "
                                  "instance has not been initialized."));
 
-  return (get_slip_resistance[slip_id]);
+  return (slip_resistances[slip_id]);
 }
 
 
