@@ -2,6 +2,7 @@
 #define INCLUDE_CONSTITUTIVE_EQUATIONS_H_
 
 #include <gCP/crystal_data.h>
+#include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 
 #include <deal.II/base/symmetric_tensor.h>
@@ -210,6 +211,12 @@ public:
                                 const double        slip_rate_beta,
                                 const double        time_step_size);
 
+  std::vector<dealii::FullMatrix<double>> get_gateaux_derivative_values(
+    const std::vector<std::vector<double>>                    slip_values,
+    const std::vector<std::vector<double>>                    old_slip_values,
+    std::vector<std::shared_ptr<QuadraturePointHistory<dim>>> local_quadrature_point_history,
+    const double                                              time_step_size);
+
 private:
   std::shared_ptr<const CrystalsData<dim>>  crystals_data;
 
@@ -228,6 +235,10 @@ private:
   bool                                      flag_init_was_called;
 
   double get_hardening_matrix_entry(const bool self_hardening) const;
+
+  double sgn(const double value) const;
+
+  double get_regularization_factor(const double slip_rate) const;
 };
 
 
@@ -248,6 +259,15 @@ ScalarMicroscopicStressLaw<dim>::get_hardening_matrix_entry(
 
 
 
+template <int dim>
+inline double
+ScalarMicroscopicStressLaw<dim>::sgn(
+  const double value) const
+{
+  return (0.0 < value) - (value < 0.0);
+}
+
+
 
 template<int dim>
 class VectorMicroscopicStressLaw
@@ -263,6 +283,10 @@ public:
     &get_reduced_gradient_hardening_tensor(
       const unsigned int crystal_id,
       const unsigned int slip_id) const;
+
+  const std::vector<dealii::SymmetricTensor<2,dim>>
+    &get_reduced_gradient_hardening_tensors(
+      const unsigned int crystal_id) const;
 
   dealii::Tensor<1,dim> get_vector_microscopic_stress(
     const unsigned int          crystal_id,
@@ -296,6 +320,21 @@ inline const dealii::SymmetricTensor<2,dim>
                                  "instance has not been initialized."));
 
   return (reduced_gradient_hardening_tensors[crystal_id][slip_id]);
+}
+
+
+
+template <int dim>
+inline const std::vector<dealii::SymmetricTensor<2,dim>>
+&VectorMicroscopicStressLaw<dim>::
+  get_reduced_gradient_hardening_tensors(
+    const unsigned int crystal_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
+                                 "instance has not been initialized."));
+
+  return (reduced_gradient_hardening_tensors[crystal_id]);
 }
 
 

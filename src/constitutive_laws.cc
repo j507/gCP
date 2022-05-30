@@ -355,9 +355,93 @@ double ScalarMicroscopicStressLaw<dim>::
        hardening_parameter) *
       std::pow(1.0/std::cosh(slip_rate_alpha), 2);
 
-  return 0.0;
+  return gateaux_derivate;
 }
 
+
+
+template<int dim>
+std::vector<dealii::FullMatrix<double>> ScalarMicroscopicStressLaw<dim>::
+  get_gateaux_derivative_values(
+    const std::vector<std::vector<double>>                    slip_values,
+    const std::vector<std::vector<double>>                    old_slip_values,
+    std::vector<std::shared_ptr<QuadraturePointHistory<dim>>> local_quadrature_point_history,
+    const double                                              time_step_size)
+{
+  const unsigned int n_q_points = slip_values.size();
+
+  std::vector<dealii::FullMatrix<double>>
+    matrix(n_q_points,
+           dealii::FullMatrix<double>(crystals_data->get_n_slips()));
+
+  auto compute_slip_rate =
+    [&slip_values, &old_slip_values, &time_step_size](
+      const unsigned int  q_point,
+      const unsigned int  slip_id)
+  {
+    return (slip_values[slip_id][q_point] -
+            old_slip_values[slip_id][q_point]) / time_step_size;
+  };
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    for (unsigned int slip_id_alpha = 0;
+        slip_id_alpha < crystals_data->get_n_slips();
+        ++slip_id_alpha)
+      for (unsigned int slip_id_beta = 0;
+          slip_id_beta < crystals_data->get_n_slips();
+          ++slip_id_beta)
+      {
+        matrix[q_point][slip_id_alpha][slip_id_beta] =
+          (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
+           get_regularization_factor(
+             compute_slip_rate(q_point, slip_id_alpha)) *
+           sgn(compute_slip_rate(q_point, slip_id_beta)));
+
+        if (slip_id_alpha == slip_id_beta)
+          matrix[q_point][slip_id_alpha][slip_id_beta] +=
+            ((initial_slip_resistance +
+              local_quadrature_point_history[q_point]->get_slip_resistance(slip_id_alpha)) /
+             (time_step_size * regularization_parameter) *
+             std::pow(1.0/std::cosh(
+                        compute_slip_rate(q_point, slip_id_alpha)), 2));
+      }
+  return matrix;
+}
+
+
+
+template <int dim>
+double ScalarMicroscopicStressLaw<dim>::
+get_regularization_factor(const double slip_rate) const
+{
+  double regularization_factor = 0.0;
+
+  switch (regularization_function)
+  {
+  case RunTimeParameters::RegularizationFunction::PowerLaw:
+    {
+      regularization_factor = std::pow(slip_rate,
+                                       1.0 /
+                                         regularization_parameter);
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Tanh:
+    {
+      regularization_factor = std::tanh(slip_rate /
+                                        regularization_parameter);
+    }
+    break;
+  default:
+    {
+      AssertThrow(false, dealii::ExcMessage("The given regularization "
+                                            "function is not currently "
+                                            "implemented."));
+    }
+    break;
+  }
+
+  return regularization_factor;
+}
 
 
 template<int dim>
