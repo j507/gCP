@@ -2,6 +2,8 @@
 
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/grid/filtered_iterator.h>
+
 namespace gCP
 {
 
@@ -80,6 +82,10 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   hooke_law->init();
 
+  //scalar_microscopic_stress_law->init();
+
+  vector_microscopic_stress_law->init();
+
   init_quadrature_point_history();
 
   flag_init_was_called = true;
@@ -102,12 +108,18 @@ void GradientCrystalPlasticitySolver<dim>::set_supply_term(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 {
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
   const unsigned int n_q_points =
     quadrature_collection.max_n_quadrature_points();
 
   quadrature_point_history.initialize(
-    fe_field->get_triangulation().begin_active(),
-    fe_field->get_triangulation().end(),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().end()),
     n_q_points);
 
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
