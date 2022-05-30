@@ -195,6 +195,7 @@ public:
    * @todo Docu
    */
   unsigned int get_global_component(
+    const unsigned int crystal_id,
     const unsigned int local_component) const;
 
   /**
@@ -497,9 +498,11 @@ FEField<dim>::get_locally_relevant_dofs() const
 
 template <int dim>
 inline unsigned int
-FEField<dim>::get_global_component(const unsigned int local_component) const
+FEField<dim>::get_global_component(
+  const unsigned int crystal_id,
+  const unsigned int local_component) const
 {
-  return (global_component_mapping[local_component]);
+  return (global_component_mapping[fe_collection[crystal_id].system_to_component_index(local_component).first]);
 }
 
 
