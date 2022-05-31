@@ -149,6 +149,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
 
+  std::vector<dealii::SymmetricTensor<2,dim>>     elastic_strain_tensor_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     stress_tensor_values;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> slip_gradient_values;
