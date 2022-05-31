@@ -135,18 +135,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
       scratch.old_slip_values[slip_id]);
   }
 
-  // Get the gateaux derivative of the scalar microscopic stress law
-  // at the quadrature points
-  scratch.gateaux_derivative_values =
-    scalar_microscopic_stress_law->get_gateaux_derivative_values(
-      scratch.slip_values,
-      scratch.old_slip_values,
-      local_quadrature_point_history,
-      discrete_time.get_next_step_size());
-
   // Loop over quadrature points
   for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
   {
+    // Compute the Gateaux derivative values of the scalar microscopic
+    // stress w.r.t. slip
+    scratch.gateaux_derivative_values[q_point] =
+      scalar_microscopic_stress_law->get_gateaux_derivative_matrix(
+        q_point,
+        scratch.slip_values,
+        scratch.old_slip_values,
+        local_quadrature_point_history[q_point],
+        discrete_time.get_next_step_size());
+
     // Extract test function values at the quadrature points (Displacement)
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
@@ -354,12 +355,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   // Get JxW values at the quadrature points
   scratch.JxW_values = fe_values.get_JxW_values();
 
-  // Get values of the hardening variable at the quadrature points
+  // Get the hardening variable values at the quadrature points
   const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
     local_quadrature_point_history =
       quadrature_point_history.get_data(cell);
 
-  // Get values of the slips at the quadrature points
+  // Get the linear strain tensor values at the quadrature points
+  fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
+    solution,
+    scratch.strain_tensor_values);
+
+  // Get the supply term values at the quadrature points
+  supply_term->value_list(
+    fe_values.get_quadrature_points(),
+    scratch.supply_term_values);
+
+  // Get the slips and their gradients values at the quadrature points
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
       ++slip_id)
@@ -373,27 +384,52 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
-      fe_field->solution,
+      solution,
       scratch.slip_gradient_values[slip_id]);
   }
-
-  // Compute the linear strain tensor at the quadrature points
-  fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    solution,
-    scratch.strain_tensor_values);
-
-  // Compute the supply term at the quadrature points
-  supply_term->value_list(
-    fe_values.get_quadrature_points(),
-    scratch.supply_term_values);
 
   // Loop over quadrature points
   for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
   {
-    // Compute the stress tensor at the quadrature points
+    // Comput the elastic strain tensor at the quadrature point
+    scratch.elastic_strain_tensor_values[q_point] =
+      elastic_strain->get_elastic_strain_tensor(
+        crystal_id,
+        q_point,
+        scratch.strain_tensor_values[q_point],
+        scratch.slip_values);
+
+    // Compute the stress tensor at the quadrature point
     scratch.stress_tensor_values[q_point] =
-      hooke_law->get_stress_tensor(crystal_id,
-                                   scratch.strain_tensor_values[q_point]);
+      hooke_law->get_stress_tensor(
+        crystal_id,
+        scratch.elastic_strain_tensor_values[q_point]);
+
+    // Compute the resolved stress, scalar microscopic stress and
+    // vector microscopic stress values at the quadrature point
+    for (unsigned int slip_id = 0;
+         slip_id < crystals_data->get_n_slips();
+         ++slip_id)
+    {
+      scratch.vector_microscopic_stress_values[slip_id][q_point] =
+        vector_microscopic_stress_law->get_vector_microscopic_stress(
+          crystal_id,
+          slip_id,
+          scratch.slip_gradient_values[slip_id][q_point]);
+
+      scratch.resolved_stress_values[slip_id][q_point] =
+        resolved_shear_stress_law->get_resolved_shear_stress(
+          crystal_id,
+          slip_id,
+          scratch.stress_tensor_values[q_point]);
+
+      scratch.scalar_microscopic_stress_values[slip_id][q_point] =
+        scalar_microscopic_stress_law->get_scalar_microscopic_stress(
+          scratch.slip_values[slip_id][q_point],
+          scratch.old_slip_values[slip_id][q_point],
+          local_quadrature_point_history[q_point]->get_slip_resistance(slip_id),
+          discrete_time.get_next_step_size());
+    }
 
     // Extract test function values at the quadrature points (Displacements)
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -427,17 +463,27 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       {
         data.local_rhs(i) -=
           (scratch.sym_grad_vector_phi[i] *
-          scratch.stress_tensor_values[q_point]
-          -
-          scratch.vector_phi[i] *
-          scratch.supply_term_values[q_point]) *
+           scratch.stress_tensor_values[q_point]
+           -
+           scratch.vector_phi[i] *
+           scratch.supply_term_values[q_point]) *
           scratch.JxW_values[q_point];
       }
       else
       {
-        data.local_rhs(i) -= 0.0;
-      }
+        const unsigned int slip_id =
+                fe_field->get_global_component(crystal_id, i);
 
+        data.local_rhs(i) -=
+          (scratch.grad_scalar_phi[slip_id][i] *
+           scratch.vector_microscopic_stress_values[slip_id][q_point]
+           -
+           scratch.scalar_phi[slip_id][i] *
+           (scratch.resolved_stress_values[slip_id][q_point]
+            -
+            scratch.scalar_microscopic_stress_values[slip_id][q_point])) *
+          scratch.JxW_values[q_point];
+      }
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
 
