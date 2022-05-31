@@ -4,6 +4,7 @@
 #include <gCP/gradient_crystal_plasticity.h>
 #include <gCP/run_time_parameters.h>
 
+#include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/mapping_q.h>
 
@@ -388,6 +389,18 @@ void ProblemClass<dim>::make_grid()
     1,
     true);
 
+  std::vector<dealii::GridTools::PeriodicFacePair<
+    typename dealii::parallel::distributed::Triangulation<dim>::cell_iterator>>
+    periodicity_vector;
+
+  dealii::GridTools::collect_periodic_faces(triangulation,
+                                            0,
+                                            1,
+                                            0,
+                                            periodicity_vector);
+
+  this->triangulation.add_periodicity(periodicity_vector);
+
   triangulation.refine_global(5);
 
   // Set material ids
@@ -425,6 +438,17 @@ void ProblemClass<dim>::setup()
     if (cell->is_locally_owned())
       cell->set_active_fe_index(0);
 
+  std::vector<
+    dealii::GridTools::
+    PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
+      periodicity_vector;
+
+  dealii::GridTools::collect_periodic_faces(
+    fe_field->get_dof_handler(),
+    0,
+    1,
+    0,
+    periodicity_vector);
 
   // Initiate the actual constraints – boundary conditions – of the problem
   dealii::AffineConstraints<double> affine_constraints;
@@ -441,6 +465,10 @@ void ProblemClass<dim>::setup()
       affine_constraints,
       fe_field->get_fe_collection().component_mask(
         fe_field->get_displacement_extractor(0)));
+
+    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
+      periodicity_vector,
+      affine_constraints);
   }
   affine_constraints.close();
 
@@ -469,6 +497,10 @@ void ProblemClass<dim>::setup()
       newton_method_constraints,
       fe_field->get_fe_collection().component_mask(
       fe_field->get_displacement_extractor(0)));
+
+    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
+      periodicity_vector,
+      newton_method_constraints);
   }
   newton_method_constraints.close();
 
