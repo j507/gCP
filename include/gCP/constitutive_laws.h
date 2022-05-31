@@ -168,6 +168,9 @@ ResolvedShearStressLaw<dim>::get_resolved_shear_stress(
                                   " instance has not been "
                                   " initialized."));
 
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
   return (stress_tensor *
           crystals_data->get_symmetrized_schmid_tensor(crystal_id,
                                                        slip_id));

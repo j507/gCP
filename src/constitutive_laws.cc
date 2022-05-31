@@ -218,6 +218,7 @@ crystals_data(crystals_data)
 {}
 
 
+
 template<int dim>
 ScalarMicroscopicStressLaw<dim>::ScalarMicroscopicStressLaw(
   const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
@@ -337,8 +338,7 @@ get_regularization_factor(const double slip_rate) const
   case RunTimeParameters::RegularizationFunction::PowerLaw:
     {
       regularization_factor = std::pow(slip_rate,
-                                       1.0 /
-                                         regularization_parameter);
+                                       1.0 / regularization_parameter);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:
@@ -358,6 +358,7 @@ get_regularization_factor(const double slip_rate) const
 
   return regularization_factor;
 }
+
 
 
 template<int dim>
@@ -428,6 +429,9 @@ get_vector_microscopic_stress(
   const unsigned int          slip_id,
   const dealii::Tensor<1,dim> slip_gradient) const
 {
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
                                  "instance has not been initialized."));
