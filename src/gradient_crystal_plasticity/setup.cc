@@ -78,11 +78,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
   }
 
   // Initiate constitutive laws
-  elastic_strain->init(fe_field->get_extractors());
-
   hooke_law->init();
-
-  //scalar_microscopic_stress_law->init();
 
   vector_microscopic_stress_law->init();
 
