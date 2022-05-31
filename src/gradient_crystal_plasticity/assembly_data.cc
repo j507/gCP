@@ -254,8 +254,8 @@ hp_fe_values(mapping,
              quadrature_collection,
              update_flags),
 n_slips(n_slips),
-slips(n_slips, std::vector<double>(this->n_q_points, 0.0)),
-old_slips(n_slips, std::vector<double>(this->n_q_points, 0.0))
+slips_values(n_slips, std::vector<double>(this->n_q_points, 0.0)),
+old_slips_values(n_slips, std::vector<double>(this->n_q_points, 0.0))
 {}
 
 
@@ -269,8 +269,8 @@ hp_fe_values(data.hp_fe_values.get_mapping_collection(),
              data.hp_fe_values.get_quadrature_collection(),
              data.hp_fe_values.get_update_flags()),
 n_slips(data.n_slips),
-slips(n_slips, std::vector<double>(this->n_q_points, 0.0)),
-old_slips(n_slips, std::vector<double>(this->n_q_points, 0.0))
+slips_values(n_slips, std::vector<double>(this->n_q_points, 0.0)),
+old_slips_values(n_slips, std::vector<double>(this->n_q_points, 0.0))
 {}
 
 
@@ -278,13 +278,13 @@ old_slips(n_slips, std::vector<double>(this->n_q_points, 0.0))
 template <int dim>
 void Scratch<dim>::reset()
 {
-  const unsigned int n_q_points = slips.size();
+  const unsigned int n_q_points = slips_values.size();
 
   for (unsigned int slip_id = 0; slip_id < n_slips; ++slip_id)
     for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
     {
-      slips[slip_id][q_point]     = 0.0;
-      old_slips[slip_id][q_point] = 0.0;
+      slips_values[slip_id][q_point]     = 0.0;
+      old_slips_values[slip_id][q_point] = 0.0;
     }
 }
 

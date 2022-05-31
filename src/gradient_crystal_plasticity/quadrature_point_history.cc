@@ -32,7 +32,7 @@ void QuadraturePointHistory<dim>::init(
 
   slip_resistances          = std::vector<double>(
                                 n_slips,
-                                initial_slip_resistance);
+                                0.0 /*initial_slip_resistance*/);
 
   flag_init_was_called      = true;
 }

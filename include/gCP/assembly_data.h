@@ -218,9 +218,9 @@ struct Scratch : ScratchBase<dim>
 
   unsigned int                      n_slips;
 
-  std::vector<std::vector<double>>  slips;
+  std::vector<std::vector<double>>  slips_values;
 
-  std::vector<std::vector<double>>  old_slips;
+  std::vector<std::vector<double>>  old_slips_values;
 };
 
 

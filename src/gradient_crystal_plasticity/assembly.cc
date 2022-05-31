@@ -565,9 +565,9 @@ void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
   };
 
   // Set up the lambda function for the copy local to global operation
-  auto copier = [this](const gCP::AssemblyData::Residual::Copy  &data)
+  auto copier = [this](const gCP::AssemblyData::QuadraturePointHistory::Copy  &data)
   {
-    this->copy_local_to_global_residual(data);
+    this->copy_local_to_global_quadrature_point_history(data);
   };
 
   // Define the update flags for the FEValues instances
@@ -586,7 +586,8 @@ void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
       mapping_collection,
       quadrature_collection,
       fe_field->get_fe_collection(),
-      update_flags),
+      update_flags,
+      crystals_data->get_n_slips()),
     gCP::AssemblyData::QuadraturePointHistory::Copy());
 }
 
@@ -597,7 +598,7 @@ void GradientCrystalPlasticitySolver<dim>::
 update_local_quadrature_point_history(
   const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
   gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
-  gCP::AssemblyData::QuadraturePointHistory::Copy               &data)
+  gCP::AssemblyData::QuadraturePointHistory::Copy               &)
 {
   // Get the crystal identifier for the current cell
   const unsigned int crystal_id = cell->active_fe_index();
@@ -621,7 +622,7 @@ update_local_quadrature_point_history(
 
   // Compute the linear strain tensor at the quadrature points
   for (unsigned int slip_id = 0;
-       slip_id < fe_values->get_n_slips();
+       slip_id < fe_field->get_n_slips();
        ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id,
@@ -656,13 +657,13 @@ template void gCP::GradientCrystalPlasticitySolver<2>::assemble_jacobian();
 template void gCP::GradientCrystalPlasticitySolver<3>::assemble_jacobian();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_jacobian(
-  const typename dealii::DoFHandler<2>::active_cell_iterator                       &,
-  gCP::AssemblyData::Jacobian::Scratch<2>  &,
-  gCP::AssemblyData::Jacobian::Copy        &);
+  const typename dealii::DoFHandler<2>::active_cell_iterator  &,
+  gCP::AssemblyData::Jacobian::Scratch<2>                     &,
+  gCP::AssemblyData::Jacobian::Copy                           &);
 template void gCP::GradientCrystalPlasticitySolver<3>::assemble_local_jacobian(
-  const typename dealii::DoFHandler<3>::active_cell_iterator                       &,
-  gCP::AssemblyData::Jacobian::Scratch<3>  &,
-  gCP::AssemblyData::Jacobian::Copy        &);
+  const typename dealii::DoFHandler<3>::active_cell_iterator  &,
+  gCP::AssemblyData::Jacobian::Scratch<3>                     &,
+  gCP::AssemblyData::Jacobian::Copy                           &);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_jacobian(
   const gCP::AssemblyData::Jacobian::Copy &);
@@ -673,15 +674,27 @@ template void gCP::GradientCrystalPlasticitySolver<2>::assemble_residual();
 template void gCP::GradientCrystalPlasticitySolver<3>::assemble_residual();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_residual(
-  const typename dealii::DoFHandler<2>::active_cell_iterator                       &,
-  gCP::AssemblyData::Residual::Scratch<2>  &,
-  gCP::AssemblyData::Residual::Copy        &);
+  const typename dealii::DoFHandler<2>::active_cell_iterator  &,
+  gCP::AssemblyData::Residual::Scratch<2>                     &,
+  gCP::AssemblyData::Residual::Copy                           &);
 template void gCP::GradientCrystalPlasticitySolver<3>::assemble_local_residual(
-  const typename dealii::DoFHandler<3>::active_cell_iterator                       &,
-  gCP::AssemblyData::Residual::Scratch<3>  &,
-  gCP::AssemblyData::Residual::Copy        &);
+  const typename dealii::DoFHandler<3>::active_cell_iterator  &,
+  gCP::AssemblyData::Residual::Scratch<3>                     &,
+  gCP::AssemblyData::Residual::Copy                           &);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &);
 template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::update_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::update_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::update_local_quadrature_point_history(
+  const typename dealii::DoFHandler<2>::active_cell_iterator  &,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<2>       &,
+  gCP::AssemblyData::QuadraturePointHistory::Copy             &);
+template void gCP::GradientCrystalPlasticitySolver<3>::update_local_quadrature_point_history(
+  const typename dealii::DoFHandler<3>::active_cell_iterator  &,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<3>       &,
+  gCP::AssemblyData::QuadraturePointHistory::Copy             &);
