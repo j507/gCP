@@ -26,31 +26,16 @@ template <int dim>
 class ElasticStrain
 {
 public:
-  using ExtractorPair =
-    typename std::pair<
-      std::vector<dealii::FEValuesExtractors::Vector>,
-      std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>;
-
   ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data);
 
-  void init(const ExtractorPair &extractor_pair);
-
-  const std::vector<dealii::SymmetricTensor<2,dim>> get_elastic_strain_tensor(
-    const dealii::LinearAlgebraTrilinos::MPI::Vector  solution,
-    const dealii::FEValues<dim>                       &fe_values,
-    const dealii::types::material_id                  crystal_id) const;
+  const dealii::SymmetricTensor<2,dim> get_elastic_strain_tensor(
+    const unsigned int                      crystal_id,
+    const unsigned int                      q_point,
+    const dealii::SymmetricTensor<2,dim>    strain_tensor_value,
+    const std::vector<std::vector<double>>  slip_values) const;
 
 private:
-
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
-
-  std::vector<dealii::FEValuesExtractors::Vector>
-                                              displacements_extractors;
-
-  std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
-                                              slips_extractors;
-
-  bool                                        flag_init_was_called;
 };
 
 
@@ -198,24 +183,19 @@ public:
     const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
     const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters);
 
-  void init();
+  double get_scalar_microscopic_stress(
+    const double slip_value,
+    const double old_slip_value,
+    const double slip_resistance,
+    const double time_step_size);
 
-  double get_scalar_microscopic_stress(const double crystal_id,
-                                       const double slip_id,
-                                       const double slip_rate);
+  dealii::FullMatrix<double> get_gateaux_derivative_matrix(
+    const unsigned int                            q_point,
+    const std::vector<std::vector<double>>        slip_values,
+    const std::vector<std::vector<double>>        old_slip_values,
+    std::shared_ptr<QuadraturePointHistory<dim>>  local_quadrature_point_history,
+    const double                                  time_step_size);
 
-  double get_gateaux_derivative(const unsigned int  crystald_id,
-                                const unsigned int  slip_id,
-                                const bool          self_hardening,
-                                const double        slip_rate_alpha,
-                                const double        slip_rate_beta,
-                                const double        time_step_size);
-
-  std::vector<dealii::FullMatrix<double>> get_gateaux_derivative_values(
-    const std::vector<std::vector<double>>                    slip_values,
-    const std::vector<std::vector<double>>                    old_slip_values,
-    std::vector<std::shared_ptr<QuadraturePointHistory<dim>>> local_quadrature_point_history,
-    const double                                              time_step_size);
 
 private:
   std::shared_ptr<const CrystalsData<dim>>  crystals_data;
@@ -229,8 +209,6 @@ private:
   const double                              linear_hardening_modulus;
 
   const double                              hardening_parameter;
-
-  std::vector<std::vector<double>>          hardening_field_at_q_points;
 
   bool                                      flag_init_was_called;
 

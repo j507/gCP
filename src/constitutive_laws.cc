@@ -18,69 +18,37 @@ template <int dim>
 ElasticStrain<dim>::ElasticStrain(
   std::shared_ptr<CrystalsData<dim>>  crystals_data)
 :
-crystals_data(crystals_data),
-flag_init_was_called(false)
+crystals_data(crystals_data)
 {}
 
 
 
 template <int dim>
-void ElasticStrain<dim>::init(const ExtractorPair &extractor_pair)
-{
-  displacements_extractors  = extractor_pair.first;
-  slips_extractors          = extractor_pair.second;
-
-  flag_init_was_called = true;
-}
-
-
-
-template <int dim>
-const std::vector<dealii::SymmetricTensor<2,dim>>
+const dealii::SymmetricTensor<2,dim>
 ElasticStrain<dim>::get_elastic_strain_tensor(
-  const dealii::LinearAlgebraTrilinos::MPI::Vector  solution,
-  const dealii::FEValues<dim>                       &fe_values,
-  const dealii::types::material_id                  crystal_id) const
+  const unsigned int                      crystal_id,
+  const unsigned int                      q_point,
+  const dealii::SymmetricTensor<2,dim>    strain_tensor_value,
+  const std::vector<std::vector<double>>  slip_values) const
 {
   AssertThrow(crystals_data->is_initialized(),
               dealii::ExcMessage("The underlying CrystalsData<dim>"
                                   " instance has not been "
                                   " initialized."));
 
-  AssertThrow(flag_init_was_called,
-              dealii::ExcMessage("The ElasticStrain<dim> instance"
-                                  " has not been initialized."));
-
-  const unsigned int n_q_points = fe_values.n_quadrature_points;
-
-  std::vector<dealii::SymmetricTensor<2,dim>> elastic_strain_tensor_values(
-    n_q_points,
-    dealii::SymmetricTensor<2,dim>());
-
-  std::vector<double>                         slip_values(n_q_points, 0);
-
-  fe_values[displacements_extractors[crystal_id]].get_function_symmetric_gradients(
-    solution,
-    elastic_strain_tensor_values);
+  dealii::SymmetricTensor<2,dim> elastic_strain_tensor_value(
+                                  strain_tensor_value);
 
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips();
        ++slip_id)
   {
-    fe_values[slips_extractors[crystal_id][slip_id]].get_function_values(
-      solution,
-      slip_values);
-
-    for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    {
-      elastic_strain_tensor_values[q_point] -=
-        slip_values[q_point] *
-        crystals_data->get_symmetrized_schmid_tensor(crystal_id,
-                                                     slip_id);
-    }
+    elastic_strain_tensor_value -=
+      slip_values[slip_id][q_point] *
+      crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
   }
 
-  return elastic_strain_tensor_values;
+  return elastic_strain_tensor_value;
 }
 
 
@@ -227,7 +195,7 @@ get_stress_tensor(
 
   AssertThrow(crystals_data.get() != nullptr,
               dealii::ExcMessage("This overloaded method requires a "
-                                 "constructor called where a "
+                                 "constructor call where a "
                                  "CrystalsData<dim> instance is "
                                  "passed as a std::shared_ptr"))
 
@@ -252,7 +220,7 @@ crystals_data(crystals_data)
 
 template<int dim>
 ScalarMicroscopicStressLaw<dim>::ScalarMicroscopicStressLaw(
-  const std::shared_ptr<CrystalsData<dim>> &crystals_data,
+  const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
   const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters)
 :
 crystals_data(crystals_data),
@@ -267,11 +235,20 @@ flag_init_was_called(false)
 
 template<int dim>
 double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
-  const double crystal_id,
-  const double slip_id,
-  const double slip_rate)
+  const double slip_value,
+  const double old_slip_value,
+  const double slip_resistance,
+  const double time_step_size)
 {
+  AssertThrow(crystals_data->is_initialized(),
+              dealii::ExcMessage("The underlying CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
+
   double regularization_factor;
+
+  const double slip_rate = (slip_value - old_slip_value) /
+                            time_step_size;
 
   switch (regularization_function)
   {
@@ -296,83 +273,22 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
     break;
   }
 
-  return ((initial_slip_resistance +
-           hardening_field_at_q_points[crystal_id][slip_id]) *
-           regularization_factor);
+  return ((initial_slip_resistance + slip_resistance) *
+          regularization_factor);
 }
 
 
 
 template<int dim>
-double ScalarMicroscopicStressLaw<dim>::
-  get_gateaux_derivative(const unsigned int  crystald_id,
-                         const unsigned int  slip_id,
-                         const bool          self_hardening,
-                         const double        slip_rate_alpha,
-                         const double        slip_rate_beta,
-                         const double        time_step_size)
+dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
+  get_gateaux_derivative_matrix(
+    const unsigned int                            q_point,
+    const std::vector<std::vector<double>>        slip_values,
+    const std::vector<std::vector<double>>        old_slip_values,
+    std::shared_ptr<QuadraturePointHistory<dim>>  local_quadrature_point_history,
+    const double                                  time_step_size)
 {
-  auto sgn = [](const double value)
-  {
-    return (0.0 < value) - (value < 0.0);
-  };
-
-  double regularization_factor = 0.0;
-
-  switch (regularization_function)
-  {
-  case RunTimeParameters::RegularizationFunction::PowerLaw:
-    {
-      regularization_factor = std::pow(slip_rate_alpha,
-                                       1.0 /
-                                        regularization_parameter);
-    }
-    break;
-  case RunTimeParameters::RegularizationFunction::Tanh:
-    {
-      regularization_factor = std::tanh(slip_rate_alpha /
-                                        regularization_parameter);
-    }
-    break;
-  default:
-    {
-      AssertThrow(false, dealii::ExcMessage("The given regularization "
-                                            "function is not currently "
-                                            "implemented."));
-    }
-    break;
-  }
-
-  double gateaux_derivate = get_hardening_matrix_entry(self_hardening) *
-                            sgn(slip_rate_beta) *
-                            regularization_factor;
-
-  if (self_hardening)
-    gateaux_derivate +=
-      (initial_slip_resistance +
-       hardening_field_at_q_points[crystald_id][slip_id] ) /
-      (time_step_size *
-       hardening_parameter) *
-      std::pow(1.0/std::cosh(slip_rate_alpha), 2);
-
-  return gateaux_derivate;
-}
-
-
-
-template<int dim>
-std::vector<dealii::FullMatrix<double>> ScalarMicroscopicStressLaw<dim>::
-  get_gateaux_derivative_values(
-    const std::vector<std::vector<double>>                    slip_values,
-    const std::vector<std::vector<double>>                    old_slip_values,
-    std::vector<std::shared_ptr<QuadraturePointHistory<dim>>> local_quadrature_point_history,
-    const double                                              time_step_size)
-{
-  const unsigned int n_q_points = slip_values.size();
-
-  std::vector<dealii::FullMatrix<double>>
-    matrix(n_q_points,
-           dealii::FullMatrix<double>(crystals_data->get_n_slips()));
+  dealii::FullMatrix<double> matrix(crystals_data->get_n_slips());
 
   auto compute_slip_rate =
     [&slip_values, &old_slip_values, &time_step_size](
@@ -383,28 +299,28 @@ std::vector<dealii::FullMatrix<double>> ScalarMicroscopicStressLaw<dim>::
             old_slip_values[slip_id][q_point]) / time_step_size;
   };
 
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    for (unsigned int slip_id_alpha = 0;
-        slip_id_alpha < crystals_data->get_n_slips();
-        ++slip_id_alpha)
-      for (unsigned int slip_id_beta = 0;
-          slip_id_beta < crystals_data->get_n_slips();
-          ++slip_id_beta)
-      {
-        matrix[q_point][slip_id_alpha][slip_id_beta] =
-          (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
-           get_regularization_factor(
-             compute_slip_rate(q_point, slip_id_alpha)) *
-           sgn(compute_slip_rate(q_point, slip_id_beta)));
+  for (unsigned int slip_id_alpha = 0;
+      slip_id_alpha < crystals_data->get_n_slips();
+      ++slip_id_alpha)
+    for (unsigned int slip_id_beta = 0;
+        slip_id_beta < crystals_data->get_n_slips();
+        ++slip_id_beta)
+    {
+      matrix[slip_id_alpha][slip_id_beta] =
+        (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
+          get_regularization_factor(
+            compute_slip_rate(q_point, slip_id_alpha)) *
+          sgn(compute_slip_rate(q_point, slip_id_beta)));
 
-        if (slip_id_alpha == slip_id_beta)
-          matrix[q_point][slip_id_alpha][slip_id_beta] +=
-            ((initial_slip_resistance +
-              local_quadrature_point_history[q_point]->get_slip_resistance(slip_id_alpha)) /
-             (time_step_size * regularization_parameter) *
-             std::pow(1.0/std::cosh(
-                        compute_slip_rate(q_point, slip_id_alpha)), 2));
-      }
+      if (slip_id_alpha == slip_id_beta)
+        matrix[slip_id_alpha][slip_id_beta] +=
+          ((initial_slip_resistance +
+            local_quadrature_point_history->get_slip_resistance(slip_id_alpha)) /
+            (time_step_size * regularization_parameter) *
+            std::pow(1.0/std::cosh(
+                      compute_slip_rate(q_point, slip_id_alpha)), 2));
+    }
+
   return matrix;
 }
 
