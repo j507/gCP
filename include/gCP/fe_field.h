@@ -242,7 +242,7 @@ public:
    * @brief Returns the number of components of the vector-valued
    * finite element field.
    */
-  unsigned int n_components() const;
+  unsigned int get_n_components() const;
 
   /*!
    * @brief
@@ -548,7 +548,7 @@ FEField<dim>::n_dofs() const
 
 template <int dim>
 inline unsigned int
-FEField<dim>::n_components() const
+FEField<dim>::get_n_components() const
 {
   return (fe_collection.n_components());
 }

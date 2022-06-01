@@ -495,7 +495,7 @@ void ProblemClass<dim>::setup()
 
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
-      fe_field->n_components(),
+      fe_field->get_n_components(),
       discrete_time.get_start_time());
 
   *pcout << "Spatial discretization:"
@@ -536,7 +536,7 @@ void ProblemClass<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Postprocessing: Point evaluation");
 
-  dealii::Vector<double>  point_value(fe_field->n_components());
+  dealii::Vector<double>  point_value(fe_field->get_n_components());
 
   bool point_found = false;
 
