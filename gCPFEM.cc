@@ -40,7 +40,8 @@ template <int dim>
 class DirichletBoundaryFunction : public dealii::Function<dim>
 {
 public:
-  DirichletBoundaryFunction(const double time = 0.0);
+  DirichletBoundaryFunction(const unsigned int  n_components = 3,
+                            const double        time = 0.0);
 
   virtual void vector_value(
     const dealii::Point<dim>  &point,
@@ -52,35 +53,21 @@ private:
 
 
 template<int dim>
-DirichletBoundaryFunction<dim>::DirichletBoundaryFunction(const double time)
+DirichletBoundaryFunction<dim>::DirichletBoundaryFunction(
+  const unsigned int  n_components,
+  const double        time)
 :
-dealii::Function<dim>(dim, time)
+dealii::Function<dim>(n_components, time)
 {}
 
 
 
 template<int dim>
 void DirichletBoundaryFunction<dim>::vector_value(
-  const dealii::Point<dim>  &point,
+  const dealii::Point<dim>  &/*point*/,
   dealii::Vector<double>    &return_vector) const
 {
-  const double x = point(0);
-  const double y = point(1);
-
-  return_vector[0] = x*0;
-  return_vector[1] = y*0;
-
-  switch (dim)
-  {
-    case 3:
-      {
-        const double z = point(2);
-        return_vector[2] = z*0;
-      }
-      break;
-    default:
-      break;
-  }
+  return_vector = 0.0;
 }
 
 
@@ -89,7 +76,7 @@ template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
-  DisplacementControl(const unsigned int  n_components,
+  DisplacementControl(const unsigned int  n_components = 3,
                       const double        time = 0.0);
 
   virtual void vector_value(
@@ -113,27 +100,14 @@ dealii::Function<dim>(n_components, time)
 
 template<int dim>
 void DisplacementControl<dim>::vector_value(
-  const dealii::Point<dim>  &point,
+  const dealii::Point<dim>  &/*point*/,
   dealii::Vector<double>    &return_vector) const
 {
   const double t = this->get_time();
-  const double x = point(0);
-  const double y = point(1);
+
+  return_vector = 0.0;
 
   return_vector[0] = t * 1e-3;
-  return_vector[1] = x*y*0.0;
-
-  switch (dim)
-  {
-    case 3:
-      {
-        const double z = point(2);
-        return_vector[2] = z*0;
-      }
-      break;
-    default:
-      break;
-  }
 }
 
 
@@ -269,7 +243,7 @@ private:
 
   GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
-  DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
+  std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
@@ -327,7 +301,6 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
-dirichlet_boundary_function(parameters.start_time),
 neumann_boundary_function(parameters.start_time),
 supply_term_function(
   std::make_shared<SupplyTermFunction<dim>>(parameters.start_time))
@@ -383,11 +356,36 @@ void ProblemClass<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Discrete domain");
 
-  dealii::GridGenerator::hyper_cube(
-    triangulation,
-    0,
-    1,
-    true);
+  const double height = 1.0;
+  const double width  = 1.0;
+
+  std::vector<unsigned int> repetitions(dim, 10);
+  repetitions[1] = height/width * 10;
+
+  switch (dim)
+  {
+  case 2:
+    dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation,
+      repetitions,
+      dealii::Point<dim>(0,0),
+      dealii::Point<dim>(width, height),
+      true);
+    break;
+  case 3:
+    {
+      dealii::GridGenerator::subdivided_hyper_rectangle(
+        triangulation,
+        repetitions,
+        dealii::Point<dim>(0,0,0),
+        dealii::Point<dim>(width, height, width),
+        true);
+    }
+    break;
+  default:
+    Assert(false, dealii::ExcNotImplemented());
+    break;
+  }
 
   std::vector<dealii::GridTools::PeriodicFacePair<
     typename dealii::parallel::distributed::Triangulation<dim>::cell_iterator>>
@@ -401,7 +399,7 @@ void ProblemClass<dim>::make_grid()
 
   this->triangulation.add_periodicity(periodicity_vector);
 
-  triangulation.refine_global(5);
+  triangulation.refine_global(2);
 
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -423,13 +421,24 @@ void ProblemClass<dim>::setup()
   dealii::TimerOutput::Scope  t(*timer_output, "Setup");
 
   crystals_data->init(triangulation,
-                      "input/euler_angles",
-                      "input/slip_directions",
-                      "input/slip_normals");
+                      parameters.euler_angles_pathname,
+                      parameters.slips_directions_pathname,
+                      parameters.slips_normals_pathname);
 
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
   fe_field->setup_dofs();
+
+  displacement_control =
+    std::make_unique<DisplacementControl<dim>>(
+      fe_field->get_n_components(),
+      discrete_time.get_start_time());
+
+  dirichlet_boundary_function =
+    std::make_unique<DirichletBoundaryFunction<dim>>(
+      fe_field->get_n_components(),
+      discrete_time.get_start_time());
+
 
   // The finite element collection contains the finite element systems
   // corresponding to each crystal
@@ -457,14 +466,47 @@ void ProblemClass<dim>::setup()
   {
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
     affine_constraints.merge(fe_field->get_hanging_node_constraints());
-    dealii::VectorTools::interpolate_boundary_values(
-      *mapping,
-      fe_field->get_dof_handler(),
-      2,
-      DirichletBoundaryFunction<dim>(),
-      affine_constraints,
-      fe_field->get_fe_collection().component_mask(
-        fe_field->get_displacement_extractor(0)));
+
+    // Displacements' Dirichlet boundary conditions
+    {
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        2,
+        *dirichlet_boundary_function,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(0)));
+
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        3,
+        *displacement_control,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(0)));
+    }
+
+    // Slips' Dirichlet boundary conditions
+    std::map<dealii::types::boundary_id,
+             const dealii::Function<dim> *> function_map;
+
+    function_map[2] = dirichlet_boundary_function.get();
+    function_map[3] = dirichlet_boundary_function.get();
+
+    for(unsigned int slip_id = 0;
+        slip_id < crystals_data->get_n_slips();
+        ++slip_id)
+    {
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_slip_extractor(0, slip_id)));
+    }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
       periodicity_vector,
@@ -479,24 +521,40 @@ void ProblemClass<dim>::setup()
   {
     newton_method_constraints.reinit(fe_field->get_locally_relevant_dofs());
     newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
-    dealii::VectorTools::interpolate_boundary_values(
-      *mapping,
-      fe_field->get_dof_handler(),
-      2,
-      dealii::Functions::ZeroFunction<dim>(dim),
-      newton_method_constraints,
-      fe_field->get_fe_collection().component_mask(
-      fe_field->get_displacement_extractor(0)));
 
-    newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
-    dealii::VectorTools::interpolate_boundary_values(
-      *mapping,
-      fe_field->get_dof_handler(),
-      3,
-      dealii::Functions::ZeroFunction<dim>(dim),
-      newton_method_constraints,
-      fe_field->get_fe_collection().component_mask(
-      fe_field->get_displacement_extractor(0)));
+    dealii::Functions::ZeroFunction<dim> zero_function(
+                                          fe_field->get_n_components());
+
+    std::map<dealii::types::boundary_id,
+             const dealii::Function<dim> *> function_map;
+
+    function_map[2] = &zero_function;
+    function_map[3] = &zero_function;
+
+    // Displacements' Dirichlet boundary conditions
+    {
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        newton_method_constraints,
+        fe_field->get_fe_collection().component_mask(
+        fe_field->get_displacement_extractor(0)));
+    }
+
+    // Slips' Dirichlet boundary conditions
+    for(unsigned int slip_id = 0;
+        slip_id < crystals_data->get_n_slips();
+        ++slip_id)
+    {
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_slip_extractor(0, slip_id)));
+    }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
       periodicity_vector,
@@ -508,11 +566,6 @@ void ProblemClass<dim>::setup()
   fe_field->set_newton_method_constraints(newton_method_constraints);
 
   fe_field->setup_vectors();
-
-  displacement_control =
-    std::make_unique<DisplacementControl<dim>>(
-      fe_field->n_components(),
-      discrete_time.get_start_time());
 
   *pcout << "Spatial discretization:"
               << std::endl
