@@ -1,6 +1,6 @@
 # Listing of Parameters
 # ---------------------
-set Verbose = false
+set Verbose = true
 
 
 subsection Input files
@@ -18,7 +18,7 @@ end
 
 
 subsection Solver parameters
-  set Verbose = true
+  set Verbose = false
 
 
   subsection Constitutive laws' parameters
@@ -33,7 +33,7 @@ subsection Solver parameters
       set Initial slip resistance  = 15.45
       set Linear hardening modulus = 0.0
       set Regularization function  = tanh
-      set Regularization parameter = 4e-2
+      set Regularization parameter = 4e-1
     end
 
     subsection Vector microscopic stress law's parameters
@@ -59,6 +59,7 @@ subsection Spatial discretization parameters
   set FE's polynomial degree - Slips         = 1
   set Mapping - Apply to interior cells      = false
   set Mapping - Polynomial degree            = 1
+  set Number of global refinements           = 2
   set Spatial dimension                      = 2
 end
 

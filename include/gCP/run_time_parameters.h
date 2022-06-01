@@ -354,6 +354,8 @@ struct ProblemParameters
 
   bool                    mapping_interior_cells;
 
+  unsigned int            n_global_refinements;
+
   double                  start_time;
 
   double                  end_time;
@@ -363,8 +365,6 @@ struct ProblemParameters
   unsigned int            fe_degree_displacements;
 
   unsigned int            fe_degree_slips;
-
-  RegularizationFunction  regularization_function;
 
   SolverParameters        solver_parameters;
 

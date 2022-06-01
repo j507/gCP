@@ -309,12 +309,12 @@ ProblemParameters::ProblemParameters()
 dim(2),
 mapping_degree(1),
 mapping_interior_cells(false),
+n_global_refinements(0),
 start_time(0.0),
 end_time(1.0),
 time_step_size(0.5),
 fe_degree_displacements(2),
 fe_degree_slips(1),
-regularization_function(RegularizationFunction::Tanh),
 slips_normals_pathname("input/slip_normals"),
 slips_directions_pathname("input/slip_directions"),
 euler_angles_pathname("input/euler_angles"),
@@ -379,6 +379,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Mapping - Apply to interior cells",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Number of global refinements",
+                      "0",
+                      dealii::Patterns::Integer(0));
 
     prm.declare_entry("FE's polynomial degree - Displacements",
                       "2",
@@ -465,6 +469,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     AssertThrow(mapping_degree > 0, dealii::ExcLowerRange(mapping_degree, 0) );
 
     mapping_interior_cells = prm.get_bool("Mapping - Apply to interior cells");
+
+    n_global_refinements = prm.get_integer("Number of global refinements");
 
     fe_degree_displacements = prm.get_integer("FE's polynomial degree - Displacements");
     AssertThrow(fe_degree_displacements > 0,

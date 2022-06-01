@@ -11,6 +11,12 @@ namespace gCP
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
+  *pcout << std::endl
+         << "    Nonlinear iteration"
+         << std::string(5, ' ')
+         << "Norm of the residual after solve() call"
+         << std::endl;
+
   solution = fe_field->solution;
 
   unsigned int nonlinear_iteration = 0;
@@ -29,12 +35,19 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     assemble_residual();
 
+    *pcout << std::setw(23) << std::right
+           << nonlinear_iteration << std::string(5, ' ')
+           << std::setw(39) << std::right
+           << std::fixed << std::scientific
+           << std::setprecision(6)
+           << residual_norm << std::endl;
+
     if (nonlinear_solver_log)
       nonlinear_solver_log << std::setw(19) << std::right
                            << nonlinear_iteration << std::string(5, ' ')
                            << std::setw(39) << std::right
                            << std::fixed << std::scientific
-                           << std::showpos << std::setprecision(6)
+                           << std::setprecision(6)
                            << residual_norm << std::endl;
 
     if (residual_norm < parameters.nonlinear_tolerance)
@@ -50,6 +63,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
                 + ")."));
 
   fe_field->solution = solution;
+
+  *pcout << std::endl;
 }
 
 

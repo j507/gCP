@@ -251,6 +251,8 @@ private:
 
   std::shared_ptr<SupplyTermFunction<dim>>          supply_term_function;
 
+  const double                                      string_width;
+
   void make_grid();
 
   void update_dirichlet_boundary_conditions();
@@ -303,7 +305,11 @@ gCP_solver(parameters.solver_parameters,
            timer_output),
 neumann_boundary_function(parameters.start_time),
 supply_term_function(
-  std::make_shared<SupplyTermFunction<dim>>(parameters.start_time))
+  std::make_shared<SupplyTermFunction<dim>>(parameters.start_time)),
+string_width((std::to_string((unsigned int)(
+              (parameters.end_time - parameters.start_time) /
+              parameters.time_step_size)) +
+             "Step ").size())
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
@@ -354,7 +360,7 @@ supply_term_function(
 template<int dim>
 void ProblemClass<dim>::make_grid()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Discrete domain");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
 
   const double height = 1.0;
   const double width  = 1.0;
@@ -399,7 +405,7 @@ void ProblemClass<dim>::make_grid()
 
   this->triangulation.add_periodicity(periodicity_vector);
 
-  triangulation.refine_global(2);
+  triangulation.refine_global(parameters.n_global_refinements);
 
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -409,7 +415,7 @@ void ProblemClass<dim>::make_grid()
 
   *pcout << "Triangulation:"
               << std::endl
-              << " Number of active cells       = "
+              << " Number of active cells = "
               << triangulation.n_global_active_cells()
               << std::endl << std::endl;
 }
@@ -418,7 +424,7 @@ void ProblemClass<dim>::make_grid()
 template<int dim>
 void ProblemClass<dim>::setup()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Setup");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Setup");
 
   crystals_data->init(triangulation,
                       parameters.euler_angles_pathname,
@@ -428,7 +434,7 @@ void ProblemClass<dim>::setup()
   *pcout << "Crystals data:" << std::endl
          << " Number of crystals = "
          << crystals_data->get_n_crystals() << std::endl
-         << " Number of slips     = "
+         << " Number of slips    = "
          << crystals_data->get_n_slips() << std::endl << std::endl;
 
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
@@ -475,20 +481,16 @@ void ProblemClass<dim>::setup()
 
     // Displacements' Dirichlet boundary conditions
     {
-      dealii::VectorTools::interpolate_boundary_values(
-        *mapping,
-        fe_field->get_dof_handler(),
-        2,
-        *dirichlet_boundary_function,
-        affine_constraints,
-        fe_field->get_fe_collection().component_mask(
-          fe_field->get_displacement_extractor(0)));
+      std::map<dealii::types::boundary_id,
+              const dealii::Function<dim> *> function_map;
+
+      function_map[2] = dirichlet_boundary_function.get();
+      function_map[3] = displacement_control.get();
 
       dealii::VectorTools::interpolate_boundary_values(
         *mapping,
         fe_field->get_dof_handler(),
-        3,
-        *displacement_control,
+        function_map,
         affine_constraints,
         fe_field->get_fe_collection().component_mask(
           fe_field->get_displacement_extractor(0)));
@@ -585,6 +587,8 @@ void ProblemClass<dim>::setup()
 template<int dim>
 void ProblemClass<dim>::update_dirichlet_boundary_conditions()
 {
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Update boundary conditions");
+
   dealii::AffineConstraints<double> affine_constraints;
 
   affine_constraints.clear();
@@ -617,6 +621,7 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void ProblemClass<dim>::postprocessing()
 {
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
 
 }
 
@@ -625,7 +630,7 @@ void ProblemClass<dim>::postprocessing()
 template<int dim>
 void ProblemClass<dim>::data_output()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Data output");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
   // Explicit declaration of the velocity as a vector
   std::vector<std::string> displacement_names(dim, "displacement");
@@ -679,6 +684,18 @@ void ProblemClass<dim>::run()
 
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
+    if (parameters.verbose)
+      *pcout << std::setw(string_width) << std::left
+             << "Step " +
+                std::to_string(discrete_time.get_step_number() + 1)
+             << " | "
+             << std::setprecision(5) << std::fixed << std::scientific
+             << "Solving for t = "
+             << std::to_string(discrete_time.get_next_time())
+             << " with dt = "
+             << discrete_time.get_next_step_size()
+             << std::endl;
+
     supply_term_function->set_time(discrete_time.get_next_time());
 
     displacement_control->set_time(discrete_time.get_next_time());
