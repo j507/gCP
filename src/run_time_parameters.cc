@@ -315,6 +315,9 @@ time_step_size(0.5),
 fe_degree_displacements(2),
 fe_degree_slips(1),
 regularization_function(RegularizationFunction::Tanh),
+slips_normals_pathname("input/slip_normals"),
+slips_directions_pathname("input/slip_directions"),
+euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
 graphical_output_directory("./"),
@@ -413,6 +416,22 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
+  prm.enter_subsection("Input files");
+  {
+    prm.declare_entry("Slip normals path name",
+                      "input/slip_normals",
+                      dealii::Patterns::FileName());
+
+    prm.declare_entry("Slip directions path name",
+                      "input/slip_directions",
+                      dealii::Patterns::FileName());
+
+    prm.declare_entry("Euler angles path name",
+                      "input/euler_angles",
+                      dealii::Patterns::FileName());
+  }
+  prm.leave_subsection();
+
   prm.enter_subsection("Output control parameters");
   {
     prm.declare_entry("Graphical output frequency",
@@ -487,6 +506,17 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     solver_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  prm.enter_subsection("Input files");
+  {
+    slips_normals_pathname = prm.get("Slip normals path name");
+
+    slips_directions_pathname = prm.get("Slip directions path name");
+
+    euler_angles_pathname = prm.get("Euler angles path name");
+  }
+  prm.leave_subsection();
+
 
   prm.enter_subsection("Output control parameters");
   {

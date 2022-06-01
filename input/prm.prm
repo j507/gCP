@@ -1,6 +1,13 @@
 # Listing of Parameters
 # ---------------------
-set Verbose                 = false
+set Verbose = false
+
+
+subsection Input files
+  set Euler angles path name    = input/euler_angles
+  set Slip directions path name = input/simple_shear_slip_directions
+  set Slip normals path name    = input/simple_shear_slip_normals
+end
 
 
 subsection Output control parameters

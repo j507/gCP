@@ -368,6 +368,12 @@ struct ProblemParameters
 
   SolverParameters        solver_parameters;
 
+  std::string             slips_normals_pathname;
+
+  std::string             slips_directions_pathname;
+
+  std::string             euler_angles_pathname;
+
   unsigned int            graphical_output_frequency;
 
   unsigned int            terminal_output_frequency;
