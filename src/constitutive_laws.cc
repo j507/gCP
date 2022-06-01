@@ -225,11 +225,11 @@ ScalarMicroscopicStressLaw<dim>::ScalarMicroscopicStressLaw(
   const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters)
 :
 crystals_data(crystals_data),
+regularization_function(parameters.regularization_function),
 regularization_parameter(parameters.regularization_parameter),
 initial_slip_resistance(parameters.initial_slip_resistance),
 linear_hardening_modulus(parameters.linear_hardening_modulus),
-hardening_parameter(parameters.hardening_parameter),
-flag_init_was_called(false)
+hardening_parameter(parameters.hardening_parameter)
 {}
 
 
@@ -289,6 +289,11 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
     std::shared_ptr<QuadraturePointHistory<dim>>  local_quadrature_point_history,
     const double                                  time_step_size)
 {
+  AssertThrow(crystals_data->is_initialized(),
+              dealii::ExcMessage("The underlying CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
+
   dealii::FullMatrix<double> matrix(crystals_data->get_n_slips());
 
   auto compute_slip_rate =

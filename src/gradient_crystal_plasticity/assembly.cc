@@ -48,6 +48,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
   // Define the update flags for the FEValues instances
   const dealii::UpdateFlags update_flags =
     dealii::update_JxW_values |
+    dealii::update_values |
     dealii::update_gradients |
     dealii::update_quadrature_points;
 
@@ -187,7 +188,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           else
           {
             const unsigned int slip_id_beta =
-              fe_field->get_global_component(crystal_id, j);
+              fe_field->get_global_component(crystal_id, j) - dim;
 
             data.local_matrix(i,j) -=
               scratch.sym_grad_vector_phi[i] *
@@ -200,7 +201,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         else
         {
           const unsigned int slip_id_alpha =
-              fe_field->get_global_component(crystal_id, i);
+              fe_field->get_global_component(crystal_id, i) - dim;
 
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
@@ -214,7 +215,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           else
           {
             const unsigned int slip_id_beta =
-                fe_field->get_global_component(crystal_id, j);
+                fe_field->get_global_component(crystal_id, j) - dim;
 
             data.local_matrix(i,j) +=
               (((slip_id_alpha == slip_id_beta) ?
@@ -472,7 +473,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       else
       {
         const unsigned int slip_id =
-                fe_field->get_global_component(crystal_id, i);
+                fe_field->get_global_component(crystal_id, i) - dim;
 
         data.local_rhs(i) -=
           (scratch.grad_scalar_phi[slip_id][i] *

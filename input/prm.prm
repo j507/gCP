@@ -23,22 +23,22 @@ subsection Solver parameters
 
   subsection Constitutive laws' parameters
     subsection Hooke-Law's parameters
-      set C1111 = 134615.3846153846243396
-      set C1122 = 57692.3076923076878302
-      set C1212 = 38461.5384615384609788
+      set C1111 = 103652.9411764706
+      set C1122 = 26300
+      set C1212 = 51052.941176470595
     end
 
     subsection Scalar microscopic stress law's parameters
       set Hardening parameter      = 1.4
-      set Initial slip resistance  = 0.0
-      set Linear hardening modulus = 500
+      set Initial slip resistance  = 15.45
+      set Linear hardening modulus = 0.0
       set Regularization function  = tanh
-      set Regularization parameter = 3e-4
+      set Regularization parameter = 4e-2
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.0
-      set Initial slip resistance = 0.0
+      set Energetic length scale  = 0.8
+      set Initial slip resistance = 15.45
     end
 
   end
@@ -65,6 +65,6 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-1
+  set Time step size = 5e-2
 end
 

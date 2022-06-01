@@ -213,8 +213,6 @@ private:
 
   const double                              hardening_parameter;
 
-  bool                                      flag_init_was_called;
-
   double get_hardening_matrix_entry(const bool self_hardening) const;
 
   double sgn(const double value) const;
@@ -229,10 +227,6 @@ inline double
 ScalarMicroscopicStressLaw<dim>::get_hardening_matrix_entry(
   const bool self_hardening) const
 {
-  AssertThrow(flag_init_was_called,
-              dealii::ExcMessage("The ScalarMicroscopicStressLaw<dim> "
-                                 "instance has not been initialized."));
-
   return (linear_hardening_modulus *
           (hardening_parameter +
            (self_hardening) ? (1.0 - hardening_parameter) : 0.0));

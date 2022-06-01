@@ -425,6 +425,12 @@ void ProblemClass<dim>::setup()
                       parameters.slips_directions_pathname,
                       parameters.slips_normals_pathname);
 
+  *pcout << "Crystals data:" << std::endl
+         << " Number of crystals = "
+         << crystals_data->get_n_crystals() << std::endl
+         << " Number of slips     = "
+         << crystals_data->get_n_slips() << std::endl << std::endl;
+
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
   fe_field->setup_dofs();
