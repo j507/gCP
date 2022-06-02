@@ -573,7 +573,7 @@ void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
 
   // Define the update flags for the FEValues instances
   const dealii::UpdateFlags update_flags  =
-    dealii::update_default;
+    dealii::update_values;
 
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
