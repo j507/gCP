@@ -48,6 +48,12 @@ public:
 
   double get_residual_norm() const;
 
+  std::shared_ptr<const Kinematics::ElasticStrain<dim>>
+    get_elastic_strain_law() const;
+
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
+    get_hooke_law() const;
+
 private:
   const RunTimeParameters::SolverParameters         &parameters;
 
@@ -138,9 +144,19 @@ private:
 
 
 template <int dim>
-inline double GradientCrystalPlasticitySolver<dim>::get_residual_norm() const
+inline std::shared_ptr<const Kinematics::ElasticStrain<dim>>
+GradientCrystalPlasticitySolver<dim>::get_elastic_strain_law() const
 {
-  return (residual_norm);
+  return (elastic_strain);
+}
+
+
+
+template <int dim>
+inline std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
+GradientCrystalPlasticitySolver<dim>::get_hooke_law() const
+{
+  return (hooke_law);
 }
 
 
