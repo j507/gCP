@@ -392,7 +392,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   // Loop over quadrature points
   for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
   {
-    // Comput the elastic strain tensor at the quadrature point
+    // Compute the elastic strain tensor at the quadrature point
     scratch.elastic_strain_tensor_values[q_point] =
       elastic_strain->get_elastic_strain_tensor(
         crystal_id,
