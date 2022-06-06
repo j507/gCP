@@ -559,7 +559,7 @@ void ProblemClass<dim>::setup()
         *mapping,
         fe_field->get_dof_handler(),
         function_map,
-        affine_constraints,
+        newton_method_constraints,
         fe_field->get_fe_collection().component_mask(
           fe_field->get_slip_extractor(0, slip_id)));
     }
