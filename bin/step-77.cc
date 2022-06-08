@@ -437,7 +437,9 @@ private:
   void copy_local_to_global_residual(
     const RightHandSide::Copy                   &data);
 
-  void solve();
+  void solve(
+    const dealii::LinearAlgebraTrilinos::MPI::Vector  &rhs,
+    dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector);
 
   void postprocessing();
 
@@ -1041,7 +1043,9 @@ void step77<dim>::copy_local_to_global_residual(
 
 
 template<int dim>
-void step77<dim>::solve()
+void step77<dim>::solve(
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &rhs,
+  dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector)
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
@@ -1052,11 +1056,11 @@ void step77<dim>::solve()
                               true);
   distributed_newton_update.reinit(distributed_solution);
 
-  distributed_solution      = solution;
+  distributed_solution      = solution_vector;
   distributed_newton_update = newton_update;
 
-  dealii::SolverControl solver_control(system_rhs.size(),
-                                       system_rhs.l2_norm() * 1e-6);
+  dealii::SolverControl solver_control(rhs.size(),
+                                       rhs.l2_norm() * 1e-6);
 
   dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
@@ -1068,7 +1072,7 @@ void step77<dim>::solve()
   {
     solver.solve(system_matrix,
                  distributed_newton_update,
-                 system_rhs,
+                 rhs,
                  preconditioner);
   }
   catch (std::exception &exc)
@@ -1099,8 +1103,8 @@ void step77<dim>::solve()
 
   distributed_solution.add(relaxation_parameter, distributed_newton_update);
 
-  newton_update = distributed_newton_update;
-  solution      = distributed_solution;
+  newton_update   = distributed_newton_update;
+  solution_vector = distributed_solution;
 }
 
 
@@ -1170,7 +1174,7 @@ void step77<dim>::run()
 
       last_residual_norm = system_rhs.l2_norm();
 
-      solve();
+      solve(residual, solution);
 
       this->pcout << "  Residual: " << compute_residual(0) << std::endl;
     }
