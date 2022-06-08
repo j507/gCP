@@ -417,7 +417,8 @@ private:
   void copy_local_to_global_system_matrix(const Matrix::Copy &data);
 
   void assemble_rhs(
-    const dealii::LinearAlgebraTrilinos::MPI::Vector &evaluation_point);
+    const dealii::LinearAlgebraTrilinos::MPI::Vector  &evaluation_point,
+    dealii::LinearAlgebraTrilinos::MPI::Vector        &residual_vector);
 
   void assemble_local_system_rhs(
     const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
@@ -425,7 +426,8 @@ private:
     RightHandSide::Copy                                           &data);
 
   void copy_local_to_global_system_rhs(
-    const RightHandSide::Copy                   &data);
+    const RightHandSide::Copy                   &data,
+    dealii::LinearAlgebraTrilinos::MPI::Vector  &residual_vector);
 
   double compute_residual(const double relaxation_parameter);
 
@@ -439,7 +441,8 @@ private:
 
   void solve(
     const dealii::LinearAlgebraTrilinos::MPI::Vector  &rhs,
-    dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector);
+    dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector,
+    const double                                      tolerance);
 
   void postprocessing();
 
@@ -660,7 +663,7 @@ void step77<dim>::assemble_linear_system()
 {
   assemble_system_matrix(solution);
 
-  assemble_rhs(solution);
+  assemble_rhs(solution, system_rhs);
 }
 
 
@@ -786,7 +789,8 @@ void step77<dim>::copy_local_to_global_system_matrix(
 
 template<int dim>
 void step77<dim>::assemble_rhs(
-  const dealii::LinearAlgebraTrilinos::MPI::Vector &evaluation_point)
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &evaluation_point,
+  dealii::LinearAlgebraTrilinos::MPI::Vector        &residual_vector)
 {
   system_rhs  = 0.0;
 
@@ -807,9 +811,9 @@ void step77<dim>::assemble_rhs(
     this->assemble_local_system_rhs(cell, scratch, data);
   };
 
-  auto copier = [this](const RightHandSide::Copy  &data)
+  auto copier = [this, &residual_vector](const RightHandSide::Copy  &data)
   {
-    this->copy_local_to_global_system_rhs(data);
+    this->copy_local_to_global_system_rhs(data, residual_vector);
   };
 
   const dealii::UpdateFlags update_flags  =
@@ -895,12 +899,13 @@ void step77<dim>::assemble_local_system_rhs(
 
 template<int dim>
 void step77<dim>::copy_local_to_global_system_rhs(
-  const RightHandSide::Copy  &data)
+  const RightHandSide::Copy                   &data,
+  dealii::LinearAlgebraTrilinos::MPI::Vector  &residual_vector)
 {
   newton_method_constraints.distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
-    system_rhs,
+    residual_vector,
     data.local_matrix_for_inhomogeneous_bcs);
 }
 
@@ -1045,7 +1050,8 @@ void step77<dim>::copy_local_to_global_residual(
 template<int dim>
 void step77<dim>::solve(
   const dealii::LinearAlgebraTrilinos::MPI::Vector  &rhs,
-  dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector)
+  dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector,
+  const double                                      /*tolerance*/)
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
@@ -1174,7 +1180,7 @@ void step77<dim>::run()
 
       last_residual_norm = system_rhs.l2_norm();
 
-      solve(residual, solution);
+      solve(residual, solution, 0.0);
 
       this->pcout << "  Residual: " << compute_residual(0) << std::endl;
     }
