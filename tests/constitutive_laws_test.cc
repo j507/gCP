@@ -1,0 +1,383 @@
+#include <gCP/constitutive_laws.h>
+#include <gCP/crystal_data.h>
+#include <gCP/run_time_parameters.h>
+#include <gCP/utilities.h>
+
+#include <deal.II/base/conditional_ostream.h>
+
+#include <deal.II/distributed/tria.h>
+
+#include <deal.II/dofs/dof_handler.h>
+
+#include <deal.II/fe/fe_nothing.h>
+
+#include <deal.II/grid/tria.h>
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_out.h>
+
+#include <deal.II/numerics/data_out.h>
+
+#include <string>
+
+
+namespace Tests
+{
+
+
+
+template<int dim>
+class CrystalData
+{
+public:
+
+  CrystalData(
+  const gCP::RunTimeParameters::ProblemParameters &parameters);
+
+  void run();
+
+private:
+  gCP::RunTimeParameters::ProblemParameters               parameters;
+
+  dealii::ConditionalOStream                              pcout;
+
+  dealii::parallel::distributed::Triangulation<dim>       triangulation;
+
+  dealii::DoFHandler<dim>                                 dof_handler;
+
+  const double                                            length;
+
+  const double                                            height;
+
+  const double                                            width;
+
+  std::vector<unsigned int>                               repetitions;
+
+  std::shared_ptr<gCP::CrystalsData<dim>>                 crystals_data;
+
+  gCP::Kinematics::ElasticStrain<dim>                     elastic_strain;
+
+  gCP::ConstitutiveLaws::HookeLaw<dim>                    hooke_law;
+
+  gCP::ConstitutiveLaws::ResolvedShearStressLaw<dim>      resolved_shear_stress_law;
+
+  gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>  scalar_microscopic_stress_law;
+
+  gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<dim>  vector_microscopic_stress_law;
+
+  void make_grid();
+
+  void mark_grid();
+
+  void test_methods();
+
+  void output();
+};
+
+
+
+template<int dim>
+CrystalData<dim>::CrystalData(
+  const gCP::RunTimeParameters::ProblemParameters &parameters)
+:
+parameters(parameters),
+pcout(std::cout,
+      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
+triangulation(MPI_COMM_WORLD,
+              typename dealii::Triangulation<dim>::MeshSmoothing(
+              dealii::Triangulation<dim>::smoothing_on_refinement |
+              dealii::Triangulation<dim>::smoothing_on_coarsening)),
+dof_handler(triangulation),
+length(10.0),
+height(1.0),
+width(1.0),
+repetitions(dim, 10),
+crystals_data(std::make_shared<gCP::CrystalsData<dim>>()),
+elastic_strain(crystals_data),
+hooke_law(crystals_data,
+          parameters.solver_parameters.hooke_law_parameters),
+resolved_shear_stress_law(crystals_data),
+scalar_microscopic_stress_law(
+  crystals_data,
+  parameters.solver_parameters.scalar_microscopic_stress_law_parameters),
+vector_microscopic_stress_law(
+  crystals_data,
+  parameters.solver_parameters.vector_microscopic_stress_law_parameters)
+{}
+
+
+
+template<int dim>
+void CrystalData<dim>::run()
+{
+  make_grid();
+
+  dof_handler.distribute_dofs(dealii::FE_Nothing<dim>());
+
+  mark_grid();
+
+  test_methods();
+
+  output();
+}
+
+
+
+template<int dim>
+void CrystalData<dim>::make_grid()
+{
+  switch (dim)
+  {
+  case 2:
+    dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation,
+      repetitions,
+      dealii::Point<dim>(0,0),
+      dealii::Point<dim>(length,height),
+      true);
+    break;
+  case 3:
+    dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation,
+      repetitions,
+      dealii::Point<dim>(0,0,0),
+      dealii::Point<dim>(length,height,width),
+      true);
+    break;
+  default:
+    Assert(false, dealii::ExcMessage("This only runs in 2-D and 3-D"))
+    break;
+  }
+
+  this->pcout << "Triangulation:"
+              << std::endl
+              << " Number of active cells       = "
+              << triangulation.n_global_active_cells()
+              << std::endl << std::endl;
+}
+
+
+
+template<int dim>
+void CrystalData<dim>::mark_grid()
+{
+  for (const auto &cell : dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      //if (std::fabs(cell->center()[0]) < length/2.0)
+        cell->set_material_id(0);
+      //else
+      //  cell->set_material_id(1);
+    }
+}
+
+
+
+template<int dim>
+void CrystalData<dim>::test_methods()
+{
+  crystals_data->init(triangulation,
+                     "euler_angles",
+                     "slip_directions",
+                     "slip_normals");
+
+  this->pcout << "Overall data" << std::endl
+              << std::setw(15) << std::left << " n_crystals" << " = "
+              << crystals_data->get_n_crystals()
+              << std::endl
+              << std::setw(15) << std::left << " n_slips" << " = "
+              << crystals_data->get_n_slips()
+              << std::endl << std::endl;
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout << "Slip system - " << i << "\n"
+              << " Direction  = " << crystals_data->get_slip_direction(0,i) << "\n"
+              << " Normal     = " << crystals_data->get_slip_normal(0,i) << "\n"
+              << " Symmetric Schmid-Tensor = \n"
+              << gCP::Utilities::get_tensor_as_string(crystals_data->get_symmetrized_schmid_tensor(0,i))
+              << "\n\n";
+  hooke_law.init();
+
+  vector_microscopic_stress_law.init();
+
+  std::cout << "Testing ElasticStrain<dim> \n\n";
+
+  dealii::SymmetricTensor<2,dim>  strain_tensor;
+
+  strain_tensor[0][0] = 1.0;
+  strain_tensor[1][1] = 1.0;
+  strain_tensor[2][2] = 1.0;
+  strain_tensor[0][1] = 0.0;
+  strain_tensor[0][2] = 0.0;
+  strain_tensor[1][2] = 0.0;
+
+  std::vector<std::vector<double>> slip_values(
+    crystals_data->get_n_slips(),
+    std::vector<double>(1, 0 ));
+
+  slip_values[0][0] = 1.0;
+  slip_values[1][0] = 2.0;
+
+  const dealii::SymmetricTensor<2,dim> elastic_strain_tensor =
+    elastic_strain.get_elastic_strain_tensor(
+      0, // crystal_id
+      0, // q_point
+      strain_tensor,
+      slip_values);
+
+  std::cout << "strain_tensor = \n"
+            << gCP::Utilities::get_tensor_as_string(strain_tensor)
+            << "\n\n"
+            << "elastic_strain_tensor = \n "
+            << gCP::Utilities::get_tensor_as_string(elastic_strain_tensor)
+            << "\n\n";
+
+  std::cout << "Testing HookeLaw<dim> \n\n";
+
+  const dealii::SymmetricTensor<2,dim> stress_tensor =
+   hooke_law.get_stress_tensor(0, // crystal_id
+                               elastic_strain_tensor);
+
+  std::cout << "stress_tensor = \n"
+            << gCP::Utilities::get_tensor_as_string(stress_tensor)
+            << "\n\n";
+
+  std::cout << "Testing ResolvedShearStressLaw<dim> \n\n";
+
+  const double resolved_shear_stress =
+    resolved_shear_stress_law.get_resolved_shear_stress(
+      0, //crystal_id
+      0, //slip_id
+      stress_tensor);
+
+  std::cout << "resolved_shear_stress = "
+            << resolved_shear_stress
+            << "\n\n";
+
+  std::cout << "Testing ScalarMicroscopicStressLaw<dim> \n\n";
+
+  std::vector<std::vector<double>> old_slip_values(
+    crystals_data->get_n_slips(),
+    std::vector<double>(1, 0 ));
+
+  old_slip_values[0][0] = 1.5;
+  old_slip_values[1][0] = 0.75;
+
+  std::vector<double> slip_resistances(crystals_data->get_n_slips());
+
+  slip_resistances[0] = 0.5;
+  slip_resistances[1] = 1.5;
+
+  const double time_step_size = 1e-2;
+
+  const double scalar_microscopic_stres =
+    scalar_microscopic_stress_law.get_scalar_microscopic_stress(
+      slip_values[0][0],
+      old_slip_values[0][0],
+      slip_resistances[0],
+      time_step_size);
+
+  std::cout << "scalar_microscopic_stres = "
+            << scalar_microscopic_stres
+            << "\n\n";
+
+  const dealii::FullMatrix<double> gateaux_derivative_matrix =
+    scalar_microscopic_stress_law.get_gateaux_derivative_matrix(
+      0, // q_point
+      slip_values,
+      old_slip_values,
+      slip_resistances,
+      time_step_size);
+
+  std::cout << "gateaux_derivative_matrix = "
+            << gateaux_derivative_matrix[0][0] << " "
+            << gateaux_derivative_matrix[0][1] << " "
+            << gateaux_derivative_matrix[1][0] << " "
+            << gateaux_derivative_matrix[1][1] << "\n";
+
+  std::cout << "Testing VectorMicroscopicStressLaw<dim> \n\n";
+
+}
+
+
+template<int dim>
+void CrystalData<dim>::output()
+{
+  dealii::DataOut<dim> data_out;
+
+  data_out.attach_dof_handler(dof_handler);
+
+  dealii::Vector<float> subdomain_per_cell(triangulation.n_active_cells());
+
+  for (unsigned int i = 0; i < subdomain_per_cell.size(); ++i)
+    subdomain_per_cell(i) = triangulation.locally_owned_subdomain();
+
+  dealii::Vector<float> material_id_per_cell(triangulation.n_active_cells());
+
+  for (const auto &cell : triangulation.active_cell_iterators())
+    if (cell->is_locally_owned())
+      material_id_per_cell(cell->active_cell_index()) = cell->material_id();
+
+  data_out.add_data_vector(subdomain_per_cell, "Subdomain");
+
+  data_out.add_data_vector(material_id_per_cell, "CrystalData");
+
+  data_out.build_patches();
+
+  static int out_index = 0;
+
+  data_out.write_vtu_with_pvtu_record(
+    "./",
+    "solution_" + std::to_string(dim),
+    out_index,
+    MPI_COMM_WORLD,
+    5);
+
+  out_index++;
+}
+
+
+
+} // namespace Test
+
+
+
+
+int main(int argc, char *argv[])
+{
+  try
+  {
+    dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
+      argc, argv, dealii::numbers::invalid_unsigned_int);
+
+    gCP::RunTimeParameters::ProblemParameters parameters("../input/prm.prm");
+
+    Tests::CrystalData<3> problem_3d(parameters);
+    problem_3d.run();
+  }
+  catch (std::exception &exc)
+  {
+    std::cerr << std::endl
+              << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Exception on processing: " << std::endl
+              << exc.what() << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    return 1;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl
+              << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Unknown exception!" << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    return 1;
+  }
+  return 0;
+}

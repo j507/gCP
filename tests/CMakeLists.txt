@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SOURCE_FILES
+    constitutive_laws_test.cc
     crystal_data_test.cc
     material_id_test.cc
     fe_collection_test.cc
