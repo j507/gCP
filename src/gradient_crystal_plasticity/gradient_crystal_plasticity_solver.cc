@@ -27,18 +27,18 @@ elastic_strain(
 hooke_law(
   std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
     crystals_data,
-  parameters.hooke_law_parameters)),
+    parameters.hooke_law_parameters)),
 resolved_shear_stress_law(
   std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
     crystals_data)),
 scalar_microscopic_stress_law(
   std::make_shared<ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>>(
     crystals_data,
-  parameters.scalar_microscopic_stress_law_parameters)),
+    parameters.scalar_microscopic_stress_law_parameters)),
 vector_microscopic_stress_law(
   std::make_shared<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>(
     crystals_data,
-  parameters.vector_microscopic_stress_law_parameters)),
+    parameters.vector_microscopic_stress_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
 nonlinear_solver_log("nonlinear_solver_log.txt"),
 flag_init_was_called(false)
