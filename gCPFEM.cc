@@ -78,6 +78,7 @@ class DisplacementControl : public dealii::Function<dim>
 {
 public:
   DisplacementControl(const double        shear_at_upper_boundary,
+                      const double        height,
                       const unsigned int  n_components = 3,
                       const double        time = 0.0);
 
@@ -86,8 +87,9 @@ public:
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-
   const double shear_at_upper_boundary;
+
+  const double height;
 };
 
 
@@ -95,11 +97,13 @@ private:
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
   const double        shear_at_upper_boundary,
+  const double        height,
   const unsigned int  n_components,
   const double        time)
 :
 dealii::Function<dim>(n_components, time),
-shear_at_upper_boundary(shear_at_upper_boundary)
+shear_at_upper_boundary(shear_at_upper_boundary),
+height(height)
 {}
 
 
@@ -113,7 +117,7 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * shear_at_upper_boundary;
+  return_vector[0] = t * height * shear_at_upper_boundary;
 }
 
 
@@ -247,6 +251,8 @@ private:
 
   const unsigned int                                upper_boundary_id;
 
+  const double                                      height;
+
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<CrystalsData<dim>>                crystals_data;
@@ -307,6 +313,7 @@ triangulation(
   dealii::Triangulation<dim>::smoothing_on_coarsening)),
 lower_boundary_id(2),
 upper_boundary_id(3),
+height(1.0),
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.fe_degree_displacements,
@@ -327,7 +334,7 @@ simple_shear(fe_field,
              mapping,
              shear_at_upper_boundary,
              upper_boundary_id,
-             1.0),
+             height),
 string_width((std::to_string((unsigned int)(
               (parameters.end_time - parameters.start_time) /
               parameters.time_step_size)) +
@@ -384,8 +391,7 @@ void ProblemClass<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
 
-  const double height = 1.0;
-  const double width  = 1.0;
+  const double width  = height;
 
   std::vector<std::vector<double>> step_sizes(dim, std::vector<double>());
 
@@ -398,9 +404,9 @@ void ProblemClass<dim>::make_grid()
   for (unsigned int i = 0; i < n_divisions; ++i)
   {
     if (i == 0)
-      step_sizes[1].push_back((0.5)*std::pow(1-factor, n_divisions - 1 -  i));
+      step_sizes[1].push_back((0.5*height)*std::pow(1-factor, n_divisions - 1 -  i));
     else
-      step_sizes[1].push_back((0.5)*std::pow(1-factor, n_divisions - 1 - i)*factor);
+      step_sizes[1].push_back((0.5*height)*std::pow(1-factor, n_divisions - 1 - i)*factor);
   }
 
   std::vector<double> mirror_vector(step_sizes[1]);
@@ -485,6 +491,7 @@ void ProblemClass<dim>::setup()
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
       shear_at_upper_boundary,
+      height,
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -542,8 +549,8 @@ void ProblemClass<dim>::setup()
     std::map<dealii::types::boundary_id,
              const dealii::Function<dim> *> function_map;
 
-    function_map[upper_boundary_id] = dirichlet_boundary_function.get();
     function_map[lower_boundary_id] = dirichlet_boundary_function.get();
+    function_map[upper_boundary_id] = dirichlet_boundary_function.get();
 
     for(unsigned int slip_id = 0;
         slip_id < crystals_data->get_n_slips();
@@ -578,8 +585,8 @@ void ProblemClass<dim>::setup()
     std::map<dealii::types::boundary_id,
              const dealii::Function<dim> *> function_map;
 
-    function_map[2] = &zero_function;
-    function_map[3] = &zero_function;
+    function_map[lower_boundary_id] = &zero_function;
+    function_map[upper_boundary_id] = &zero_function;
 
     // Displacements' Dirichlet boundary conditions
     {
