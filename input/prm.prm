@@ -33,7 +33,7 @@ subsection Solver parameters
       set Initial slip resistance  = 15.45
       set Linear hardening modulus = 0.0
       set Regularization function  = tanh
-      set Regularization parameter = 4e-1
+      set Regularization parameter = 4e-2
     end
 
     subsection Vector microscopic stress law's parameters
@@ -46,7 +46,7 @@ subsection Solver parameters
   subsection Nonlinear solver's parameters
     set Absolute tolerance of the Krylov-solver              = 1e-9
     set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 50
+    set Maximum number of iterations of the nonlinear solver = 500
     set Relative tolerance of the Krylov-solver              = 1e-8
     set Tolerance of the nonlinear solver                    = 1e-9
   end
@@ -66,6 +66,6 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 5e-2
+  set Time step size = 2.5e-2
 end
 
