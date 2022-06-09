@@ -274,6 +274,9 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
     break;
   }
 
+  AssertIsFinite(slip_resistance);
+  AssertIsFinite(regularization_factor);
+
   return ((initial_slip_resistance + slip_resistance) *
           regularization_factor);
 }
@@ -301,8 +304,11 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
       const unsigned int  q_point,
       const unsigned int  slip_id)
   {
-    return (slip_values[slip_id][q_point] -
+    const double slip_rate = (slip_values[slip_id][q_point] -
             old_slip_values[slip_id][q_point]) / time_step_size;
+
+    AssertIsFinite(slip_rate);
+    return slip_rate;
   };
 
   for (unsigned int slip_id_alpha = 0;
@@ -325,6 +331,8 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
             (time_step_size * regularization_parameter) *
             std::pow(1.0/std::cosh(
                       compute_slip_rate(q_point, slip_id_alpha)), 2));
+
+      AssertIsFinite(matrix[slip_id_alpha][slip_id_beta]);
     }
 
   return matrix;
@@ -361,6 +369,8 @@ get_regularization_factor(const double slip_rate) const
     break;
   }
 
+  AssertIsFinite(regularization_factor);
+
   return regularization_factor;
 }
 
@@ -392,27 +402,35 @@ void VectorMicroscopicStressLaw<dim>::init()
         crystal_id++)
   {
     std::vector<dealii::SymmetricTensor<2,dim>>
-      reduced_gradient_hardening_tensors_per_crystal(
-        crystals_data->get_n_slips(),
-        dealii::SymmetricTensor<2,dim>());
+      reduced_gradient_hardening_tensors_per_crystal;
 
     for (unsigned int slip_id = 0;
           slip_id < crystals_data->get_n_slips();
           ++slip_id)
     {
-      dealii::Tensor<1,dim> slip_direction =
+      const dealii::Tensor<1,dim> slip_direction =
         crystals_data->get_slip_direction(crystal_id, slip_id);
 
-      dealii::Tensor<1,dim> slip_orthogonal =
+      const dealii::Tensor<1,dim> slip_orthogonal =
         crystals_data->get_slip_orthogonal(crystal_id, slip_id);
 
-      dealii::SymmetricTensor<2,dim> reduced_gradient_hardening_tensor =
+      const dealii::SymmetricTensor<2,dim> slip_direction_outer_product =
+        dealii::symmetrize(dealii::outer_product(slip_direction,
+                                                 slip_direction));
+
+      const dealii::SymmetricTensor<2,dim> slip_orthogonal_outer_product =
+        dealii::symmetrize(dealii::outer_product(slip_orthogonal,
+                                                 slip_orthogonal));
+
+      const dealii::SymmetricTensor<2,dim> reduced_gradient_hardening_tensor =
         initial_slip_resistance *
         energetic_length_scale * energetic_length_scale *
-        (dealii::symmetrize(dealii::outer_product(slip_direction,
-                                                  slip_direction)) +
-          dealii::symmetrize(dealii::outer_product(slip_orthogonal,
-                                                   slip_orthogonal)));
+        (slip_direction_outer_product + slip_orthogonal_outer_product);
+
+      for (unsigned int i = 0;
+           i < reduced_gradient_hardening_tensor.n_independent_components;
+           ++i)
+        AssertIsFinite(reduced_gradient_hardening_tensor.access_raw_entry(i));
 
       reduced_gradient_hardening_tensors_per_crystal.push_back(
         reduced_gradient_hardening_tensor);

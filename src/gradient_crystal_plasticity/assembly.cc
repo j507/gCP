@@ -184,6 +184,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               scratch.stiffness_tetrad *
               scratch.sym_grad_vector_phi[j] *
               scratch.JxW_values[q_point];
+
+            AssertIsFinite(data.local_matrix(i,j));
           }
           else
           {
@@ -196,6 +198,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               scratch.symmetrized_schmid_tensors[slip_id_beta] *
               scratch.scalar_phi[slip_id_beta][j] *
               scratch.JxW_values[q_point];
+
+            AssertIsFinite(data.local_matrix(i,j));
           }
         }
         else
@@ -211,6 +215,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               scratch.stiffness_tetrad *
               scratch.sym_grad_vector_phi[j] *
               scratch.JxW_values[q_point];
+
+            AssertIsFinite(data.local_matrix(i,j));
           }
           else
           {
@@ -224,6 +230,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 scratch.grad_scalar_phi[slip_id_beta][j] *
                 scratch.JxW_values[q_point];
 
+            AssertIsFinite(data.local_matrix(i,j));
+
             data.local_matrix(i,j) -=
               scratch.scalar_phi[slip_id_alpha][i] *
               (-1.0 *
@@ -234,8 +242,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                scratch.gateaux_derivative_values[q_point][slip_id_alpha][slip_id_beta]) *
               scratch.scalar_phi[slip_id_beta][j]*
               scratch.JxW_values[q_point];
+
+            AssertIsFinite(data.local_matrix(i,j));
           }
         }
+        AssertIsFinite(data.local_matrix(i,j));
       } // Loop over local degrees of freedom
   } // Loop over quadrature points
 }
