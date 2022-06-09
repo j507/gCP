@@ -289,7 +289,128 @@ void Scratch<dim>::reset()
 }
 
 
+
 } // namespace QuadraturePointHistory
+
+
+
+namespace Postprocessing
+{
+
+
+
+namespace ProjectionMatrix
+{
+
+
+
+Copy::Copy(const unsigned int dofs_per_cell)
+:
+CopyBase(dofs_per_cell),
+local_matrix(dofs_per_cell, dofs_per_cell)
+{}
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(
+  const dealii::hp::MappingCollection<dim>  &mapping_collection,
+  const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::FECollection<dim>       &finite_element_collection,
+  const dealii::UpdateFlags                 update_flags)
+:
+ScratchBase<dim>(quadrature_collection, finite_element_collection),
+hp_fe_values(mapping_collection,
+             finite_element_collection,
+             quadrature_collection,
+             update_flags),
+JxW_values(this->n_q_points),
+scalar_phi(this->dofs_per_cell)
+{}
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(const Scratch<dim> &data)
+:
+ScratchBase<dim>(data),
+hp_fe_values(data.hp_fe_values.get_mapping_collection(),
+             data.hp_fe_values.get_fe_collection(),
+             data.hp_fe_values.get_quadrature_collection(),
+             data.hp_fe_values.get_update_flags()),
+JxW_values(this->n_q_points),
+scalar_phi(this->dofs_per_cell)
+{}
+
+
+
+} // ProjectionMatrix
+
+
+
+namespace ProjectionRHS
+{
+
+
+
+Copy::Copy(const unsigned int dofs_per_cell)
+:
+CopyBase(dofs_per_cell),
+local_rhs(dofs_per_cell),
+local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell)
+{}
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(
+  const dealii::hp::MappingCollection<dim>  &mapping_collection,
+  const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
+  const dealii::UpdateFlags                 scalar_update_flags,
+  const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
+  const dealii::UpdateFlags                 vector_update_flags)
+:
+ScratchBase<dim>(quadrature_collection, scalar_finite_element_collection),
+scalar_hp_fe_values(mapping_collection,
+                    scalar_finite_element_collection,
+                    quadrature_collection,
+                    scalar_update_flags),
+vector_hp_fe_values(mapping_collection,
+                    vector_finite_element_collection,
+                    quadrature_collection,
+                    vector_update_flags),
+JxW_values(this->n_q_points),
+strain_tensor_values(this->n_q_points),
+scalar_phi(this->dofs_per_cell)
+{}
+
+
+
+template <int dim>
+Scratch<dim>::Scratch(const Scratch<dim> &data)
+:
+ScratchBase<dim>(data),
+scalar_hp_fe_values(data.scalar_hp_fe_values.get_mapping_collection(),
+                    data.scalar_hp_fe_values.get_fe_collection(),
+                    data.scalar_hp_fe_values.get_quadrature_collection(),
+                    data.scalar_hp_fe_values.get_update_flags()),
+vector_hp_fe_values(data.vector_hp_fe_values.get_mapping_collection(),
+                    data.vector_hp_fe_values.get_fe_collection(),
+                    data.vector_hp_fe_values.get_quadrature_collection(),
+                    data.vector_hp_fe_values.get_update_flags()),
+JxW_values(this->n_q_points),
+strain_tensor_values(this->n_q_points),
+scalar_phi(this->dofs_per_cell)
+{}
+
+
+
+} // namespace ProjectionRHS
+
+
+
+} // namespace Postprocessing
 
 
 
@@ -312,3 +433,9 @@ template struct gCP::AssemblyData::Residual::Scratch<3>;
 
 template struct gCP::AssemblyData::QuadraturePointHistory::Scratch<2>;
 template struct gCP::AssemblyData::QuadraturePointHistory::Scratch<3>;
+
+template struct gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<2>;
+template struct gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<3>;
+
+template struct gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<2>;
+template struct gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<3>;

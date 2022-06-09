@@ -3,7 +3,7 @@ SET(TARGET_SRC
     constitutive_laws.cc
     crystal_data.cc
     fe_field.cc
-    #postprocessing.cc
+    postprocessing.cc
     run_time_parameters.cc
     gradient_crystal_plasticity/assembly.cc
     gradient_crystal_plasticity/assembly_data.cc

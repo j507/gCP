@@ -2,6 +2,7 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/gradient_crystal_plasticity.h>
+#include <gCP/postprocessing.h>
 #include <gCP/run_time_parameters.h>
 
 #include <deal.II/dofs/dof_tools.h>
@@ -76,7 +77,8 @@ template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
-  DisplacementControl(const unsigned int  n_components = 3,
+  DisplacementControl(const double        shear_at_upper_boundary,
+                      const unsigned int  n_components = 3,
                       const double        time = 0.0);
 
   virtual void vector_value(
@@ -84,16 +86,20 @@ public:
     dealii::Vector<double>    &return_vector) const override;
 
 private:
+
+  const double shear_at_upper_boundary;
 };
 
 
 
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
+  const double        shear_at_upper_boundary,
   const unsigned int  n_components,
   const double        time)
 :
-dealii::Function<dim>(n_components, time)
+dealii::Function<dim>(n_components, time),
+shear_at_upper_boundary(shear_at_upper_boundary)
 {}
 
 
@@ -107,7 +113,7 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * 1e-3;
+  return_vector[0] = t * shear_at_upper_boundary;
 }
 
 
@@ -237,11 +243,17 @@ private:
 
   dealii::parallel::distributed::Triangulation<dim> triangulation;
 
+  const unsigned int                                lower_boundary_id;
+
+  const unsigned int                                upper_boundary_id;
+
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<CrystalsData<dim>>                crystals_data;
 
   GradientCrystalPlasticitySolver<dim>              gCP_solver;
+
+  const double                                      shear_at_upper_boundary;
 
   std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
@@ -250,6 +262,8 @@ private:
   NeumannBoundaryFunction<dim>                      neumann_boundary_function;
 
   std::shared_ptr<SupplyTermFunction<dim>>          supply_term_function;
+
+  Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
 
@@ -291,6 +305,8 @@ triangulation(
   typename dealii::Triangulation<dim>::MeshSmoothing(
   dealii::Triangulation<dim>::smoothing_on_refinement |
   dealii::Triangulation<dim>::smoothing_on_coarsening)),
+lower_boundary_id(2),
+upper_boundary_id(3),
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.fe_degree_displacements,
@@ -303,9 +319,15 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
+shear_at_upper_boundary(2.5e-2),
 neumann_boundary_function(parameters.start_time),
 supply_term_function(
   std::make_shared<SupplyTermFunction<dim>>(parameters.start_time)),
+simple_shear(fe_field,
+             mapping,
+             shear_at_upper_boundary,
+             upper_boundary_id,
+             1.0),
 string_width((std::to_string((unsigned int)(
               (parameters.end_time - parameters.start_time) /
               parameters.time_step_size)) +
@@ -365,15 +387,34 @@ void ProblemClass<dim>::make_grid()
   const double height = 1.0;
   const double width  = 1.0;
 
-  std::vector<unsigned int> repetitions(dim, 10);
-  repetitions[1] = height/width * 10;
+  std::vector<std::vector<double>> step_sizes(dim, std::vector<double>());
+
+  step_sizes[0] = std::vector<double>(6, height / 6);
+
+  const double factor       = .65;
+
+  unsigned int n_divisions  = 5;
+
+  for (unsigned int i = 0; i < n_divisions; ++i)
+  {
+    if (i == 0)
+      step_sizes[1].push_back((0.5)*std::pow(1-factor, n_divisions - 1 -  i));
+    else
+      step_sizes[1].push_back((0.5)*std::pow(1-factor, n_divisions - 1 - i)*factor);
+  }
+
+  std::vector<double> mirror_vector(step_sizes[1]);
+  std::reverse(mirror_vector.begin(), mirror_vector.end());
+  step_sizes[1].insert(step_sizes[1].end(),
+                       mirror_vector.begin(),
+                       mirror_vector.end());
 
   switch (dim)
   {
   case 2:
     dealii::GridGenerator::subdivided_hyper_rectangle(
       triangulation,
-      repetitions,
+      step_sizes,
       dealii::Point<dim>(0,0),
       dealii::Point<dim>(width, height),
       true);
@@ -382,7 +423,7 @@ void ProblemClass<dim>::make_grid()
     {
       dealii::GridGenerator::subdivided_hyper_rectangle(
         triangulation,
-        repetitions,
+        step_sizes,
         dealii::Point<dim>(0,0,0),
         dealii::Point<dim>(width, height, width),
         true);
@@ -443,6 +484,7 @@ void ProblemClass<dim>::setup()
 
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
+      shear_at_upper_boundary,
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -484,8 +526,8 @@ void ProblemClass<dim>::setup()
       std::map<dealii::types::boundary_id,
               const dealii::Function<dim> *> function_map;
 
-      function_map[2] = dirichlet_boundary_function.get();
-      function_map[3] = displacement_control.get();
+      function_map[lower_boundary_id] = dirichlet_boundary_function.get();
+      function_map[upper_boundary_id] = displacement_control.get();
 
       dealii::VectorTools::interpolate_boundary_values(
         *mapping,
@@ -500,8 +542,8 @@ void ProblemClass<dim>::setup()
     std::map<dealii::types::boundary_id,
              const dealii::Function<dim> *> function_map;
 
-    function_map[2] = dirichlet_boundary_function.get();
-    function_map[3] = dirichlet_boundary_function.get();
+    function_map[upper_boundary_id] = dirichlet_boundary_function.get();
+    function_map[lower_boundary_id] = dirichlet_boundary_function.get();
 
     for(unsigned int slip_id = 0;
         slip_id < crystals_data->get_n_slips();
@@ -623,6 +665,7 @@ void ProblemClass<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
 
+  simple_shear.compute_data(discrete_time.get_current_time());
 }
 
 
@@ -654,8 +697,12 @@ void ProblemClass<dim>::data_output()
                            displacement_names,
                            component_interpretation);
 
+  data_out.add_data_vector(simple_shear.get_dof_handler(),
+                           simple_shear.get_data(),
+                           std::vector<std::string>(1, "2e12"));
+
   data_out.build_patches(*mapping,
-                         fe_field->get_displacement_fe_degree(),
+                         1 /*fe_field->get_displacement_fe_degree() */,
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
@@ -679,6 +726,9 @@ void ProblemClass<dim>::run()
   setup();
 
   gCP_solver.init();
+
+  simple_shear.init(gCP_solver.get_elastic_strain_law(),
+                    gCP_solver.get_hooke_law());
 
   gCP_solver.set_supply_term(supply_term_function);
 
@@ -717,6 +767,41 @@ void ProblemClass<dim>::run()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
+  }
+
+  const fs::path path{"python/"};
+
+  fs::path filename = path / "simple_shear.txt";
+
+  try
+  {
+    std::ofstream fstream(filename.string());
+    simple_shear.output_data_to_file(fstream);
+  }
+  catch (std::exception &exc)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Exception in the creation of the output file: "
+              << std::endl
+              << exc.what() << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+                << std::endl;
+    std::cerr << "Unknown exception in the creation of the output file!"
+              << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
   }
 }
 

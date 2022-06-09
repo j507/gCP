@@ -231,6 +231,99 @@ struct Scratch : ScratchBase<dim>
 
 
 
+namespace Postprocessing
+{
+
+
+
+namespace ProjectionMatrix
+{
+
+
+
+struct Copy : CopyBase
+{
+  Copy(const unsigned int dofs_per_cell);
+
+  dealii::FullMatrix<double>  local_matrix;
+};
+
+
+
+template <int dim>
+struct Scratch : ScratchBase<dim>
+{
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element_collection,
+          const dealii::UpdateFlags                 update_flags);
+
+  Scratch(const Scratch<dim>  &data);
+
+  dealii::hp::FEValues<dim> hp_fe_values;
+
+  std::vector<double>       JxW_values;
+
+  std::vector<double>       scalar_phi;
+};
+
+
+
+} // namespace ProjectionMatrix
+
+
+
+namespace ProjectionRHS
+{
+
+
+
+struct Copy : CopyBase
+{
+  Copy(const unsigned int dofs_per_cell);
+
+  dealii::Vector<double>      local_rhs;
+
+  dealii::FullMatrix<double>  local_matrix_for_inhomogeneous_bcs;
+};
+
+
+
+template <int dim>
+struct Scratch : ScratchBase<dim>
+{
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
+          const dealii::UpdateFlags                 scalar_update_flags,
+          const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
+          const dealii::UpdateFlags                 vector_update_flags);
+
+  Scratch(const Scratch<dim>  &data);
+
+  dealii::hp::FEValues<dim>                       scalar_hp_fe_values;
+
+  dealii::hp::FEValues<dim>                       vector_hp_fe_values;
+
+  unsigned int                                    n_slips;
+
+  std::vector<double>                             JxW_values;
+
+  std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
+
+  std::vector<double>                             scalar_phi;
+};
+
+
+
+} // namespace ProjectionRHS
+
+
+
+} // namespace Postprocessing
+
+
+
 } // namespace AssemblyData
 
 
