@@ -146,7 +146,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         q_point,
         scratch.slip_values,
         scratch.old_slip_values,
-        local_quadrature_point_history[q_point],
+        local_quadrature_point_history[q_point]->get_slip_resistances(),
         discrete_time.get_next_step_size());
 
     // Extract test function values at the quadrature points (Displacement)
@@ -217,21 +217,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             const unsigned int slip_id_beta =
                 fe_field->get_global_component(crystal_id, j) - dim;
 
-            data.local_matrix(i,j) +=
-              (((slip_id_alpha == slip_id_beta) ?
+            if (slip_id_alpha == slip_id_beta)
+              data.local_matrix(i,j) +=
                 scratch.grad_scalar_phi[slip_id_alpha][i] *
                 scratch.reduced_gradient_hardening_tensors[slip_id_alpha] *
-                scratch.grad_scalar_phi[slip_id_beta][j]
-                : 0.0)
+                scratch.grad_scalar_phi[slip_id_beta][j] *
+                scratch.JxW_values[q_point];
+
+            data.local_matrix(i,j) -=
+              scratch.scalar_phi[slip_id_alpha][i] *
+              (-1.0 *
+               scratch.symmetrized_schmid_tensors[slip_id_alpha] *
+               scratch.stiffness_tetrad *
+               scratch.symmetrized_schmid_tensors[slip_id_beta]
                -
-               scratch.scalar_phi[slip_id_alpha][i] *
-               (-1.0 *
-                scratch.symmetrized_schmid_tensors[slip_id_alpha] *
-                scratch.stiffness_tetrad *
-                scratch.symmetrized_schmid_tensors[slip_id_beta]
-                -
-                scratch.gateaux_derivative_values[q_point][slip_id_alpha][slip_id_beta]) *
-               scratch.scalar_phi[slip_id_beta][j])*
+               scratch.gateaux_derivative_values[q_point][slip_id_alpha][slip_id_beta]) *
+              scratch.scalar_phi[slip_id_beta][j]*
               scratch.JxW_values[q_point];
           }
         }

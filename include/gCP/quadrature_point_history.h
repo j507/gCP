@@ -20,6 +20,8 @@ public:
 
   double get_slip_resistance(const unsigned int slip_id) const;
 
+  std::vector<double> get_slip_resistances() const;
+
   void init(
     const RunTimeParameters::ScalarMicroscopicStressLawParameters
       &parameters,
@@ -58,6 +60,19 @@ QuadraturePointHistory<dim>::get_slip_resistance(
                                  "instance has not been initialized."));
 
   return (slip_resistances[slip_id]);
+}
+
+
+
+template <int dim>
+inline std::vector<double>
+QuadraturePointHistory<dim>::get_slip_resistances() const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (slip_resistances);
 }
 
 

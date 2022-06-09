@@ -283,11 +283,11 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
 template<int dim>
 dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
   get_gateaux_derivative_matrix(
-    const unsigned int                            q_point,
-    const std::vector<std::vector<double>>        slip_values,
-    const std::vector<std::vector<double>>        old_slip_values,
-    std::shared_ptr<QuadraturePointHistory<dim>>  local_quadrature_point_history,
-    const double                                  time_step_size)
+    const unsigned int                      q_point,
+    const std::vector<std::vector<double>>  slip_values,
+    const std::vector<std::vector<double>>  old_slip_values,
+    const std::vector<double>               slip_resistances,
+    const double                            time_step_size)
 {
   AssertThrow(crystals_data->is_initialized(),
               dealii::ExcMessage("The underlying CrystalsData<dim>"
@@ -321,7 +321,7 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
       if (slip_id_alpha == slip_id_beta)
         matrix[slip_id_alpha][slip_id_beta] +=
           ((initial_slip_resistance +
-            local_quadrature_point_history->get_slip_resistance(slip_id_alpha)) /
+            slip_resistances[slip_id_alpha]) /
             (time_step_size * regularization_parameter) *
             std::pow(1.0/std::cosh(
                       compute_slip_rate(q_point, slip_id_alpha)), 2));

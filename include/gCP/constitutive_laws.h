@@ -193,11 +193,11 @@ public:
     const double time_step_size);
 
   dealii::FullMatrix<double> get_gateaux_derivative_matrix(
-    const unsigned int                            q_point,
-    const std::vector<std::vector<double>>        slip_values,
-    const std::vector<std::vector<double>>        old_slip_values,
-    std::shared_ptr<QuadraturePointHistory<dim>>  local_quadrature_point_history,
-    const double                                  time_step_size);
+    const unsigned int                      q_point,
+    const std::vector<std::vector<double>>  slip_values,
+    const std::vector<std::vector<double>>  old_slip_values,
+    const std::vector<double>               slip_resistances,
+    const double                            time_step_size);
 
 
 private:
@@ -229,7 +229,7 @@ ScalarMicroscopicStressLaw<dim>::get_hardening_matrix_entry(
 {
   return (linear_hardening_modulus *
           (hardening_parameter +
-           (self_hardening) ? (1.0 - hardening_parameter) : 0.0));
+           ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }
 
 
