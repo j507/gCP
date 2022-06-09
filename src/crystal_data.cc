@@ -206,7 +206,14 @@ void CrystalsData<dim>::read_and_store_data(
 
     reference_slip_normals[i]     /= reference_slip_normals[i].norm();
     reference_slip_directions[i]  /= reference_slip_directions[i].norm();
-    reference_slip_orthogonals[i] /= reference_slip_orthogonals[i].norm();
+
+    // Enclosed in switch to avoid NaN values
+    switch (dim)
+    {
+      case 3:
+        reference_slip_orthogonals[i] /= reference_slip_orthogonals[i].norm();
+        break;
+    }
   }
 
   n_slips = reference_slip_normals.size();
