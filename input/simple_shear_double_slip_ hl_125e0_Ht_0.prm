@@ -1,0 +1,71 @@
+# Listing of Parameters
+# ---------------------
+set Verbose = true
+
+
+subsection Input files
+  set Euler angles path name    = input/euler_angles_one_unrotated_crystal
+  set Slip directions path name = input/simple_shear_slip_directions
+  set Slip normals path name    = input/simple_shear_slip_normals
+end
+
+
+subsection Output control parameters
+  set Graphical output directory = results/simple_shear/hl_125e0_Ht_0
+  set Graphical output frequency = 1
+  set Terminal output frequency  = 1
+end
+
+
+subsection Solver parameters
+  set Verbose = false
+
+
+  subsection Constitutive laws' parameters
+    subsection Hooke-Law's parameters
+      set C1111 = 103652.9411764706
+      set C1122 = 26300
+      set C1212 = 51052.941176470595
+    end
+
+    subsection Scalar microscopic stress law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 15.45
+      set Linear hardening modulus = 0.0
+      set Regularization function  = tanh
+      set Regularization parameter = 4e-2
+    end
+
+    subsection Vector microscopic stress law's parameters
+      set Energetic length scale  = 0.008
+      set Initial slip resistance = 15.45
+    end
+
+  end
+
+  subsection Nonlinear solver's parameters
+    set Absolute tolerance of the Krylov-solver              = 1e-9
+    set Maximum number of iterations of the Krylov-solver    = 1000
+    set Maximum number of iterations of the nonlinear solver = 500
+    set Relative tolerance of the Krylov-solver              = 1e-8
+    set Tolerance of the nonlinear solver                    = 1e-9
+  end
+
+end
+
+
+subsection Spatial discretization parameters
+  set FE's polynomial degree - Displacements = 2
+  set FE's polynomial degree - Slips         = 1
+  set Mapping - Apply to interior cells      = false
+  set Mapping - Polynomial degree            = 1
+  set Number of global refinements           = 2
+  set Spatial dimension                      = 2
+end
+
+subsection Temporal discretization parameters
+  set End time       = 1.0
+  set Start time     = 0.0
+  set Time step size = 2.5e-2
+end
+
