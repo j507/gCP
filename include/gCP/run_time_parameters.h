@@ -306,6 +306,14 @@ struct SolverParameters
   VectorMicroscopicStressLawParameters
                       vector_microscopic_stress_law_parameters;
 
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  std::string         logger_output_directory;
+
   /*!
    * @brief
    *
@@ -381,6 +389,8 @@ struct ProblemParameters
   std::string             graphical_output_directory;
 
   bool                    verbose;
+
+  //dealii::ParameterHandler  parameter_handler;
 };
 
 

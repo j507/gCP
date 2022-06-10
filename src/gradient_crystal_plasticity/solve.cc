@@ -21,6 +21,12 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   unsigned int nonlinear_iteration = 0;
 
+  nonlinear_solver_logger.add_break(
+    "Solving for t = " +
+    std::to_string(discrete_time.get_next_time())+
+    " with dt = " +
+    std::to_string(discrete_time.get_next_step_size()));
+
   /*!
    * @todo This loop needs some work. No line search is performed.
    */
@@ -42,13 +48,12 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
            << std::setprecision(6)
            << residual_norm << std::endl;
 
-    if (nonlinear_solver_log)
-      nonlinear_solver_log << std::setw(19) << std::right
-                           << nonlinear_iteration << std::string(5, ' ')
-                           << std::setw(39) << std::right
-                           << std::fixed << std::scientific
-                           << std::setprecision(6)
-                           << residual_norm << std::endl;
+    nonlinear_solver_logger.update_value("Nonlinear iteration",
+                                         nonlinear_iteration);
+    nonlinear_solver_logger.update_value("Norm of the residual after solve() call",
+                                         residual_norm);
+
+    nonlinear_solver_logger.log_to_file();
 
     if (residual_norm < parameters.nonlinear_tolerance)
       break;

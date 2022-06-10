@@ -6,6 +6,7 @@
 #include <gCP/fe_field.h>
 #include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
+#include <gCP/utilities.h>
 
 #include <deal.II/base/discrete_time.h>
 #include <deal.II/base/tensor_function.h>
@@ -104,7 +105,7 @@ private:
 
   double                                            residual_norm;
 
-  std::ofstream                                     nonlinear_solver_log;
+  Utilities::Logger                                 nonlinear_solver_logger;
 
   bool                                              flag_init_was_called;
 

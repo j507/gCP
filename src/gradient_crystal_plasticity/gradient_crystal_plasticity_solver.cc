@@ -40,7 +40,8 @@ vector_microscopic_stress_law(
     crystals_data,
     parameters.vector_microscopic_stress_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
-nonlinear_solver_log("nonlinear_solver_log.txt"),
+nonlinear_solver_logger(parameters.logger_output_directory +
+                        "nonlinear_solver_log.txt"),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,
@@ -76,7 +77,7 @@ flag_init_was_called(false)
                       dealii::TimerOutput::summary,
                       dealii::TimerOutput::wall_times);
 
-  // Initiate the quadrature formula
+  // Initialize the quadrature formula
   const dealii::QGauss<dim>       quadrature_formula(3);
 
   const dealii::QGauss<dim-1>     face_quadrature_formula(3);
@@ -85,12 +86,13 @@ flag_init_was_called(false)
 
   face_quadrature_collection.push_back(face_quadrature_formula);
 
-  // Initialize log file
-  if (nonlinear_solver_log)
-    nonlinear_solver_log << "Nonlinear iteration"
-                         << std::string(5, ' ')
-                         << "Norm of the residual after solve() call"
-                         << std::endl;
+  // Initialize logger
+  nonlinear_solver_logger.declare_column(
+    "Nonlinear iteration");
+  nonlinear_solver_logger.declare_column(
+    "Norm of the residual after solve() call");
+  nonlinear_solver_logger.set_scientific(
+    "Norm of the residual after solve() call", true);
 }
 
 

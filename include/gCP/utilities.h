@@ -1,6 +1,12 @@
 #ifndef INCLUDE_UTILITIES_H_
 #define INCLUDE_UTILITIES_H_
 
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/tensor.h>
+
+#include <fstream>
+#include <map>
+#include <string>
 
 
 namespace gCP
@@ -10,6 +16,31 @@ namespace gCP
 
 namespace Utilities
 {
+
+
+
+class Logger
+{
+public:
+  Logger(const std::string output_filepath);
+
+  void declare_column(const std::string column_name);
+
+  void set_scientific(const std::string column_name,
+                      const bool        boolean);
+
+  void update_value(const std::string column_name,
+                    const double      value);
+
+  void log_to_file();
+
+  void add_break(const std::string message);
+
+private:
+  std::ofstream                                   output_filepath;
+
+  std::map<std::string, std::pair<double, bool>>  data_map;
+};
 
 
 

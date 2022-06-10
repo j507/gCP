@@ -213,7 +213,9 @@ nonlinear_tolerance(1e-4),
 n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
-n_max_krylov_iterations(1000)
+n_max_krylov_iterations(1000),
+logger_output_directory("results/default/"),
+verbose(false)
 {}
 
 
@@ -255,6 +257,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   prm.declare_entry("Verbose",
                     "false",
                     dealii::Patterns::Bool());
+
+  prm.declare_entry("Logger output directory",
+                    "results/default/",
+                    dealii::Patterns::DirectoryName());
 }
 
 
@@ -298,6 +304,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  logger_output_directory = prm.get("Logger output directory");
 
   verbose = prm.get_bool("Verbose");
 }
@@ -360,6 +368,9 @@ ProblemParameters()
   prm.parse_input(parameter_file);
 
   parse_parameters(prm);
+
+  prm.print_parameters(graphical_output_directory + "prm.prm",
+                        dealii::ParameterHandler::OutputStyle::PRM);
 }
 
 
