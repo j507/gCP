@@ -824,7 +824,48 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::RunTimeParameters::ProblemParameters parameters("input/prm.prm");
+    std::string parameters_filepath;
+
+    // The switch statement verifies that the filepath includes the
+    // .prm extension. That if, a filepath was even passed to the
+    // executable. The existance of the filepath is checked by the
+    // gCP::RunTimeParameters::ProblemParameters class
+    switch (argc)
+    {
+    case 1:
+      parameters_filepath = "input/prm.prm";
+      break;
+    case 2:
+      {
+        const std::string arg(argv[1]);
+
+        if (arg.find_last_of(".") != std::string::npos)
+        {
+          if (arg.substr(arg.find_last_of(".")+1) == "prm")
+            parameters_filepath = arg;
+          else
+            AssertThrow(false,
+                        dealii::ExcMessage(
+                          "The filepath to the parameters file has to "
+                          "be passed with its .prm extension."));
+        }
+        else
+          AssertThrow(false,
+                      dealii::ExcMessage(
+                        "The filepath to the parameters file has to be "
+                        "passed with its .prm extension."));
+      }
+      break;
+    default:
+      AssertThrow(false,
+                  dealii::ExcMessage(
+                    "More than one argument are being passed to the "
+                    "executable. Only one argument (the filepath to "
+                    "the parameters file) is currently supported."));
+      break;
+    }
+
+    gCP::RunTimeParameters::ProblemParameters parameters(parameters_filepath);
 
     gCP::ProblemClass<2> problem(parameters);
 
