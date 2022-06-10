@@ -279,7 +279,8 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
   std::vector<std::vector<double>>              slip_values(fe_field->get_n_slips(),
                                                             std::vector<double>(n_face_q_points));
 
-  double stress_12 = 0.0;
+  double stress_12        = 0.0;
+  double local_stress_12  = 0.0;
 
   for (const auto &cell : fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned() && cell->at_boundary())
@@ -287,7 +288,7 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
         if (face->at_boundary() && face->boundary_id() == upper_boundary_id)
         {
           // Reset local face integral values
-          stress_12 = 0.0;
+          local_stress_12 = 0.0;
 
           // Get the crystal identifier for the current cell
           const unsigned int crystal_id = cell->active_fe_index();
@@ -335,10 +336,12 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
                 crystal_id,
                 elastic_strain_tensor_values[face_q_point]);
 
-            stress_12 +=
+            local_stress_12 +=
               stress_tensor_values[face_q_point][0][1] *
               JxW_values[face_q_point];
           }
+
+          stress_12 += local_stress_12;
         }
 
   // Gather the values of each processor
