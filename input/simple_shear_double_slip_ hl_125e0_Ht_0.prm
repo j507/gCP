@@ -18,7 +18,8 @@ end
 
 
 subsection Solver parameters
-  set Verbose = false
+  set Logger output directory = results/simple_shear/hl_125e0_Ht_0
+  set Verbose                 = false
 
 
   subsection Constitutive laws' parameters

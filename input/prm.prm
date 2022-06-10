@@ -11,14 +11,15 @@ end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/
+  set Graphical output directory = results/default/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
 
 
 subsection Solver parameters
-  set Verbose = false
+  set Logger output directory = results/default/
+  set Verbose                 = false
 
 
   subsection Constitutive laws' parameters
@@ -46,7 +47,7 @@ subsection Solver parameters
   subsection Nonlinear solver's parameters
     set Absolute tolerance of the Krylov-solver              = 1e-9
     set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 500
+    set Maximum number of iterations of the nonlinear solver = 1000
     set Relative tolerance of the Krylov-solver              = 1e-8
     set Tolerance of the nonlinear solver                    = 1e-9
   end
