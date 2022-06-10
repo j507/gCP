@@ -34,6 +34,8 @@
 #include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <deal.II/sundials/kinsol.h>
+
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -382,15 +384,15 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  system_matrix;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        system_rhs;
+  //dealii::LinearAlgebraTrilinos::MPI::Vector        system_rhs;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
+  //dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
+  //dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
+  //dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
 
   DirichletBoundaryFunction<dim>                    dirichlet_boundary_function;
 
@@ -428,7 +430,7 @@ private:
   void copy_local_to_global_system_rhs(
     const RightHandSide::Copy                   &data,
     dealii::LinearAlgebraTrilinos::MPI::Vector  &residual_vector);
-
+  /*
   double compute_residual(const double relaxation_parameter);
 
   void assemble_local_residual(
@@ -438,7 +440,7 @@ private:
 
   void copy_local_to_global_residual(
     const RightHandSide::Copy                   &data);
-
+  */
   void solve(
     const dealii::LinearAlgebraTrilinos::MPI::Vector  &rhs,
     dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector,
@@ -539,7 +541,12 @@ void step77<dim>::refine_grid()
   {
     // Initiate distributed vectors to recieve the vectors prior to the
     // coarsening and refineming
-    dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_solution(system_rhs);
+    dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_solution;
+
+    distributed_solution.reinit(locally_owned_dofs,
+                     locally_relevant_dofs,
+                     MPI_COMM_WORLD,
+                     true);
 
     // Store the pertinent distributed vectors in an std::vector
     std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector *> distributed_vectors(1);
@@ -568,8 +575,10 @@ void step77<dim>::setup()
   dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
 
   locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
+
+  dealii::DoFTools::extract_locally_relevant_dofs(
+    dof_handler,
+    locally_relevant_dofs);
 
   hanging_node_constraints.clear();
   {
@@ -620,31 +629,33 @@ void step77<dim>::setup()
   sparsity_pattern.compress();
 
   system_matrix.reinit(sparsity_pattern);
-
+  /*
   system_rhs.reinit(locally_owned_dofs,
                      locally_relevant_dofs,
                      MPI_COMM_WORLD,
                      true);
   residual.reinit(system_rhs);
-
-  solution.reinit(locally_relevant_dofs,
-                   MPI_COMM_WORLD);
-  newton_update.reinit(solution);
-  trial_solution.reinit(solution);
+  */
+  solution.reinit(locally_owned_dofs,
+                  locally_relevant_dofs,
+                  MPI_COMM_WORLD,
+                  false);
+  /*newton_update.reinit(solution);
+  trial_solution.reinit(solution);*/
 
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
 
   distributed_vector.reinit(locally_owned_dofs,
-                              locally_relevant_dofs,
-                              MPI_COMM_WORLD,
-                              true);
+                            locally_relevant_dofs,
+                            MPI_COMM_WORLD,
+                            true);
 
   distributed_vector = solution;
 
   affine_constraints.distribute(distributed_vector);
 
   solution = distributed_vector;
-
+  /*
   distributed_vector = newton_update;
 
   newton_method_constraints.distribute(distributed_vector);
@@ -653,11 +664,11 @@ void step77<dim>::setup()
 
   affine_constraints.distribute(distributed_vector);
 
-  trial_solution = distributed_vector;
+  trial_solution = distributed_vector;*/
 }
 
 
-
+/*
 template<int dim>
 void step77<dim>::assemble_linear_system()
 {
@@ -665,13 +676,15 @@ void step77<dim>::assemble_linear_system()
 
   assemble_rhs(solution, system_rhs);
 }
-
+*/
 
 
 template<int dim>
 void step77<dim>::assemble_system_matrix(
   const dealii::LinearAlgebraTrilinos::MPI::Vector  &evaluation_point)
 {
+  std::cout << "  Computing Jacobian matrix" << std::endl;
+
   system_matrix = 0.0;
 
   const dealii::QGauss<dim> quadrature_formula(
@@ -792,7 +805,9 @@ void step77<dim>::assemble_rhs(
   const dealii::LinearAlgebraTrilinos::MPI::Vector  &evaluation_point,
   dealii::LinearAlgebraTrilinos::MPI::Vector        &residual_vector)
 {
-  system_rhs  = 0.0;
+  std::cout << "  Computing residual vector..." << std::flush;
+
+  residual_vector = 0.0;
 
   const dealii::QGauss<dim>   quadrature_formula(
                                 finite_element.get_degree() + 1);
@@ -845,7 +860,9 @@ void step77<dim>::assemble_rhs(
                                 face_update_flags),
     RightHandSide::Copy(finite_element.dofs_per_cell));
 
-  system_rhs.compress(dealii::VectorOperation::add);
+  residual_vector.compress(dealii::VectorOperation::add);
+
+  std::cout << " norm=" << residual_vector.l2_norm() << std::endl;
 }
 
 
@@ -886,7 +903,7 @@ void step77<dim>::assemble_local_system_rhs(
     // Loop over the degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
     {
-      data.local_rhs(i) -=
+      data.local_rhs(i) +=
         scratch.coefficient[q] *
         scratch.grad_phi[i] *
         scratch.old_solution_gradients[q] *
@@ -910,7 +927,7 @@ void step77<dim>::copy_local_to_global_system_rhs(
 }
 
 
-
+/*
 template<int dim>
 double step77<dim>::compute_residual(const double alpha)
 {
@@ -1044,7 +1061,7 @@ void step77<dim>::copy_local_to_global_residual(
     residual,
     data.local_matrix_for_inhomogeneous_bcs);
 }
-
+*/
 
 
 template<int dim>
@@ -1053,17 +1070,19 @@ void step77<dim>::solve(
   dealii::LinearAlgebraTrilinos::MPI::Vector        &solution_vector,
   const double                                      /*tolerance*/)
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+    std::cout << "  Solving linear system" << std::endl;
 
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+  //dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
   distributed_solution.reinit(locally_owned_dofs,
-                              locally_relevant_dofs,
-                              MPI_COMM_WORLD,
-                              true);
-  distributed_newton_update.reinit(distributed_solution);
+                            locally_relevant_dofs,
+                            MPI_COMM_WORLD,
+                            true);
+
+  //distributed_newton_update.reinit(distributed_solution);
 
   distributed_solution      = solution_vector;
-  distributed_newton_update = newton_update;
+  //distributed_newton_update = newton_update;
 
   dealii::SolverControl solver_control(rhs.size(),
                                        rhs.l2_norm() * 1e-6);
@@ -1077,7 +1096,7 @@ void step77<dim>::solve(
   try
   {
     solver.solve(system_matrix,
-                 distributed_newton_update,
+                 distributed_solution,
                  rhs,
                  preconditioner);
   }
@@ -1105,11 +1124,11 @@ void step77<dim>::solve(
     std::abort();
   }
 
-  newton_method_constraints.distribute(distributed_newton_update);
+  newton_method_constraints.distribute(distributed_solution);
 
-  distributed_solution.add(relaxation_parameter, distributed_newton_update);
+  /*distributed_solution.add(relaxation_parameter, distributed_newton_update);
 
-  newton_update   = distributed_newton_update;
+  newton_update   = distributed_newton_update;*/
   solution_vector = distributed_solution;
 }
 
@@ -1134,9 +1153,9 @@ void step77<dim>::data_output(const unsigned int refinement_cycle)
                            solution,
                            "Solution");
 
-  data_out.add_data_vector(dof_handler,
+  /*data_out.add_data_vector(dof_handler,
                            newton_update,
-                           "Update");
+                           "Update");*/
 
   data_out.build_patches(*mapping,
                          finite_element.get_degree(),
@@ -1161,6 +1180,69 @@ void step77<dim>::run()
   make_grid();
   setup();
 
+  for (unsigned int refinement_cycle = 0; refinement_cycle < 1;
+        ++refinement_cycle)
+    {
+      std::cout << "Mesh refinement step " << refinement_cycle << std::endl;
+
+      if (refinement_cycle != 0)
+        refine_grid();
+
+      const double target_tolerance = 1e-3 * std::pow(0.1, refinement_cycle);
+      std::cout << "  Target_tolerance: " << target_tolerance << std::endl
+                << std::endl;
+
+      {
+        typename dealii::SUNDIALS::KINSOL<dealii::LinearAlgebraTrilinos::MPI::Vector>::AdditionalData
+          additional_data;
+        additional_data.function_tolerance = target_tolerance;
+
+        dealii::SUNDIALS::KINSOL<dealii::LinearAlgebraTrilinos::MPI::Vector> nonlinear_solver(additional_data);
+
+        nonlinear_solver.reinit_vector = [&](dealii::LinearAlgebraTrilinos::MPI::Vector &x)
+        {
+            x.reinit(locally_owned_dofs,
+            locally_relevant_dofs,
+            MPI_COMM_WORLD,
+            true);
+        };
+
+        nonlinear_solver.residual =
+          [&](const dealii::LinearAlgebraTrilinos::MPI::Vector &evaluation_point,
+              dealii::LinearAlgebraTrilinos::MPI::Vector       &residual_vector)
+        {
+          assemble_rhs(evaluation_point, residual_vector);
+
+          return 0;
+        };
+
+        nonlinear_solver.setup_jacobian =
+          [&](const dealii::LinearAlgebraTrilinos::MPI::Vector &current_u,
+              const dealii::LinearAlgebraTrilinos::MPI::Vector &)
+        {
+          assemble_system_matrix(current_u);
+
+          return 0;
+        };
+
+        nonlinear_solver.solve_with_jacobian = [&](const dealii::LinearAlgebraTrilinos::MPI::Vector &rhs,
+                                                    dealii::LinearAlgebraTrilinos::MPI::Vector &      dst,
+                                                    const double tolerance) {
+          solve(rhs, dst, tolerance);
+
+          return 0;
+        };
+
+        nonlinear_solver.solve(solution);
+      }
+
+      data_output(refinement_cycle);
+
+      std::cout << std::endl;
+    }
+
+
+ /*
   double last_residual_norm     = std::numeric_limits<double>::max();
   unsigned int refinement_cycle = 0;
 
@@ -1190,6 +1272,7 @@ void step77<dim>::run()
     this->pcout << std::endl;
 
   } while (last_residual_norm > 1e-3);
+  */
 }
 
 
@@ -1204,13 +1287,6 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    //dealii::deallog.depth_console(2);
-
-
-    /*AssertThrow(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD) == 1,
-                ExcMessage(
-                  "This program can only be run in serial"));
-    */
     step77::step77<2> problem;
 
     problem.run();
