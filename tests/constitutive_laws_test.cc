@@ -296,6 +296,25 @@ void CrystalData<dim>::test_methods()
 
   std::cout << "Testing VectorMicroscopicStressLaw<dim> \n\n";
 
+  dealii::Tensor<1,dim> slip_gradient;
+
+  slip_gradient[0] = 0.5;
+  slip_gradient[1] = 1.5;
+  slip_gradient[2] = 3.0;
+
+  const dealii::Tensor<1,dim> vector_microscopic_stress =
+    vector_microscopic_stress_law.get_vector_microscopic_stress(
+      0, // crystal_id
+      0, // slip_id
+      slip_gradient);
+  for (unsigned int i = 0; i < crystals_data->get_n_slips(); ++i)
+    std::cout << "get_reduced_gradient_hardening_tensor(0," << i << ") = "
+              << vector_microscopic_stress_law.get_reduced_gradient_hardening_tensor(0,i)
+              << "\n\n";
+
+  std::cout << "vector_microscopic_stress = "
+            << vector_microscopic_stress
+            << "\n\n";
 }
 
 
