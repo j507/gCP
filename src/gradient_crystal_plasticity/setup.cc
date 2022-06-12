@@ -51,6 +51,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   // Initiate vectors
   solution.reinit(fe_field->solution);
+  trial_solution.reinit(fe_field->solution);
   newton_update.reinit(fe_field->solution);
   residual.reinit(fe_field->distributed_vector);
 

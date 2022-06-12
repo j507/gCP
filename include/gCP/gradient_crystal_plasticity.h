@@ -99,6 +99,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
 
+  dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
+
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
@@ -121,7 +123,8 @@ private:
   void copy_local_to_global_jacobian(
     const gCP::AssemblyData::Jacobian::Copy &data);
 
-  void assemble_residual();
+  double assemble_residual(
+    const dealii::LinearAlgebraTrilinos::MPI::Vector  &argument_vector);
 
   void assemble_local_residual(
     const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
@@ -140,6 +143,8 @@ private:
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
   void solve_linearized_system();
+
+  void compute_trial_solution(const double lamba);
 };
 
 

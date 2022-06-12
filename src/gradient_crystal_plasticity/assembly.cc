@@ -266,7 +266,8 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::assemble_residual()
+double GradientCrystalPlasticitySolver<dim>::assemble_residual(
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &argument_vector)
 {
   if (parameters.verbose)
     *pcout << std::setw(38) << std::left
@@ -322,6 +323,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
     worker,
     copier,
     gCP::AssemblyData::Residual::Scratch<dim>(
+      argument_vector,
       mapping_collection,
       quadrature_collection,
       face_quadrature_collection,
@@ -339,6 +341,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
+
+  return 0.5*residual_norm*residual_norm;
 }
 
 
@@ -375,7 +379,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Get the linear strain tensor values at the quadrature points
   fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    solution,
+    scratch.argument_vector,
     scratch.strain_tensor_values);
 
   // Get the supply term values at the quadrature points
@@ -389,7 +393,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      solution,
+      scratch.argument_vector,
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
@@ -397,7 +401,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
-      solution,
+      scratch.argument_vector,
       scratch.slip_gradient_values[slip_id]);
   }
 
@@ -683,8 +687,10 @@ template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_jaco
 template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_jacobian(
   const gCP::AssemblyData::Jacobian::Copy &);
 
-template void gCP::GradientCrystalPlasticitySolver<2>::assemble_residual();
-template void gCP::GradientCrystalPlasticitySolver<3>::assemble_residual();
+template double gCP::GradientCrystalPlasticitySolver<2>::assemble_residual(
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &);
+template double gCP::GradientCrystalPlasticitySolver<3>::assemble_residual(
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_residual(
   const typename dealii::DoFHandler<2>::active_cell_iterator  &,

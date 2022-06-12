@@ -10,6 +10,7 @@
 #include <deal.II/hp/fe_values.h>
 
 #include <deal.II/lac/full_matrix.h>
+#include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/lac/vector.h>
 
 namespace gCP
@@ -127,59 +128,63 @@ struct Copy : CopyBase
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
-          const dealii::hp::QCollection<dim>        &quadrature_collection,
-          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
-          const dealii::hp::FECollection<dim>       &finite_element,
-          const dealii::UpdateFlags                 update_flags,
-          const dealii::UpdateFlags                 face_update_flags,
-          const unsigned int                        n_slips);
+  Scratch(
+    const dealii::LinearAlgebraTrilinos::MPI::Vector  &argument_vector,
+    const dealii::hp::MappingCollection<dim>          &mapping,
+    const dealii::hp::QCollection<dim>                &quadrature_collection,
+    const dealii::hp::QCollection<dim-1>              &face_quadrature_collection,
+    const dealii::hp::FECollection<dim>               &finite_element,
+    const dealii::UpdateFlags                         update_flags,
+    const dealii::UpdateFlags                         face_update_flags,
+    const unsigned int                                n_slips);
 
   Scratch(const Scratch<dim>  &data);
 
-  dealii::hp::FEValues<dim>                       hp_fe_values;
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &argument_vector;
 
-  dealii::hp::FEFaceValues<dim>                   hp_fe_face_values;
+  dealii::hp::FEValues<dim>                         hp_fe_values;
 
-  const unsigned int                              n_face_q_points;
+  dealii::hp::FEFaceValues<dim>                     hp_fe_face_values;
 
-  unsigned int                                    n_slips;
+  const unsigned int                                n_face_q_points;
 
-  std::vector<double>                             JxW_values;
+  unsigned int                                      n_slips;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
+  std::vector<double>                               JxW_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     elastic_strain_tensor_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>       strain_tensor_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     stress_tensor_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>       elastic_strain_tensor_values;
 
-  std::vector<std::vector<dealii::Tensor<1,dim>>> slip_gradient_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>       stress_tensor_values;
 
-  std::vector<std::vector<dealii::Tensor<1,dim>>> vector_microscopic_stress_values;
+  std::vector<std::vector<dealii::Tensor<1,dim>>>   slip_gradient_values;
 
-  std::vector<std::vector<double>>                resolved_stress_values;
+  std::vector<std::vector<dealii::Tensor<1,dim>>>   vector_microscopic_stress_values;
 
-  std::vector<std::vector<double>>                slip_values;
+  std::vector<std::vector<double>>                  resolved_stress_values;
 
-  std::vector<std::vector<double>>                old_slip_values;
+  std::vector<std::vector<double>>                  slip_values;
 
-  std::vector<std::vector<double>>                scalar_microscopic_stress_values;
+  std::vector<std::vector<double>>                  old_slip_values;
 
-  std::vector<dealii::Tensor<1,dim>>              supply_term_values;
+  std::vector<std::vector<double>>                  scalar_microscopic_stress_values;
 
-  std::vector<dealii::Tensor<1,dim>>              neumann_boundary_values;
+  std::vector<dealii::Tensor<1,dim>>                supply_term_values;
 
-  std::vector<dealii::Tensor<1,dim>>              vector_phi;
+  std::vector<dealii::Tensor<1,dim>>                neumann_boundary_values;
 
-  std::vector<dealii::Tensor<1,dim>>              face_vector_phi;
+  std::vector<dealii::Tensor<1,dim>>                vector_phi;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     sym_grad_vector_phi;
+  std::vector<dealii::Tensor<1,dim>>                face_vector_phi;
 
-  std::vector<std::vector<double>>                scalar_phi;
+  std::vector<dealii::SymmetricTensor<2,dim>>       sym_grad_vector_phi;
 
-  std::vector<std::vector<double>>                face_scalar_phi;
+  std::vector<std::vector<double>>                  scalar_phi;
 
-  std::vector<std::vector<dealii::Tensor<1,dim>>> grad_scalar_phi;
+  std::vector<std::vector<double>>                  face_scalar_phi;
+
+  std::vector<std::vector<dealii::Tensor<1,dim>>>   grad_scalar_phi;
 };
 
 

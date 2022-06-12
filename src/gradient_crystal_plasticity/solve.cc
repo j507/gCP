@@ -33,13 +33,18 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
-    assemble_residual();
+    const double initial_function_value = assemble_residual(solution);
+    const double descent_direction      = - 2.0 * initial_function_value;
 
     assemble_jacobian();
 
     solve_linearized_system();
 
-    assemble_residual();
+    compute_trial_solution(1.0);
+
+    assemble_residual(trial_solution);
+
+    solution = trial_solution;
 
     *pcout << std::setw(23) << std::right
            << nonlinear_iteration << std::string(5, ' ')
@@ -70,6 +75,29 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   fe_field->solution = solution;
 
   *pcout << std::endl;
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::compute_trial_solution(
+  const double lambda)
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+  distributed_newton_update.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = solution;
+  distributed_newton_update   = newton_update;
+
+  distributed_trial_solution.add(lambda, distributed_newton_update);
+
+  fe_field->get_affine_constraints().distribute(
+    distributed_trial_solution);
+
+  trial_solution = distributed_trial_solution;
 }
 
 
@@ -145,14 +173,14 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
     distributed_newton_update);
 
   // Compute the updated solution
-  distributed_solution.add(1.0,
-                           distributed_newton_update);
+  //distributed_solution.add(1.0,
+  //                         distributed_newton_update);
 
-  fe_field->get_affine_constraints().distribute(
-    distributed_solution);
+  //fe_field->get_affine_constraints().distribute(
+  //  distributed_solution);
 
   // Pass the distributed vectors to their ghosted counterpart
-  solution      = distributed_solution;
+  //solution      = distributed_solution;
   newton_update = distributed_newton_update;
 
   if (parameters.verbose)
@@ -162,6 +190,9 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
 
 
 } // namespace gCP
+
+template void gCP::GradientCrystalPlasticitySolver<2>::compute_trial_solution(const double);
+template void gCP::GradientCrystalPlasticitySolver<3>::compute_trial_solution(const double);
 
 
 template void gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();

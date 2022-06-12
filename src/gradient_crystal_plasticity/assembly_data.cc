@@ -136,15 +136,17 @@ local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell)
 
 template <int dim>
 Scratch<dim>::Scratch(
-  const dealii::hp::MappingCollection<dim>  &mapping,
-  const dealii::hp::QCollection<dim>        &quadrature_collection,
-  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
-  const dealii::hp::FECollection<dim>       &finite_element_collection,
-  const dealii::UpdateFlags                 update_flags,
-  const dealii::UpdateFlags                 face_update_flags,
-  const unsigned int                        n_slips)
+  const dealii::LinearAlgebraTrilinos::MPI::Vector  &argument_vector,
+  const dealii::hp::MappingCollection<dim>          &mapping,
+  const dealii::hp::QCollection<dim>                &quadrature_collection,
+  const dealii::hp::QCollection<dim-1>              &face_quadrature_collection,
+  const dealii::hp::FECollection<dim>               &finite_element_collection,
+  const dealii::UpdateFlags                         update_flags,
+  const dealii::UpdateFlags                         face_update_flags,
+  const unsigned int                                n_slips)
 :
 ScratchBase<dim>(quadrature_collection, finite_element_collection),
+argument_vector(argument_vector),
 hp_fe_values(mapping,
              finite_element_collection,
              quadrature_collection,
@@ -190,6 +192,7 @@ template <int dim>
 Scratch<dim>::Scratch(const Scratch<dim> &data)
 :
 ScratchBase<dim>(data),
+argument_vector(data.argument_vector),
 hp_fe_values(data.hp_fe_values.get_mapping_collection(),
              data.hp_fe_values.get_fe_collection(),
              data.hp_fe_values.get_quadrature_collection(),
