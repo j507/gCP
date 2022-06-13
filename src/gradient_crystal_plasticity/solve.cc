@@ -14,18 +14,20 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   *pcout << std::endl
          << "    Nonlinear iteration"
          << std::string(5, ' ')
+         << "Norm of the newton update"
+         << std::string(5, ' ')
          << "Norm of the residual after solve() call"
          << std::endl;
-
-  solution = fe_field->solution;
-
-  unsigned int nonlinear_iteration = 0;
 
   nonlinear_solver_logger.add_break(
     "Solving for t = " +
     std::to_string(discrete_time.get_next_time())+
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
+
+  solution = fe_field->solution;
+
+  unsigned int nonlinear_iteration = 0;
 
   /*!
    * @todo This loop needs some work. No line search is performed.
@@ -43,6 +45,10 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     *pcout << std::setw(23) << std::right
            << nonlinear_iteration << std::string(5, ' ')
+           << std::setw(25) << std::right
+           << std::fixed << std::scientific
+           << std::setprecision(6)
+           << newton_update_norm
            << std::setw(39) << std::right
            << std::fixed << std::scientific
            << std::setprecision(6)
@@ -51,7 +57,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
     nonlinear_solver_logger.update_value("Nonlinear iteration",
                                          nonlinear_iteration);
     nonlinear_solver_logger.update_value("Norm of the newton update",
-                                         lambda * newton_update_norm);
+                                         newton_update_norm);
     nonlinear_solver_logger.update_value("Norm of the residual after solve() call",
                                          residual_norm);
 
