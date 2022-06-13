@@ -14,12 +14,10 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   *pcout << std::endl
          << "    Nonlinear iteration"
          << std::string(5, ' ')
+         << "Norm of the newton update"
+         << std::string(5, ' ')
          << "Norm of the residual after solve() call"
          << std::endl;
-
-  solution = fe_field->solution;
-
-  unsigned int nonlinear_iteration = 0;
 
   nonlinear_solver_logger.add_break(
     "Solving for t = " +
@@ -27,27 +25,46 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
 
+  solution = fe_field->solution;
+
+  unsigned int nonlinear_iteration = 0;
+
   /*!
    * @todo This loop needs some work. No line search is performed.
    */
   for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
-    const double initial_function_value = assemble_residual(solution);
-    const double descent_direction      = - 2.0 * initial_function_value;
+    const double initial_scalar_function_value =
+      assemble_residual(solution);
+
+    line_search.reinit(initial_scalar_function_value);
+
+    double lambda = 1.0;
 
     assemble_jacobian();
 
     solve_linearized_system();
 
-    compute_trial_solution(1.0);
+    compute_trial_solution(lambda);
 
-    assemble_residual(trial_solution);
+    double trial_scalar_function_value =
+      assemble_residual(trial_solution);
 
+    /*std::cout << "initial_scalar_function_value = "
+              << initial_scalar_function_value
+              << ", trial_scalar_function_value = "
+              << trial_scalar_function_value << std::endl;
+    std::cout << line_search.suficient_descent_condition(trial_scalar_function_value,lambda)
+              << std::endl;*/
     solution = trial_solution;
 
     *pcout << std::setw(23) << std::right
            << nonlinear_iteration << std::string(5, ' ')
+           << std::setw(25) << std::right
+           << std::fixed << std::scientific
+           << std::setprecision(6)
+           << newton_update_norm
            << std::setw(39) << std::right
            << std::fixed << std::scientific
            << std::setprecision(6)

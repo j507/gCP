@@ -5,6 +5,7 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/quadrature_point_history.h>
+#include <gCP/line_search.h>
 #include <gCP/run_time_parameters.h>
 #include <gCP/utilities.h>
 
@@ -94,6 +95,8 @@ private:
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
+
+  LineSearch                                        line_search;
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
