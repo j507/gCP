@@ -16,6 +16,7 @@
 #include <deal.II/numerics/vector_tools.h>
 
 
+
 #ifndef __has_include
   static_assert(false, "__has_include not supported");
 #else
@@ -30,6 +31,7 @@
      namespace fs = boost::filesystem;
 #  endif
 #endif
+
 
 
 namespace gCP
@@ -774,42 +776,44 @@ void ProblemClass<dim>::run()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
-  }
 
-  const fs::path path{"python/"};
+    const fs::path path{parameters.graphical_output_directory};
 
-  fs::path filename = path / "simple_shear.txt";
+    fs::path filename = path / "stress12_vs_shear_at_boundary.txt";
 
-  try
-  {
-    std::ofstream fstream(filename.string());
-    simple_shear.output_data_to_file(fstream);
-  }
-  catch (std::exception &exc)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Exception in the creation of the output file: "
-              << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
+    try
+    {
+      std::ofstream fstream(filename.string());
+      simple_shear.output_data_to_file(fstream);
+    }
+    catch (std::exception &exc)
+    {
+      std::cerr << std::endl << std::endl
+                << "----------------------------------------------------"
                 << std::endl;
-    std::cerr << "Unknown exception in the creation of the output file!"
-              << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
+      std::cerr << "Exception in the creation of the output file: "
+                << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
+    }
+    catch (...)
+    {
+      std::cerr << std::endl << std::endl
+                << "----------------------------------------------------"
+                  << std::endl;
+      std::cerr << "Unknown exception in the creation of the output file!"
+                << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
+    }
+
   }
+
 }
 
 
