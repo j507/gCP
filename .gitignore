@@ -2,8 +2,17 @@
 *.d
 
 # Applications
+gCPFEM
+elasticity
+elasticity_with_solver
 step-3
-step-3_trilinos
+step-15
+step-77
+constitutive_laws_test
+crystal_data_test
+fe_collection_test
+line_search_test
+material_id_test
 
 # Compiled Object files
 *.slo
@@ -34,7 +43,7 @@ step-3_trilinos
 *.exe
 *.out
 *.app
- 
+
 # LaTeX
 *.aux
 *.glo
@@ -94,6 +103,7 @@ _deps
 *.visit
 *.pvd
 *.gpl
+/results/
 
 # Python compiled modules
 *.pyc
