@@ -50,6 +50,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     nonlinear_solver_logger.update_value("Nonlinear iteration",
                                          nonlinear_iteration);
+    nonlinear_solver_logger.update_value("Norm of the newton update",
+                                         lambda * newton_update_norm);
     nonlinear_solver_logger.update_value("Norm of the residual after solve() call",
                                          residual_norm);
 
@@ -154,6 +156,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
   // Pass the distributed vectors to their ghosted counterpart
   solution      = distributed_solution;
   newton_update = distributed_newton_update;
+
+  newton_update_norm = distributed_newton_update.l2_norm();
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;

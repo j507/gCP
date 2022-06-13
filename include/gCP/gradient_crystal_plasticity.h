@@ -105,6 +105,8 @@ private:
 
   double                                            residual_norm;
 
+  double                                            newton_update_norm;
+
   Utilities::Logger                                 nonlinear_solver_logger;
 
   bool                                              flag_init_was_called;

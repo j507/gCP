@@ -91,8 +91,12 @@ flag_init_was_called(false)
     "Nonlinear iteration");
   nonlinear_solver_logger.declare_column(
     "Norm of the residual after solve() call");
+  nonlinear_solver_logger.declare_column(
+    "Norm of the newton update");
   nonlinear_solver_logger.set_scientific(
     "Norm of the residual after solve() call", true);
+  nonlinear_solver_logger.set_scientific(
+    "Norm of the newton update", true);
 }
 
 
