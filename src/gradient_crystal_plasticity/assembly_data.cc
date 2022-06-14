@@ -356,7 +356,7 @@ namespace ProjectionRHS
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_rhs(dofs_per_cell),
+local_rhs(2, dealii::Vector<double>(dofs_per_cell)),
 local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell)
 {}
 
@@ -369,7 +369,8 @@ Scratch<dim>::Scratch(
   const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
   const dealii::UpdateFlags                 scalar_update_flags,
   const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
-  const dealii::UpdateFlags                 vector_update_flags)
+  const dealii::UpdateFlags                 vector_update_flags,
+  const unsigned int                        n_slips)
 :
 ScratchBase<dim>(quadrature_collection, scalar_finite_element_collection),
 scalar_hp_fe_values(mapping_collection,
@@ -380,8 +381,12 @@ vector_hp_fe_values(mapping_collection,
                     vector_finite_element_collection,
                     quadrature_collection,
                     vector_update_flags),
+n_slips(n_slips),
 JxW_values(this->n_q_points),
+slip_values(n_slips, std::vector<double>(this->n_q_points)),
 strain_tensor_values(this->n_q_points),
+elastic_strain_tensor_values(this->n_q_points),
+stress_tensor_values(this->n_q_points),
 scalar_phi(this->dofs_per_cell)
 {}
 
@@ -399,8 +404,12 @@ vector_hp_fe_values(data.vector_hp_fe_values.get_mapping_collection(),
                     data.vector_hp_fe_values.get_fe_collection(),
                     data.vector_hp_fe_values.get_quadrature_collection(),
                     data.vector_hp_fe_values.get_update_flags()),
+n_slips(data.n_slips),
 JxW_values(this->n_q_points),
+slip_values(n_slips, std::vector<double>(this->n_q_points)),
 strain_tensor_values(this->n_q_points),
+elastic_strain_tensor_values(this->n_q_points),
+stress_tensor_values(this->n_q_points),
 scalar_phi(this->dofs_per_cell)
 {}
 

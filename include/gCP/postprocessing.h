@@ -39,7 +39,7 @@ public:
 
   void output_data_to_file(std::ostream &file) const;
 
-  const dealii::LinearAlgebraTrilinos::MPI::Vector &get_data() const;
+  const std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector> &get_data() const;
 
   const dealii::DoFHandler<dim>& get_dof_handler() const;
 
@@ -66,9 +66,9 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::PreconditionAMG     preconditioner;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector              projection_rhs;
+  std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector> projection_rhs;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector              double_strain_12;
+  std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector> projected_data;
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain;
 
@@ -124,10 +124,10 @@ SimpleShear<dim>::get_dof_handler() const
 
 
 template <int dim>
-inline const dealii::LinearAlgebraTrilinos::MPI::Vector &
+inline const std::vector<dealii::LinearAlgebraTrilinos::MPI::Vector> &
 SimpleShear<dim>::get_data() const
 {
-  return (double_strain_12);
+  return (projected_data);
 }
 
 

@@ -26,6 +26,8 @@ SimpleShear<dim>::SimpleShear(
 fe_field(fe_field),
 mapping_collection(*mapping),
 dof_handler(fe_field->get_triangulation()),
+projection_rhs(2),
+projected_data(2),
 shear_at_upper_boundary(shear_at_upper_boundary),
 upper_boundary_id(upper_boundary_id),
 width(width),
@@ -96,13 +98,15 @@ void SimpleShear<dim>::init(
     projection_matrix.reinit(sparsity_pattern);
   }
 
-  double_strain_12.reinit(locally_relevant_dofs,
-                          MPI_COMM_WORLD);
-
-  projection_rhs.reinit(locally_owned_dofs,
-                        locally_relevant_dofs,
-                        MPI_COMM_WORLD,
-                        true);
+  for (unsigned int i = 0; i < projected_data.size(); ++i)
+  {
+    projected_data[i].reinit(locally_relevant_dofs,
+                             MPI_COMM_WORLD);
+    projection_rhs[i].reinit(locally_owned_dofs,
+                             locally_relevant_dofs,
+                             MPI_COMM_WORLD,
+                             true);
+  }
 
   assemble_projection_matrix();
 
@@ -374,11 +378,12 @@ void SimpleShear<dim>::assemble_projection_rhs()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  projection_rhs = 0.0;
+  for (auto &right_hand_side: projection_rhs)
+    right_hand_side = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
-    const CellIterator                                                &cell,
+    const CellIterator                                             &cell,
     gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim> &scratch,
     gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy         &data)
   {
@@ -398,6 +403,7 @@ void SimpleShear<dim>::assemble_projection_rhs()
     dealii::update_values;
 
   const dealii::UpdateFlags vector_update_flags =
+    dealii::update_values |
     dealii::update_gradients;
 
   // Assemble using the WorkStream approach
@@ -414,12 +420,14 @@ void SimpleShear<dim>::assemble_projection_rhs()
       fe_collection,
       scalar_update_flags,
       fe_field->get_fe_collection(),
-      vector_update_flags),
+      vector_update_flags,
+      fe_field->get_n_slips()),
     gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy(
       fe_collection.max_dofs_per_cell()));
 
   // Compress global data
-  projection_rhs.compress(dealii::VectorOperation::add);
+  for (auto &right_hand_side: projection_rhs)
+    right_hand_side.compress(dealii::VectorOperation::add);
 }
 
 
@@ -430,7 +438,9 @@ void SimpleShear<dim>::assemble_local_projection_rhs(
   gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy          &data)
 {
   // Reset local data
-  data.local_rhs                          = 0.0;
+  for (auto &local_right_hand_side: data.local_rhs)
+    local_right_hand_side = 0.0;
+
   data.local_matrix_for_inhomogeneous_bcs = 0.0;
 
   // Local to global mapping of the indices of the degrees of freedom
@@ -466,9 +476,31 @@ void SimpleShear<dim>::assemble_local_projection_rhs(
     fe_field->solution,
     scratch.strain_tensor_values);
 
+  // Get the slips and their gradients values at the quadrature points
+  for (unsigned int slip_id = 0; slip_id < scratch.n_slips; ++slip_id)
+  {
+    vector_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
+      fe_field->solution,
+      scratch.slip_values[slip_id]);
+  }
+
   // Loop over quadrature points
   for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
   {
+    // Compute the elastic strain tensor at the quadrature point
+    scratch.elastic_strain_tensor_values[q_point] =
+      elastic_strain->get_elastic_strain_tensor(
+        crystal_id,
+        q_point,
+        scratch.strain_tensor_values[q_point],
+        scratch.slip_values);
+
+    // Compute the stress tensor at the quadrature point
+    scratch.stress_tensor_values[q_point] =
+      hooke_law->get_stress_tensor(
+        crystal_id,
+        scratch.elastic_strain_tensor_values[q_point]);
+
     // Extract test function values at the quadrature points (Slips)
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
       scratch.scalar_phi[i] =
@@ -476,10 +508,17 @@ void SimpleShear<dim>::assemble_local_projection_rhs(
 
     // Loop over the degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-        data.local_rhs(i) +=
-          scratch.scalar_phi[i] *
-          2.0 * scratch.strain_tensor_values[q_point][0][1] *
-          scratch.JxW_values[q_point];
+    {
+      data.local_rhs[0](i) +=
+        scratch.scalar_phi[i] *
+        2.0 * scratch.strain_tensor_values[q_point][0][1] *
+        scratch.JxW_values[q_point];
+
+      data.local_rhs[1](i) +=
+        scratch.scalar_phi[i] *
+        scratch.stress_tensor_values[q_point][0][1] *
+        scratch.JxW_values[q_point];
+    }
   } // Loop over quadrature points
 }
 
@@ -487,11 +526,12 @@ template <int dim>
 void SimpleShear<dim>::copy_local_to_global_projection_rhs(
   const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
 {
-  hanging_node_constraints.distribute_local_to_global(
-    data.local_rhs,
-    data.local_dof_indices,
-    projection_rhs,
-    data.local_matrix_for_inhomogeneous_bcs);
+  for (unsigned int i = 0; i < data.local_rhs.size(); ++i)
+    hanging_node_constraints.distribute_local_to_global(
+      data.local_rhs[i],
+      data.local_dof_indices,
+      projection_rhs[i],
+      data.local_matrix_for_inhomogeneous_bcs);
 }
 
 
@@ -504,54 +544,57 @@ void SimpleShear<dim>::project()
   // operation.
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
 
-  distributed_solution.reinit(projection_rhs);
+  distributed_solution.reinit(projection_rhs[0]);
 
-  distributed_solution  = double_strain_12;
+  distributed_solution = 0.;
 
-  // The solver's tolerances are passed to the SolverControl instance
-  // used to initialize the solver
-  dealii::SolverControl solver_control(
-    5000,
-    std::max(projection_rhs.l2_norm() * 1e-8, 1e-9));
-
-  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
-
-  // try-catch scope for the solve() call
-  try
+  for (unsigned int i = 0; i < projection_rhs.size(); ++i)
   {
-    solver.solve(projection_matrix,
-                 distributed_solution,
-                 projection_rhs,
-                 preconditioner);
-  }
-  catch (std::exception &exc)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Exception in the solve method: " << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Unknown exception in the solve method!" << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
+    // The solver's tolerances are passed to the SolverControl instance
+    // used to initialize the solver
+    dealii::SolverControl solver_control(
+      5000,
+      std::max(projection_rhs[i].l2_norm() * 1e-8, 1e-9));
 
-  hanging_node_constraints.distribute(
-    distributed_solution);
+    dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
-  double_strain_12  = distributed_solution;
+    // try-catch scope for the solve() call
+    try
+    {
+      solver.solve(projection_matrix,
+                  distributed_solution,
+                  projection_rhs[i],
+                  preconditioner);
+    }
+    catch (std::exception &exc)
+    {
+      std::cerr << std::endl << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Exception in the solve method: " << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
+    }
+    catch (...)
+    {
+      std::cerr << std::endl << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Unknown exception in the solve method!" << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
+    }
+
+    hanging_node_constraints.distribute(
+      distributed_solution);
+
+    projected_data[i]  = distributed_solution;
+  }
 }
 
 

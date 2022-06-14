@@ -282,9 +282,9 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  dealii::Vector<double>      local_rhs;
+  std::vector<dealii::Vector<double>> local_rhs;
 
-  dealii::FullMatrix<double>  local_matrix_for_inhomogeneous_bcs;
+  dealii::FullMatrix<double>          local_matrix_for_inhomogeneous_bcs;
 };
 
 
@@ -297,7 +297,8 @@ struct Scratch : ScratchBase<dim>
           const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
           const dealii::UpdateFlags                 scalar_update_flags,
           const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
-          const dealii::UpdateFlags                 vector_update_flags);
+          const dealii::UpdateFlags                 vector_update_flags,
+          const unsigned int                        n_slips);
 
   Scratch(const Scratch<dim>  &data);
 
@@ -309,7 +310,13 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             JxW_values;
 
+  std::vector<std::vector<double>>                slip_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
+
+  std::vector<dealii::SymmetricTensor<2,dim>>     elastic_strain_tensor_values;
+
+  std::vector<dealii::SymmetricTensor<2,dim>>     stress_tensor_values;
 
   std::vector<double>                             scalar_phi;
 };
