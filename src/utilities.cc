@@ -15,6 +15,8 @@ namespace Utilities
 
 Logger::Logger(const std::string output_filepath)
 :
+pcout(std::cout,
+      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
 output_filepath(output_filepath)
 {}
 
@@ -66,6 +68,48 @@ void Logger::log_to_file()
   }
 
   output_filepath << std::endl;
+}
+
+
+
+void Logger::log_headers_to_terminal()
+{
+  pcout << std::string(2, ' ');
+
+  for (const auto& pair : data_map)
+  {
+    if (pair.second.second)
+      pcout << std::fixed << std::scientific;
+    else
+      pcout << std::defaultfloat;
+
+    pcout << std::setw(pair.first.length()) << std::right
+          << std::setprecision(6)
+          << pair.first << std::string(5, ' ');
+  }
+
+  pcout << std::endl;
+}
+
+
+
+void Logger::log_values_to_terminal()
+{
+  pcout << std::string(2, ' ');
+
+  for (const auto& pair : data_map)
+  {
+    if (pair.second.second)
+      pcout << std::fixed << std::scientific;
+    else
+      pcout << std::defaultfloat;
+
+    pcout << std::setw(pair.first.length()) << std::right
+          << std::setprecision(6)
+          << pair.second.first << std::string(5, ' ');
+  }
+
+  pcout << std::endl;
 }
 
 

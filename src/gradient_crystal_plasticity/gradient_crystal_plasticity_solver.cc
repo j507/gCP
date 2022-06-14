@@ -87,16 +87,11 @@ flag_init_was_called(false)
   face_quadrature_collection.push_back(face_quadrature_formula);
 
   // Initialize logger
-  nonlinear_solver_logger.declare_column(
-    "Nonlinear iteration");
-  nonlinear_solver_logger.declare_column(
-    "Norm of the residual after solve() call");
-  nonlinear_solver_logger.declare_column(
-    "Norm of the newton update");
-  nonlinear_solver_logger.set_scientific(
-    "Norm of the residual after solve() call", true);
-  nonlinear_solver_logger.set_scientific(
-    "Norm of the newton update", true);
+  nonlinear_solver_logger.declare_column("Iteration");
+  nonlinear_solver_logger.declare_column("L2-Norm(Newton update)");
+  nonlinear_solver_logger.declare_column("L2-Norm(Residual)");
+  nonlinear_solver_logger.set_scientific("L2-Norm(Newton update)", true);
+  nonlinear_solver_logger.set_scientific("L2-Norm(Residual)", true);
 }
 
 

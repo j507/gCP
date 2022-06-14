@@ -3,6 +3,8 @@
 
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
+#include <deal.II/base/conditional_ostream.h>
+#include <deal.II/base/mpi.h>
 
 #include <fstream>
 #include <map>
@@ -34,9 +36,15 @@ public:
 
   void log_to_file();
 
+  void log_headers_to_terminal();
+
+  void log_values_to_terminal();
+
   void add_break(const std::string message);
 
 private:
+  dealii::ConditionalOStream                      pcout;
+
   std::ofstream                                   output_filepath;
 
   std::map<std::string, std::pair<double, bool>>  data_map;

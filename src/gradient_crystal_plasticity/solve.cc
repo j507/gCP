@@ -11,19 +11,13 @@ namespace gCP
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
-  *pcout << std::endl
-         << "    Iteration"
-         << std::string(3, ' ')
-         << "Norm(Newton-Direction)"
-         << std::string(3, ' ')
-         << "Norm(Residual)"
-         << std::endl;
-
   nonlinear_solver_logger.add_break(
     "Solving for t = " +
     std::to_string(discrete_time.get_next_time())+
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
+
+  nonlinear_solver_logger.log_headers_to_terminal();
 
   trial_solution  = fe_field->solution;
 
@@ -42,25 +36,15 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     assemble_residual();
 
-    *pcout << std::setw(13) << std::right
-           << nonlinear_iteration << std::string(3, ' ')
-           << std::setw(22) << std::right
-           << std::fixed << std::scientific
-           << std::setprecision(6)
-           << newton_update_norm << std::string(3, ' ')
-           << std::setw(14) << std::right
-           << std::fixed << std::scientific
-           << std::setprecision(6)
-           << residual_norm << std::endl;
-
-    nonlinear_solver_logger.update_value("Nonlinear iteration",
+    nonlinear_solver_logger.update_value("Iteration",
                                          nonlinear_iteration);
-    nonlinear_solver_logger.update_value("Norm of the newton update",
+    nonlinear_solver_logger.update_value("L2-Norm(Newton update)",
                                          newton_update_norm);
-    nonlinear_solver_logger.update_value("Norm of the residual after solve() call",
+    nonlinear_solver_logger.update_value("L2-Norm(Residual)",
                                          residual_norm);
 
     nonlinear_solver_logger.log_to_file();
+    nonlinear_solver_logger.log_values_to_terminal();
 
     if (residual_norm < parameters.residual_tolerance ||
         newton_update_norm < parameters.newton_update_tolerance)
