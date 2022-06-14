@@ -12,11 +12,11 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
   *pcout << std::endl
-         << "    Nonlinear iteration"
-         << std::string(5, ' ')
-         << "Norm of the newton update"
-         << std::string(5, ' ')
-         << "Norm of the residual after solve() call"
+         << "    Iteration"
+         << std::string(3, ' ')
+         << "Norm(Newton-Direction)"
+         << std::string(3, ' ')
+         << "Norm(Residual)"
          << std::endl;
 
   nonlinear_solver_logger.add_break(
@@ -25,13 +25,10 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
 
-  solution = fe_field->solution;
+  trial_solution  = fe_field->solution;
 
   unsigned int nonlinear_iteration = 0;
 
-  /*!
-   * @todo This loop needs some work. No line search is performed.
-   */
   for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
@@ -41,15 +38,17 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     solve_linearized_system();
 
+    update_quadrature_point_history();
+
     assemble_residual();
 
-    *pcout << std::setw(23) << std::right
-           << nonlinear_iteration << std::string(5, ' ')
-           << std::setw(25) << std::right
+    *pcout << std::setw(13) << std::right
+           << nonlinear_iteration << std::string(3, ' ')
+           << std::setw(22) << std::right
            << std::fixed << std::scientific
            << std::setprecision(6)
-           << newton_update_norm
-           << std::setw(39) << std::right
+           << newton_update_norm << std::string(3, ' ')
+           << std::setw(14) << std::right
            << std::fixed << std::scientific
            << std::setprecision(6)
            << residual_norm << std::endl;
@@ -63,7 +62,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     nonlinear_solver_logger.log_to_file();
 
-    if (residual_norm < parameters.nonlinear_tolerance)
+    if (residual_norm < parameters.residual_tolerance ||
+        newton_update_norm < parameters.newton_update_tolerance)
       break;
   }
 
@@ -75,7 +75,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
                 + std::to_string(parameters.n_max_nonlinear_iterations)
                 + ")."));
 
-  fe_field->solution = solution;
+  fe_field->solution = trial_solution;
 
   *pcout << std::endl;
 }
@@ -94,14 +94,14 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
   // In this method we create temporal non ghosted copies
   // of the pertinent vectors to be able to perform the solve()
   // operation.
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
 
-  distributed_solution.reinit(fe_field->distributed_vector);
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
   distributed_newton_update.reinit(fe_field->distributed_vector);
 
-  distributed_solution      = solution;
-  distributed_newton_update = solution;
+  distributed_trial_solution  = trial_solution;
+  distributed_newton_update   = newton_update;
 
   // The solver's tolerances are passed to the SolverControl instance
   // used to initialize the solver
@@ -152,16 +152,15 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
   fe_field->get_newton_method_constraints().distribute(
     distributed_newton_update);
 
-  // Compute the updated solution
-  distributed_solution.add(1.0,
-                           distributed_newton_update);
+  // Compute the updated trial_solution
+  distributed_trial_solution.add(1.0, distributed_newton_update);
 
   fe_field->get_affine_constraints().distribute(
-    distributed_solution);
+    distributed_trial_solution);
 
   // Pass the distributed vectors to their ghosted counterpart
-  solution      = distributed_solution;
-  newton_update = distributed_newton_update;
+  trial_solution  = distributed_trial_solution;
+  newton_update   = distributed_newton_update;
 
   newton_update_norm = distributed_newton_update.l2_norm();
 

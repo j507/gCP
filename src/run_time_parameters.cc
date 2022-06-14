@@ -209,7 +209,8 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 SolverParameters::SolverParameters()
 :
-nonlinear_tolerance(1e-4),
+residual_tolerance(1e-10),
+newton_update_tolerance(1e-8),
 n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
@@ -224,7 +225,11 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
-    prm.declare_entry("Tolerance of the nonlinear solver",
+    prm.declare_entry("Tolerance of the residual",
+                      "1e-10",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Tolerance of the newton update",
                       "1e-8",
                       dealii::Patterns::Double());
 
@@ -269,10 +274,15 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
-    nonlinear_tolerance =
-      prm.get_double("Tolerance of the nonlinear solver");
-    AssertThrow(nonlinear_tolerance > 0,
-                dealii::ExcLowerRange(nonlinear_tolerance, 0));
+    residual_tolerance =
+      prm.get_double("Tolerance of the residual");
+    AssertThrow(residual_tolerance > 0,
+                dealii::ExcLowerRange(residual_tolerance, 0));
+
+    newton_update_tolerance =
+      prm.get_double("Tolerance of the newton update");
+    AssertThrow(newton_update_tolerance > 0,
+                dealii::ExcLowerRange(newton_update_tolerance, 0));
 
     n_max_nonlinear_iterations =
       prm.get_integer("Maximum number of iterations of the nonlinear solver");

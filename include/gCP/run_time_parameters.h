@@ -253,7 +253,14 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  double              nonlinear_tolerance;
+  double              residual_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              newton_update_tolerance;
 
   /*!
    * @brief
@@ -389,8 +396,6 @@ struct ProblemParameters
   std::string             graphical_output_directory;
 
   bool                    verbose;
-
-  //dealii::ParameterHandler  parameter_handler;
 };
 
 

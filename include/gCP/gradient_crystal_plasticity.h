@@ -97,7 +97,7 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 

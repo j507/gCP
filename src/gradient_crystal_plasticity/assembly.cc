@@ -128,7 +128,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
       ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      solution,
+      trial_solution,
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
@@ -375,7 +375,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Get the linear strain tensor values at the quadrature points
   fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    solution,
+    trial_solution,
     scratch.strain_tensor_values);
 
   // Get the supply term values at the quadrature points
@@ -389,7 +389,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      solution,
+      trial_solution,
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
@@ -397,7 +397,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
-      solution,
+      trial_solution,
       scratch.slip_gradient_values[slip_id]);
   }
 
@@ -640,7 +640,7 @@ update_local_quadrature_point_history(
   {
     fe_values[fe_field->get_slip_extractor(crystal_id,
                                            slip_id)].get_function_values(
-      fe_field->solution,
+      trial_solution,
       scratch.slips_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id,

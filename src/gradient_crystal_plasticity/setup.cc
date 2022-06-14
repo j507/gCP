@@ -50,7 +50,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
   }
 
   // Initiate vectors
-  solution.reinit(fe_field->solution);
+  trial_solution.reinit(fe_field->solution);
   newton_update.reinit(fe_field->solution);
   residual.reinit(fe_field->distributed_vector);
 
@@ -63,11 +63,11 @@ void GradientCrystalPlasticitySolver<dim>::init()
     distributed_vector.reinit(fe_field->distributed_vector);
 
     // Distribute the affine constraints to the solution vector
-    distributed_vector = solution;
+    distributed_vector  = trial_solution;
 
     fe_field->get_affine_constraints().distribute(distributed_vector);
 
-    fe_field->solution  = distributed_vector;
+    trial_solution      = distributed_vector;
 
     // Distribute the affine constraints to the newton update vector
     distributed_vector  = newton_update;
