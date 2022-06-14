@@ -763,8 +763,6 @@ void ProblemClass<dim>::run()
 
     gCP_solver.solve_nonlinear_system();
 
-    gCP_solver.update_quadrature_point_history();
-
     fe_field->update_solution_vectors();
 
     discrete_time.advance_time();
