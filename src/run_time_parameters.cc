@@ -378,9 +378,6 @@ ProblemParameters()
   prm.parse_input(parameter_file);
 
   parse_parameters(prm);
-
-  prm.print_parameters(graphical_output_directory + "prm.prm",
-                        dealii::ParameterHandler::OutputStyle::PRM);
 }
 
 
