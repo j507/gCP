@@ -397,11 +397,11 @@ void ProblemClass<dim>::make_grid()
 
   std::vector<std::vector<double>> step_sizes(dim, std::vector<double>());
 
-  step_sizes[0] = std::vector<double>(6, height / 6);
+  step_sizes[0] = std::vector<double>(10, height / 10);
 
-  const double factor       = .65;
+  const double factor       = .50;
 
-  unsigned int n_divisions  = 5;
+  unsigned int n_divisions  = 6;
 
   for (unsigned int i = 0; i < n_divisions; ++i)
   {
@@ -707,8 +707,12 @@ void ProblemClass<dim>::data_output()
                            component_interpretation);
 
   data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data(),
+                           simple_shear.get_data()[0],
                            std::vector<std::string>(1, "2e12"));
+
+  data_out.add_data_vector(simple_shear.get_dof_handler(),
+                           simple_shear.get_data()[1],
+                           std::vector<std::string>(1, "s12"));
 
   data_out.build_patches(*mapping,
                          1 /*fe_field->get_displacement_fe_degree() */,
