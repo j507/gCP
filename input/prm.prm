@@ -25,8 +25,8 @@ subsection Solver parameters
   subsection Constitutive laws' parameters
     subsection Hooke-Law's parameters
       set C1111 = 103652.9411764706
-      set C1122 = 26300
-      set C1212 = 51052.941176470595
+      set C1122 = 51052.941176470595
+      set C1212 = 26300
     end
 
     subsection Scalar microscopic stress law's parameters
