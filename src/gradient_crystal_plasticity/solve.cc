@@ -19,7 +19,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   nonlinear_solver_logger.log_headers_to_terminal();
 
-  trial_solution  = fe_field->solution;
+  trial_solution  = fe_field->old_solution;
 
   unsigned int nonlinear_iteration = 0;
 
