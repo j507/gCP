@@ -675,6 +675,41 @@ void ProblemClass<dim>::postprocessing()
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
 
   simple_shear.compute_data(discrete_time.get_current_time());
+
+  const fs::path path{parameters.graphical_output_directory};
+
+  fs::path filename = path / "stress12_vs_shear_at_boundary.txt";
+
+  try
+  {
+    std::ofstream fstream(filename.string());
+    simple_shear.output_data_to_file(fstream);
+  }
+  catch (std::exception &exc)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Exception in the creation of the output file: "
+              << std::endl
+              << exc.what() << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+                << std::endl;
+    std::cerr << "Unknown exception in the creation of the output file!"
+              << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
 }
 
 
@@ -734,17 +769,26 @@ void ProblemClass<dim>::data_output()
 template<int dim>
 void ProblemClass<dim>::run()
 {
+  // Generate/Read triangulation (Material ids have to be set here)
   make_grid();
 
+  // Setup CrystalsData<dim>, FEField<dim>, boundary conditions,
+  // and assigns the FECollection id of each cell according to the
+  // material id
   setup();
 
+  // Initiate the solver
   gCP_solver.init();
 
+  // Set the supply term
+  gCP_solver.set_supply_term(supply_term_function);
+
+  // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
                     gCP_solver.get_hooke_law());
 
-  gCP_solver.set_supply_term(supply_term_function);
-
+  // Time loop. The current time at the beggining of each loop
+  // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
     if (parameters.verbose)
@@ -759,63 +803,38 @@ void ProblemClass<dim>::run()
              << discrete_time.get_next_step_size()
              << std::endl;
 
+    // Update the internal time variable of all time-dependant functions
+    // to t^{n}
     supply_term_function->set_time(discrete_time.get_next_time());
 
     displacement_control->set_time(discrete_time.get_next_time());
 
+    // Update the Dirichlet boundary conditions values to t^{n}
     update_dirichlet_boundary_conditions();
 
+    // Solve the nonlinear system. After the call fe_field->solution
+    // corresponds to the solution at t^n
     gCP_solver.solve_nonlinear_system();
 
+    //gCP_solver.update_quadrature_point_history();
+
+    // Update the solution vectors, i.e.,
+    // fe_field->old_solution = fe_field->solution
     fe_field->update_solution_vectors();
 
+    // Advance the DiscreteTime instance to t^{n}
     discrete_time.advance_time();
 
+    // Call to the postprocessing method
     postprocessing();
 
+    // Call to the data output method
     if (discrete_time.get_step_number() %
          parameters.graphical_output_frequency == 0 ||
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
-
-    const fs::path path{parameters.graphical_output_directory};
-
-    fs::path filename = path / "stress12_vs_shear_at_boundary.txt";
-
-    try
-    {
-      std::ofstream fstream(filename.string());
-      simple_shear.output_data_to_file(fstream);
-    }
-    catch (std::exception &exc)
-    {
-      std::cerr << std::endl << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::cerr << "Exception in the creation of the output file: "
-                << std::endl
-                << exc.what() << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::abort();
-    }
-    catch (...)
-    {
-      std::cerr << std::endl << std::endl
-                << "----------------------------------------------------"
-                  << std::endl;
-      std::cerr << "Unknown exception in the creation of the output file!"
-                << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::abort();
-    }
-
   }
-
 }
 
 
