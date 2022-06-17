@@ -557,19 +557,8 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
 {
-  using CellFilter =
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
   const unsigned int n_q_points =
     quadrature_collection.max_n_quadrature_points();
-
-  quadrature_point_history.initialize(
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               fe_field->get_dof_handler().begin_active()),
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               fe_field->get_dof_handler().end()),
-    n_q_points);
 
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
     if (cell->is_locally_owned())
