@@ -56,11 +56,15 @@ template <int dim>
 std::string get_tensor_as_string(
   const dealii::Tensor<1,dim> tensor,
   const unsigned int          width = 15,
-  const unsigned int          precision = 6)
+  const unsigned int          precision = 6,
+  const bool                  scientific = false)
 {
   std::stringstream ss;
   ss << std::fixed << std::left << std::showpos;
   ss.precision(precision); // set # places after decimal
+
+  if (scientific)
+    ss << std::scientific << std::fixed;
 
   ss << std::setw(width) << tensor[0]
       << std::setw(width) << tensor[1]
@@ -76,11 +80,15 @@ std::string get_tensor_as_string(
   const dealii::Tensor<2,dim> tensor,
   const unsigned int          offset = 0,
   const unsigned int          width = 15,
-  const unsigned int          precision = 6)
+  const unsigned int          precision = 6,
+  const bool                  scientific = false)
 {
   std::stringstream ss;
   ss << std::fixed << std::left << std::showpos;
   ss.precision(precision); // set # places after decimal
+
+  if (scientific)
+    ss << std::scientific << std::fixed;
 
   ss << std::setw(width) << tensor[0][0]
       << std::setw(width) << tensor[0][1]
@@ -104,11 +112,15 @@ std::string get_tensor_as_string(
   const dealii::SymmetricTensor<2,dim>  tensor,
   const unsigned int                    offset = 0,
   const unsigned int                    width = 15,
-  const unsigned int                    precision = 6)
+  const unsigned int                    precision = 6,
+  const bool                            scientific = false)
 {
   std::stringstream ss;
   ss << std::fixed << std::left << std::showpos;
   ss.precision(precision);
+
+  if (scientific)
+    ss << std::scientific;
 
   ss << std::setw(width) << tensor[0][0]
       << std::setw(width) << tensor[0][1]
@@ -132,11 +144,15 @@ std::string print_tetrad(
   const dealii::SymmetricTensor<4,dim> tetrad,
   const unsigned int                    offset = 0,
   const unsigned int                    width = 15,
-  const unsigned int                    precision = 6)
+  const unsigned int                    precision = 6,
+  const bool                            scientific = false)
 {
   std::stringstream ss;
   ss << std::fixed << std::left << std::showpos;
   ss.precision(precision);
+
+  if (scientific)
+    ss << std::scientific;
 
   ss << std::setw(width) << tetrad[0][0][0][0]
       << std::setw(width) << tetrad[0][0][1][1]
