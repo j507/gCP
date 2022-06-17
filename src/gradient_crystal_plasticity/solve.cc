@@ -21,18 +21,22 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   trial_solution  = fe_field->old_solution;
 
+  prepare_quadrature_point_history();
+
   unsigned int nonlinear_iteration = 0;
 
   for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
+    reset_and_update_quadrature_point_history();
+
     assemble_residual();
 
     assemble_jacobian();
 
     solve_linearized_system();
 
-    update_quadrature_point_history();
+    reset_and_update_quadrature_point_history();
 
     assemble_residual();
 

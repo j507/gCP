@@ -45,8 +45,6 @@ public:
 
   void solve_nonlinear_system();
 
-  void update_quadrature_point_history();
-
   double get_residual_norm() const;
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
@@ -132,6 +130,10 @@ private:
 
   void copy_local_to_global_residual(
     const gCP::AssemblyData::Residual::Copy &data);
+
+  void prepare_quadrature_point_history();
+
+  void reset_and_update_quadrature_point_history();
 
   void update_local_quadrature_point_history(
     const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,

@@ -34,8 +34,19 @@ void QuadraturePointHistory<dim>::init(
                                 n_slips,
                                 0.0 /*initial_slip_resistance*/);
 
+  tmp_slip_resistances      = slip_resistances;
+
   flag_init_was_called      = true;
 }
+
+
+
+template <int dim>
+void QuadraturePointHistory<dim>::store_current_values()
+{
+  tmp_slip_resistances = slip_resistances;
+}
+
 
 
 template <int dim>
@@ -44,6 +55,8 @@ void QuadraturePointHistory<dim>::update_values(
   const std::vector<std::vector<double>>  &slips,
   const std::vector<std::vector<double>>  &old_slips)
 {
+  slip_resistances = tmp_slip_resistances;
+
   for (unsigned int slip_id_alpha = 0;
         slip_id_alpha < n_slips;
         ++slip_id_alpha)
@@ -62,6 +75,9 @@ void QuadraturePointHistory<dim>::update_values(
 
 template gCP::QuadraturePointHistory<2>::QuadraturePointHistory();
 template gCP::QuadraturePointHistory<3>::QuadraturePointHistory();
+
+template void gCP::QuadraturePointHistory<2>::store_current_values();
+template void gCP::QuadraturePointHistory<3>::store_current_values();
 
 template void gCP::QuadraturePointHistory<2>::init(
   const RunTimeParameters::ScalarMicroscopicStressLawParameters &,

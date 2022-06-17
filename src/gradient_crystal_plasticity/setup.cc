@@ -139,7 +139,6 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 
 
 
-
 } // namespace gCP
 
 

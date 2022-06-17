@@ -555,10 +555,46 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::update_quadrature_point_history()
+void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
+{
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  const unsigned int n_q_points =
+    quadrature_collection.max_n_quadrature_points();
+
+  quadrature_point_history.initialize(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().end()),
+    n_q_points);
+
+  for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
+        local_quadrature_point_history =
+          quadrature_point_history.get_data(cell);
+
+      Assert(local_quadrature_point_history.size() == n_q_points,
+              dealii::ExcInternalError());
+
+      for (unsigned int q_point = 0;
+            q_point < n_q_points;
+            ++q_point)
+        local_quadrature_point_history[q_point]->store_current_values();
+    }
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::reset_and_update_quadrature_point_history()
 {
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Update quadrature point history");
+                                "Solver: Reset and update quadrature point history");
 
   // Set up local aliases
   using CellIterator =
@@ -700,8 +736,11 @@ template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_resi
 template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &);
 
-template void gCP::GradientCrystalPlasticitySolver<2>::update_quadrature_point_history();
-template void gCP::GradientCrystalPlasticitySolver<3>::update_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<2>::prepare_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::prepare_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::reset_and_update_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::reset_and_update_quadrature_point_history();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::update_local_quadrature_point_history(
   const typename dealii::DoFHandler<2>::active_cell_iterator  &,
