@@ -54,28 +54,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
   newton_update.reinit(fe_field->solution);
   residual.reinit(fe_field->distributed_vector);
 
-  // Distribute the constraints to the pertinenet vectors
-  // The distribute() method only works on distributed vectors.
-  {
-    // Initiate the distributed vector
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
-
-    distributed_vector.reinit(fe_field->distributed_vector);
-
-    // Distribute the affine constraints to the solution vector
-    distributed_vector  = trial_solution;
-
-    fe_field->get_affine_constraints().distribute(distributed_vector);
-
-    trial_solution      = distributed_vector;
-
-    // Distribute the affine constraints to the newton update vector
-    distributed_vector  = newton_update;
-
-    fe_field->get_newton_method_constraints().distribute(distributed_vector);
-
-    newton_update       = distributed_vector;
-  }
+  trial_solution  = 0.0;
+  newton_update   = 0.0;
+  residual        = 0.0;
 
   // Initiate constitutive laws
   hooke_law->init();
