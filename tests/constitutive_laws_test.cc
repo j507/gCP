@@ -42,8 +42,6 @@ private:
 
   dealii::parallel::distributed::Triangulation<dim>       triangulation;
 
-  dealii::DoFHandler<dim>                                 dof_handler;
-
   const double                                            length;
 
   const double                                            height;
@@ -68,7 +66,9 @@ private:
 
   void mark_grid();
 
-  void test_methods();
+  void init();
+
+  void test_constitutive_laws();
 
   void output();
 };
@@ -86,8 +86,7 @@ triangulation(MPI_COMM_WORLD,
               typename dealii::Triangulation<dim>::MeshSmoothing(
               dealii::Triangulation<dim>::smoothing_on_refinement |
               dealii::Triangulation<dim>::smoothing_on_coarsening)),
-dof_handler(triangulation),
-length(10.0),
+length(1.0),
 height(1.0),
 width(1.0),
 repetitions(dim, 10),
@@ -111,13 +110,11 @@ void CrystalData<dim>::run()
 {
   make_grid();
 
-  dof_handler.distribute_dofs(dealii::FE_Nothing<dim>());
-
   mark_grid();
 
-  test_methods();
+  init();
 
-  output();
+  test_constitutive_laws();
 }
 
 
@@ -160,45 +157,56 @@ void CrystalData<dim>::make_grid()
 template<int dim>
 void CrystalData<dim>::mark_grid()
 {
-  for (const auto &cell : dof_handler.active_cell_iterators())
+  for (const auto &cell : triangulation.active_cell_iterators())
     if (cell->is_locally_owned())
-    {
-      //if (std::fabs(cell->center()[0]) < length/2.0)
-        cell->set_material_id(0);
-      //else
-      //  cell->set_material_id(1);
-    }
+      cell->set_material_id(0);
+}
+
+
+template<int dim>
+void CrystalData<dim>::init()
+{
+  crystals_data->init(triangulation,
+                      "euler_angles",
+                      "slip_directions",
+                      "slip_normals");
+
+  this->pcout
+    << "Overall data" << std::endl
+    << std::setw(15) << std::left << " n_crystals" << " = "
+    << crystals_data->get_n_crystals()
+    << std::endl
+    << std::setw(15) << std::left << " n_slips" << " = "
+    << crystals_data->get_n_slips()
+    << std::endl << std::endl;
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << "Slip system - " << i << "\n"
+      << std::setw(24) << std::left << " Direction" << " = "
+      << gCP::Utilities::get_tensor_as_string(
+          crystals_data->get_slip_direction(0,i)) << "\n\n"
+      << std::setw(24) << std::left << " Normal" << " = "
+      << gCP::Utilities::get_tensor_as_string(
+          crystals_data->get_slip_normal(0,i)) << "\n\n"
+      << std::setw(24) << std::left <<  " Schmid-Tensor" << " = "
+      << gCP::Utilities::get_tensor_as_string(
+          crystals_data->get_schmid_tensor(0,i), 27) << "\n\n"
+      << " Symmetric Schmid-Tensor = "
+      << gCP::Utilities::get_tensor_as_string(
+          crystals_data->get_symmetrized_schmid_tensor(0,i), 27)
+      << "\n\n";
+
+  hooke_law.init();
+
+  vector_microscopic_stress_law.init();
 }
 
 
 
 template<int dim>
-void CrystalData<dim>::test_methods()
+void CrystalData<dim>::test_constitutive_laws()
 {
-  crystals_data->init(triangulation,
-                     "euler_angles",
-                     "slip_directions",
-                     "slip_normals");
-
-  this->pcout << "Overall data" << std::endl
-              << std::setw(15) << std::left << " n_crystals" << " = "
-              << crystals_data->get_n_crystals()
-              << std::endl
-              << std::setw(15) << std::left << " n_slips" << " = "
-              << crystals_data->get_n_slips()
-              << std::endl << std::endl;
-
-  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
-    std::cout << "Slip system - " << i << "\n"
-              << " Direction  = " << crystals_data->get_slip_direction(0,i) << "\n"
-              << " Normal     = " << crystals_data->get_slip_normal(0,i) << "\n"
-              << " Symmetric Schmid-Tensor = \n"
-              << gCP::Utilities::get_tensor_as_string(crystals_data->get_symmetrized_schmid_tensor(0,i))
-              << "\n\n";
-  hooke_law.init();
-
-  vector_microscopic_stress_law.init();
-
   std::cout << "Testing ElasticStrain<dim> \n\n";
 
   dealii::SymmetricTensor<2,dim>  strain_tensor;
@@ -214,7 +222,7 @@ void CrystalData<dim>::test_methods()
     crystals_data->get_n_slips(),
     std::vector<double>(1, 0 ));
 
-  slip_values[0][0] = 1.0;
+  slip_values[0][0] = 0.5;
   slip_values[1][0] = 2.0;
 
   const dealii::SymmetricTensor<2,dim> elastic_strain_tensor =
@@ -224,21 +232,37 @@ void CrystalData<dim>::test_methods()
       strain_tensor,
       slip_values);
 
-  std::cout << "strain_tensor = \n"
-            << gCP::Utilities::get_tensor_as_string(strain_tensor)
-            << "\n\n"
-            << "elastic_strain_tensor = \n "
-            << gCP::Utilities::get_tensor_as_string(elastic_strain_tensor)
-            << "\n\n";
+  std::cout
+    << std::setw(24) << std::left << " Strain tensor" << " = "
+    << gCP::Utilities::get_tensor_as_string(strain_tensor, 27)
+    << "\n\n";
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(24) << std::left << (" Plastic strain " + std::to_string(i)) << " = "
+      << gCP::Utilities::get_tensor_as_string(
+          slip_values[i][0] * crystals_data->get_symmetrized_schmid_tensor(0,i),27) << "\n\n";
+
+  std::cout
+    << std::setw(24) << std::left << " Elastic strain tensor" << " = "
+    << gCP::Utilities::get_tensor_as_string(elastic_strain_tensor, 27)
+    << "\n\n";
 
   std::cout << "Testing HookeLaw<dim> \n\n";
 
   const dealii::SymmetricTensor<2,dim> stress_tensor =
-   hooke_law.get_stress_tensor(0, // crystal_id
+    hooke_law.get_stress_tensor(0, // crystal_id
                                elastic_strain_tensor);
 
-  std::cout << "stress_tensor = \n"
-            << gCP::Utilities::get_tensor_as_string(stress_tensor)
+  const dealii::SymmetricTensor<4,dim> stiffness_tetrad =
+    hooke_law.get_stiffness_tetrad(0);
+
+  std::cout << std::setw(24) << std::left << " Stiffness tetrad" << " = "
+            << gCP::Utilities::print_tetrad(stiffness_tetrad, 27, 15, 3, true)
+            << "\n\n";
+
+  std::cout << std::setw(24) << std::left << " Stress tensor" << " = "
+            << gCP::Utilities::get_tensor_as_string(stress_tensor, 27, 15, 3, true)
             << "\n\n";
 
   std::cout << "Testing ResolvedShearStressLaw<dim> \n\n";
@@ -315,43 +339,6 @@ void CrystalData<dim>::test_methods()
   std::cout << "vector_microscopic_stress = "
             << vector_microscopic_stress
             << "\n\n";
-}
-
-
-template<int dim>
-void CrystalData<dim>::output()
-{
-  dealii::DataOut<dim> data_out;
-
-  data_out.attach_dof_handler(dof_handler);
-
-  dealii::Vector<float> subdomain_per_cell(triangulation.n_active_cells());
-
-  for (unsigned int i = 0; i < subdomain_per_cell.size(); ++i)
-    subdomain_per_cell(i) = triangulation.locally_owned_subdomain();
-
-  dealii::Vector<float> material_id_per_cell(triangulation.n_active_cells());
-
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (cell->is_locally_owned())
-      material_id_per_cell(cell->active_cell_index()) = cell->material_id();
-
-  data_out.add_data_vector(subdomain_per_cell, "Subdomain");
-
-  data_out.add_data_vector(material_id_per_cell, "CrystalData");
-
-  data_out.build_patches();
-
-  static int out_index = 0;
-
-  data_out.write_vtu_with_pvtu_record(
-    "./",
-    "solution_" + std::to_string(dim),
-    out_index,
-    MPI_COMM_WORLD,
-    5);
-
-  out_index++;
 }
 
 
