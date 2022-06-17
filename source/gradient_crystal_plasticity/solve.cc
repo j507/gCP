@@ -19,7 +19,17 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   nonlinear_solver_logger.log_headers_to_terminal();
 
-  trial_solution  = fe_field->old_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = trial_solution;
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+
+  trial_solution = distributed_trial_solution;
+
+  //trial_solution  = fe_field->old_solution;
 
   prepare_quadrature_point_history();
 
@@ -64,6 +74,21 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
                 + ")."));
 
   fe_field->solution = trial_solution;
+
+  //dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+  distributed_old_solution.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = fe_field->solution;
+  distributed_old_solution    = fe_field->old_solution;
+
+  distributed_trial_solution.sadd(2.0, -1.0, distributed_old_solution);
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+
+  trial_solution = distributed_trial_solution;
 
   *pcout << std::endl;
 }
