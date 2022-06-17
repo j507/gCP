@@ -281,6 +281,8 @@ private:
 
   void setup();
 
+  void setup_constraints();
+
   void solve();
 
   void postprocessing();
@@ -475,21 +477,22 @@ void ProblemClass<dim>::setup()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Setup");
 
+  // Initiates the crystals' data (Slip directions, normals, orthogonals,
+  // Schmid-Tensor and symmetrized Schmid-Tensors)
   crystals_data->init(triangulation,
                       parameters.euler_angles_pathname,
                       parameters.slips_directions_pathname,
                       parameters.slips_normals_pathname);
 
-  *pcout << "Crystals data:" << std::endl
-         << " Number of crystals = "
-         << crystals_data->get_n_crystals() << std::endl
-         << " Number of slips    = "
-         << crystals_data->get_n_slips() << std::endl << std::endl;
-
+  // Sets up the FEValuesExtractor instances
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
+
+  // Sets up the degrees of freedom
   fe_field->setup_dofs();
 
+  // Instantiates the external functions, whose number of components
+  // depends on the number of crystals and slips
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
       shear_at_upper_boundary,
@@ -502,14 +505,38 @@ void ProblemClass<dim>::setup()
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
+  // Sets up the problem's constraints
+  setup_constraints();
 
-  // The finite element collection contains the finite element systems
-  // corresponding to each crystal
+  // Sets up the solution vectors
+  fe_field->setup_vectors();
+
+  // Set the active finite elemente index of each cell
+  // Not sure where to put this (Only temporary)
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned())
       cell->set_active_fe_index(0);
 
+  // Terminal output
+  *pcout
+    << "Crystals data:" << std::endl
+    << " Number of crystals = " << crystals_data->get_n_crystals() << std::endl
+    << " Number of slips    = " << crystals_data->get_n_slips() << std::endl
+    << std::endl;
+
+  *pcout
+    << "Spatial discretization:" << std::endl
+    << " Number of degrees of freedom = " << fe_field->n_dofs()
+    << std::endl << std::endl;
+}
+
+
+
+template<int dim>
+void ProblemClass<dim>::setup_constraints()
+{
+  // Initiate the entity needed for periodic boundary conditions
   std::vector<
     dealii::GridTools::
     PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
@@ -621,16 +648,9 @@ void ProblemClass<dim>::setup()
   }
   newton_method_constraints.close();
 
+  // The constraints are now passed to the FEField instance
   fe_field->set_affine_constraints(affine_constraints);
   fe_field->set_newton_method_constraints(newton_method_constraints);
-
-  fe_field->setup_vectors();
-
-  *pcout << "Spatial discretization:"
-              << std::endl
-              << " Number of degrees of freedom = "
-              << fe_field->n_dofs()
-              << std::endl << std::endl;
 }
 
 
@@ -640,11 +660,16 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Update boundary conditions");
 
+  // Instantiate the temporary AffineConstraint instance
   dealii::AffineConstraints<double> affine_constraints;
 
   affine_constraints.clear();
   {
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
+    affine_constraints.merge(fe_field->get_hanging_node_constraints());
+
+    // Interpolate the updated values of the time-dependent boundary
+    // conditions
     dealii::VectorTools::interpolate_boundary_values(
       *mapping,
       fe_field->get_dof_handler(),
@@ -657,14 +682,6 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
   affine_constraints.close();
 
   fe_field->set_affine_constraints(affine_constraints);
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
-
-  distributed_vector.reinit(fe_field->distributed_vector);
-
-  fe_field->get_affine_constraints().distribute(distributed_vector);
-
-  fe_field->solution = distributed_vector;
 }
 
 
@@ -725,6 +742,7 @@ void ProblemClass<dim>::data_output()
     component_interpretation(
       dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
 
+  // Explicit declaration of the slips as scalars
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips();
        ++slip_id)
@@ -750,16 +768,17 @@ void ProblemClass<dim>::data_output()
                            std::vector<std::string>(1, "s12"));
 
   data_out.build_patches(*mapping,
-                         1 /*fe_field->get_displacement_fe_degree() */,
+                         1/*fe_field->get_displacement_fe_degree()*/,
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
 
-  data_out.write_vtu_with_pvtu_record(parameters.graphical_output_directory,
-                                      "solution",
-                                      out_index,
-                                      MPI_COMM_WORLD,
-                                      5);
+  data_out.write_vtu_with_pvtu_record(
+    parameters.graphical_output_directory,
+    "solution",
+    out_index,
+    MPI_COMM_WORLD,
+    5);
 
   out_index++;
 }
@@ -815,8 +834,6 @@ void ProblemClass<dim>::run()
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n
     gCP_solver.solve_nonlinear_system();
-
-    //gCP_solver.update_quadrature_point_history();
 
     // Update the solution vectors, i.e.,
     // fe_field->old_solution = fe_field->solution

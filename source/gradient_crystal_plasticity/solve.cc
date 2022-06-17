@@ -9,6 +9,22 @@ namespace gCP
 
 
 template <int dim>
+void GradientCrystalPlasticitySolver<dim>::distribute_constraints_to_trial_solution()
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution = trial_solution;
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+
+  trial_solution = distributed_trial_solution;
+}
+
+
+
+template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
   nonlinear_solver_logger.add_break(
@@ -19,17 +35,9 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   nonlinear_solver_logger.log_headers_to_terminal();
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  double relaxation_parameter = 1.0;
 
-  distributed_trial_solution.reinit(fe_field->distributed_vector);
-
-  distributed_trial_solution  = trial_solution;
-
-  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
-
-  trial_solution = distributed_trial_solution;
-
-  //trial_solution  = fe_field->old_solution;
+  distribute_constraints_to_trial_solution();
 
   prepare_quadrature_point_history();
 
@@ -45,6 +53,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
     assemble_jacobian();
 
     solve_linearized_system();
+
+    update_trial_solution(relaxation_parameter);
 
     reset_and_update_quadrature_point_history();
 
@@ -75,20 +85,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   fe_field->solution = trial_solution;
 
-  //dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
-
-  distributed_trial_solution.reinit(fe_field->distributed_vector);
-  distributed_old_solution.reinit(fe_field->distributed_vector);
-
-  distributed_trial_solution  = fe_field->solution;
-  distributed_old_solution    = fe_field->old_solution;
-
-  distributed_trial_solution.sadd(2.0, -1.0, distributed_old_solution);
-
-  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
-
-  trial_solution = distributed_trial_solution;
+  extrapolate_initial_trial_solution();
 
   *pcout << std::endl;
 }
@@ -107,14 +104,11 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
   // In this method we create temporal non ghosted copies
   // of the pertinent vectors to be able to perform the solve()
   // operation.
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
 
-  distributed_trial_solution.reinit(fe_field->distributed_vector);
   distributed_newton_update.reinit(fe_field->distributed_vector);
 
-  distributed_trial_solution  = trial_solution;
-  distributed_newton_update   = newton_update;
+  distributed_newton_update = newton_update;
 
   // The solver's tolerances are passed to the SolverControl instance
   // used to initialize the solver
@@ -161,20 +155,15 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
               << std::endl;
     std::abort();
   }
+
   // Zero out the Dirichlet boundary conditions
   fe_field->get_newton_method_constraints().distribute(
     distributed_newton_update);
 
-  // Compute the updated trial_solution
-  distributed_trial_solution.add(1.0, distributed_newton_update);
-
-  fe_field->get_affine_constraints().distribute(
-    distributed_trial_solution);
-
   // Pass the distributed vectors to their ghosted counterpart
-  trial_solution  = distributed_trial_solution;
-  newton_update   = distributed_newton_update;
+  newton_update = distributed_newton_update;
 
+  // Compute the L2-Norm of the Newton update
   newton_update_norm = distributed_newton_update.l2_norm();
 
   if (parameters.verbose)
@@ -183,11 +172,69 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
 
 
 
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
+  const double relaxation_parameter)
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+  distributed_newton_update.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = trial_solution;
+  distributed_newton_update   = newton_update;
+
+  distributed_trial_solution.add(relaxation_parameter, distributed_newton_update);
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+
+  trial_solution  = distributed_trial_solution;
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+  distributed_old_solution.reinit(fe_field->distributed_vector);
+  distributed_newton_update.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = fe_field->solution;
+  distributed_old_solution    = fe_field->old_solution;
+  distributed_newton_update   = fe_field->solution;
+
+  distributed_trial_solution.sadd(2.0, -1.0, distributed_old_solution);
+  distributed_newton_update.sadd(2.0, -2.0, distributed_old_solution);
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+  fe_field->get_newton_method_constraints().distribute(distributed_newton_update);
+
+  trial_solution  = distributed_trial_solution;
+  newton_update   = distributed_newton_update;
+}
+
+
 } // namespace gCP
 
+
+template void gCP::GradientCrystalPlasticitySolver<2>::distribute_constraints_to_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<3>::distribute_constraints_to_trial_solution();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
 template void gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
 template void gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::update_trial_solution(const double);
+template void gCP::GradientCrystalPlasticitySolver<3>::update_trial_solution(const double);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution();
+

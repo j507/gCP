@@ -111,6 +111,8 @@ private:
 
   void init_quadrature_point_history();
 
+  void distribute_constraints_to_trial_solution();
+
   void assemble_jacobian();
 
   void assemble_local_jacobian(
@@ -144,6 +146,10 @@ private:
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
   void solve_linearized_system();
+
+  void update_trial_solution(const double relaxation_parameter);
+
+  void extrapolate_initial_trial_solution();
 };
 
 
