@@ -330,7 +330,8 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
             slip_resistances[slip_id_alpha]) /
             (time_step_size * regularization_parameter) *
             std::pow(1.0/std::cosh(
-                      compute_slip_rate(q_point, slip_id_alpha)), 2));
+                      compute_slip_rate(q_point, slip_id_alpha) /
+                      regularization_parameter), 2));
 
       AssertIsFinite(matrix[slip_id_alpha][slip_id_beta]);
     }
