@@ -5,8 +5,8 @@ set Verbose = true
 
 subsection Input files
   set Euler angles path name    = input/euler_angles
-  set Slip directions path name = input/simple_shear_slip_directions
-  set Slip normals path name    = input/simple_shear_slip_normals
+  set Slip directions path name = input/slip_directions
+  set Slip normals path name    = input/slip_normals
 end
 
 

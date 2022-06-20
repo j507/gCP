@@ -4,21 +4,21 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/euler_angles_one_unrotated_crystal
-  set Slip directions path name = input/simple_shear_slip_directions
-  set Slip normals path name    = input/simple_shear_slip_normals
+  set Euler angles path name    = input/euler_angles
+  set Slip directions path name = input/no_slip_directions
+  set Slip normals path name    = input/no_slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear/double_slip_hl_125e0_Ht_2e-1/
+  set Graphical output directory = results/simple_shear/no_slips/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
 
 
 subsection Solver parameters
-  set Logger output directory = results/simple_shear/double_slip_hl_125e0_Ht_2e-1/
+  set Logger output directory = results/simple_shear/no_slips/
   set Verbose                 = false
 
 
@@ -32,13 +32,13 @@ subsection Solver parameters
     subsection Scalar microscopic stress law's parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 15.45
-      set Linear hardening modulus = 10.0
+      set Linear hardening modulus = 0.0
       set Regularization function  = tanh
       set Regularization parameter = 4e-2
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.008
+      set Energetic length scale  = 0.8
       set Initial slip resistance = 15.45
     end
 
