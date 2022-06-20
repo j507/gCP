@@ -65,7 +65,7 @@ void QuadraturePointHistory<dim>::update_values(
           ++slip_id_beta)
       slip_resistances[slip_id_alpha] +=
         get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
-        std::abs(slips[slip_id_beta][q_point] -
+        std::fabs(slips[slip_id_beta][q_point] -
                   old_slips[slip_id_beta][q_point]);
 }
 
