@@ -379,9 +379,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     scratch.strain_tensor_values);
 
   // Get the supply term values at the quadrature points
-  supply_term->value_list(
-    fe_values.get_quadrature_points(),
-    scratch.supply_term_values);
+  if (supply_term.get() != nullptr)
+    supply_term->value_list(
+      fe_values.get_quadrature_points(),
+      scratch.supply_term_values);
 
   // Get the slips and their gradients values at the quadrature points
   for (unsigned int slip_id = 0;

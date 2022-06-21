@@ -92,6 +92,9 @@ flag_init_was_called(false)
   nonlinear_solver_logger.declare_column("L2-Norm(Residual)");
   nonlinear_solver_logger.set_scientific("L2-Norm(Newton update)", true);
   nonlinear_solver_logger.set_scientific("L2-Norm(Residual)", true);
+
+  // Initialize supply term shared pointer
+  supply_term = nullptr;
 }
 
 
