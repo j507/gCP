@@ -152,7 +152,7 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_directions_input_file)
       read_and_store(slip_directions_input_file,
-                    reference_slip_directions);
+                     reference_slip_directions);
     else
       AssertThrow(
         false,
@@ -162,7 +162,7 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_normals_input_file)
       read_and_store(slip_normals_input_file,
-                    reference_slip_normals);
+                     reference_slip_normals);
     else
       AssertThrow(
         false,
