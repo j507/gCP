@@ -1,5 +1,6 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/crystal_data.h>
+#include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 #include <gCP/utilities.h>
 
@@ -61,6 +62,8 @@ private:
   gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>  scalar_microscopic_stress_law;
 
   gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<dim>  vector_microscopic_stress_law;
+
+  gCP::QuadraturePointHistory<dim>                        quadrature_point_history;
 
   void make_grid();
 
@@ -167,39 +170,43 @@ template<int dim>
 void CrystalData<dim>::init()
 {
   crystals_data->init(triangulation,
-                      "euler_angles",
-                      "slip_directions",
-                      "slip_normals");
+                      parameters.euler_angles_pathname,
+                      parameters.slips_directions_pathname,
+                      parameters.slips_normals_pathname);
 
   this->pcout
     << "Overall data" << std::endl
-    << std::setw(15) << std::left << " n_crystals" << " = "
+    << std::setw(28) << std::left << " Number of crystals" << " = "
     << crystals_data->get_n_crystals()
     << std::endl
-    << std::setw(15) << std::left << " n_slips" << " = "
+    << std::setw(28) << std::left << " Number of slip systems" << " = "
     << crystals_data->get_n_slips()
     << std::endl << std::endl;
 
   for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
     std::cout
       << "Slip system - " << i << "\n"
-      << std::setw(24) << std::left << " Direction" << " = "
+      << std::setw(28) << std::left << " Direction" << " = "
       << gCP::Utilities::get_tensor_as_string(
           crystals_data->get_slip_direction(0,i)) << "\n\n"
-      << std::setw(24) << std::left << " Normal" << " = "
+      << std::setw(28) << std::left << " Normal" << " = "
       << gCP::Utilities::get_tensor_as_string(
           crystals_data->get_slip_normal(0,i)) << "\n\n"
-      << std::setw(24) << std::left <<  " Schmid-Tensor" << " = "
+      << std::setw(28) << std::left <<  " Schmid-Tensor" << " = "
       << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_schmid_tensor(0,i), 27) << "\n\n"
-      << " Symmetric Schmid-Tensor = "
+          crystals_data->get_schmid_tensor(0,i), 31) << "\n\n"
+      << std::setw(28) << " Symmetric Schmid-Tensor" << " = "
       << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_symmetrized_schmid_tensor(0,i), 27)
+          crystals_data->get_symmetrized_schmid_tensor(0,i), 31)
       << "\n\n";
 
   hooke_law.init();
 
   vector_microscopic_stress_law.init();
+
+  quadrature_point_history.init(
+    parameters.solver_parameters.scalar_microscopic_stress_law_parameters,
+    crystals_data->get_n_slips());
 }
 
 
@@ -213,7 +220,7 @@ void CrystalData<dim>::test_constitutive_laws()
 
   strain_tensor[0][0] = 1.0;
   strain_tensor[1][1] = 1.0;
-  strain_tensor[2][2] = 1.0;
+  strain_tensor[2][2] = 0.0;
   strain_tensor[0][1] = 0.0;
   strain_tensor[0][2] = 0.0;
   strain_tensor[1][2] = 0.0;
@@ -233,19 +240,22 @@ void CrystalData<dim>::test_constitutive_laws()
       slip_values);
 
   std::cout
-    << std::setw(24) << std::left << " Strain tensor" << " = "
-    << gCP::Utilities::get_tensor_as_string(strain_tensor, 27)
+    << std::setw(28) << std::left << " Strain tensor" << " = "
+    << gCP::Utilities::get_tensor_as_string(strain_tensor, 31)
     << "\n\n";
 
   for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
     std::cout
-      << std::setw(24) << std::left << (" Plastic strain " + std::to_string(i)) << " = "
+      << std::setw(28) << std::left << (" Slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  slip_values[i][0] << "\n\n"
+      << std::setw(28) << std::left << (" Plastic strain " + std::to_string(i)) << " = "
       << gCP::Utilities::get_tensor_as_string(
-          slip_values[i][0] * crystals_data->get_symmetrized_schmid_tensor(0,i),27) << "\n\n";
+          slip_values[i][0] * crystals_data->get_symmetrized_schmid_tensor(0,i),31) << "\n\n";
 
   std::cout
-    << std::setw(24) << std::left << " Elastic strain tensor" << " = "
-    << gCP::Utilities::get_tensor_as_string(elastic_strain_tensor, 27)
+    << std::setw(28) << std::left << " Elastic strain tensor" << " = "
+    << gCP::Utilities::get_tensor_as_string(elastic_strain_tensor, 31)
     << "\n\n";
 
   std::cout << "Testing HookeLaw<dim> \n\n";
@@ -257,52 +267,90 @@ void CrystalData<dim>::test_constitutive_laws()
   const dealii::SymmetricTensor<4,dim> stiffness_tetrad =
     hooke_law.get_stiffness_tetrad(0);
 
-  std::cout << std::setw(24) << std::left << " Stiffness tetrad" << " = "
-            << gCP::Utilities::print_tetrad(stiffness_tetrad, 27, 15, 3, true)
+  std::cout << std::setw(28) << std::left << " Stiffness tetrad" << " = "
+            << gCP::Utilities::print_tetrad(stiffness_tetrad, 31, 15, 3, true)
             << "\n\n";
 
-  std::cout << std::setw(24) << std::left << " Stress tensor" << " = "
-            << gCP::Utilities::get_tensor_as_string(stress_tensor, 27, 15, 3, true)
+  std::cout << std::setw(28) << std::left << " Stress tensor" << " = "
+            << gCP::Utilities::get_tensor_as_string(stress_tensor, 31, 15, 3, true)
             << "\n\n";
 
   std::cout << "Testing ResolvedShearStressLaw<dim> \n\n";
 
-  const double resolved_shear_stress =
-    resolved_shear_stress_law.get_resolved_shear_stress(
-      0, //crystal_id
-      0, //slip_id
-      stress_tensor);
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(28) << std::left << (" Resolved shear stress " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(4)
+      << std::scientific
+      << resolved_shear_stress_law.get_resolved_shear_stress(
+          0, //crystal_id
+          i, //slip_id
+          stress_tensor)
+      << "\n\n";
 
-  std::cout << "resolved_shear_stress = "
-            << resolved_shear_stress
-            << "\n\n";
-
-  std::cout << "Testing ScalarMicroscopicStressLaw<dim> \n\n";
+  std::cout << "Testing QuadraturePointHistory<dim> \n\n";
 
   std::vector<std::vector<double>> old_slip_values(
     crystals_data->get_n_slips(),
-    std::vector<double>(1, 0 ));
+    std::vector<double>(1, 0));
 
   old_slip_values[0][0] = 1.5;
   old_slip_values[1][0] = 0.75;
 
-  std::vector<double> slip_resistances(crystals_data->get_n_slips());
+  quadrature_point_history.update_values(
+    0, // q_point
+    slip_values,
+    old_slip_values);
 
-  slip_resistances[0] = 0.5;
-  slip_resistances[1] = 1.5;
+  quadrature_point_history.store_current_values();
+
+  std::vector<double> slip_resistances =
+    quadrature_point_history.get_slip_resistances();
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(28) << std::left << (" Slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  slip_values[i][0] << "\n\n"
+      << std::setw(28) << std::left << (" Old slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  old_slip_values[i][0] << "\n\n"
+      << std::setw(28) << std::left << (" Slip resistance " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  slip_resistances[i]
+      << "\n\n";
+
+
+  std::cout << "Testing ScalarMicroscopicStressLaw<dim> \n\n";
+
+
 
   const double time_step_size = 1e-2;
 
-  const double scalar_microscopic_stres =
-    scalar_microscopic_stress_law.get_scalar_microscopic_stress(
-      slip_values[0][0],
-      old_slip_values[0][0],
-      slip_resistances[0],
-      time_step_size);
+  std::cout << std::setw(28) << std::left << " Time step size " << " = "
+            << time_step_size << "\n\n";
 
-  std::cout << "scalar_microscopic_stres = "
-            << scalar_microscopic_stres
-            << "\n\n";
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(28) << std::left << (" Slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  slip_values[i][0] << "\n\n"
+      << std::setw(28) << std::left << (" Old slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  old_slip_values[i][0] << "\n\n"
+      << std::setw(28) << std::left << (" Hardening " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  slip_resistances[i] << "\n\n"
+      << std::setw(28) << std::left << (" Scalar microscopic stress " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(4)
+      << std::scientific
+      << scalar_microscopic_stress_law.get_scalar_microscopic_stress(
+          slip_values[i][0],
+          old_slip_values[i][0],
+          slip_resistances[i],
+          time_step_size)
+      << "\n\n";
+
 
   const dealii::FullMatrix<double> gateaux_derivative_matrix =
     scalar_microscopic_stress_law.get_gateaux_derivative_matrix(
@@ -339,6 +387,11 @@ void CrystalData<dim>::test_constitutive_laws()
   std::cout << "vector_microscopic_stress = "
             << vector_microscopic_stress
             << "\n\n";
+
+  std::vector<dealii::Tensor<1,dim>> tensors(2);
+
+  for (const auto &entry: tensors)
+    std::cout << entry << std::endl;
 }
 
 
@@ -355,7 +408,7 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::RunTimeParameters::ProblemParameters parameters("../input/prm.prm");
+    gCP::RunTimeParameters::ProblemParameters parameters("input/prm.prm");
 
     Tests::CrystalData<3> problem_3d(parameters);
     problem_3d.run();
