@@ -79,7 +79,7 @@ template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
-  DisplacementControl(const double        shear_at_upper_boundary,
+  DisplacementControl(const double        shear_strain_at_upper_boundary,
                       const double        height,
                       const unsigned int  n_components = 3,
                       const double        time = 0.0);
@@ -89,7 +89,7 @@ public:
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-  const double shear_at_upper_boundary;
+  const double shear_strain_at_upper_boundary;
 
   const double height;
 };
@@ -98,13 +98,13 @@ private:
 
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
-  const double        shear_at_upper_boundary,
+  const double        shear_strain_at_upper_boundary,
   const double        height,
   const unsigned int  n_components,
   const double        time)
 :
 dealii::Function<dim>(n_components, time),
-shear_at_upper_boundary(shear_at_upper_boundary),
+shear_strain_at_upper_boundary(shear_strain_at_upper_boundary),
 height(height)
 {}
 
@@ -119,125 +119,22 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * height * shear_at_upper_boundary;
+  return_vector[0] = t * height * shear_strain_at_upper_boundary;
 }
-
-
-
-template <int dim>
-class SupplyTermFunction : public dealii::TensorFunction<1,dim>
-{
-public:
-  SupplyTermFunction(const double time = 0.0);
-
-  virtual dealii::Tensor<1, dim> value(const dealii::Point<dim> &point) const override;
-
-private:
-};
-
-
-
-template <int dim>
-SupplyTermFunction<dim>::SupplyTermFunction(const double time)
-:
-dealii::TensorFunction<1, dim>(time)
-{}
-
-
-
-template <int dim>
-dealii::Tensor<1, dim> SupplyTermFunction<dim>::value(
-  const dealii::Point<dim> &point) const
-{
-  dealii::Tensor<1, dim> return_vector;
-
-  const double t = this->get_time();
-  const double x = point(0);
-  const double y = point(1);
-
-  return_vector[0] = 0.0*x*y;
-  return_vector[1] = 0.0 * t;
-
-  switch (dim)
-  {
-    case 3:
-      {
-        const double z = point(2);
-        return_vector[2] = z*0;
-      }
-      break;
-    default:
-      break;
-  }
-
-  return return_vector;
-}
-
-
-
-template <int dim>
-class NeumannBoundaryFunction : public dealii::TensorFunction<1,dim>
-{
-public:
-  NeumannBoundaryFunction(const double time = 0.0);
-
-  virtual dealii::Tensor<1, dim> value(const dealii::Point<dim> &point) const override;
-
-private:
-};
-
-
-
-template <int dim>
-NeumannBoundaryFunction<dim>::NeumannBoundaryFunction(
-  const double time)
-:
-dealii::TensorFunction<1, dim>(time)
-{}
-
-
-
-template <int dim>
-dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
-  const dealii::Point<dim> &point) const
-{
-  dealii::Tensor<1, dim> return_vector;
-
-  const double x = point(0);
-  const double y = point(1);
-
-  return_vector[0] = 0.0*x;
-  return_vector[1] = 0.0*y;
-
-  switch (dim)
-  {
-    case 3:
-      {
-        const double z = point(2);
-        return_vector[2] = z*0;
-      }
-      break;
-    default:
-      break;
-  }
-
-  return return_vector;
-}
-
 
 
 
 template<int dim>
-class ProblemClass
+class SimpleShearProblem
 {
 public:
-  ProblemClass(
-    const RunTimeParameters::ProblemParameters &parameters);
+  SimpleShearProblem(
+    const RunTimeParameters::SimpleShearParameters &parameters);
 
   void run();
 
 private:
-  const RunTimeParameters::ProblemParameters        parameters;
+  const RunTimeParameters::SimpleShearParameters    parameters;
 
   std::shared_ptr<dealii::ConditionalOStream>       pcout;
 
@@ -249,29 +146,15 @@ private:
 
   dealii::parallel::distributed::Triangulation<dim> triangulation;
 
-  const unsigned int                                lower_boundary_id;
-
-  const unsigned int                                upper_boundary_id;
-
-  const double                                      height;
-
-  const double                                      width;
-
   std::shared_ptr<FEField<dim>>                     fe_field;
 
   std::shared_ptr<CrystalsData<dim>>                crystals_data;
 
   GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
-  const double                                      shear_at_upper_boundary;
-
   std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
-
-  NeumannBoundaryFunction<dim>                      neumann_boundary_function;
-
-  std::shared_ptr<SupplyTermFunction<dim>>          supply_term_function;
 
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
@@ -295,8 +178,8 @@ private:
 
 
 template<int dim>
-ProblemClass<dim>::ProblemClass(
-  const RunTimeParameters::ProblemParameters &parameters)
+SimpleShearProblem<dim>::SimpleShearProblem(
+  const RunTimeParameters::SimpleShearParameters &parameters)
 :
 parameters(parameters),
 pcout(std::make_shared<dealii::ConditionalOStream>(
@@ -317,10 +200,6 @@ triangulation(
   typename dealii::Triangulation<dim>::MeshSmoothing(
   dealii::Triangulation<dim>::smoothing_on_refinement |
   dealii::Triangulation<dim>::smoothing_on_coarsening)),
-lower_boundary_id(2),
-upper_boundary_id(3),
-height(1.0),
-width(0.1 * height),
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.fe_degree_displacements,
@@ -333,15 +212,11 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
-shear_at_upper_boundary(2.5e-2),
-neumann_boundary_function(parameters.start_time),
-supply_term_function(
-  std::make_shared<SupplyTermFunction<dim>>(parameters.start_time)),
 simple_shear(fe_field,
              mapping,
-             shear_at_upper_boundary,
-             upper_boundary_id,
-             width),
+             parameters.shear_strain_at_upper_boundary,
+             3,
+             parameters.width),
 string_width((std::to_string((unsigned int)(
               (parameters.end_time - parameters.start_time) /
               parameters.time_step_size)) +
@@ -349,9 +224,9 @@ string_width((std::to_string((unsigned int)(
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
-    if (fs::exists(parameters.graphical_output_directory))
+    if (fs::exists(parameters.graphical_output_directory + "paraview/"))
     {
-      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory))
+      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "paraview/"))
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
           fs::remove(entry.path());
@@ -360,7 +235,7 @@ string_width((std::to_string((unsigned int)(
     {
       try
       {
-        fs::create_directories(parameters.graphical_output_directory);
+        fs::create_directories(parameters.graphical_output_directory + "paraview/");
       }
       catch (std::exception &exc)
       {
@@ -394,13 +269,13 @@ string_width((std::to_string((unsigned int)(
 
 
 template<int dim>
-void ProblemClass<dim>::make_grid()
+void SimpleShearProblem<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
 
   std::vector<std::vector<double>> step_sizes(dim, std::vector<double>());
 
-  step_sizes[0] = std::vector<double>(5, width / 5);
+  step_sizes[0] = std::vector<double>(5, parameters.width / 5);
 
   const double factor       = .50;
 
@@ -409,9 +284,9 @@ void ProblemClass<dim>::make_grid()
   for (unsigned int i = 0; i < n_divisions; ++i)
   {
     if (i == 0)
-      step_sizes[1].push_back((0.5*height)*std::pow(1-factor, n_divisions - 1 -  i));
+      step_sizes[1].push_back((0.5*parameters.height)*std::pow(1-factor, n_divisions - 1 -  i));
     else
-      step_sizes[1].push_back((0.5*height)*std::pow(1-factor, n_divisions - 1 - i)*factor);
+      step_sizes[1].push_back((0.5*parameters.height)*std::pow(1-factor, n_divisions - 1 - i)*factor);
   }
 
   std::vector<double> mirror_vector(step_sizes[1]);
@@ -430,7 +305,7 @@ void ProblemClass<dim>::make_grid()
       triangulation,
       repetitions,
       dealii::Point<dim>(0,0),
-      dealii::Point<dim>(width, height),
+      dealii::Point<dim>(parameters.width, parameters.height),
       true);
     break;
   case 3:
@@ -439,7 +314,7 @@ void ProblemClass<dim>::make_grid()
         triangulation,
         repetitions,
         dealii::Point<dim>(0,0,0),
-        dealii::Point<dim>(width, height, width),
+        dealii::Point<dim>(parameters.width, parameters.height, parameters.width),
         true);
     }
     break;
@@ -467,7 +342,6 @@ void ProblemClass<dim>::make_grid()
     if (cell->is_locally_owned())
       cell->set_material_id(0);
 
-
   *pcout << "Triangulation:"
               << std::endl
               << " Number of active cells = "
@@ -477,7 +351,7 @@ void ProblemClass<dim>::make_grid()
 
 
 template<int dim>
-void ProblemClass<dim>::setup()
+void SimpleShearProblem<dim>::setup()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Setup");
 
@@ -499,8 +373,8 @@ void ProblemClass<dim>::setup()
   // depends on the number of crystals and slips
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
-      shear_at_upper_boundary,
-      height,
+      parameters.shear_strain_at_upper_boundary,
+      parameters.height,
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -538,8 +412,12 @@ void ProblemClass<dim>::setup()
 
 
 template<int dim>
-void ProblemClass<dim>::setup_constraints()
+void SimpleShearProblem<dim>::setup_constraints()
 {
+  const unsigned int lower_boundary_id = 2;
+
+  const unsigned int upper_boundary_id = 3;
+
   // Initiate the entity needed for periodic boundary conditions
   std::vector<
     dealii::GridTools::
@@ -660,7 +538,7 @@ void ProblemClass<dim>::setup_constraints()
 
 
 template<int dim>
-void ProblemClass<dim>::update_dirichlet_boundary_conditions()
+void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Update boundary conditions");
 
@@ -691,7 +569,7 @@ void ProblemClass<dim>::update_dirichlet_boundary_conditions()
 
 
 template<int dim>
-void ProblemClass<dim>::postprocessing()
+void SimpleShearProblem<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
 
@@ -699,7 +577,7 @@ void ProblemClass<dim>::postprocessing()
 
   const fs::path path{parameters.graphical_output_directory};
 
-  fs::path filename = path / "stress12_vs_shear_at_boundary.txt";
+  fs::path filename = path / "stress12_vs_shear_strain_at_boundary.txt";
 
   try
   {
@@ -736,7 +614,7 @@ void ProblemClass<dim>::postprocessing()
 
 
 template<int dim>
-void ProblemClass<dim>::data_output()
+void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
@@ -778,7 +656,7 @@ void ProblemClass<dim>::data_output()
   static int out_index = 0;
 
   data_out.write_vtu_with_pvtu_record(
-    parameters.graphical_output_directory,
+    parameters.graphical_output_directory + "paraview/",
     "solution",
     out_index,
     MPI_COMM_WORLD,
@@ -790,7 +668,7 @@ void ProblemClass<dim>::data_output()
 
 
 template<int dim>
-void ProblemClass<dim>::run()
+void SimpleShearProblem<dim>::run()
 {
   // Generate/Read triangulation (Material ids have to be set here)
   make_grid();
@@ -802,9 +680,6 @@ void ProblemClass<dim>::run()
 
   // Initiate the solver
   gCP_solver.init();
-
-  // Set the supply term
-  gCP_solver.set_supply_term(supply_term_function);
 
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
@@ -828,8 +703,6 @@ void ProblemClass<dim>::run()
 
     // Update the internal time variable of all time-dependant functions
     // to t^{n}
-    supply_term_function->set_time(discrete_time.get_next_time());
-
     displacement_control->set_time(discrete_time.get_next_time());
 
     // Update the Dirichlet boundary conditions values to t^{n}
@@ -879,7 +752,7 @@ int main(int argc, char *argv[])
     switch (argc)
     {
     case 1:
-      parameters_filepath = "input/prm.prm";
+      parameters_filepath = "input/simple_shear.prm";
       break;
     case 2:
       {
@@ -911,9 +784,9 @@ int main(int argc, char *argv[])
       break;
     }
 
-    gCP::RunTimeParameters::ProblemParameters parameters(parameters_filepath);
+    gCP::RunTimeParameters::SimpleShearParameters parameters(parameters_filepath);
 
-    gCP::ProblemClass<2> problem(parameters);
+    gCP::SimpleShearProblem<2> problem(parameters);
 
     problem.run();
   }
