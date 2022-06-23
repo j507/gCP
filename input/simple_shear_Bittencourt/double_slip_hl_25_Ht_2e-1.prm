@@ -4,21 +4,28 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/euler_angles
-  set Slip directions path name = input/no_slip_directions
-  set Slip normals path name    = input/no_slip_normals
+  set Euler angles path name    = input/simple_shear_Bittencourt/euler_angles
+  set Slip directions path name = input/simple_shear_Bittencourt/slip_directions
+  set Slip normals path name    = input/simple_shear_Bittencourt/slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear/no_slips/
+  set Graphical output directory = results/simple_shear_Bittencourt/double_slip_hl_25_Ht_2e-1/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
 
 
+subsection Simple shear
+  set Height of the strip                = 1.0
+  set Shear strain at the upper boundary = 0.0218
+  set Width of the strip                 = 0.1
+end
+
+
 subsection Solver parameters
-  set Logger output directory = results/simple_shear/no_slips/
+  set Logger output directory = results/simple_shear_Bittencourt/double_slip_hl_25_Ht_2e-1/
   set Verbose                 = false
 
 
@@ -30,15 +37,15 @@ subsection Solver parameters
     end
 
     subsection Scalar microscopic stress law's parameters
-      set Hardening parameter      = 1.4
+      set Hardening parameter      = 1.0
       set Initial slip resistance  = 15.45
-      set Linear hardening modulus = 0.0
+      set Linear hardening modulus = 10.0
       set Regularization function  = tanh
-      set Regularization parameter = 4e-2
+      set Regularization parameter = 5e-3
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.8
+      set Energetic length scale  = 0.04
       set Initial slip resistance = 15.45
     end
 
@@ -61,13 +68,13 @@ subsection Spatial discretization parameters
   set FE's polynomial degree - Slips         = 1
   set Mapping - Apply to interior cells      = false
   set Mapping - Polynomial degree            = 1
-  set Number of global refinements           = 2
+  set Number of global refinements           = 0
   set Spatial dimension                      = 2
 end
 
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 2.5e-2
+  set Time step size = 1e-3
 end
 
