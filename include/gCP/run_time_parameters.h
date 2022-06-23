@@ -400,6 +400,39 @@ struct ProblemParameters
 
 
 
+struct SimpleShearParameters : public ProblemParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SimpleShearParameters();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SimpleShearParameters(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  double  shear_strain_at_upper_boundary;
+
+  double  height;
+
+  double  width;
+};
+
+
 /*
 template<typename Stream>
 Stream& operator<<(Stream &stream, const Parameters &prm);

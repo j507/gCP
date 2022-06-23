@@ -558,6 +558,94 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 }
 
 
+
+SimpleShearParameters::SimpleShearParameters()
+:
+ProblemParameters(),
+height(1),
+width(0.1)
+{}
+
+
+
+SimpleShearParameters::SimpleShearParameters(
+  const std::string &parameter_filename)
+:
+SimpleShearParameters()
+{
+  dealii::ParameterHandler prm;
+
+  declare_parameters(prm);
+
+  std::ifstream parameter_file(parameter_filename.c_str());
+
+  if (!parameter_file)
+  {
+    parameter_file.close();
+
+    std::ostringstream message;
+
+    message << "Input parameter file <"
+            << parameter_filename << "> not found. Creating a"
+            << std::endl
+            << "template file of the same name."
+            << std::endl;
+
+    std::ofstream parameter_out(parameter_filename.c_str());
+
+    prm.print_parameters(parameter_out,
+                         dealii::ParameterHandler::OutputStyle::PRM);
+
+    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+  }
+
+  prm.parse_input(parameter_file);
+
+  parse_parameters(prm);
+}
+
+
+
+void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::declare_parameters(prm);
+
+  prm.enter_subsection("Simple shear");
+  {
+    prm.declare_entry("Shear strain at the upper boundary",
+                      "0.0218",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Height of the strip",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Width of the strip",
+                      "0.1",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::parse_parameters(prm);
+
+  prm.enter_subsection("Simple shear");
+  {
+    shear_strain_at_upper_boundary =
+      prm.get_double("Shear strain at the upper boundary");
+
+    height = prm.get_double("Height of the strip");
+
+    width = prm.get_double("Width of the strip");
+  }
+  prm.leave_subsection();
+}
+
+
 /*
 template<typename Stream>
 Stream& operator<<(Stream &stream, const Parameters &prm)
