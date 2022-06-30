@@ -18,11 +18,13 @@ template<int dim>
 FEField<dim>::FEField(
   const dealii::Triangulation<dim>  &triangulation,
   const unsigned int                displacement_fe_degree,
-  const unsigned int                slips_fe_degree)
+  const unsigned int                slips_fe_degree,
+  const bool                        flag_allow_decohesion)
 :
 displacement_fe_degree(displacement_fe_degree),
 slips_fe_degree(slips_fe_degree),
 dof_handler(triangulation),
+flag_allow_decohesion(flag_allow_decohesion),
 flag_setup_extractors_was_called(false),
 flag_setup_dofs_was_called(false),
 flag_affine_constraints_were_set(false),

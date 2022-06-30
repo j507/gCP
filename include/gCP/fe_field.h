@@ -34,7 +34,8 @@ public:
    */
   FEField(const dealii::Triangulation<dim>  &triangulation,
           const unsigned int                displacement_fe_degree,
-          const unsigned int                slips_fe_degree);
+          const unsigned int                slips_fe_degree,
+          const bool                        flag_allow_decohesion = false);
 
   /*!
    * @brief The solution vector
@@ -251,6 +252,15 @@ public:
    * @return false
    * @todo Docu
    */
+  bool is_decohesion_allowed() const;
+
+  /*!
+   * @brief
+   *
+   * @return true
+   * @return false
+   * @todo Docu
+   */
   bool is_initialized() const;
 
 private:
@@ -349,6 +359,13 @@ private:
    */
   std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
                                     slips_extractors;
+
+  /**
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                              flag_allow_decohesion;
 
   /**
    * @brief
@@ -551,6 +568,15 @@ inline unsigned int
 FEField<dim>::get_n_components() const
 {
   return (fe_collection.n_components());
+}
+
+
+
+template <int dim>
+inline bool
+FEField<dim>::is_decohesion_allowed() const
+{
+  return (flag_allow_decohesion);
 }
 
 
