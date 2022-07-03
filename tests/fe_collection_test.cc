@@ -30,40 +30,54 @@ class FE_Collection
 {
 public:
 
-  FE_Collection();
+  FE_Collection(const bool flag_allow_decohesion);
 
   void run();
 
 private:
 
-  dealii::ConditionalOStream                        pcout;
+  dealii::ConditionalOStream                    pcout;
 
-  dealii::parallel::distributed::Triangulation<dim> triangulation;
+  dealii::parallel::distributed::Triangulation<dim>
+                                                triangulation;
 
-  dealii::DoFHandler<dim>                           dof_handler;
+  dealii::DoFHandler<dim>                       dof_handler;
 
-  dealii::hp::FECollection<dim>                     fe_collection;
+  dealii::hp::FECollection<dim>                 fe_collection;
 
-  const double                                      length;
+  dealii::Vector<float>                         locally_owned_subdomain;
 
-  const double                                      height;
+  dealii::Vector<float>                         material_id;
 
-  const double                                      width;
+  dealii::Vector<float>                         active_fe_index;
 
-  unsigned int                                      n_crystals;
+  dealii::Vector<float>                         cell_is_at_grain_boundary;
 
-  const unsigned int                                n_slips;
+  const double                                  length;
 
-  std::vector<unsigned int>                         repetitions;
+  const double                                  height;
 
-  std::vector<dealii::FEValuesExtractors::Vector>   displacement_extractors;
+  const double                                  width;
+
+  unsigned int                                  n_crystals;
+
+  const unsigned int                            n_slips;
+
+  std::vector<unsigned int>                     repetitions;
+
+  std::vector<dealii::FEValuesExtractors::Vector>
+                                                displacement_extractors;
 
   std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
-                                                    slips_extractors;
+                                                slips_extractors;
 
-  std::vector<unsigned int>                         dof_mapping;
+  std::vector<unsigned int>                     dof_mapping;
+
+  const bool                                    flag_allow_decohesion;
 
   void make_grid();
+
+  void mark_grid();
 
   void setup();
 
@@ -73,7 +87,7 @@ private:
 
 
 template<int dim>
-FE_Collection<dim>::FE_Collection()
+FE_Collection<dim>::FE_Collection(const bool flag_allow_decohesion)
 :
 pcout(std::cout,
       dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
@@ -82,11 +96,12 @@ triangulation(MPI_COMM_WORLD,
               dealii::Triangulation<dim>::smoothing_on_refinement |
               dealii::Triangulation<dim>::smoothing_on_coarsening)),
 dof_handler(triangulation),
-length(10.0),
+length(1.0),
 height(1.0),
 width(1.0),
-n_slips(3),
-repetitions(dim, 10)
+n_slips(2),
+repetitions(dim, 10),
+flag_allow_decohesion(flag_allow_decohesion)
 {}
 
 
@@ -95,6 +110,8 @@ template<int dim>
 void FE_Collection<dim>::run()
 {
   make_grid();
+
+  mark_grid();
 
   setup();
 
@@ -125,7 +142,8 @@ void FE_Collection<dim>::make_grid()
       true);
     break;
   default:
-    Assert(false, dealii::ExcMessage("This test only runs in 2-D and 3-D"))
+    Assert(false,
+           dealii::ExcMessage("This test only runs in 2-D and 3-D"))
     break;
   }
 
@@ -138,8 +156,8 @@ void FE_Collection<dim>::make_grid()
 
 
 
-template<int dim>
-void FE_Collection<dim>::setup()
+template <int dim>
+void FE_Collection<dim>::mark_grid()
 {
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -151,7 +169,6 @@ void FE_Collection<dim>::setup()
         cell->set_material_id(1);
     }
 
-
   // Get number of crystals in the triangulation
   // Here material_id is being misused to assign identifiers to the
   // different crystals
@@ -162,6 +179,10 @@ void FE_Collection<dim>::setup()
       if (cell->is_locally_owned())
         if (!crystal_id_set.count(cell->material_id()))
           crystal_id_set.emplace(cell->material_id());
+
+    crystal_id_set =
+      dealii::Utilities::MPI::compute_set_union(crystal_id_set,
+                                                MPI_COMM_WORLD);
 
     n_crystals = crystal_id_set.size();
 
@@ -178,6 +199,45 @@ void FE_Collection<dim>::setup()
       cell->set_active_fe_index(cell->material_id());
 
 
+  // Fill the dealii::Vector<float> identifying which cells are located
+  // at grain boundaries
+  cell_is_at_grain_boundary.reinit(triangulation.n_active_cells());
+
+  for (const auto &cell : triangulation.active_cell_iterators())
+    if (cell->is_locally_owned())
+      for (const auto &face_id : cell->face_indices())
+        if (!cell->face(face_id)->at_boundary() &&
+            cell->material_id() !=
+              cell->neighbor(face_id)->material_id())
+        {
+          cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
+          break;
+        }
+
+  locally_owned_subdomain.reinit(triangulation.n_active_cells());
+  material_id.reinit(triangulation.n_active_cells());
+  active_fe_index.reinit(triangulation.n_active_cells());
+
+  // Fill the dealii::Vector<float> instances for visualizatino of the
+  // cell properties
+  for (const auto &cell :
+       dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      locally_owned_subdomain(cell->active_cell_index()) =
+        triangulation.locally_owned_subdomain();
+      material_id(cell->active_cell_index()) =
+        cell->material_id();
+      active_fe_index(cell->active_cell_index()) =
+        cell->active_fe_index();
+    }
+}
+
+
+
+template<int dim>
+void FE_Collection<dim>::setup()
+{
   const unsigned int displacement_finite_element_degree = 1;
   const unsigned int slip_finite_element_degree         = 1;
 
@@ -185,14 +245,15 @@ void FE_Collection<dim>::setup()
   // dimensions [ dim x n_crystals | n_slips x n_crystals ] where
   //  A = FE_Nothing^dim     ... FE_Q^dim_i       ... FE_Nothing^dim
   //  B = FE_Nothing^n_slips ... FE_Q^{n_slips}_i ... FE_Nothing^n_slips
-  // If the displacment is continuous across crystalls then [ A | B ] has
-  // the dimensiones [ dim | n_slips x n_crystals ] where A = FE_Q^dim
+  // If the displacement is continuous across crystalls then [ A | B ]
+  // has the dimensiones [ dim | n_slips x n_crystals ]
+  // where A = FE_Q^dim
   for (dealii::types::material_id i = 0; i < n_crystals; ++i)
   {
     std::vector<const dealii::FiniteElement<dim>*>  finite_elements;
 
     // A
-    if (true)
+    if (flag_allow_decohesion)
       for (dealii::types::material_id j = 0; j < n_crystals; ++j)
         for (unsigned int k = 0; k < dim; ++k)
           if (i == j)
@@ -253,30 +314,85 @@ void FE_Collection<dim>::setup()
   // [false x dim x n_crystals  false x n_slips  false  false  true  ...]
   // and so on
   // This is just a visual aid. They are not a vector of booleans!
+
+  if (flag_allow_decohesion)
   for (dealii::types::material_id i = 0; i < n_crystals; ++i)
   {
-    displacement_extractors.push_back(dealii::FEValuesExtractors::Vector(i*dim));
+    displacement_extractors.push_back(
+      dealii::FEValuesExtractors::Vector(i*dim));
 
-    std::vector<dealii::FEValuesExtractors::Scalar> slip_extractors_per_crystal;
+    std::vector<dealii::FEValuesExtractors::Scalar>
+      slip_extractors_per_crystal;
 
     for (unsigned int j = 0; j < n_slips; ++j)
       slip_extractors_per_crystal.push_back(
-        dealii::FEValuesExtractors::Scalar(n_crystals * dim + i * n_slips + j));
+        dealii::FEValuesExtractors::Scalar(
+          n_crystals * dim + i * n_slips + j));
 
     slips_extractors.push_back(slip_extractors_per_crystal);
   }
-
-
-
-  dof_mapping.resize(n_crystals * (dim + n_slips));
-
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  else
   {
-    for (unsigned int j = 0; j < dim; ++j)
-      dof_mapping[i * dim + j] = j;
+    displacement_extractors.push_back(
+      dealii::FEValuesExtractors::Vector(0));
 
-    for (unsigned int j = 0; j < n_slips; ++j)
-      dof_mapping[n_crystals * dim + i * n_slips + j] = dim + j;
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      std::vector<dealii::FEValuesExtractors::Scalar>
+        slip_extractors_per_crystal;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        slip_extractors_per_crystal.push_back(
+          dealii::FEValuesExtractors::Scalar(dim + i * n_slips + j));
+
+      slips_extractors.push_back(slip_extractors_per_crystal);
+    }
+  }
+
+  this->pcout << "Displacement extractors:" << std::endl;
+  // Print all FESystem inside the FECollection to the terminal
+  for (unsigned int j = 0; j < displacement_extractors.size(); ++j)
+    this->pcout
+      << " "
+      << fe_collection.component_mask(displacement_extractors[j])
+      << std::endl;
+  this->pcout << std::endl;
+
+  this->pcout << "Slip extractors:" << std::endl;
+  // Print all FESystem inside the FECollection to the terminal
+  for (unsigned int j = 0; j < slips_extractors.size(); ++j)
+    for (unsigned int i = 0; i < slips_extractors[0].size(); ++i)
+      this->pcout
+        << " "
+        << fe_collection.component_mask(slips_extractors[j][i])
+        << std::endl;
+  this->pcout << std::endl;
+
+  if (flag_allow_decohesion)
+  {
+    dof_mapping.resize(n_crystals * (dim + n_slips));
+
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      for (unsigned int j = 0; j < dim; ++j)
+        dof_mapping[i * dim + j] = j;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        dof_mapping[n_crystals * dim + i * n_slips + j] = dim + j;
+    }
+  }
+  else
+  {
+    dof_mapping.resize(dim + n_crystals * n_slips);
+
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      for (unsigned int j = 0; j < dim; ++j)
+        dof_mapping[j] = j;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        dof_mapping[dim + i * n_slips + j] = dim + j;
+    }
   }
 
   this->pcout << "dof_mapping = [";
@@ -294,39 +410,27 @@ void FE_Collection<dim>::output()
 
   data_out.attach_dof_handler(dof_handler);
 
-  dealii::Vector<float> subdomain_per_cell(triangulation.n_active_cells());
+  data_out.add_data_vector(locally_owned_subdomain,
+                           "locally_owned_subdomain");
 
-  for (unsigned int i = 0; i < subdomain_per_cell.size(); ++i)
-    subdomain_per_cell(i) = triangulation.locally_owned_subdomain();
+  data_out.add_data_vector(material_id,
+                           "material_id");
 
-  dealii::Vector<float> material_id_per_cell(triangulation.n_active_cells());
+  data_out.add_data_vector(active_fe_index,
+                           "active_fe_index");
 
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (cell->is_locally_owned())
-      material_id_per_cell(cell->active_cell_index()) = cell->material_id();
-
-  data_out.add_data_vector(subdomain_per_cell, "Subdomain");
-
-  data_out.add_data_vector(material_id_per_cell, "MaterialID");
+  data_out.add_data_vector(cell_is_at_grain_boundary,
+                           "cell_is_at_grain_boundary");
 
   data_out.build_patches();
 
-  static int out_index = 0;
-
-  data_out.write_vtu_with_pvtu_record(
-    "./",
-    "solution_" + std::to_string(dim),
-    out_index,
-    MPI_COMM_WORLD,
-    5);
-
-  out_index++;
+  data_out.write_vtu_in_parallel("triangulation.vtu",
+                                 MPI_COMM_WORLD);
 }
 
 
 
 } // namespace Test
-
 
 
 
@@ -337,10 +441,34 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    Tests::FE_Collection<2> problem_2d;
+    bool flag_allow_decohesion;
+
+    switch (argc)
+    {
+      case 1:
+        flag_allow_decohesion = true;
+        break;
+      case 2:
+        {
+          const std::string arg(argv[1]);
+
+          if (arg == "true")
+            flag_allow_decohesion = true;
+          else if (arg == "false")
+            flag_allow_decohesion = false;
+          else
+            AssertThrow(false, dealii::ExcNotImplemented());
+        }
+        break;
+      default:
+        AssertThrow(false, dealii::ExcNotImplemented());
+    }
+
+
+    Tests::FE_Collection<2> problem_2d(flag_allow_decohesion);
     problem_2d.run();
 
-    Tests::FE_Collection<3> problem_3d;
+    Tests::FE_Collection<3> problem_3d(flag_allow_decohesion);
     problem_3d.run();
   }
   catch (std::exception &exc)
