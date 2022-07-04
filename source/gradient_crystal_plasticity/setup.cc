@@ -41,12 +41,12 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   // Identify which cells are located at a grain boundary
   for (const auto &cell :
-       fe_field->get_triangulation().active_cell_iterators())
+       fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned())
       for (const auto &face_id : cell->face_indices())
         if (!cell->face(face_id)->at_boundary() &&
-            cell->material_id() !=
-              cell->neighbor(face_id)->material_id())
+            cell->active_fe_index() !=
+              cell->neighbor(face_id)->active_fe_index())
         {
           cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
           break;
