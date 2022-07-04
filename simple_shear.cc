@@ -172,6 +172,8 @@ private:
 
   void postprocessing();
 
+  void triangulation_output();
+
   void data_output();
 };
 
@@ -373,6 +375,12 @@ void SimpleShearProblem<dim>::setup()
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
 
+  // Set the active finite elemente index of each cell
+  for (const auto &cell :
+       fe_field->get_dof_handler().active_cell_iterators())
+    if (cell->is_locally_owned())
+      cell->set_active_fe_index(0);
+
   // Sets up the degrees of freedom
   fe_field->setup_dofs();
 
@@ -395,13 +403,6 @@ void SimpleShearProblem<dim>::setup()
 
   // Sets up the solution vectors
   fe_field->setup_vectors();
-
-  // Set the active finite elemente index of each cell
-  // Not sure where to put this (Only temporary)
-  for (const auto &cell :
-       fe_field->get_dof_handler().active_cell_iterators())
-    if (cell->is_locally_owned())
-      cell->set_active_fe_index(0);
 
   // Terminal output
   *pcout
@@ -621,6 +622,52 @@ void SimpleShearProblem<dim>::postprocessing()
 
 
 template<int dim>
+void SimpleShearProblem<dim>::triangulation_output()
+{
+  dealii::Vector<float> locally_owned_subdomain(triangulation.n_active_cells());
+
+  dealii::Vector<float> material_id(triangulation.n_active_cells());
+
+  dealii::Vector<float> active_fe_index(triangulation.n_active_cells());
+
+  // Fill the dealii::Vector<float> instances for visualizatino of the
+  // cell properties
+  for (const auto &cell :
+       fe_field->get_dof_handler().active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      locally_owned_subdomain(cell->active_cell_index()) =
+        triangulation.locally_owned_subdomain();
+      material_id(cell->active_cell_index()) =
+        cell->material_id();
+      active_fe_index(cell->active_cell_index()) =
+        cell->active_fe_index();
+    }
+
+  dealii::DataOut<dim> data_out;
+
+  data_out.attach_dof_handler(fe_field->get_dof_handler());
+
+  data_out.add_data_vector(locally_owned_subdomain,
+                           "locally_owned_subdomain");
+
+  data_out.add_data_vector(material_id,
+                           "material_id");
+
+  data_out.add_data_vector(active_fe_index,
+                           "active_fe_index");
+
+  data_out.add_data_vector(gCP_solver.get_cell_is_at_grain_boundary_vector(),
+                           "cell_is_at_grain_boundary");
+
+  data_out.build_patches();
+
+  data_out.write_vtu_in_parallel(
+    parameters.graphical_output_directory + "triangulation.vtu",
+    MPI_COMM_WORLD);
+}
+
+template<int dim>
 void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
@@ -687,6 +734,9 @@ void SimpleShearProblem<dim>::run()
 
   // Initiate the solver
   gCP_solver.init();
+
+  // Output the triangulation data (Partition, Material id, etc.)
+  triangulation_output();
 
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
