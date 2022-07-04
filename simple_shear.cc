@@ -226,10 +226,16 @@ string_width((std::to_string((unsigned int)(
   {
     if (fs::exists(parameters.graphical_output_directory + "paraview/"))
     {
+      *pcout
+        << "Deleting *.vtu and *.pvtu files inside the output folder... ";
+
       for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "paraview/"))
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
           fs::remove(entry.path());
+
+      *pcout
+        << "done!\n\n";
     }
     else
     {
