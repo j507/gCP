@@ -57,28 +57,26 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
   // and so on
   // This is just a visual aid. They are not a vector of booleans!
   if (flag_allow_decohesion)
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    displacement_extractors.push_back(
-      dealii::FEValuesExtractors::Vector(i*dim));
-
-    std::vector<dealii::FEValuesExtractors::Scalar>
-      slip_extractors_per_crystal;
-
-    for (unsigned int j = 0; j < n_slips; ++j)
-      slip_extractors_per_crystal.push_back(
-        dealii::FEValuesExtractors::Scalar(
-          n_crystals * dim + i * n_slips + j));
-
-    slips_extractors.push_back(slip_extractors_per_crystal);
-  }
-  else
-  {
-    displacement_extractors.push_back(
-      dealii::FEValuesExtractors::Vector(0));
-
     for (dealii::types::material_id i = 0; i < n_crystals; ++i)
     {
+      displacement_extractors.push_back(
+        dealii::FEValuesExtractors::Vector(i*dim));
+
+      std::vector<dealii::FEValuesExtractors::Scalar>
+        slip_extractors_per_crystal;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        slip_extractors_per_crystal.push_back(
+          dealii::FEValuesExtractors::Scalar(
+            n_crystals * dim + i * n_slips + j));
+
+      slips_extractors.push_back(slip_extractors_per_crystal);
+    }
+  else
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      displacement_extractors.push_back(
+        dealii::FEValuesExtractors::Vector(0));
       std::vector<dealii::FEValuesExtractors::Scalar>
         slip_extractors_per_crystal;
 
@@ -88,7 +86,6 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
 
       slips_extractors.push_back(slip_extractors_per_crystal);
     }
-  }
 
   flag_setup_extractors_was_called = true;
 }
