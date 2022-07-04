@@ -56,6 +56,7 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
   // [false x dim x n_crystals  false x n_slips  false  false  true  ...]
   // and so on
   // This is just a visual aid. They are not a vector of booleans!
+  if (flag_allow_decohesion)
   for (dealii::types::material_id i = 0; i < n_crystals; ++i)
   {
     displacement_extractors.push_back(
@@ -66,10 +67,27 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
 
     for (unsigned int j = 0; j < n_slips; ++j)
       slip_extractors_per_crystal.push_back(
-        dealii::FEValuesExtractors::Scalar(n_crystals * dim
-                                           + i * n_slips + j));
+        dealii::FEValuesExtractors::Scalar(
+          n_crystals * dim + i * n_slips + j));
 
     slips_extractors.push_back(slip_extractors_per_crystal);
+  }
+  else
+  {
+    displacement_extractors.push_back(
+      dealii::FEValuesExtractors::Vector(0));
+
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      std::vector<dealii::FEValuesExtractors::Scalar>
+        slip_extractors_per_crystal;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        slip_extractors_per_crystal.push_back(
+          dealii::FEValuesExtractors::Scalar(dim + i * n_slips + j));
+
+      slips_extractors.push_back(slip_extractors_per_crystal);
+    }
   }
 
   flag_setup_extractors_was_called = true;
@@ -95,7 +113,7 @@ void FEField<dim>::setup_dofs()
     std::vector<const dealii::FiniteElement<dim>*>  finite_elements;
 
     // A
-    if (true)
+    if (flag_allow_decohesion)
       for (dealii::types::material_id j = 0; j < n_crystals; ++j)
         for (unsigned int k = 0; k < dim; ++k)
           if (i == j)
@@ -171,6 +189,7 @@ void FEField<dim>::setup_dofs()
   newton_method_constraints.close();
 
   // Scope initiating the crystal-local to global component mapping
+  if (flag_allow_decohesion)
   {
     global_component_mapping.resize(n_crystals * (dim + n_slips));
 
@@ -180,8 +199,21 @@ void FEField<dim>::setup_dofs()
         global_component_mapping[i * dim + j] = j;
 
       for (unsigned int j = 0; j < n_slips; ++j)
-        global_component_mapping[n_crystals * dim + i * n_slips + j]
-          = dim + j;
+        global_component_mapping[n_crystals * dim + i * n_slips + j] =
+          dim + j;
+    }
+  }
+  else
+  {
+    global_component_mapping.resize(dim + n_crystals * n_slips);
+
+    for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+    {
+      for (unsigned int j = 0; j < dim; ++j)
+        global_component_mapping[j] = j;
+
+      for (unsigned int j = 0; j < n_slips; ++j)
+        global_component_mapping[dim + i * n_slips + j] = dim + j;
     }
   }
 
