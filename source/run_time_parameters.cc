@@ -216,6 +216,7 @@ krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
 logger_output_directory("results/default/"),
+print_sparsity_pattern(false),
 verbose(false)
 {}
 
@@ -259,13 +260,17 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-  prm.declare_entry("Verbose",
-                    "false",
-                    dealii::Patterns::Bool());
-
   prm.declare_entry("Logger output directory",
                     "results/default/",
                     dealii::Patterns::DirectoryName());
+
+  prm.declare_entry("Print sparsity pattern",
+                    "false",
+                    dealii::Patterns::Bool());
+
+  prm.declare_entry("Verbose",
+                    "false",
+                    dealii::Patterns::Bool());
 }
 
 
@@ -317,7 +322,10 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   logger_output_directory = prm.get("Logger output directory");
 
+  print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
+
   verbose = prm.get_bool("Verbose");
+
 }
 
 

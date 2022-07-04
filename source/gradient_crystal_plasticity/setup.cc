@@ -71,6 +71,20 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     sparsity_pattern.compress();
 
+    if (parameters.print_sparsity_pattern)
+    {
+      *pcout
+        << "Printing the sparsity pattern in the gnplot file "
+        << (parameters.logger_output_directory + "sparsity_pattern.gpl")
+        << ". This might take a while... " << std::flush;
+
+      std::ofstream out(parameters.logger_output_directory +
+                        "sparsity_pattern.gpl");
+
+      sparsity_pattern.print_gnuplot(out);
+      *pcout << "done! \n\n";
+    }
+
     jacobian.reinit(sparsity_pattern);
   }
 

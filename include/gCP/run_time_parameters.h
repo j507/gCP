@@ -326,6 +326,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                print_sparsity_pattern;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                verbose;
 };
 
