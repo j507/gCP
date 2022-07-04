@@ -55,6 +55,10 @@ void CrystalsData<dim>::count_n_crystals(
       if (!crystal_id_set.count(cell->material_id()))
         crystal_id_set.emplace(cell->material_id());
 
+  crystal_id_set =
+    dealii::Utilities::MPI::compute_set_union(crystal_id_set,
+                                              MPI_COMM_WORLD);
+
   n_crystals = crystal_id_set.size();
 }
 
