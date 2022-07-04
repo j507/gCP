@@ -27,6 +27,31 @@ void GradientCrystalPlasticitySolver<dim>::init()
                                  " instance has not been "
                                  " initialized."));
 
+  // Initiate vectors
+  trial_solution.reinit(fe_field->solution);
+  newton_update.reinit(fe_field->solution);
+  residual.reinit(fe_field->distributed_vector);
+  cell_is_at_grain_boundary.reinit(
+    fe_field->get_triangulation().n_active_cells());
+
+  trial_solution            = 0.0;
+  newton_update             = 0.0;
+  residual                  = 0.0;
+  cell_is_at_grain_boundary = 0.0;
+
+  // Identify which cells are located at a grain boundary
+  for (const auto &cell :
+       fe_field->get_triangulation().active_cell_iterators())
+    if (cell->is_locally_owned())
+      for (const auto &face_id : cell->face_indices())
+        if (!cell->face(face_id)->at_boundary() &&
+            cell->material_id() !=
+              cell->neighbor(face_id)->material_id())
+        {
+          cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
+          break;
+        }
+
   // Initiate Jacobian matrix
   {
     jacobian.clear();
@@ -48,15 +73,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     jacobian.reinit(sparsity_pattern);
   }
-
-  // Initiate vectors
-  trial_solution.reinit(fe_field->solution);
-  newton_update.reinit(fe_field->solution);
-  residual.reinit(fe_field->distributed_vector);
-
-  trial_solution  = 0.0;
-  newton_update   = 0.0;
-  residual        = 0.0;
 
   // Initiate constitutive laws
   hooke_law->init();
@@ -132,3 +148,6 @@ template void gCP::GradientCrystalPlasticitySolver<2>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,2>>);
 template void gCP::GradientCrystalPlasticitySolver<3>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,3>>);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();

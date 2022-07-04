@@ -53,6 +53,8 @@ public:
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
     get_hooke_law() const;
 
+  const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
+
 private:
   const RunTimeParameters::SolverParameters         &parameters;
 
@@ -92,6 +94,8 @@ private:
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
+
+  dealii::Vector<float>                             cell_is_at_grain_boundary;
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
@@ -168,6 +172,14 @@ inline std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
 GradientCrystalPlasticitySolver<dim>::get_hooke_law() const
 {
   return (hooke_law);
+}
+
+
+template <int dim>
+inline const dealii::Vector<float> &
+GradientCrystalPlasticitySolver<dim>::get_cell_is_at_grain_boundary_vector() const
+{
+  return (cell_is_at_grain_boundary);
 }
 
 
