@@ -149,15 +149,25 @@ struct Scratch : ScratchBase<dim>
 
   Scratch(const Scratch<dim>  &data);
 
+  using GrainInteractionModuli =
+    typename std::pair<std::vector<dealii::FullMatrix<double>>,
+                       std::vector<dealii::FullMatrix<double>>>;
+
   dealii::hp::FEValues<dim>                       hp_fe_values;
 
   dealii::hp::FEFaceValues<dim>                   hp_fe_face_values;
+
+  dealii::hp::FEFaceValues<dim>                   neighbour_hp_fe_face_values;
 
   const unsigned int                              n_face_q_points;
 
   unsigned int                                    n_slips;
 
+  std::vector<dealii::Tensor<1,dim>>              normal_vector_values;
+
   std::vector<double>                             JxW_values;
+
+  std::vector<double>                             face_JxW_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
 
@@ -166,6 +176,8 @@ struct Scratch : ScratchBase<dim>
   std::vector<dealii::SymmetricTensor<2,dim>>     stress_tensor_values;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> slip_gradient_values;
+
+  GrainInteractionModuli                          grain_interaction_moduli;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> vector_microscopic_stress_values;
 
@@ -177,9 +189,15 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                scalar_microscopic_stress_values;
 
+  std::vector<std::vector<double>>                microscopic_traction_values;
+
   std::vector<dealii::Tensor<1,dim>>              supply_term_values;
 
   std::vector<dealii::Tensor<1,dim>>              neumann_boundary_values;
+
+  std::vector<std::vector<double>>                face_slip_values;
+
+  std::vector<std::vector<double>>                neighbour_face_slip_values;
 
   std::vector<dealii::Tensor<1,dim>>              vector_phi;
 
