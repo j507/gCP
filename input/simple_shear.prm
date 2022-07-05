@@ -1,6 +1,6 @@
 # Listing of Parameters
 # ---------------------
-set Verbose = true
+set Verbose = false
 
 
 subsection Input files
@@ -19,7 +19,7 @@ end
 
 subsection Simple shear
   set Height of the strip                = 1.0
-  set Shear strain at the upper boundary = 0.0218
+  set Shear strain at the upper boundary = 0.02
   set Width of the strip                 = 0.1
 end
 
@@ -32,22 +32,26 @@ subsection Solver parameters
 
   subsection Constitutive laws' parameters
     subsection Hooke-Law's parameters
-      set C1111 = 103652.9411764706
-      set C1122 = 51052.941176470595
-      set C1212 = 26300
+      set C1111 = 107942.28436442571
+      set C1122 = 61246.24912213496
+      set C1212 = 28500
+    end
+
+    subsection Microscopic traction law's parameters
+      set Grain boundary modulus = 0.0
     end
 
     subsection Scalar microscopic stress law's parameters
-      set Hardening parameter      = 1.0
-      set Initial slip resistance  = 15.45
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 60
       set Linear hardening modulus = 0.0
       set Regularization function  = tanh
-      set Regularization parameter = 5e-3
+      set Regularization parameter = 1e-3
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.04
-      set Initial slip resistance = 15.45
+      set Energetic length scale  = 0.2
+      set Initial slip resistance = 60
     end
 
   end

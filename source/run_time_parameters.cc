@@ -207,6 +207,45 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 
 
+MicroscopicTractionLawParameters::MicroscopicTractionLawParameters()
+:
+grain_boundary_modulus(0.0)
+{}
+
+
+
+void MicroscopicTractionLawParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Microscopic traction law's parameters");
+  {
+    prm.declare_entry("Grain boundary modulus",
+                      "0.0",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void MicroscopicTractionLawParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Microscopic traction law's parameters");
+  {
+    grain_boundary_modulus  = prm.get_double("Grain boundary modulus");
+
+    AssertThrow(grain_boundary_modulus >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  grain_boundary_modulus, 0.0));
+
+    AssertIsFinite(grain_boundary_modulus);
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 residual_tolerance(1e-10),
@@ -257,6 +296,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     HookeLawParameters::declare_parameters(prm);
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
+    MicroscopicTractionLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -317,6 +357,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     hooke_law_parameters.parse_parameters(prm);
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
+    microscopic_traction_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -346,7 +387,7 @@ slips_directions_pathname("input/slip_directions"),
 euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
-graphical_output_directory("./"),
+graphical_output_directory("results/default/"),
 verbose(true)
 {}
 
@@ -473,7 +514,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Integer(1));
 
     prm.declare_entry("Graphical output directory",
-                      "./",
+                      "results/default/",
                       dealii::Patterns::DirectoryName());
   }
   prm.leave_subsection();
