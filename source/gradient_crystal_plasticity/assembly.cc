@@ -87,7 +87,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   gCP::AssemblyData::Jacobian::Copy                             &data)
 {
   // Reset local data
-  data.local_matrix = 0.0;
+  data.local_matrix              = 0.0;
+  data.cell_is_at_grain_boundary = false;
+
+  data.neighbour_cells_local_dof_indices.clear();
+  data.local_coupling_matrices.clear();
 
   // Local to global indices mapping
   cell->get_dof_indices(data.local_dof_indices);
@@ -249,6 +253,70 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         AssertIsFinite(data.local_matrix(i,j));
       } // Loop over local degrees of freedom
   } // Loop over quadrature points
+
+  // Grain boundary integral
+  if (cell_is_at_grain_boundary(cell->active_cell_index()))
+  {
+    data.cell_is_at_grain_boundary = true;
+
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->active_fe_index() !=
+            cell->neighbor(face_index)->active_fe_index())
+      {
+        // Reset local data
+        data.local_coupling_matrix = 0.0;
+
+        // Local to global indices mapping of the neighbour cell
+        cell->neighbor(face_index)->get_dof_indices(
+          data.neighbour_cell_local_dof_indices);
+
+        // Get the crystal identifier for the neighbour cell
+        const unsigned int neighbour_crystal_id =
+          cell->neighbor(face_index)->active_fe_index();
+
+        // Loop over face quadrature points
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_q_points /*scratch.n_face_q_points CHANGE THIS*/;
+             ++face_q_point)
+        {
+          // Loop over degrees of freedom
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+            for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
+              if (fe_field->get_global_component(crystal_id, i) < dim &&
+                  fe_field->get_global_component(crystal_id, j) < dim)
+              {
+                // Displacement jump
+              }
+              else if (
+                fe_field->get_global_component(crystal_id, i) >= dim &&
+                fe_field->get_global_component(crystal_id, j) >= dim)
+              {
+                const unsigned int slip_id_alpha =
+                  fe_field->get_global_component(crystal_id, i) - dim;
+
+                const unsigned int slip_id_beta =
+                  fe_field->get_global_component(crystal_id, j) - dim;
+
+                const unsigned int neighbour_slip_id_beta =
+                  fe_field->get_global_component(neighbour_crystal_id, j)
+                  - dim;
+
+                data.local_matrix(i,j) -=
+                  0.0;
+
+                data.local_coupling_matrix(i,j) -=
+                  0.0;
+              } // Loop over degrees of freedom
+        } // Loop over face quadrature points
+
+        data.neighbour_cells_local_dof_indices.emplace_back(
+          data.neighbour_cell_local_dof_indices);
+        data.local_coupling_matrices.emplace_back(
+          data.local_coupling_matrix);
+      } // Loop over cell's faces
+  } // Grain boundary integral
+
 }
 
 
@@ -261,6 +329,28 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
     data.local_matrix,
     data.local_dof_indices,
     jacobian);
+
+  if (data.cell_is_at_grain_boundary)
+  {
+    AssertThrow(
+      data.local_coupling_matrices.size() ==
+        data.neighbour_cells_local_dof_indices.size(),
+      dealii::ExcDimensionMismatch(
+        data.local_coupling_matrices.size(),
+        data.neighbour_cells_local_dof_indices.size()));
+
+    AssertThrow(
+      data.local_coupling_matrices.size() > 0,
+      dealii::ExcLowerRangeType<unsigned int>(
+        data.local_coupling_matrices.size(), 0));
+
+    for (unsigned int i = 0; i < data.local_coupling_matrices.size(); ++i)
+      fe_field->get_newton_method_constraints().distribute_local_to_global(
+        data.local_coupling_matrices[i],
+        data.local_dof_indices,
+        data.neighbour_cells_local_dof_indices[i],
+        jacobian);
+  }
 }
 
 
@@ -501,7 +591,33 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     } // Loop over the degrees of freedom
   } // Loop over quadrature points
 
+  // Grain boundary integral
+  if (cell_is_at_grain_boundary(cell->active_cell_index()))
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->active_fe_index() !=
+            cell->neighbor(face_index)->active_fe_index())
+      {
+        // Get the crystal identifier for the neighbour cell
+        const unsigned int neighbour_crystal_id =
+          cell->neighbor(face_index)->active_fe_index();
+
+        // Loop over face quadrature points
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_q_points /*scratch.n_face_q_points CHANGE THIS*/;
+             ++face_q_point)
+        {
+          // Loop over degrees of freedom
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+          {
+            data.local_rhs(i) -=
+              0.0;
+          } // Loop over degrees of freedom
+        } // Loop over face quadrature points
+      } // Loop over cell's faces
+
   /*
+  // Boundary integral
   if (cell->at_boundary())
     for (const auto &face : cell->face_iterators())
       if (face->at_boundary() && face->boundary_id() == 1)
