@@ -115,6 +115,9 @@ private:
 
   void init_quadrature_point_history();
 
+  void make_sparsity_pattern(
+    dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
+
   void distribute_constraints_to_trial_solution();
 
   void assemble_jacobian();
