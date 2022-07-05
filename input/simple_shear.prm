@@ -1,6 +1,6 @@
 # Listing of Parameters
 # ---------------------
-set Verbose = false
+set Verbose = true
 
 
 subsection Input files
