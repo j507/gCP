@@ -57,7 +57,19 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  dealii::FullMatrix<double>  local_matrix;
+  std::vector<dealii::types::global_cell_index>
+                                          neighbour_cell_local_dof_indices;
+
+  std::vector<std::vector<dealii::types::global_cell_index>>
+                                          neighbour_cells_local_dof_indices;
+
+  dealii::FullMatrix<double>              local_matrix;
+
+  dealii::FullMatrix<double>              local_coupling_matrix;
+
+  std::vector<dealii::FullMatrix<double>> local_coupling_matrices;
+
+  bool                                    cell_is_at_grain_boundary;
 };
 
 

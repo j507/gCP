@@ -48,7 +48,10 @@ namespace Jacobian
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_matrix(dofs_per_cell, dofs_per_cell)
+neighbour_cell_local_dof_indices(dofs_per_cell),
+local_matrix(dofs_per_cell, dofs_per_cell),
+local_coupling_matrix(dofs_per_cell, dofs_per_cell),
+cell_is_at_grain_boundary(false)
 {}
 
 
