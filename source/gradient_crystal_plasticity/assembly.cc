@@ -250,7 +250,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             AssertIsFinite(data.local_matrix(i,j));
           }
         }
-        AssertIsFinite(data.local_matrix(i,j));
       } // Loop over local degrees of freedom
   } // Loop over quadrature points
 
@@ -286,7 +285,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               if (fe_field->get_global_component(crystal_id, i) < dim &&
                   fe_field->get_global_component(crystal_id, j) < dim)
               {
-                // Displacement jump
+                // Displacement jump. Add a flag
               }
               else if (
                 fe_field->get_global_component(crystal_id, i) >= dim &&
@@ -307,6 +306,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                 data.local_coupling_matrix(i,j) -=
                   0.0;
+
+                AssertIsFinite(data.local_matrix(i,j));
+                AssertIsFinite(data.local_coupling_matrix(i,j));
               } // Loop over degrees of freedom
         } // Loop over face quadrature points
 
@@ -400,6 +402,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   const dealii::UpdateFlags face_update_flags  =
     dealii::update_JxW_values |
+    dealii::update_normal_vectors |
     dealii::update_values |
     dealii::update_quadrature_points;
 
@@ -602,17 +605,95 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         const unsigned int neighbour_crystal_id =
           cell->neighbor(face_index)->active_fe_index();
 
+        // Update the hp::FEFaceValues instance to the values of the
+        // current cell
+        scratch.hp_fe_face_values.reinit(cell, face_index);
+
+        const dealii::FEFaceValues<dim> &fe_face_values =
+          scratch.hp_fe_face_values.get_present_fe_values();
+
+        // Update the hp::FEFaceValues instance to the values of the
+        // neighbour cell
+        scratch.neighbour_hp_fe_face_values.reinit(
+          cell->neighbor(face_index),
+          cell->neighbor_of_neighbor(face_index));
+
+        const dealii::FEFaceValues<dim> &neighbour_fe_face_values =
+          scratch.neighbour_hp_fe_face_values.get_present_fe_values();
+
+        // Get JxW values at the quadrature points
+        scratch.face_JxW_values = fe_face_values.get_JxW_values();
+
+        // Get normal vector values values at the quadrature points
+        scratch.normal_vector_values = fe_face_values.get_normal_vectors();
+
+        // Get grain interactino moduli
+        /*scratch.grain_interaction_moduli =
+          microscopic_traction_law->get_grain_interacion_moduli(
+            crystal_id,
+            neighbour_crystal_id,
+            scratch.normal_vector_values);*/
+
+        // Get the values of the slipsof the current and the neighbour
+        // cell at the face quadrature points
+        for (unsigned int slip_id = 0;
+             slip_id < crystals_data->get_n_slips(); ++slip_id)
+        {
+          fe_face_values[fe_field->get_slip_extractor(
+              crystal_id, slip_id)].get_function_values(
+                trial_solution,
+                scratch.face_slip_values[slip_id]);
+
+          neighbour_fe_face_values[fe_field->get_slip_extractor(
+              neighbour_crystal_id, slip_id)].get_function_values(
+                trial_solution,
+                scratch.neighbour_face_slip_values[slip_id]);
+        }
+
         // Loop over face quadrature points
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_q_points /*scratch.n_face_q_points CHANGE THIS*/;
              ++face_q_point)
         {
+          for (unsigned int slip_id = 0;
+              slip_id < crystals_data->get_n_slips();
+              ++slip_id)
+          {
+            // Compute the microscopic traction values at the
+            // quadrature point
+            /*scratch.microscopic_traction_values[slip_id][face_q_point] =
+              microscopic_traction_law->get_microscopic_traction(
+                face_q_point,
+                slip_id,
+                scratch.grain_interaction_moduli,
+                scratch.face_slip_values,
+                scratch.neighbour_face_slip_values);*/
+
+            // Extract test function values at the quadrature points (Slips)
+            for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+              scratch.face_scalar_phi[slip_id][i] =
+                fe_face_values[fe_field->get_slip_extractor(
+                  crystal_id, slip_id)].value(i,face_q_point);
+          }
+
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-          {
-            data.local_rhs(i) -=
-              0.0;
-          } // Loop over degrees of freedom
+            if (fe_field->get_global_component(crystal_id, i) < dim)
+            {
+              // Displacement jump. Add a flag
+            }
+            else
+            {
+              const unsigned int slip_id =
+                fe_field->get_global_component(crystal_id, i) - dim;
+
+              data.local_rhs(i) +=
+                scratch.face_scalar_phi[slip_id][i] *
+                0.0 *
+                scratch.face_JxW_values[face_q_point];;
+
+              AssertIsFinite(data.local_rhs(i));
+            } // Loop over degrees of freedom
         } // Loop over face quadrature points
       } // Loop over cell's faces
 
