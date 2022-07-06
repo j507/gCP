@@ -116,6 +116,12 @@ void CrystalsData<dim>::read_and_store_data(
           vector[component++] = std::stod(vector_component);
         }
 
+        /*!
+         * @todo In the case of 2-D only one euler angle is to be read
+         * from file. Modify assert
+         */
+        AssertDimension(component,dim);
+
         write_into.push_back(vector);
       }
     };
@@ -244,11 +250,13 @@ void CrystalsData<dim>::compute_rotation_matrices()
   {
     dealii::Tensor<2,dim> rotation_tensor;
 
+    const double deg_to_rad = M_PI / 180.0;
+
     switch (dim)
     {
     case 2:
       {
-        const double theta  = euler_angles[crystal_id][0];
+        const double theta  = euler_angles[crystal_id][0] * deg_to_rad;
 
         rotation_tensor[0][0] = std::cos(theta);
         rotation_tensor[0][1] = -std::sin(theta);
@@ -258,11 +266,9 @@ void CrystalsData<dim>::compute_rotation_matrices()
       break;
     case 3:
       {
-        const double grad_to_rad = M_PI / 180.0;
-
-        const double alpha  = euler_angles[crystal_id][0] * grad_to_rad;
-        const double beta   = euler_angles[crystal_id][1] * grad_to_rad;
-        const double gamma  = euler_angles[crystal_id][2] * grad_to_rad;
+        const double alpha  = euler_angles[crystal_id][0] * deg_to_rad;
+        const double beta   = euler_angles[crystal_id][1] * deg_to_rad;
+        const double gamma  = euler_angles[crystal_id][2] * deg_to_rad;
 
         dealii::Tensor<2,dim> rotation_tensor_alpha;
         dealii::Tensor<2,dim> rotation_tensor_beta;
