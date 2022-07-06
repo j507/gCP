@@ -464,6 +464,313 @@ get_vector_microscopic_stress(
           slip_gradient);
 }
 
+
+
+template<int dim>
+MicroscopicTractionLaw<dim>::MicroscopicTractionLaw(
+  const std::shared_ptr<CrystalsData<dim>> &crystals_data,
+  const RunTimeParameters::MicroscopicTractionLawParameters parameters)
+:
+crystals_data(crystals_data),
+grain_boundary_modulus(parameters.grain_boundary_modulus)
+{}
+
+
+
+template<>
+MicroscopicTractionLaw<2>::GrainInteractionModuli
+MicroscopicTractionLaw<2>::get_grain_interacion_moduli(
+  const unsigned int                crystal_id_current_cell,
+  const unsigned int                crystal_id_neighbour_cell,
+  std::vector<dealii::Tensor<1,2>>  normal_vector_values) const
+{
+  AssertThrow(crystal_id_current_cell != crystal_id_neighbour_cell,
+              dealii::ExcMessage(
+                "The crystal identifiers match. This method only "
+                "meant to be used at grain boundaries"));
+
+  const unsigned int n_q_points = normal_vector_values.size();
+
+  std::vector<dealii::FullMatrix<double>> intra_grain_interaction_moduli;
+
+  std::vector<dealii::FullMatrix<double>> inter_grain_interaction_moduli;
+
+  intra_grain_interaction_moduli.reserve(n_q_points);
+  inter_grain_interaction_moduli.reserve(n_q_points);
+
+  dealii::FullMatrix<double> intra_grain_interaction_moduli_per_q_point(
+    crystals_data->get_n_slips());
+  dealii::FullMatrix<double> inter_grain_interaction_moduli_per_q_point(
+    crystals_data->get_n_slips());
+
+  // Get slip systems of the current cell
+  std::vector<dealii::Tensor<1,2>> slip_directions_current_cell =
+    crystals_data->get_slip_directions(crystal_id_current_cell);
+  std::vector<dealii::Tensor<1,2>> slip_normals_current_cell =
+    crystals_data->get_slip_normals(crystal_id_current_cell);
+
+  // Get slip systems of the neighbour cell
+  std::vector<dealii::Tensor<1,2>> slip_directions_neighbour_cell =
+    crystals_data->get_slip_directions(crystal_id_neighbour_cell);
+  std::vector<dealii::Tensor<1,2>> slip_normals_neighbour_cell =
+    crystals_data->get_slip_normals(crystal_id_neighbour_cell);
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+    intra_grain_interaction_moduli_per_q_point = 0.0;
+    inter_grain_interaction_moduli_per_q_point = 0.0;
+
+    for (unsigned int slip_id_alpha = 0;
+         slip_id_alpha < crystals_data->get_n_slips(); ++slip_id_alpha)
+      for (unsigned int slip_id_beta = 0;
+           slip_id_beta < crystals_data->get_n_slips(); ++slip_id_beta)
+      {
+        intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta] =
+          (slip_directions_current_cell[slip_id_alpha] *
+           slip_directions_current_cell[slip_id_beta]) *
+          (slip_normals_current_cell[slip_id_alpha][0] *
+           normal_vector_values[q_point][1] -
+           slip_normals_current_cell[slip_id_alpha][1] *
+           normal_vector_values[q_point][0]) *
+          (slip_normals_current_cell[slip_id_beta][0] *
+           normal_vector_values[q_point][1] -
+           slip_normals_current_cell[slip_id_beta][1] *
+           normal_vector_values[q_point][0]);
+
+        inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta] =
+          (slip_directions_current_cell[slip_id_alpha] *
+           slip_directions_neighbour_cell[slip_id_beta]) *
+          (slip_normals_current_cell[slip_id_alpha][0] *
+           normal_vector_values[q_point][1] -
+           slip_normals_current_cell[slip_id_alpha][1] *
+           normal_vector_values[q_point][0]) *
+          (slip_normals_neighbour_cell[slip_id_beta][0] *
+           normal_vector_values[q_point][1] -
+           slip_normals_neighbour_cell[slip_id_beta][1] *
+           normal_vector_values[q_point][0]);
+
+        AssertThrow(
+          std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
+            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+          dealii::ExcMessage(
+            "The interaction moduli should be inside the "
+            "range [0,1]."));
+
+        AssertThrow(
+          std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
+            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+          dealii::ExcMessage(
+            "The interaction moduli should be inside the "
+            "range [0,1]."));
+
+        AssertIsFinite(
+          intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
+        AssertIsFinite(
+          inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
+      }
+
+    intra_grain_interaction_moduli.push_back(intra_grain_interaction_moduli_per_q_point);
+    inter_grain_interaction_moduli.push_back(inter_grain_interaction_moduli_per_q_point);
+  }
+
+  AssertThrow(normal_vector_values.size() ==
+              intra_grain_interaction_moduli.size(),
+              dealii::ExcDimensionMismatch(
+                normal_vector_values.size(),
+                intra_grain_interaction_moduli.size()));
+  AssertThrow(normal_vector_values.size() ==
+              inter_grain_interaction_moduli.size(),
+              dealii::ExcDimensionMismatch(
+                normal_vector_values.size(),
+                inter_grain_interaction_moduli.size()));
+
+  return (std::make_pair(intra_grain_interaction_moduli,
+                         inter_grain_interaction_moduli));
+}
+
+
+
+template<>
+MicroscopicTractionLaw<3>::GrainInteractionModuli
+MicroscopicTractionLaw<3>::get_grain_interacion_moduli(
+  const unsigned int                crystal_id_current_cell,
+  const unsigned int                crystal_id_neighbour_cell,
+  std::vector<dealii::Tensor<1,3>>  normal_vector_values) const
+{
+  AssertThrow(crystal_id_current_cell != crystal_id_neighbour_cell,
+              dealii::ExcMessage(
+                "The crystal identifiers match. This method only "
+                "meant to be used at grain boundaries"));
+
+  const unsigned int n_q_points = normal_vector_values.size();
+
+  std::vector<dealii::FullMatrix<double>> intra_grain_interaction_moduli;
+
+  std::vector<dealii::FullMatrix<double>> inter_grain_interaction_moduli;
+
+  intra_grain_interaction_moduli.reserve(n_q_points);
+  inter_grain_interaction_moduli.reserve(n_q_points);
+
+  dealii::FullMatrix<double> intra_grain_interaction_moduli_per_q_point(
+    crystals_data->get_n_slips());
+  dealii::FullMatrix<double> inter_grain_interaction_moduli_per_q_point(
+    crystals_data->get_n_slips());
+
+  // Get slip systems of the current cell
+  std::vector<dealii::Tensor<1,3>> slip_directions_current_cell =
+    crystals_data->get_slip_directions(crystal_id_current_cell);
+  std::vector<dealii::Tensor<1,3>> slip_normals_current_cell =
+    crystals_data->get_slip_normals(crystal_id_current_cell);
+
+  // Get slip systems of the neighbour cell
+  std::vector<dealii::Tensor<1,3>> slip_directions_neighbour_cell =
+    crystals_data->get_slip_directions(crystal_id_neighbour_cell);
+  std::vector<dealii::Tensor<1,3>> slip_normals_neighbour_cell =
+    crystals_data->get_slip_normals(crystal_id_neighbour_cell);
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+    intra_grain_interaction_moduli_per_q_point = 0.0;
+    inter_grain_interaction_moduli_per_q_point = 0.0;
+
+    for (unsigned int slip_id_alpha = 0;
+         slip_id_alpha < crystals_data->get_n_slips(); ++slip_id_alpha)
+      for (unsigned int slip_id_beta = 0;
+           slip_id_beta < crystals_data->get_n_slips(); ++slip_id_beta)
+      {
+        intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta] =
+          (slip_directions_current_cell[slip_id_alpha] *
+           slip_directions_current_cell[slip_id_beta]) *
+          (dealii::cross_product_3d(
+            slip_normals_current_cell[slip_id_alpha],
+            normal_vector_values[q_point]) *
+           dealii::cross_product_3d(
+            slip_normals_current_cell[slip_id_beta],
+            normal_vector_values[q_point]));
+
+        inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta] =
+          (slip_directions_current_cell[slip_id_alpha] *
+           slip_directions_neighbour_cell[slip_id_beta]) *
+          (dealii::cross_product_3d(
+            slip_normals_current_cell[slip_id_alpha],
+            normal_vector_values[q_point]) *
+           dealii::cross_product_3d(
+            slip_normals_neighbour_cell[slip_id_beta],
+            normal_vector_values[q_point]));
+
+        AssertThrow(
+          std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
+            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+          dealii::ExcMessage(
+            "The interaction moduli should be inside the "
+            "range [0,1]."));
+
+        AssertThrow(
+          std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
+            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+          dealii::ExcMessage(
+            "The interaction moduli should be inside the "
+            "range [0,1]."));
+
+        AssertIsFinite(
+          intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
+        AssertIsFinite(
+          inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
+      }
+
+    intra_grain_interaction_moduli.push_back(intra_grain_interaction_moduli_per_q_point);
+    inter_grain_interaction_moduli.push_back(inter_grain_interaction_moduli_per_q_point);
+  }
+
+  AssertThrow(normal_vector_values.size() ==
+              intra_grain_interaction_moduli.size(),
+              dealii::ExcDimensionMismatch(
+                normal_vector_values.size(),
+                intra_grain_interaction_moduli.size()));
+  AssertThrow(normal_vector_values.size() ==
+              inter_grain_interaction_moduli.size(),
+              dealii::ExcDimensionMismatch(
+                normal_vector_values.size(),
+                inter_grain_interaction_moduli.size()));
+
+  return (std::make_pair(intra_grain_interaction_moduli,
+                         inter_grain_interaction_moduli));
+}
+
+
+
+template <int dim>
+double MicroscopicTractionLaw<dim>::get_microscopic_traction(
+  const unsigned int                      q_point,
+  const unsigned int                      slip_id_alpha,
+  const GrainInteractionModuli            grain_interaction_moduli,
+  const std::vector<std::vector<double>>  slip_values_current_cell,
+  const std::vector<std::vector<double>>  slip_values_neighbour_cell) const
+{
+  double microscopic_traction = 0.0;
+
+  for (unsigned int slip_id_beta = 0;
+       slip_id_beta < crystals_data->get_n_slips(); slip_id_beta++)
+    microscopic_traction +=
+      grain_interaction_moduli.first[q_point][slip_id_alpha][slip_id_beta] *
+      slip_values_current_cell[slip_id_beta][q_point]
+      -
+      grain_interaction_moduli.second[q_point][slip_id_alpha][slip_id_beta] *
+      slip_values_neighbour_cell[slip_id_beta][q_point];
+
+  microscopic_traction *= -grain_boundary_modulus;
+
+  return (microscopic_traction);
+}
+
+
+
+template <int dim>
+const dealii::FullMatrix<double>
+MicroscopicTractionLaw<dim>::
+  get_intra_gateaux_derivative(
+    const unsigned int            q_point,
+    const GrainInteractionModuli  grain_interaction_moduli) const
+{
+  dealii::FullMatrix<double> intra_gateaux_derivative =
+    grain_interaction_moduli.first[q_point];
+
+  AssertThrow(
+    intra_gateaux_derivative.m() ==
+      intra_gateaux_derivative.n(),
+    dealii::ExcMessage(
+      "The dealii::FullMatrix<double> is not square"));
+
+  intra_gateaux_derivative *= -grain_boundary_modulus;
+
+  return (intra_gateaux_derivative);
+}
+
+
+
+template <int dim>
+const dealii::FullMatrix<double>
+MicroscopicTractionLaw<dim>::
+  get_inter_gateaux_derivative(
+    const unsigned int            q_point,
+    const GrainInteractionModuli  grain_interaction_moduli) const
+{
+  dealii::FullMatrix<double> inter_gateaux_derivative =
+    grain_interaction_moduli.second[q_point];
+
+  AssertThrow(
+    inter_gateaux_derivative.m() ==
+      inter_gateaux_derivative.n(),
+    dealii::ExcMessage(
+      "The dealii::FullMatrix<double> is not square"));
+
+  inter_gateaux_derivative *= grain_boundary_modulus;
+
+  return (inter_gateaux_derivative);
+}
+
+
+
 } // ConstitutiveLaws
 
 
