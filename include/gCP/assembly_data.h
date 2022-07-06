@@ -89,10 +89,6 @@ struct Scratch : ScratchBase<dim>
 
   unsigned int                                    n_slips;
 
-  unsigned int                                    slip_id_alpha;
-
-  unsigned int                                    slip_id_beta;
-
   dealii::SymmetricTensor<4,dim>                  stiffness_tetrad;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     reduced_gradient_hardening_tensors;
