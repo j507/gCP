@@ -652,7 +652,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
         // Loop over face quadrature points
         for (unsigned int face_q_point = 0;
-             face_q_point < scratch.n_q_points /*scratch.n_face_q_points CHANGE THIS*/;
+             face_q_point < scratch.n_face_q_points;
              ++face_q_point)
         {
           for (unsigned int slip_id = 0;
