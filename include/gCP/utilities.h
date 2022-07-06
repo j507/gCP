@@ -6,6 +6,8 @@
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/mpi.h>
 
+#include <deal.II/lac/full_matrix.h>
+
 #include <fstream>
 #include <map>
 #include <string>
@@ -198,6 +200,16 @@ std::string print_tetrad(
 
   return ss.str();
 }
+
+
+
+std::string get_fullmatrix_as_string(
+  const dealii::FullMatrix<double>  fullmatrix,
+  const unsigned int                offset = 0,
+  const unsigned int                width = 15,
+  const unsigned int                precision = 6,
+  const bool                        scientific = false);
+
 
 
 }  // Utilities
