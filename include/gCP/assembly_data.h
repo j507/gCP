@@ -77,17 +77,35 @@ struct Copy : CopyBase
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
           const dealii::hp::FECollection<dim>       &finite_element,
           const dealii::UpdateFlags                 update_flags,
+          const dealii::UpdateFlags                 face_update_flags,
           const unsigned int                        n_slips);
 
   Scratch(const Scratch<dim>  &data);
 
+  using GrainInteractionModuli =
+    typename std::pair<std::vector<dealii::FullMatrix<double>>,
+                       std::vector<dealii::FullMatrix<double>>>;
+
   dealii::hp::FEValues<dim>                       hp_fe_values;
 
-  unsigned int                                    n_slips;
+  dealii::hp::FEFaceValues<dim>                   hp_fe_face_values;
+
+  dealii::hp::FEFaceValues<dim>                   neighbour_hp_fe_face_values;
+
+  const unsigned int                              n_face_q_points;
+
+  const unsigned int                              n_slips;
+
+  std::vector<dealii::Tensor<1,dim>>              normal_vector_values;
+
+  std::vector<double>                             JxW_values;
+
+  std::vector<double>                             face_JxW_values;
 
   dealii::SymmetricTensor<4,dim>                  stiffness_tetrad;
 
@@ -95,19 +113,27 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::SymmetricTensor<2,dim>>     symmetrized_schmid_tensors;
 
-  std::vector<double>                             JxW_values;
-
   std::vector<std::vector<double>>                slip_values;
 
   std::vector<std::vector<double>>                old_slip_values;
 
   std::vector<dealii::FullMatrix<double>>         gateaux_derivative_values;
 
+  GrainInteractionModuli                          grain_interaction_moduli;
+
+  std::vector<dealii::FullMatrix<double>>         intra_gateaux_derivative_values;
+
+  std::vector<dealii::FullMatrix<double>>         inter_gateaux_derivative_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     sym_grad_vector_phi;
 
   std::vector<std::vector<double>>                scalar_phi;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> grad_scalar_phi;
+
+  std::vector<std::vector<double>>                face_scalar_phi;
+
+  std::vector<std::vector<double>>                neighbour_face_scalar_phi;
 };
 
 
@@ -135,7 +161,7 @@ struct Copy : CopyBase
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
           const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
           const dealii::hp::FECollection<dim>       &finite_element,
@@ -157,7 +183,7 @@ struct Scratch : ScratchBase<dim>
 
   const unsigned int                              n_face_q_points;
 
-  unsigned int                                    n_slips;
+  const unsigned int                              n_slips;
 
   std::vector<dealii::Tensor<1,dim>>              normal_vector_values;
 
@@ -230,7 +256,7 @@ struct Copy
 template <int dim>
 struct Scratch : ScratchBase<dim>
 {
-  Scratch(const dealii::hp::MappingCollection<dim>  &mapping,
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
           const dealii::hp::FECollection<dim>       &finite_element,
           const dealii::UpdateFlags                 update_flags,
