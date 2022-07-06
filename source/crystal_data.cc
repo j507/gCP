@@ -77,7 +77,8 @@ void CrystalsData<dim>::read_and_store_data(
   // it into write_into. The data has to be separated by commas.
   auto read_and_store =
     [&](std::ifstream                       &input_file,
-        std::vector<dealii::Tensor<1,dim>>  &write_into)
+        std::vector<dealii::Tensor<1,dim>>  &write_into,
+        const bool                          flag_reading_euler_angles)
     {
       unsigned int component;
 
@@ -116,11 +117,25 @@ void CrystalsData<dim>::read_and_store_data(
           vector[component++] = std::stod(vector_component);
         }
 
-        /*!
-         * @todo In the case of 2-D only one euler angle is to be read
-         * from file. Modify assert
-         */
-        AssertDimension(component,dim);
+        if (flag_reading_euler_angles && dim ==2)
+        {
+          AssertThrow(
+            component == 1,
+            dealii::ExcMessage(
+              ("In 2D only rotations of the xy plane are allowed. "
+               "Nonetheless, more than one angle is being read from "
+               "the specified file.")));
+        }
+
+        else
+        {
+          AssertThrow(
+            component == dim,
+            dealii::ExcMessage(
+              ("In 3D there are three euler angles and vectors have "
+               "three components. Nonetheless, more or less entries "
+               "are being red from the specified files.")));
+        }
 
         write_into.push_back(vector);
       }
@@ -134,7 +149,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (crystal_orientations_input_file)
       read_and_store(crystal_orientations_input_file,
-                    euler_angles);
+                     euler_angles,
+                     true);
     else
       AssertThrow(
         false,
@@ -162,7 +178,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_directions_input_file)
       read_and_store(slip_directions_input_file,
-                     reference_slip_directions);
+                     reference_slip_directions,
+                     false);
     else
       AssertThrow(
         false,
@@ -172,7 +189,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_normals_input_file)
       read_and_store(slip_normals_input_file,
-                     reference_slip_normals);
+                     reference_slip_normals,
+                     false);
     else
       AssertThrow(
         false,
@@ -211,6 +229,7 @@ void CrystalsData<dim>::read_and_store_data(
                                  reference_slip_directions[i]);
       break;
     default:
+      AssertThrow(false, dealii::ExcIndexRange(dim,2,3));
       break;
     }
 
@@ -300,7 +319,7 @@ void CrystalsData<dim>::compute_rotation_matrices()
       }
       break;
     default:
-      dealii::ExcInternalError();
+      AssertThrow(false, dealii::ExcIndexRange(dim,2,3));
       break;
     }
 
