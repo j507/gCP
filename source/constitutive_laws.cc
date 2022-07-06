@@ -152,6 +152,7 @@ void HookeLaw<dim>::init()
     break;
 
   default:
+    AssertThrow(false, dealii::ExcNotImplemented())
     break;
   }
 
