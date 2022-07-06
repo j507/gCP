@@ -66,11 +66,10 @@ std::string get_tensor_as_string(
   ss.precision(precision); // set # places after decimal
 
   if (scientific)
-    ss << std::scientific << std::fixed;
+    ss << std::scientific;
 
-  ss << std::setw(width) << tensor[0]
-      << std::setw(width) << tensor[1]
-      << std::setw(width) << tensor[2];
+  for (unsigned int i = 0; i < dim; ++i)
+    ss << std::setw(width) << tensor[i];
 
   return ss.str();
 }
@@ -90,19 +89,16 @@ std::string get_tensor_as_string(
   ss.precision(precision); // set # places after decimal
 
   if (scientific)
-    ss << std::scientific << std::fixed;
+    ss << std::scientific;
 
-  ss << std::setw(width) << tensor[0][0]
-      << std::setw(width) << tensor[0][1]
-      << std::setw(width) << tensor[0][2] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tensor[1][0]
-      << std::setw(width) << tensor[1][1]
-      << std::setw(width) << tensor[1][2] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tensor[2][0]
-      << std::setw(width) << tensor[2][1]
-      << std::setw(width) << tensor[2][2];
+  for (unsigned int i = 0; i < dim; ++i)
+  {
+    for (unsigned int j = 0; j < dim; ++j)
+      ss << std::setw(width) << tensor[i][j];
+
+    if (i != (dim-1))
+      ss << "\n" << std::string(offset, ' ');
+  }
 
   return ss.str();
 }
@@ -124,17 +120,14 @@ std::string get_tensor_as_string(
   if (scientific)
     ss << std::scientific;
 
-  ss << std::setw(width) << tensor[0][0]
-      << std::setw(width) << tensor[0][1]
-      << std::setw(width) << tensor[0][2] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tensor[1][0]
-      << std::setw(width) << tensor[1][1]
-      << std::setw(width) << tensor[1][2] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tensor[2][0]
-      << std::setw(width) << tensor[2][1]
-      << std::setw(width) << tensor[2][2];
+  for (unsigned int i = 0; i < dim; ++i)
+  {
+    for (unsigned int j = 0; j < dim; ++j)
+      ss << std::setw(width) << tensor[i][j];
+
+    if (i != (dim-1))
+      ss << "\n" << std::string(offset, ' ');
+  }
 
   return ss.str();
 }
@@ -156,47 +149,45 @@ std::string print_tetrad(
   if (scientific)
     ss << std::scientific;
 
-  ss << std::setw(width) << tetrad[0][0][0][0]
-      << std::setw(width) << tetrad[0][0][1][1]
-      << std::setw(width) << tetrad[0][0][2][2]
-      << std::setw(width) << tetrad[0][0][1][2]
-      << std::setw(width) << tetrad[0][0][0][2]
-      << std::setw(width) << tetrad[0][0][0][1] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tetrad[1][1][0][0]
-      << std::setw(width) << tetrad[1][1][1][1]
-      << std::setw(width) << tetrad[1][1][2][2]
-      << std::setw(width) << tetrad[1][1][1][2]
-      << std::setw(width) << tetrad[1][1][0][2]
-      << std::setw(width) << tetrad[1][1][0][1] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tetrad[2][2][0][0]
-      << std::setw(width) << tetrad[2][2][1][1]
-      << std::setw(width) << tetrad[2][2][2][2]
-      << std::setw(width) << tetrad[2][2][1][2]
-      << std::setw(width) << tetrad[2][2][0][2]
-      << std::setw(width) << tetrad[2][2][0][1] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tetrad[1][2][0][0]
-      << std::setw(width) << tetrad[1][2][1][1]
-      << std::setw(width) << tetrad[1][2][2][2]
-      << std::setw(width) << tetrad[1][2][1][2]
-      << std::setw(width) << tetrad[1][2][0][2]
-      << std::setw(width) << tetrad[1][2][0][1] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tetrad[0][2][0][0]
-      << std::setw(width) << tetrad[0][2][1][1]
-      << std::setw(width) << tetrad[0][2][2][2]
-      << std::setw(width) << tetrad[0][2][1][2]
-      << std::setw(width) << tetrad[0][2][0][2]
-      << std::setw(width) << tetrad[0][2][0][1] << std::endl
-      << std::string(offset, ' ')
-      << std::setw(width) << tetrad[0][1][0][0]
-      << std::setw(width) << tetrad[0][1][1][1]
-      << std::setw(width) << tetrad[0][1][2][2]
-      << std::setw(width) << tetrad[0][1][1][2]
-      << std::setw(width) << tetrad[0][1][0][2]
-      << std::setw(width) << tetrad[0][1][0][1];
+  std::vector<std::pair<unsigned int, unsigned int>> voigt_indices;
+
+  switch (dim)
+  {
+    case 2:
+      {
+        voigt_indices.resize(3);
+
+        voigt_indices[0] = std::make_pair<unsigned int, unsigned int>(0,0);
+        voigt_indices[1] = std::make_pair<unsigned int, unsigned int>(1,1);
+        voigt_indices[2] = std::make_pair<unsigned int, unsigned int>(0,1);
+      }
+      break;
+    case 3:
+      {
+        voigt_indices.resize(6);
+
+        voigt_indices[0] = std::make_pair<unsigned int, unsigned int>(0,0);
+        voigt_indices[1] = std::make_pair<unsigned int, unsigned int>(1,1);
+        voigt_indices[2] = std::make_pair<unsigned int, unsigned int>(2,2);
+        voigt_indices[3] = std::make_pair<unsigned int, unsigned int>(1,2);
+        voigt_indices[4] = std::make_pair<unsigned int, unsigned int>(0,2);
+        voigt_indices[5] = std::make_pair<unsigned int, unsigned int>(0,1);
+      }
+      break;
+    default:
+      AssertThrow(false, dealii::ExcIndexRange(dim,2,3));
+      break;
+  }
+
+  for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+  {
+    for (unsigned int j = 0; j < voigt_indices.size(); ++j)
+      ss << std::setw(width)
+         << tetrad[voigt_indices[i].first][voigt_indices[i].second][voigt_indices[j].first][voigt_indices[j].second];
+
+    if (i != (voigt_indices.size()-1))
+      ss << "\n" << std::string(offset, ' ');
+  }
 
   return ss.str();
 }
