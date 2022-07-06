@@ -326,7 +326,7 @@ public:
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
                        std::vector<dealii::FullMatrix<double>>>;
 
-  GrainInteractionModuli get_grain_interacion_moduli(
+  GrainInteractionModuli get_grain_interaction_moduli(
     const unsigned int                  crystal_id_current_cell,
     const unsigned int                  crystal_id_neighbour_cell,
     std::vector<dealii::Tensor<1,dim>>  normal_vector_values) const;

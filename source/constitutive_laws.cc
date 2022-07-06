@@ -479,7 +479,7 @@ grain_boundary_modulus(parameters.grain_boundary_modulus)
 
 template<>
 MicroscopicTractionLaw<2>::GrainInteractionModuli
-MicroscopicTractionLaw<2>::get_grain_interacion_moduli(
+MicroscopicTractionLaw<2>::get_grain_interaction_moduli(
   const unsigned int                crystal_id_current_cell,
   const unsigned int                crystal_id_neighbour_cell,
   std::vector<dealii::Tensor<1,2>>  normal_vector_values) const
@@ -592,7 +592,7 @@ MicroscopicTractionLaw<2>::get_grain_interacion_moduli(
 
 template<>
 MicroscopicTractionLaw<3>::GrainInteractionModuli
-MicroscopicTractionLaw<3>::get_grain_interacion_moduli(
+MicroscopicTractionLaw<3>::get_grain_interaction_moduli(
   const unsigned int                crystal_id_current_cell,
   const unsigned int                crystal_id_neighbour_cell,
   std::vector<dealii::Tensor<1,3>>  normal_vector_values) const
@@ -792,3 +792,6 @@ template class gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<3>;
 
 template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<2>;
 template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
+
+template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
+template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
