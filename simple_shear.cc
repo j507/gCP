@@ -350,10 +350,12 @@ void SimpleShearProblem<dim>::make_grid()
   for (const auto &cell : triangulation.active_cell_iterators())
     if (cell->is_locally_owned())
     {
-      if (std::fabs(cell->center()[1]) < parameters.height/2.0)
+      if (std::fabs(cell->center()[1]) < parameters.height/3.0)
         cell->set_material_id(0);
-      else
+      else if (std::fabs(cell->center()[1]) < 2.0*parameters.height/3.0)
         cell->set_material_id(1);
+      else
+        cell->set_material_id(2);
     }
 
   *pcout << "Triangulation:"
