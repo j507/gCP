@@ -91,6 +91,9 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>
                                                     vector_microscopic_stress_law;
 
+  std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
+                                                    microscopic_traction_law;
+
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
