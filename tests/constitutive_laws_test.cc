@@ -197,22 +197,24 @@ void CrystalData<dim>::init()
     << crystals_data->get_n_slips()
     << std::endl << std::endl;
 
-  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
-    std::cout
-      << "Slip system - " << i << "\n"
-      << std::setw(string_width) << std::left << " Direction" << " = "
-      << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_slip_direction(0,i)) << "\n\n"
-      << std::setw(string_width) << std::left << " Normal" << " = "
-      << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_slip_normal(0,i)) << "\n\n"
-      << std::setw(string_width) << std::left <<  " Schmid-Tensor" << " = "
-      << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_schmid_tensor(0,i), string_width + 3) << "\n\n"
-      << std::setw(string_width) << " Symmetric Schmid-Tensor" << " = "
-      << gCP::Utilities::get_tensor_as_string(
-          crystals_data->get_symmetrized_schmid_tensor(0,i), string_width + 3)
-      << "\n\n";
+  for (unsigned int crystal_id = 0;
+       crystal_id < crystals_data->get_n_crystals(); ++crystal_id)
+    for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+      std::cout
+        << "Crystal - " << crystal_id << " | Slip system - " << i << "\n"
+        << std::setw(string_width) << std::left << " Direction" << " = "
+        << gCP::Utilities::get_tensor_as_string(
+            crystals_data->get_slip_direction(crystal_id,i)) << "\n\n"
+        << std::setw(string_width) << std::left << " Normal" << " = "
+        << gCP::Utilities::get_tensor_as_string(
+            crystals_data->get_slip_normal(crystal_id,i)) << "\n\n"
+        << std::setw(string_width) << std::left <<  " Schmid-Tensor" << " = "
+        << gCP::Utilities::get_tensor_as_string(
+            crystals_data->get_schmid_tensor(crystal_id,i), string_width + 3) << "\n\n"
+        << std::setw(string_width) << " Symmetric Schmid-Tensor" << " = "
+        << gCP::Utilities::get_tensor_as_string(
+            crystals_data->get_symmetrized_schmid_tensor(crystal_id,i), string_width + 3)
+        << "\n\n";
 
   hooke_law.init();
 
@@ -430,6 +432,56 @@ void CrystalData<dim>::test_constitutive_laws()
       1,
       normal_vector_values);
 
+  std::vector<std::vector<double>> microscopic_traction_values(
+    crystals_data->get_n_slips(),
+    std::vector<double>(1, 0));
+
+  std::vector<std::vector<double>> face_slip_values(
+    crystals_data->get_n_slips(),
+    std::vector<double>(1, 0));
+
+  std::vector<std::vector<double>> neighbour_face_slip_values(
+    crystals_data->get_n_slips(),
+    std::vector<double>(1, 0));
+
+  face_slip_values[0][0] = 1.5;
+  face_slip_values[1][0] = 0.5;
+
+  neighbour_face_slip_values[0][0] = 0.75;
+  neighbour_face_slip_values[1][0] = 2.0;
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips(); ++slip_id)
+    microscopic_traction_values[slip_id][0] =
+      microscopic_traction_law.get_microscopic_traction(
+        0,
+        slip_id,
+        grain_interaction_moduli,
+        face_slip_values,
+        neighbour_face_slip_values);
+
+  const dealii::FullMatrix<double> intra_gateaux_derivative =
+    microscopic_traction_law.get_intra_gateaux_derivative(
+      0,
+      grain_interaction_moduli);
+
+  const dealii::FullMatrix<double> inter_gateaux_derivative =
+    microscopic_traction_law.get_inter_gateaux_derivative(
+      0,
+      grain_interaction_moduli);
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(string_width) << std::left << (" Face slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  face_slip_values[i][0] << "\n\n";
+
+  for (unsigned int i = 0; i  < crystals_data->get_n_slips(); ++i)
+    std::cout
+      << std::setw(string_width) << std::left << (" Neighbour face slip " + std::to_string(i)) << " = "
+      << std::fixed << std::left << std::showpos << std::setprecision(6)
+      <<  neighbour_face_slip_values[i][0] << "\n\n";
+
   std::cout
     << std::setw(string_width) << std::left
     << " Intra grain interaction moduli" << " = "
@@ -442,7 +494,25 @@ void CrystalData<dim>::test_constitutive_laws()
       grain_interaction_moduli.second[0], string_width + 3, 15, 3, true)
     << "\n\n";
 
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips(); ++slip_id)
+    std::cout
+      << std::setw(string_width) << std::left
+      << (" Microscopic traction - " + std::to_string(slip_id)) << " = "
+      << microscopic_traction_values[slip_id][0]
+      << "\n\n";
 
+  std::cout
+    << std::setw(string_width) << std::left
+    << " Intra gateaux derivative" << " = "
+    << gCP::Utilities::get_fullmatrix_as_string(
+       intra_gateaux_derivative, string_width + 3, 15, 3, true)
+    << "\n\n"
+    << std::setw(string_width) << std::left
+    << " Inter gateaux derivative" << " = "
+    << gCP::Utilities::get_fullmatrix_as_string(
+       inter_gateaux_derivative, string_width + 3, 15, 3, true)
+    << "\n\n";
 }
 
 
@@ -461,7 +531,7 @@ int main(int argc, char *argv[])
 
     gCP::RunTimeParameters::ProblemParameters parameters("input/prm.prm");
 
-    Tests::CrystalData<2> problem_3d(parameters);
+    Tests::CrystalData<3> problem_3d(parameters);
     problem_3d.run();
   }
   catch (std::exception &exc)
