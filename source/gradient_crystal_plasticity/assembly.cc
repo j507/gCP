@@ -304,27 +304,27 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         scratch.normal_vector_values = fe_face_values.get_normal_vectors();
 
         // Get grain interactino moduli
-        /*scratch.grain_interaction_moduli =
-          microscopic_traction_law->get_grain_interacion_moduli(
+        scratch.grain_interaction_moduli =
+          microscopic_traction_law->get_grain_interaction_moduli(
             crystal_id,
             neighbour_crystal_id,
-            scratch.normal_vector_values);*/
+            scratch.normal_vector_values);
 
         // Loop over face quadrature points
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points;
              ++face_q_point)
         {
-          /*
-          scratch.grain_boundary_gateaux_derivative_values[face_q_point] =
-            microscopic_traction_law->get_gateaux_derivative_current_cell(
+
+          scratch.intra_gateaux_derivative_values[face_q_point] =
+            microscopic_traction_law->get_intra_gateaux_derivative(
               face_q_point,
               scratch.grain_interaction_moduli);
 
-          scratch.neighbour_grain_boundary_gateaux_derivative_values[face_q_point] =
-            microscopic_traction_law->get_gateaux_derivative_neighbour_cell(
+          scratch.inter_gateaux_derivative_values[face_q_point] =
+            microscopic_traction_law->get_inter_gateaux_derivative(
               face_q_point,
-              scratch.grain_interaction_moduli);*/
+              scratch.grain_interaction_moduli);
 
           // Extract test function values at the quadrature points (Slips)
           for (unsigned int slip_id = 0;
@@ -366,15 +366,15 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                 data.local_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  0.0 *
+                  scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
                   scratch.face_scalar_phi[slip_id_beta][j] *
                   scratch.face_JxW_values[face_q_point];
 
                 data.local_coupling_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  0.0 *
+                  scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
                   scratch.neighbour_face_scalar_phi[neighbour_slip_id_beta][j] *
-                  scratch.face_JxW_values[face_q_point];;
+                  scratch.face_JxW_values[face_q_point];
 
                 AssertIsFinite(data.local_matrix(i,j));
                 AssertIsFinite(data.local_coupling_matrix(i,j));
@@ -697,11 +697,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         scratch.normal_vector_values = fe_face_values.get_normal_vectors();
 
         // Get grain interactino moduli
-        /*scratch.grain_interaction_moduli =
-          microscopic_traction_law->get_grain_interacion_moduli(
+        scratch.grain_interaction_moduli =
+          microscopic_traction_law->get_grain_interaction_moduli(
             crystal_id,
             neighbour_crystal_id,
-            scratch.normal_vector_values);*/
+            scratch.normal_vector_values);
 
         // Get the values of the slipsof the current and the neighbour
         // cell at the face quadrature points
@@ -728,13 +728,13 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
           {
             // Compute the microscopic traction values at the
             // quadrature point
-            /*scratch.microscopic_traction_values[slip_id][face_q_point] =
+            scratch.microscopic_traction_values[slip_id][face_q_point] =
               microscopic_traction_law->get_microscopic_traction(
                 face_q_point,
                 slip_id,
                 scratch.grain_interaction_moduli,
                 scratch.face_slip_values,
-                scratch.neighbour_face_slip_values);*/
+                scratch.neighbour_face_slip_values);
 
             // Extract test function values at the quadrature points (Slips)
             for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -756,7 +756,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
               data.local_rhs(i) +=
                 scratch.face_scalar_phi[slip_id][i] *
-                0.0 *
+                scratch.microscopic_traction_values[slip_id][face_q_point] *
                 scratch.face_JxW_values[face_q_point];;
 
               AssertIsFinite(data.local_rhs(i));

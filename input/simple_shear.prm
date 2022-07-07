@@ -38,7 +38,7 @@ subsection Solver parameters
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0.0
+      set Grain boundary modulus = 1e4
     end
 
     subsection Scalar microscopic stress law's parameters
@@ -50,7 +50,7 @@ subsection Solver parameters
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.2
+      set Energetic length scale  = 5
       set Initial slip resistance = 60
     end
 
