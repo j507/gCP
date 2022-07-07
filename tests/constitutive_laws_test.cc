@@ -529,10 +529,19 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    gCP::RunTimeParameters::ProblemParameters parameters("input/prm.prm");
+    {
+      gCP::RunTimeParameters::ProblemParameters parameters("input/2d.prm");
 
-    Tests::CrystalData<3> problem_3d(parameters);
-    problem_3d.run();
+      Tests::CrystalData<2> test_2d(parameters);
+      test_2d.run();
+    }
+
+    {
+      gCP::RunTimeParameters::ProblemParameters parameters("input/3d.prm");
+
+      Tests::CrystalData<3> test_3d(parameters);
+      test_3d.run();
+    }
   }
   catch (std::exception &exc)
   {
