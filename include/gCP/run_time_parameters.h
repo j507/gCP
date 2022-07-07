@@ -35,6 +35,36 @@ enum class RegularizationFunction
 };
 
 
+/*!
+ * @brief
+ *
+ * @todo Docu
+ */
+enum class BoundaryConditionsAtGrainBoundaries
+{
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microhard,
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microfree,
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microtraction,
+};
+
+
 
 struct NewtonRaphsonParameters
 {
@@ -349,6 +379,14 @@ struct SolverParameters
    */
   MicroscopicTractionLawParameters
                       microscopic_traction_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  BoundaryConditionsAtGrainBoundaries
+                      boundary_conditions_at_grain_boundaries;
 
   /*!
    * @brief

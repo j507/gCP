@@ -254,6 +254,8 @@ n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
+boundary_conditions_at_grain_boundaries(
+  BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
 print_sparsity_pattern(false),
 verbose(false)
@@ -299,6 +301,12 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     MicroscopicTractionLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
+
+  prm.declare_entry("Boundary conditions at grain boundaries",
+                    "microfree",
+                    dealii::Patterns::Selection(
+                      "microhard|microfree|microtraction"));
+
 
   prm.declare_entry("Logger output directory",
                     "results/default/",
@@ -360,6 +368,33 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     microscopic_traction_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  const std::string string_boundary_conditions_at_grain_boundaries(
+                    prm.get("Boundary conditions at grain boundaries"));
+
+  if (string_boundary_conditions_at_grain_boundaries ==
+        std::string("microhard"))
+  {
+    AssertThrow(false,
+      dealii::ExcMessage(
+        "Microhard boundary conditions have yet to be implemented."));
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microhard;
+  }
+  else if (string_boundary_conditions_at_grain_boundaries ==
+            std::string("microfree"))
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microfree;
+  else if (string_boundary_conditions_at_grain_boundaries ==
+            std::string("microtraction"))
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microtraction;
+  else
+    AssertThrow(false,
+      dealii::ExcMessage(
+        "Unexpected identifier for the boundary conditions at grain "
+        "boundaries."));
+
 
   logger_output_directory = prm.get("Logger output directory");
 
