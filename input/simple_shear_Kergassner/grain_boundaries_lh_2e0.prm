@@ -4,7 +4,7 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/simple_shear_Kergassner/euler_angles_10_0_0
+  set Euler angles path name    = input/simple_shear_Kergassner/euler_angles_0_10_10
   set Slip directions path name = input/simple_shear_Kergassner/slip_directions
   set Slip normals path name    = input/simple_shear_Kergassner/slip_normals
 end
