@@ -646,7 +646,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
-n_equal_sized_divisions(0),
+n_equal_sized_divisions(1),
 height(1),
 width(0.1)
 {}
@@ -702,7 +702,7 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Double());
 
     prm.declare_entry("Number of equally sized divisions in y-direction",
-                      "0",
+                      "1",
                       dealii::Patterns::Integer());
 
     prm.declare_entry("Height of the strip",
@@ -727,12 +727,29 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
     shear_strain_at_upper_boundary =
       prm.get_double("Shear strain at the upper boundary");
 
+    AssertIsFinite(shear_strain_at_upper_boundary);
+
     n_equal_sized_divisions =
       prm.get_integer("Number of equally sized divisions in y-direction");
 
+    Assert(n_equal_sized_divisions > 0,
+           dealii::ExcLowerRange(n_equal_sized_divisions, 0));
+
+    AssertIsFinite(n_equal_sized_divisions);
+
     height = prm.get_double("Height of the strip");
 
+    Assert(height > 0,
+           dealii::ExcLowerRange(height, 0));
+
+    AssertIsFinite(height);
+
     width = prm.get_double("Width of the strip");
+
+    Assert(width > 0,
+        dealii::ExcLowerRange(width, 0));
+
+    AssertIsFinite(width);
   }
   prm.leave_subsection();
 }

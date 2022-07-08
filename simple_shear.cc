@@ -282,28 +282,6 @@ void SimpleShearProblem<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
 
-  std::vector<std::vector<double>> step_sizes(dim, std::vector<double>());
-
-  step_sizes[0] = std::vector<double>(5, parameters.width / 5);
-
-  const double factor       = .50;
-
-  unsigned int n_divisions  = 6;
-
-  for (unsigned int i = 0; i < n_divisions; ++i)
-  {
-    if (i == 0)
-      step_sizes[1].push_back((0.5*parameters.height)*std::pow(1-factor, n_divisions - 1 -  i));
-    else
-      step_sizes[1].push_back((0.5*parameters.height)*std::pow(1-factor, n_divisions - 1 - i)*factor);
-  }
-
-  std::vector<double> mirror_vector(step_sizes[1]);
-  std::reverse(mirror_vector.begin(), mirror_vector.end());
-  step_sizes[1].insert(step_sizes[1].end(),
-                       mirror_vector.begin(),
-                       mirror_vector.end());
-
   std::vector<unsigned int> repetitions(2, 10);
   repetitions[1] = 100;
 
@@ -350,12 +328,14 @@ void SimpleShearProblem<dim>::make_grid()
   for (const auto &cell : triangulation.active_cell_iterators())
     if (cell->is_locally_owned())
     {
-      if (std::fabs(cell->center()[1]) < parameters.height/3.0)
-        cell->set_material_id(0);
-      else if (std::fabs(cell->center()[1]) < 2.0*parameters.height/3.0)
-        cell->set_material_id(1);
-      else
-        cell->set_material_id(2);
+      for (unsigned int i = 1;
+           i <= parameters.n_equal_sized_divisions; ++i)
+        if (std::fabs(cell->center()[1]) <
+            i * parameters.height / parameters.n_equal_sized_divisions)
+        {
+          cell->set_material_id(i-1);
+          break;
+        }
     }
 
   *pcout << "Triangulation:"
