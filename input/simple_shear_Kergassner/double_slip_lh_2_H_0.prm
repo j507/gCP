@@ -18,15 +18,18 @@ end
 
 
 subsection Simple shear
-  set Height of the strip                = 1.0
-  set Shear strain at the upper boundary = 0.02
-  set Width of the strip                 = 0.1
+  set Height of the strip                              = 1.0
+  set Number of equally sized divisions in y-direction = 1
+  set Shear strain at the upper boundary               = 0.02
+  set Width of the strip                               = 0.1
 end
 
 
 subsection Solver parameters
-  set Logger output directory = results/simple_shear_Kergassner/double_slip_lh_2_H_0/
-  set Verbose                 = false
+  set Boundary conditions at grain boundaries = microfree
+  set Logger output directory                 = results/simple_shear_Kergassner/double_slip_lh_2_H_0/
+  set Print sparsity pattern                  = false
+  set Verbose                                 = false
 
 
   subsection Constitutive laws' parameters
@@ -34,6 +37,10 @@ subsection Solver parameters
       set C1111 = 107942.28436442571
       set C1122 = 61246.24912213496
       set C1212 = 28500
+    end
+
+    subsection Microscopic traction law's parameters
+      set Grain boundary modulus = 0.0
     end
 
     subsection Scalar microscopic stress law's parameters
