@@ -25,9 +25,10 @@ end
 
 
 subsection Solver parameters
-  set Logger output directory = results/simple_shear_default/
-  set Print sparsity pattern  = false
-  set Verbose                 = false
+  set Boundary conditions at grain boundaries = microfree
+  set Logger output directory                 = results/simple_shear_default/
+  set Print sparsity pattern                  = false
+  set Verbose                                 = false
 
 
   subsection Constitutive laws' parameters

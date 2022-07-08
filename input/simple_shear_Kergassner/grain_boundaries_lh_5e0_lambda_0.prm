@@ -25,6 +25,7 @@ end
 
 
 subsection Solver parameters
+  set Boundary conditions at grain boundaries = microfree
   set Logger output directory = results/simple_shear_Kergassner/grain_boundaries_lh_5e0_lambda_0/
   set Print sparsity pattern  = false
   set Verbose                 = false
@@ -34,24 +35,24 @@ subsection Solver parameters
     subsection Hooke-Law's parameters
       set C1111 = 107942.28436442571
       set C1122 = 61246.24912213496
-      set C1212 = 28500
+      set C1212 = 28500.0
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0
+      set Grain boundary modulus = 0.0
     end
 
     subsection Scalar microscopic stress law's parameters
       set Hardening parameter      = 1.4
-      set Initial slip resistance  = 60
+      set Initial slip resistance  = 60.0
       set Linear hardening modulus = 0.0
       set Regularization function  = tanh
       set Regularization parameter = 1e-3
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 5
-      set Initial slip resistance = 60
+      set Energetic length scale  = 5.0
+      set Initial slip resistance = 60.0
     end
 
   end
@@ -80,6 +81,6 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-3
+  set Time step size = 1e-2
 end
 

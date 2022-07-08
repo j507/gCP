@@ -261,7 +261,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   } // Loop over quadrature points
 
   // Grain boundary integral
-  if (cell_is_at_grain_boundary(cell->active_cell_index()))
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
   {
     data.cell_is_at_grain_boundary = true;
 
@@ -664,7 +666,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   } // Loop over quadrature points
 
   // Grain boundary integral
-  if (cell_is_at_grain_boundary(cell->active_cell_index()))
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&
           cell->active_fe_index() !=
