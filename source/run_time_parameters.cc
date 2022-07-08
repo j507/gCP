@@ -646,6 +646,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
+n_equal_sized_divisions(0),
 height(1),
 width(0.1)
 {}
@@ -700,6 +701,10 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
                       "0.0218",
                       dealii::Patterns::Double());
 
+    prm.declare_entry("Number of equally sized divisions in y-direction",
+                      "0",
+                      dealii::Patterns::Integer());
+
     prm.declare_entry("Height of the strip",
                       "1.0",
                       dealii::Patterns::Double());
@@ -721,6 +726,9 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
   {
     shear_strain_at_upper_boundary =
       prm.get_double("Shear strain at the upper boundary");
+
+    n_equal_sized_divisions =
+      prm.get_integer("Number of equally sized divisions in y-direction");
 
     height = prm.get_double("Height of the strip");
 

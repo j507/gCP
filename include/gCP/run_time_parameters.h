@@ -506,11 +506,13 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double  shear_strain_at_upper_boundary;
+  double        shear_strain_at_upper_boundary;
 
-  double  height;
+  unsigned int  n_equal_sized_divisions;
 
-  double  width;
+  double        height;
+
+  double        width;
 };
 
 
