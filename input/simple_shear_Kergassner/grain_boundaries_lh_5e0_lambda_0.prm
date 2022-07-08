@@ -25,10 +25,10 @@ end
 
 
 subsection Solver parameters
-  set Boundary conditions at grain boundaries = microfree
-  set Logger output directory = results/simple_shear_Kergassner/grain_boundaries_lh_5e0_lambda_0/
-  set Print sparsity pattern  = false
-  set Verbose                 = false
+  set Boundary conditions at grain boundaries = microtraction
+  set Logger output directory                 = results/simple_shear_Kergassner/grain_boundaries_lh_5e0_lambda_0/
+  set Print sparsity pattern                  = false
+  set Verbose                                 = false
 
 
   subsection Constitutive laws' parameters
@@ -39,7 +39,7 @@ subsection Solver parameters
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0.0
+      set Grain boundary modulus = 1e6
     end
 
     subsection Scalar microscopic stress law's parameters
@@ -81,6 +81,6 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-2
+  set Time step size = 1e-3
 end
 

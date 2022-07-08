@@ -25,9 +25,10 @@ end
 
 
 subsection Solver parameters
-  set Logger output directory = results/simple_shear_Kergassner/grain_boundaries_lh_2e0_alpha_0/
-  set Print sparsity pattern  = false
-  set Verbose                 = false
+  set Boundary conditions at grain boundaries = microtraction
+  set Logger output directory                 = results/simple_shear_Kergassner/grain_boundaries_lh_2e0_alpha_0/
+  set Print sparsity pattern                  = false
+  set Verbose                                 = false
 
 
   subsection Constitutive laws' parameters
