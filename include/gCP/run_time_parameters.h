@@ -288,6 +288,42 @@ struct MicroscopicTractionLawParameters
 
 
 
+struct DecohesionLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DecohesionLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  maximum_cohesive_traction;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  critical_opening_displacement;
+};
+
+
+
 struct SolverParameters
 {
   /*
@@ -379,6 +415,21 @@ struct SolverParameters
    */
   MicroscopicTractionLawParameters
                       microscopic_traction_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DecohesionLawParameters
+                      decohesion_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                allow_decohesion;
 
   /*!
    * @brief

@@ -26,6 +26,7 @@ end
 
 
 subsection Solver parameters
+  set Allow decohesion at grain boundaries    = false
   set Boundary conditions at grain boundaries = microfree
   set Logger output directory                 = results/simple_shear_default/
   set Print sparsity pattern                  = false
@@ -33,6 +34,11 @@ subsection Solver parameters
 
 
   subsection Constitutive laws' parameters
+    subsection Decohesion law's parameters
+      set Critical opening displacement = 0.0
+      set Maximum cohesive traction     = 0.0
+    end
+
     subsection Hooke-Law's parameters
       set C1111 = 107942.28436442571
       set C1122 = 61246.24912213496
