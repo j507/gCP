@@ -349,7 +349,12 @@ void SimpleShearProblem<dim>::make_grid()
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
     if (cell->is_locally_owned())
-      cell->set_material_id(0);
+    {
+      if (std::fabs(cell->center()[1]) < parameters.height/2.0)
+        cell->set_material_id(0);
+      else
+        cell->set_material_id(1);
+    }
 
   *pcout << "Triangulation:"
               << std::endl
@@ -379,7 +384,7 @@ void SimpleShearProblem<dim>::setup()
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned())
-      cell->set_active_fe_index(0);
+      cell->set_active_fe_index(cell->material_id());
 
   // Sets up the degrees of freedom
   fe_field->setup_dofs();
@@ -455,33 +460,41 @@ void SimpleShearProblem<dim>::setup_constraints()
       function_map[lower_boundary_id] = dirichlet_boundary_function.get();
       function_map[upper_boundary_id] = displacement_control.get();
 
-      dealii::VectorTools::interpolate_boundary_values(
-        *mapping,
-        fe_field->get_dof_handler(),
-        function_map,
-        affine_constraints,
-        fe_field->get_fe_collection().component_mask(
-          fe_field->get_displacement_extractor(0)));
+      for (unsigned int crystal_id = 0;
+           crystal_id < crystals_data->get_n_crystals();
+           ++crystal_id)
+        dealii::VectorTools::interpolate_boundary_values(
+          *mapping,
+          fe_field->get_dof_handler(),
+          function_map,
+          affine_constraints,
+          fe_field->get_fe_collection().component_mask(
+            fe_field->get_displacement_extractor(crystal_id)));
     }
 
     // Slips' Dirichlet boundary conditions
-    std::map<dealii::types::boundary_id,
-             const dealii::Function<dim> *> function_map;
-
-    function_map[lower_boundary_id] = dirichlet_boundary_function.get();
-    function_map[upper_boundary_id] = dirichlet_boundary_function.get();
-
-    for(unsigned int slip_id = 0;
-        slip_id < crystals_data->get_n_slips();
-        ++slip_id)
     {
-      dealii::VectorTools::interpolate_boundary_values(
-        *mapping,
-        fe_field->get_dof_handler(),
-        function_map,
-        affine_constraints,
-        fe_field->get_fe_collection().component_mask(
-          fe_field->get_slip_extractor(0, slip_id)));
+      std::map<dealii::types::boundary_id,
+              const dealii::Function<dim> *> function_map;
+
+      function_map[lower_boundary_id] = dirichlet_boundary_function.get();
+      function_map[upper_boundary_id] = dirichlet_boundary_function.get();
+
+      for (unsigned int crystal_id = 0;
+           crystal_id < crystals_data->get_n_crystals();
+           ++crystal_id)
+        for(unsigned int slip_id = 0;
+            slip_id < crystals_data->get_n_slips();
+            ++slip_id)
+        {
+          dealii::VectorTools::interpolate_boundary_values(
+            *mapping,
+            fe_field->get_dof_handler(),
+            function_map,
+            affine_constraints,
+            fe_field->get_fe_collection().component_mask(
+              fe_field->get_slip_extractor(crystal_id, slip_id)));
+        }
     }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
@@ -508,29 +521,33 @@ void SimpleShearProblem<dim>::setup_constraints()
     function_map[upper_boundary_id] = &zero_function;
 
     // Displacements' Dirichlet boundary conditions
-    {
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
       dealii::VectorTools::interpolate_boundary_values(
         *mapping,
         fe_field->get_dof_handler(),
         function_map,
         newton_method_constraints,
         fe_field->get_fe_collection().component_mask(
-        fe_field->get_displacement_extractor(0)));
-    }
+        fe_field->get_displacement_extractor(crystal_id)));
 
     // Slips' Dirichlet boundary conditions
-    for(unsigned int slip_id = 0;
-        slip_id < crystals_data->get_n_slips();
-        ++slip_id)
-    {
-      dealii::VectorTools::interpolate_boundary_values(
-        *mapping,
-        fe_field->get_dof_handler(),
-        function_map,
-        newton_method_constraints,
-        fe_field->get_fe_collection().component_mask(
-          fe_field->get_slip_extractor(0, slip_id)));
-    }
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
+      for(unsigned int slip_id = 0;
+          slip_id < crystals_data->get_n_slips();
+          ++slip_id)
+      {
+        dealii::VectorTools::interpolate_boundary_values(
+          *mapping,
+          fe_field->get_dof_handler(),
+          function_map,
+          newton_method_constraints,
+          fe_field->get_fe_collection().component_mask(
+            fe_field->get_slip_extractor(crystal_id, slip_id)));
+      }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
       periodicity_vector,
@@ -560,14 +577,17 @@ void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
 
     // Interpolate the updated values of the time-dependent boundary
     // conditions
-    dealii::VectorTools::interpolate_boundary_values(
-      *mapping,
-      fe_field->get_dof_handler(),
-      3,
-      *displacement_control,
-      affine_constraints,
-      fe_field->get_fe_collection().component_mask(
-        fe_field->get_displacement_extractor(0)));
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        3,
+        *displacement_control,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(crystal_id)));
   }
   affine_constraints.close();
 
@@ -630,6 +650,10 @@ void SimpleShearProblem<dim>::triangulation_output()
 
   dealii::Vector<float> active_fe_index(triangulation.n_active_cells());
 
+  locally_owned_subdomain = -1.0;
+  material_id             = -1.0;
+  active_fe_index         = -1.0;
+
   // Fill the dealii::Vector<float> instances for visualizatino of the
   // cell properties
   for (const auto &cell :
@@ -679,14 +703,19 @@ void SimpleShearProblem<dim>::data_output()
       dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
 
   // Explicit declaration of the slips as scalars
-  for (unsigned int slip_id = 0;
-       slip_id < crystals_data->get_n_slips();
-       ++slip_id)
-  {
-    displacement_names.emplace_back("slip_" + std::to_string(slip_id));
-    component_interpretation.push_back(
-      dealii::DataComponentInterpretation::component_is_scalar);
-  }
+  for (unsigned int crystal_id = 0;
+       crystal_id < crystals_data->get_n_crystals();
+       ++crystal_id)
+    for (unsigned int slip_id = 0;
+        slip_id < crystals_data->get_n_slips();
+        ++slip_id)
+    {
+      displacement_names.emplace_back(
+        "crystal_" + std::to_string(crystal_id) +
+        "_slip_" + std::to_string(slip_id));
+      component_interpretation.push_back(
+        dealii::DataComponentInterpretation::component_is_scalar);
+    }
 
   dealii::DataOut<dim> data_out;
 

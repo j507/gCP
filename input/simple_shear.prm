@@ -19,34 +19,35 @@ end
 
 subsection Simple shear
   set Height of the strip                = 1.0
-  set Shear strain at the upper boundary = 0.0250
+  set Shear strain at the upper boundary = 0.0218
   set Width of the strip                 = 0.1
 end
 
 
 subsection Solver parameters
   set Logger output directory = results/simple_shear_default/
+  set Print sparsity pattern  = false
   set Verbose                 = false
 
 
   subsection Constitutive laws' parameters
     subsection Hooke-Law's parameters
-      set C1111 = 107942.28436442571
-      set C1122 = 61246.24912213496
-      set C1212 = 28500
+      set C1111 = 103652.9411764706
+      set C1122 = 51052.941176470595
+      set C1212 = 26300
     end
 
     subsection Scalar microscopic stress law's parameters
-      set Hardening parameter      = 1.4
-      set Initial slip resistance  = 60
-      set Linear hardening modulus = 100.
+      set Hardening parameter      = 1.0
+      set Initial slip resistance  = 15.45
+      set Linear hardening modulus = 0.0
       set Regularization function  = tanh
-      set Regularization parameter = 1e-3
+      set Regularization parameter = 5e-3
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.2
-      set Initial slip resistance = 60
+      set Energetic length scale  = 0.04
+      set Initial slip resistance = 15.45
     end
 
   end
@@ -71,7 +72,6 @@ subsection Spatial discretization parameters
   set Number of global refinements           = 0
   set Spatial dimension                      = 2
 end
-
 
 subsection Temporal discretization parameters
   set End time       = 1.0

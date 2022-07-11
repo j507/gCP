@@ -9,6 +9,7 @@ SET(SOURCE_FILES
     constitutive_laws_test.cc
     crystal_data_test.cc
     fe_collection_test.cc
+    make_periodicity_constraints.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
