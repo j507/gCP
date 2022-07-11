@@ -207,6 +207,45 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 
 
+MicroscopicTractionLawParameters::MicroscopicTractionLawParameters()
+:
+grain_boundary_modulus(0.0)
+{}
+
+
+
+void MicroscopicTractionLawParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Microscopic traction law's parameters");
+  {
+    prm.declare_entry("Grain boundary modulus",
+                      "0.0",
+                      dealii::Patterns::Double());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void MicroscopicTractionLawParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Microscopic traction law's parameters");
+  {
+    grain_boundary_modulus  = prm.get_double("Grain boundary modulus");
+
+    AssertThrow(grain_boundary_modulus >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  grain_boundary_modulus, 0.0));
+
+    AssertIsFinite(grain_boundary_modulus);
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 residual_tolerance(1e-10),
@@ -215,6 +254,8 @@ n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
+boundary_conditions_at_grain_boundaries(
+  BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
 print_sparsity_pattern(false),
 verbose(false)
@@ -257,8 +298,15 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     HookeLawParameters::declare_parameters(prm);
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
+    MicroscopicTractionLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
+
+  prm.declare_entry("Boundary conditions at grain boundaries",
+                    "microfree",
+                    dealii::Patterns::Selection(
+                      "microhard|microfree|microtraction"));
+
 
   prm.declare_entry("Logger output directory",
                     "results/default/",
@@ -317,8 +365,36 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     hooke_law_parameters.parse_parameters(prm);
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
+    microscopic_traction_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  const std::string string_boundary_conditions_at_grain_boundaries(
+                    prm.get("Boundary conditions at grain boundaries"));
+
+  if (string_boundary_conditions_at_grain_boundaries ==
+        std::string("microhard"))
+  {
+    AssertThrow(false,
+      dealii::ExcMessage(
+        "Microhard boundary conditions have yet to be implemented."));
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microhard;
+  }
+  else if (string_boundary_conditions_at_grain_boundaries ==
+            std::string("microfree"))
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microfree;
+  else if (string_boundary_conditions_at_grain_boundaries ==
+            std::string("microtraction"))
+    boundary_conditions_at_grain_boundaries =
+      BoundaryConditionsAtGrainBoundaries::Microtraction;
+  else
+    AssertThrow(false,
+      dealii::ExcMessage(
+        "Unexpected identifier for the boundary conditions at grain "
+        "boundaries."));
+
 
   logger_output_directory = prm.get("Logger output directory");
 
@@ -346,7 +422,7 @@ slips_directions_pathname("input/slip_directions"),
 euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
-graphical_output_directory("./"),
+graphical_output_directory("results/default/"),
 verbose(true)
 {}
 
@@ -473,7 +549,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Integer(1));
 
     prm.declare_entry("Graphical output directory",
-                      "./",
+                      "results/default/",
                       dealii::Patterns::DirectoryName());
   }
   prm.leave_subsection();
@@ -570,6 +646,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
+n_equal_sized_divisions(1),
 height(1),
 width(0.1)
 {}
@@ -624,6 +701,10 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
                       "0.0218",
                       dealii::Patterns::Double());
 
+    prm.declare_entry("Number of equally sized divisions in y-direction",
+                      "1",
+                      dealii::Patterns::Integer());
+
     prm.declare_entry("Height of the strip",
                       "1.0",
                       dealii::Patterns::Double());
@@ -646,9 +727,29 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
     shear_strain_at_upper_boundary =
       prm.get_double("Shear strain at the upper boundary");
 
+    AssertIsFinite(shear_strain_at_upper_boundary);
+
+    n_equal_sized_divisions =
+      prm.get_integer("Number of equally sized divisions in y-direction");
+
+    Assert(n_equal_sized_divisions > 0,
+           dealii::ExcLowerRange(n_equal_sized_divisions, 0));
+
+    AssertIsFinite(n_equal_sized_divisions);
+
     height = prm.get_double("Height of the strip");
 
+    Assert(height > 0,
+           dealii::ExcLowerRange(height, 0));
+
+    AssertIsFinite(height);
+
     width = prm.get_double("Width of the strip");
+
+    Assert(width > 0,
+        dealii::ExcLowerRange(width, 0));
+
+    AssertIsFinite(width);
   }
   prm.leave_subsection();
 }

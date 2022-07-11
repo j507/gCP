@@ -35,6 +35,36 @@ enum class RegularizationFunction
 };
 
 
+/*!
+ * @brief
+ *
+ * @todo Docu
+ */
+enum class BoundaryConditionsAtGrainBoundaries
+{
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microhard,
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microfree,
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  Microtraction,
+};
+
+
 
 struct NewtonRaphsonParameters
 {
@@ -229,6 +259,35 @@ struct VectorMicroscopicStressLawParameters
 
 
 
+struct MicroscopicTractionLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  MicroscopicTractionLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  grain_boundary_modulus;
+};
+
+
+
 struct SolverParameters
 {
   /*
@@ -313,6 +372,21 @@ struct SolverParameters
   VectorMicroscopicStressLawParameters
                       vector_microscopic_stress_law_parameters;
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  MicroscopicTractionLawParameters
+                      microscopic_traction_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  BoundaryConditionsAtGrainBoundaries
+                      boundary_conditions_at_grain_boundaries;
 
   /*!
    * @brief
@@ -432,11 +506,13 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double  shear_strain_at_upper_boundary;
+  double        shear_strain_at_upper_boundary;
 
-  double  height;
+  unsigned int  n_equal_sized_divisions;
 
-  double  width;
+  double        height;
+
+  double        width;
 };
 
 

@@ -318,7 +318,38 @@ template<int dim>
 class MicroscopicTractionLaw
 {
 public:
-  MicroscopicTractionLaw();
+  MicroscopicTractionLaw(
+    const std::shared_ptr<CrystalsData<dim>>                  &crystals_data,
+    const RunTimeParameters::MicroscopicTractionLawParameters parameters);
+
+  using GrainInteractionModuli =
+    typename std::pair<std::vector<dealii::FullMatrix<double>>,
+                       std::vector<dealii::FullMatrix<double>>>;
+
+  GrainInteractionModuli get_grain_interaction_moduli(
+    const unsigned int                  crystal_id_current_cell,
+    const unsigned int                  crystal_id_neighbour_cell,
+    std::vector<dealii::Tensor<1,dim>>  normal_vector_values) const;
+
+  double get_microscopic_traction(
+    const unsigned int                      q_point,
+    const unsigned int                      slip_id_alpha,
+    const GrainInteractionModuli            grain_interaction_moduli,
+    const std::vector<std::vector<double>>  slip_values_current_cell,
+    const std::vector<std::vector<double>>  slip_values_neighbour_cell) const;
+
+  const dealii::FullMatrix<double> get_intra_gateaux_derivative(
+    const unsigned int            q_point,
+    const GrainInteractionModuli  grain_interaction_moduli) const;
+
+  const dealii::FullMatrix<double> get_inter_gateaux_derivative(
+    const unsigned int            q_point,
+    const GrainInteractionModuli  grain_interaction_moduli) const;
+
+private:
+  std::shared_ptr<const CrystalsData<dim>>    crystals_data;
+
+  const double                                grain_boundary_modulus;
 };
 
 

@@ -18,9 +18,10 @@ end
 
 
 subsection Simple shear
-  set Height of the strip                = 1.0
-  set Shear strain at the upper boundary = 0.0218
-  set Width of the strip                 = 0.1
+  set Height of the strip                              = 1.0
+  set Number of equally sized divisions in y-direction = 1
+  set Shear strain at the upper boundary               = 0.0218
+  set Width of the strip                               = 0.1
 end
 
 
@@ -34,6 +35,10 @@ subsection Solver parameters
       set C1111 = 103652.9411764706
       set C1122 = 51052.941176470595
       set C1212 = 26300
+    end
+
+    subsection Microscopic traction law's parameters
+      set Grain boundary modulus = 0.0
     end
 
     subsection Scalar microscopic stress law's parameters

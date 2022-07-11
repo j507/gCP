@@ -91,6 +91,9 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>
                                                     vector_microscopic_stress_law;
 
+  std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
+                                                    microscopic_traction_law;
+
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
@@ -114,6 +117,9 @@ private:
   bool                                              flag_init_was_called;
 
   void init_quadrature_point_history();
+
+  void make_sparsity_pattern(
+    dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
 
   void distribute_constraints_to_trial_solution();
 

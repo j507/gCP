@@ -147,9 +147,9 @@ template<int dim>
 void CrystalData<dim>::test_methods()
 {
   crystals_data.init(triangulation,
-                     "euler_angles",
-                     "slip_directions",
-                     "slip_normals");
+                     "input/3d_euler_angles",
+                     "input/3d_slip_directions",
+                     "input/3d_slip_normals");
 
   this->pcout << "Overall data" << std::endl
               << " n_crystals  = " << crystals_data.get_n_crystals()

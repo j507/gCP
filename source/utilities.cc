@@ -127,6 +127,36 @@ void Logger::add_break(const std::string message)
   output_filepath << std::endl;
 }
 
+
+
+std::string get_fullmatrix_as_string(
+  const dealii::FullMatrix<double>  fullmatrix,
+  const unsigned int                offset,
+  const unsigned int                width,
+  const unsigned int                precision,
+  const bool                        scientific)
+{
+  std::stringstream ss;
+  ss << std::fixed << std::left << std::showpos;
+  ss.precision(precision);
+
+  if (scientific)
+    ss << std::scientific;
+
+  for (unsigned int i = 0; i < fullmatrix.m(); ++i)
+  {
+    for (unsigned int j = 0; j < fullmatrix.n(); ++j)
+      ss << std::setw(width) << fullmatrix[i][j];
+
+    if (i != (fullmatrix.m()-1))
+      ss << "\n" << std::string(offset, ' ');
+  }
+
+  return ss.str();
+}
+
+
+
 } // namespace Utilities
 
 

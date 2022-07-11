@@ -39,6 +39,10 @@ vector_microscopic_stress_law(
   std::make_shared<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>(
     crystals_data,
     parameters.vector_microscopic_stress_law_parameters)),
+microscopic_traction_law(
+  std::make_shared<ConstitutiveLaws::MicroscopicTractionLaw<dim>>(
+    crystals_data,
+    parameters.microscopic_traction_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
 nonlinear_solver_logger(parameters.logger_output_directory +
                         "nonlinear_solver_log.txt"),

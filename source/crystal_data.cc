@@ -77,7 +77,8 @@ void CrystalsData<dim>::read_and_store_data(
   // it into write_into. The data has to be separated by commas.
   auto read_and_store =
     [&](std::ifstream                       &input_file,
-        std::vector<dealii::Tensor<1,dim>>  &write_into)
+        std::vector<dealii::Tensor<1,dim>>  &write_into,
+        const bool                          flag_reading_euler_angles)
     {
       unsigned int component;
 
@@ -116,6 +117,26 @@ void CrystalsData<dim>::read_and_store_data(
           vector[component++] = std::stod(vector_component);
         }
 
+        if (flag_reading_euler_angles && dim ==2)
+        {
+          AssertThrow(
+            component == 1,
+            dealii::ExcMessage(
+              ("In 2D only rotations of the xy plane are allowed. "
+               "Nonetheless, more than one angle is being read from "
+               "the specified file.")));
+        }
+
+        else
+        {
+          AssertThrow(
+            component == dim,
+            dealii::ExcMessage(
+              ("In 3D there are three euler angles and vectors have "
+               "three components. Nonetheless, more or less entries "
+               "are being red from the specified files.")));
+        }
+
         write_into.push_back(vector);
       }
     };
@@ -128,7 +149,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (crystal_orientations_input_file)
       read_and_store(crystal_orientations_input_file,
-                    euler_angles);
+                     euler_angles,
+                     true);
     else
       AssertThrow(
         false,
@@ -156,7 +178,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_directions_input_file)
       read_and_store(slip_directions_input_file,
-                     reference_slip_directions);
+                     reference_slip_directions,
+                     false);
     else
       AssertThrow(
         false,
@@ -166,7 +189,8 @@ void CrystalsData<dim>::read_and_store_data(
 
     if (slip_normals_input_file)
       read_and_store(slip_normals_input_file,
-                     reference_slip_normals);
+                     reference_slip_normals,
+                     false);
     else
       AssertThrow(
         false,
@@ -205,6 +229,7 @@ void CrystalsData<dim>::read_and_store_data(
                                  reference_slip_directions[i]);
       break;
     default:
+      AssertThrow(false, dealii::ExcIndexRange(dim,2,3));
       break;
     }
 
@@ -244,11 +269,13 @@ void CrystalsData<dim>::compute_rotation_matrices()
   {
     dealii::Tensor<2,dim> rotation_tensor;
 
+    const double deg_to_rad = M_PI / 180.0;
+
     switch (dim)
     {
     case 2:
       {
-        const double theta  = euler_angles[crystal_id][0];
+        const double theta  = euler_angles[crystal_id][0] * deg_to_rad;
 
         rotation_tensor[0][0] = std::cos(theta);
         rotation_tensor[0][1] = -std::sin(theta);
@@ -258,11 +285,9 @@ void CrystalsData<dim>::compute_rotation_matrices()
       break;
     case 3:
       {
-        const double grad_to_rad = M_PI / 180.0;
-
-        const double alpha  = euler_angles[crystal_id][0] * grad_to_rad;
-        const double beta   = euler_angles[crystal_id][1] * grad_to_rad;
-        const double gamma  = euler_angles[crystal_id][2] * grad_to_rad;
+        const double alpha  = euler_angles[crystal_id][0] * deg_to_rad;
+        const double beta   = euler_angles[crystal_id][1] * deg_to_rad;
+        const double gamma  = euler_angles[crystal_id][2] * deg_to_rad;
 
         dealii::Tensor<2,dim> rotation_tensor_alpha;
         dealii::Tensor<2,dim> rotation_tensor_beta;
@@ -294,7 +319,7 @@ void CrystalsData<dim>::compute_rotation_matrices()
       }
       break;
     default:
-      dealii::ExcInternalError();
+      AssertThrow(false, dealii::ExcIndexRange(dim,2,3));
       break;
     }
 

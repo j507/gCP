@@ -4,14 +4,14 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/simple_shear_Kergassner/euler_angles
+  set Euler angles path name    = input/simple_shear_Kergassner/euler_angles_0_10_10
   set Slip directions path name = input/simple_shear_Kergassner/slip_directions
   set Slip normals path name    = input/simple_shear_Kergassner/slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear_Kergassner/double_slip_lh_1_H_0/
+  set Graphical output directory = results/simple_shear_Kergassner/grain_boundaries_lh_2e0/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
@@ -19,15 +19,15 @@ end
 
 subsection Simple shear
   set Height of the strip                              = 1.0
-  set Number of equally sized divisions in y-direction = 1
+  set Number of equally sized divisions in y-direction = 3
   set Shear strain at the upper boundary               = 0.02
   set Width of the strip                               = 0.1
 end
 
 
 subsection Solver parameters
-  set Boundary conditions at grain boundaries = microfree
-  set Logger output directory                 = results/simple_shear_Kergassner/double_slip_lh_1_H_0/
+  set Boundary conditions at grain boundaries = microtraction
+  set Logger output directory                 = results/simple_shear_Kergassner/grain_boundaries_lh_2e0/
   set Print sparsity pattern                  = false
   set Verbose                                 = false
 
@@ -40,7 +40,7 @@ subsection Solver parameters
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0.0
+      set Grain boundary modulus = 1e4
     end
 
     subsection Scalar microscopic stress law's parameters
@@ -52,7 +52,7 @@ subsection Solver parameters
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 1
+      set Energetic length scale  = 2
       set Initial slip resistance = 60
     end
 
