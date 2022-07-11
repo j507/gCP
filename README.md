@@ -9,6 +9,7 @@ Known problems:
 - Problems considering polycrystals can only be run in serial (See issue #2)
 
 Yet to be implemented:
+- Dimensionless formulation
 - Microhard boundary conditions
 - Neumann boundary conditions at the domain's boundary
 - Decohesion model
