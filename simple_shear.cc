@@ -205,7 +205,8 @@ triangulation(
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.fe_degree_displacements,
-  parameters.fe_degree_slips)),
+  parameters.fe_degree_slips,
+  parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
            discrete_time,
