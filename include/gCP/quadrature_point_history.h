@@ -3,10 +3,118 @@
 
 #include <gCP/run_time_parameters.h>
 
+#include <deal.II/distributed/tria.h>
 
 
 namespace gCP
 {
+
+
+
+/*!
+ * @brief
+ *
+ * @tparam dim
+ * @todo Docu
+ */
+template <int dim>
+class InterfaceData
+{
+public:
+
+  InterfaceData() = default;
+
+  virtual ~InterfaceData() = default;
+
+  double get_value() const;
+
+  void init(const double value);
+
+  void prepare_for_update_call();
+
+  void update(const dealii::Tensor<1,dim> a,
+              const dealii::Tensor<1,dim> b);
+
+private:
+
+  double value;
+
+  bool   was_updated;
+};
+
+
+
+template <int dim>
+inline double InterfaceData<dim>::get_value() const
+{
+  return (value);
+}
+
+
+
+/*!
+ * @brief
+ *
+ * @tparam dim
+ * @todo Docu
+ */
+template <int dim>
+class InterfacialQuadraturePointHistory
+{
+public:
+
+  InterfacialQuadraturePointHistory();
+
+  virtual ~InterfacialQuadraturePointHistory() = default;
+
+  double get_max_displacement_jump_norm() const;
+
+  double get_damage_variable() const;
+
+  void init(
+    const RunTimeParameters::DecohesionLawParameters &parameters);
+
+  void store_current_values();
+
+  void update_values(
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> current_cell_displacement);
+
+private:
+  double                    maximum_cohesive_traction;
+
+  double                    critical_opening_displacement;
+
+  //double                    critical_energy_release_rate;
+
+  double                    max_displacement_jump_norm;
+
+  double                    damage_variable;
+
+  std::pair<double, double> tmp_values;
+
+  bool                      flag_values_were_updated;
+
+  bool                      flag_init_was_called;
+};
+
+
+
+template <int dim>
+inline double InterfacialQuadraturePointHistory<dim>::
+get_max_displacement_jump_norm() const
+{
+  return (max_displacement_jump_norm);
+}
+
+
+
+template <int dim>
+inline double InterfacialQuadraturePointHistory<dim>::
+get_damage_variable() const
+{
+  return (damage_variable);
+}
 
 
 
@@ -151,6 +259,77 @@ QuadraturePointHistory<dim>::get_hardening_matrix_entry(
           (hardening_parameter +
            ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }
+
+
+
+/*!
+ * @brief
+ *
+ * @tparam DataType
+ * @tparam dim
+ * @todo Docu
+ */
+template <typename DataType, int dim>
+class InterfaceDataStorage
+{
+public:
+  /*!
+   * @brief Default constructor
+   */
+  InterfaceDataStorage() = default;
+
+  /*!
+   * @brief Default destructor
+   */
+  ~InterfaceDataStorage() = default;
+
+  /*!
+   * @brief
+   *
+   * @param triangulation
+   * @param n_q_points_per_face
+   * @todo Docu
+   */
+  void initialize(
+    const dealii::parallel::distributed::Triangulation<dim>
+                                                  &triangulation,
+    const unsigned int                            n_q_points_per_face);
+
+  /*!
+   * @brief Get the data object
+   *
+   * @param current_cell_id
+   * @param neighbor_cell_id
+   * @return std::vector<std::shared_ptr<DataType>>
+   * @todo Docu
+   */
+  std::vector<std::shared_ptr<DataType>>
+    get_data(const unsigned int current_cell_id,
+             const unsigned int neighbor_cell_id);
+
+  /*!
+   * @brief Get the data object
+   *
+   * @param current_cell_id
+   * @param neighbor_cell_id
+   * @return std::vector<std::shared_ptr<const DataType>>
+   * @warning Compilation error when used
+   * @todo Docu
+   */
+  /*std::vector<std::shared_ptr<const DataType>>
+    get_data(const unsigned int current_cell_id,
+             const unsigned int neighbor_cell_id) const;*/
+
+private:
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  std::map<
+    std::pair<unsigned int, unsigned int>,
+    std::vector<std::shared_ptr<DataType>>> map;
+};
 
 
 
