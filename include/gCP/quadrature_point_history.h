@@ -67,7 +67,7 @@ public:
 
   virtual ~InterfacialQuadraturePointHistory() = default;
 
-  double get_max_displacement_jump_norm() const;
+  double get_max_effective_opening_displacement() const;
 
   double get_damage_variable() const;
 
@@ -81,13 +81,13 @@ public:
     const dealii::Tensor<1,dim> current_cell_displacement);
 
 private:
-  double                    maximum_cohesive_traction;
+  double                    critical_cohesive_traction;
 
   double                    critical_opening_displacement;
 
   //double                    critical_energy_release_rate;
 
-  double                    max_displacement_jump_norm;
+  double                    max_effective_opening_displacement;
 
   double                    damage_variable;
 
@@ -102,9 +102,9 @@ private:
 
 template <int dim>
 inline double InterfacialQuadraturePointHistory<dim>::
-get_max_displacement_jump_norm() const
+get_max_effective_opening_displacement() const
 {
-  return (max_displacement_jump_norm);
+  return (max_effective_opening_displacement);
 }
 
 

@@ -312,7 +312,7 @@ struct DecohesionLawParameters
    *
    * @todo Docu
    */
-  double  maximum_cohesive_traction;
+  double  critical_cohesive_traction;
 
   /*!
    * @brief

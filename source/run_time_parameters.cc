@@ -248,7 +248,7 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 DecohesionLawParameters::DecohesionLawParameters()
 :
-maximum_cohesive_traction(0.0),
+critical_cohesive_traction(0.0),
 critical_opening_displacement(0.0)
 {}
 
@@ -277,14 +277,14 @@ void DecohesionLawParameters::parse_parameters(
 {
   prm.enter_subsection("Decohesion law's parameters");
   {
-    maximum_cohesive_traction =
+    critical_cohesive_traction =
       prm.get_double("Maximum cohesive traction");
 
-    AssertThrow(maximum_cohesive_traction >= 0.0,
+    AssertThrow(critical_cohesive_traction >= 0.0,
                 dealii::ExcLowerRangeType<double>(
-                  maximum_cohesive_traction, 0.0));
+                  critical_cohesive_traction, 0.0));
 
-    AssertIsFinite(maximum_cohesive_traction);
+    AssertIsFinite(critical_cohesive_traction);
 
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");

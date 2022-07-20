@@ -44,7 +44,7 @@ void InterfaceData<dim>::update(
 template <int dim>
 InterfacialQuadraturePointHistory<dim>::InterfacialQuadraturePointHistory()
 :
-max_displacement_jump_norm(0.0),
+max_effective_opening_displacement(0.0),
 damage_variable(0.0),
 flag_init_was_called(false)
 {}
@@ -55,11 +55,11 @@ template <int dim>
 void InterfacialQuadraturePointHistory<dim>::init(
   const RunTimeParameters::DecohesionLawParameters &parameters)
 {
-  maximum_cohesive_traction     = parameters.maximum_cohesive_traction;
+  critical_cohesive_traction    = parameters.critical_cohesive_traction;
 
   critical_opening_displacement = parameters.critical_opening_displacement;
 
-  /*critical_energy_release_rate  = maximum_cohesive_traction *
+  /*critical_energy_release_rate  = critical_cohesive_traction *
                                   critical_opening_displacement *
                                   std::exp(1.0);*/
 
@@ -71,7 +71,7 @@ void InterfacialQuadraturePointHistory<dim>::init(
 template <int dim>
 void InterfacialQuadraturePointHistory<dim>::store_current_values()
 {
-  tmp_values = std::make_pair(max_displacement_jump_norm,
+  tmp_values = std::make_pair(max_effective_opening_displacement,
                               damage_variable);
 
   flag_values_were_updated = false;
@@ -87,23 +87,23 @@ void InterfacialQuadraturePointHistory<dim>::update_values(
   if (flag_values_were_updated)
     return;
 
-  max_displacement_jump_norm  = tmp_values.first;
-  damage_variable             = tmp_values.second;
+  max_effective_opening_displacement  = tmp_values.first;
+  damage_variable                     = tmp_values.second;
 
   const dealii::Tensor<1,dim> displacement_jump =
     neighbor_cell_displacement - current_cell_displacement;
 
-  max_displacement_jump_norm =
-    std::max(max_displacement_jump_norm,
+  max_effective_opening_displacement =
+    std::max(max_effective_opening_displacement,
              displacement_jump.norm());
 
   const double displacement_ratio =
-     max_displacement_jump_norm / critical_opening_displacement;
+     max_effective_opening_displacement / critical_opening_displacement;
 
   /*
   const double free_energy_density =
     std::exp(1.0) *
-    maximum_cohesive_traction *
+    critical_cohesive_traction *
     critical_opening_displacement *
     (1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio));
 
