@@ -355,11 +355,52 @@ private:
 
 
 template<int dim>
-class MicroscopicInterfaceTractionLaw
+class InterfaceMacrotractionLaw
 {
 public:
-  MicroscopicInterfaceTractionLaw();
+  InterfaceMacrotractionLaw(
+    const RunTimeParameters::DecohesionLawParameters parameters);
+
+  dealii::Tensor<1,dim> get_interface_macrotraction(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+private:
+  double critical_cohesive_traction;
+
+  double critical_opening_displacement;
+
+  double get_master_relation(
+    const double effective_opening_displacement) const;
 };
+
+
+
+template <int dim>
+inline double
+InterfaceMacrotractionLaw<dim>::get_master_relation(
+  const double effective_opening_displacement) const
+{
+  return (critical_cohesive_traction *
+          effective_opening_displacement /
+          critical_opening_displacement *
+          std::exp(1.0 - effective_opening_displacement /
+                         critical_opening_displacement));
+}
 
 
 

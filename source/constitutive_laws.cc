@@ -772,6 +772,200 @@ MicroscopicTractionLaw<dim>::
 
 
 
+template<int dim>
+InterfaceMacrotractionLaw<dim>::InterfaceMacrotractionLaw(
+  const RunTimeParameters::DecohesionLawParameters parameters)
+:
+critical_cohesive_traction(parameters.critical_cohesive_traction),
+critical_opening_displacement(parameters.critical_opening_displacement)
+{}
+
+
+
+template <int dim>
+dealii::Tensor<1,dim>
+InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::Tensor<1,dim> interface_macrotraction =
+    opening_displacement / opening_displacement.norm();
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    interface_macrotraction *=
+      get_master_relation(effective_opening_displacement);
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    interface_macrotraction *=
+      get_master_relation(max_effective_opening_displacement) *
+      effective_opening_displacement /
+      max_effective_opening_displacement;
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  return (interface_macrotraction);
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim>
+InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::SymmetricTensor<2,dim> current_cell_gateaux_derivative;
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    current_cell_gateaux_derivative =
+      -1.0 *
+      critical_cohesive_traction /
+      critical_opening_displacement *
+      std::exp(1.0 - effective_opening_displacement /
+                     critical_opening_displacement) *
+      (dealii::unit_symmetric_tensor<dim>() -
+       effective_opening_displacement / critical_opening_displacement *
+       dealii::outer_product(
+         opening_displacement / effective_opening_displacement,
+         opening_displacement / effective_opening_displacement));
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    current_cell_gateaux_derivative =
+      -1.0 *
+      get_master_relation(max_effective_opening_displacement) /
+      max_effective_opening_displacement *
+      dealii::unit_symmetric_tensor<dim>();
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  return (current_cell_gateaux_derivative);
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim>
+InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::SymmetricTensor<2,dim> neighbor_cell_gateaux_derivative;
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    neighbor_cell_gateaux_derivative =
+      critical_cohesive_traction /
+      critical_opening_displacement *
+      std::exp(1.0 - effective_opening_displacement /
+                     critical_opening_displacement) *
+      (dealii::unit_symmetric_tensor<dim>() -
+       effective_opening_displacement / critical_opening_displacement *
+       dealii::outer_product(
+         opening_displacement / effective_opening_displacement,
+         opening_displacement / effective_opening_displacement));
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    neighbor_cell_gateaux_derivative =
+      get_master_relation(max_effective_opening_displacement) /
+      max_effective_opening_displacement *
+      dealii::unit_symmetric_tensor<dim>();
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  return (neighbor_cell_gateaux_derivative);
+}
+
+
+
 } // ConstitutiveLaws
 
 
