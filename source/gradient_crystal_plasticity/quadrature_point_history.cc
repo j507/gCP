@@ -296,9 +296,19 @@ template class
 gCP::InterfaceData<3>;
 
 template class
+gCP::InterfacialQuadraturePointHistory<2>;
+template class
+gCP::InterfacialQuadraturePointHistory<3>;
+
+template class
 gCP::InterfaceDataStorage<gCP::InterfaceData<2>,2>;
 template class
 gCP::InterfaceDataStorage<gCP::InterfaceData<3>,3>;
+
+template class
+gCP::InterfaceDataStorage<gCP::InterfacialQuadraturePointHistory<2>,2>;
+template class
+gCP::InterfaceDataStorage<gCP::InterfacialQuadraturePointHistory<3>,3>;
 
 template gCP::QuadraturePointHistory<2>::QuadraturePointHistory();
 template gCP::QuadraturePointHistory<3>::QuadraturePointHistory();
