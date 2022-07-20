@@ -106,6 +106,10 @@ intra_gateaux_derivative_values(
 inter_gateaux_derivative_values(
   this->n_face_q_points,
   dealii::FullMatrix<double>(n_slips)),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points),
+current_cell_gateaux_derivative_values(this->n_face_q_points),
+neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
 sym_grad_vector_phi(this->dofs_per_cell),
 scalar_phi(
   n_slips,
@@ -164,6 +168,10 @@ intra_gateaux_derivative_values(
 inter_gateaux_derivative_values(
   this->n_face_q_points,
   dealii::FullMatrix<double>(n_slips)),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points),
+current_cell_gateaux_derivative_values(this->n_face_q_points),
+neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
 sym_grad_vector_phi(this->dofs_per_cell),
 scalar_phi(
   n_slips,
@@ -258,6 +266,9 @@ microscopic_traction_values(
   std::vector<double>(this->n_face_q_points)),
 supply_term_values(this->n_q_points),
 neumann_boundary_values(n_face_q_points),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points),
+interface_macrotraction_values(this->n_face_q_points),
 face_slip_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
@@ -329,7 +340,10 @@ microscopic_traction_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
 supply_term_values(this->n_q_points),
-neumann_boundary_values(n_face_q_points),
+neumann_boundary_values(this->n_face_q_points),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points),
+interface_macrotraction_values(this->n_face_q_points),
 face_slip_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
@@ -365,8 +379,10 @@ template <int dim>
 Scratch<dim>::Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
   const dealii::hp::FECollection<dim>       &finite_element_collection,
   const dealii::UpdateFlags                 update_flags,
+  const dealii::UpdateFlags                 face_update_flags,
   const unsigned int                        n_slips)
 :
 ScratchBase<dim>(
@@ -377,6 +393,11 @@ hp_fe_values(
   finite_element_collection,
   quadrature_collection,
   update_flags),
+hp_fe_face_values(
+  mapping_collection,
+  finite_element_collection,
+  face_quadrature_collection,
+  face_update_flags),
 n_slips(n_slips),
 slips_values(
   n_slips,
@@ -397,6 +418,11 @@ hp_fe_values(
   data.hp_fe_values.get_fe_collection(),
   data.hp_fe_values.get_quadrature_collection(),
   data.hp_fe_values.get_update_flags()),
+hp_fe_face_values(
+  data.hp_fe_face_values.get_mapping_collection(),
+  data.hp_fe_face_values.get_fe_collection(),
+  data.hp_fe_face_values.get_quadrature_collection(),
+  data.hp_fe_face_values.get_update_flags()),
 n_slips(data.n_slips),
 slips_values(
   n_slips,

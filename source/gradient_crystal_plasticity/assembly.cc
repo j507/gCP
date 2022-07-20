@@ -881,6 +881,9 @@ void GradientCrystalPlasticitySolver<dim>::reset_and_update_quadrature_point_his
   const dealii::UpdateFlags update_flags  =
     dealii::update_values;
 
+  const dealii::UpdateFlags face_update_flags  =
+    dealii::update_values;
+
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
@@ -892,8 +895,10 @@ void GradientCrystalPlasticitySolver<dim>::reset_and_update_quadrature_point_his
     gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
+      face_quadrature_collection,
       fe_field->get_fe_collection(),
       update_flags,
+      face_update_flags,
       crystals_data->get_n_slips()),
     gCP::AssemblyData::QuadraturePointHistory::Copy());
 }
