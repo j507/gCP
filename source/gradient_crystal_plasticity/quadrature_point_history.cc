@@ -1,7 +1,7 @@
 
 #include <gCP/quadrature_point_history.h>
 
-
+#include <deal.II/grid/filtered_iterator.h>
 
 namespace gCP
 {
@@ -42,7 +42,7 @@ void InterfaceData<dim>::update(
 
 
 template <int dim>
-InterfacialQuadraturePointHistory<dim>::InterfacialQuadraturePointHistory()
+InterfaceQuadraturePointHistory<dim>::InterfaceQuadraturePointHistory()
 :
 max_effective_opening_displacement(0.0),
 damage_variable(0.0),
@@ -52,7 +52,7 @@ flag_init_was_called(false)
 
 
 template <int dim>
-void InterfacialQuadraturePointHistory<dim>::init(
+void InterfaceQuadraturePointHistory<dim>::init(
   const RunTimeParameters::DecohesionLawParameters &parameters)
 {
   critical_cohesive_traction    = parameters.critical_cohesive_traction;
@@ -69,7 +69,7 @@ void InterfacialQuadraturePointHistory<dim>::init(
 
 
 template <int dim>
-void InterfacialQuadraturePointHistory<dim>::store_current_values()
+void InterfaceQuadraturePointHistory<dim>::store_current_values()
 {
   tmp_values = std::make_pair(max_effective_opening_displacement,
                               damage_variable);
@@ -80,7 +80,7 @@ void InterfacialQuadraturePointHistory<dim>::store_current_values()
 
 
 template <int dim>
-void InterfacialQuadraturePointHistory<dim>::update_values(
+void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
   const dealii::Tensor<1,dim> current_cell_displacement)
 {
@@ -181,108 +181,65 @@ void QuadraturePointHistory<dim>::update_values(
 
 
 
-template <typename DataType, int dim>
-void InterfaceDataStorage<DataType, dim>::initialize(
-  const dealii::parallel::distributed::Triangulation<dim> &triangulation,
-  const unsigned int                                      n_q_points_per_face)
-{
-  Assert(triangulation.n_global_active_cells() > 0,
-         dealii::ExcMessage(
-           "The triangulation instance seems to be empty as it has no "
-           "active cells."));
-
-  Assert(n_q_points_per_face > 0,
-         dealii::ExcMessage(
-           "The number of quadrature points per face has to be bigger "
-           "than zero."));
-
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (cell->is_locally_owned())
-      for (const auto &face_index : cell->face_indices())
-        if (!cell->face(face_index)->at_boundary() &&
-            cell->material_id() !=
-              cell->neighbor(face_index)->material_id())
-        {
-          std::pair<unsigned int, unsigned int> cell_pair;
-
-          if (cell->active_cell_index() <
-              cell->neighbor(face_index)->active_cell_index())
-            cell_pair =
-              std::make_pair(
-                cell->active_cell_index(),
-                cell->neighbor(face_index)->active_cell_index());
-          else
-            cell_pair =
-              std::make_pair(
-                cell->neighbor(face_index)->active_cell_index(),
-                cell->active_cell_index());
-
-          if (map.find(cell_pair) == map.end())
-          {
-            std::vector<std::shared_ptr<DataType>>
-              container(n_q_points_per_face);
-
-            for (auto &element : container)
-              element = std::make_shared<DataType>();
-
-            map.insert({cell_pair, container});
-
-            cell->face(face_index)->set_user_pointer(&map[cell_pair]);
-          }
-        }
-}
-
-
-
-template <typename DataType, int dim>
+template <typename CellIteratorType, typename DataType>
 std::vector<std::shared_ptr<DataType>>
-InterfaceDataStorage<DataType, dim>::get_data(
-  const unsigned int current_cell_id,
-  const unsigned int neighbour_cell_id)
+InterfaceDataStorage<CellIteratorType, DataType>::get_data(
+  const dealii::CellId current_cell_id,
+  const dealii::CellId neighbour_cell_id)
 {
-  std::pair<unsigned int, unsigned int> cell_pair;
+  std::pair<dealii::CellId, dealii::CellId> key;
 
   if (current_cell_id < neighbour_cell_id)
-    cell_pair =
+    key =
       std::make_pair(current_cell_id, neighbour_cell_id);
   else
-    cell_pair =
+    key =
       std::make_pair(neighbour_cell_id, current_cell_id);
 
-  Assert(map.find(cell_pair) != map.end(),
+  Assert(map.find(key) != map.end(),
          dealii::ExcMessage(
-           "The pair {" + std::to_string(cell_pair.first) + ", " +
-           std::to_string(cell_pair.second) + "} does not correspond "
+           "The dealii::CellId pair does not correspond "
            "to a pair at the interface."));
 
-  return map[cell_pair];
+  return map[key];
 }
 
 
-/*
-template <typename DataType, int dim>
+template <typename CellIteratorType, typename DataType>
 std::vector<std::shared_ptr<const DataType>>
-InterfaceDataStorage<DataType, dim>::get_data(
-  const unsigned int current_cell_id,
-  const unsigned int neighbour_cell_id) const
+InterfaceDataStorage<CellIteratorType, DataType>::get_data(
+  const dealii::CellId current_cell_id,
+  const dealii::CellId neighbour_cell_id) const
 {
-  std::pair<unsigned int, unsigned int> cell_pair;
+  std::pair<dealii::CellId, dealii::CellId> key;
 
   if (current_cell_id < neighbour_cell_id)
-    cell_pair =
+    key =
       std::make_pair(current_cell_id, neighbour_cell_id);
   else
-    cell_pair =
+    key =
       std::make_pair(neighbour_cell_id, current_cell_id);
 
-  Assert(map.find(cell_pair) == map.end(),
+  Assert(map.find(key) != map.end(),
          dealii::ExcMessage(
-           "The pair {" + std::to_string(cell_pair.first) + ", " +
-           std::to_string(cell_pair.second) + "} does not correspond "
+           "The dealii::CellId pair does not correspond "
            "to a pair at the interface."));
 
-  return map[cell_pair];
-}*/
+  const auto it = map.find(key);
+
+
+  const unsigned int n_face_q_points = it->second.size();
+
+  std::vector<std::shared_ptr<const DataType>> tmp(n_face_q_points);
+
+  for (unsigned int face_q_point = 0;
+        face_q_point < n_face_q_points; ++face_q_point)
+    tmp[face_q_point] =
+      std::dynamic_pointer_cast<const DataType>(it->second[face_q_point]);
+
+  return tmp;
+}
+
 
 
 
@@ -296,19 +253,9 @@ template class
 gCP::InterfaceData<3>;
 
 template class
-gCP::InterfacialQuadraturePointHistory<2>;
+gCP::InterfaceQuadraturePointHistory<2>;
 template class
-gCP::InterfacialQuadraturePointHistory<3>;
-
-template class
-gCP::InterfaceDataStorage<gCP::InterfaceData<2>,2>;
-template class
-gCP::InterfaceDataStorage<gCP::InterfaceData<3>,3>;
-
-template class
-gCP::InterfaceDataStorage<gCP::InterfacialQuadraturePointHistory<2>,2>;
-template class
-gCP::InterfaceDataStorage<gCP::InterfacialQuadraturePointHistory<3>,3>;
+gCP::InterfaceQuadraturePointHistory<3>;
 
 template gCP::QuadraturePointHistory<2>::QuadraturePointHistory();
 template gCP::QuadraturePointHistory<3>::QuadraturePointHistory();
@@ -331,3 +278,33 @@ template void gCP::QuadraturePointHistory<3>::update_values(
   const unsigned int,
   const std::vector<std::vector<double>>  &,
   const std::vector<std::vector<double>>  &);
+
+template class
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<2>::cell_iterator,
+  gCP::InterfaceData<2>>;
+template class
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<3>::cell_iterator,
+  gCP::InterfaceData<3>>;
+/*
+template void
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<2>::cell_iterator,
+  gCP::InterfaceData<2>>::initialize(
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<2>::active_cell_iterator> &,
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<2>::active_cell_iterator> &,
+    const unsigned int);
+
+template void
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<3>::cell_iterator,
+  gCP::InterfaceData<3>>::initialize(
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<3>::active_cell_iterator> &,
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<3>::active_cell_iterator> &,
+    const unsigned int);
+*/

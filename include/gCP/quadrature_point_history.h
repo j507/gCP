@@ -5,6 +5,7 @@
 
 #include <deal.II/distributed/tria.h>
 
+#include <map>
 
 namespace gCP
 {
@@ -59,13 +60,13 @@ inline double InterfaceData<dim>::get_value() const
  * @todo Docu
  */
 template <int dim>
-class InterfacialQuadraturePointHistory
+class InterfaceQuadraturePointHistory
 {
 public:
 
-  InterfacialQuadraturePointHistory();
+  InterfaceQuadraturePointHistory();
 
-  virtual ~InterfacialQuadraturePointHistory() = default;
+  virtual ~InterfaceQuadraturePointHistory() = default;
 
   double get_max_effective_opening_displacement() const;
 
@@ -101,7 +102,7 @@ private:
 
 
 template <int dim>
-inline double InterfacialQuadraturePointHistory<dim>::
+inline double InterfaceQuadraturePointHistory<dim>::
 get_max_effective_opening_displacement() const
 {
   return (max_effective_opening_displacement);
@@ -110,7 +111,7 @@ get_max_effective_opening_displacement() const
 
 
 template <int dim>
-inline double InterfacialQuadraturePointHistory<dim>::
+inline double InterfaceQuadraturePointHistory<dim>::
 get_damage_variable() const
 {
   return (damage_variable);
@@ -269,8 +270,8 @@ QuadraturePointHistory<dim>::get_hardening_matrix_entry(
  * @tparam dim
  * @todo Docu
  */
-template <typename DataType, int dim>
-class InterfaceDataStorage
+template <typename CellIteratorType, typename DataType>
+class InterfaceDataStorage : public dealii::Subscriptor
 {
 public:
   /*!
@@ -281,19 +282,20 @@ public:
   /*!
    * @brief Default destructor
    */
-  ~InterfaceDataStorage() = default;
+  ~InterfaceDataStorage() override = default;
 
   /*!
    * @brief
    *
-   * @param triangulation
+   * @param cell_start
+   * @param cell_end
    * @param n_q_points_per_face
    * @todo Docu
    */
   void initialize(
-    const dealii::parallel::distributed::Triangulation<dim>
-                                                  &triangulation,
-    const unsigned int                            n_q_points_per_face);
+    const CellIteratorType  &cell_start,
+    const CellIteratorType  &cell_end,
+    const unsigned int      n_q_points_per_face);
 
   /*!
    * @brief Get the data object
@@ -304,8 +306,8 @@ public:
    * @todo Docu
    */
   std::vector<std::shared_ptr<DataType>>
-    get_data(const unsigned int current_cell_id,
-             const unsigned int neighbor_cell_id);
+    get_data(const dealii::CellId current_cell_id,
+             const dealii::CellId neighbor_cell_id);
 
   /*!
    * @brief Get the data object
@@ -316,20 +318,96 @@ public:
    * @warning Compilation error when used
    * @todo Docu
    */
-  /*std::vector<std::shared_ptr<const DataType>>
-    get_data(const unsigned int current_cell_id,
-             const unsigned int neighbor_cell_id) const;*/
+  std::vector<std::shared_ptr<const DataType>>
+    get_data(const dealii::CellId current_cell_id,
+             const dealii::CellId neighbor_cell_id) const;
 
 private:
-  /*!
-   * @brief
-   *
-   * @todo Docu
+  /**
+   * Number of dimensions
+   */
+  static constexpr unsigned int dimension =
+    CellIteratorType::AccessorType::dimension;
+
+  /**
+   * Number of space dimensions
+   */
+  static constexpr unsigned int space_dimension =
+    CellIteratorType::AccessorType::space_dimension;
+
+  /**
+   * To ensure that all the cells in the CellDataStorage come from the
+   * same Triangulation, we need to store a reference to that
+   * Triangulation within the class.
+   */
+  dealii::SmartPointer<const dealii::Triangulation<dimension, dimension>,
+               InterfaceDataStorage<CellIteratorType, DataType>>
+    tria;
+
+  /**
+   * A map to store a vector of data on each cell.
+   * We need to use CellId as the key because it remains unique during
+   * adaptive refinement.
    */
   std::map<
-    std::pair<unsigned int, unsigned int>,
+    std::pair<dealii::CellId, dealii::CellId>,
     std::vector<std::shared_ptr<DataType>>> map;
+
+  DeclExceptionMsg(
+    ExcTriangulationMismatch,
+    "The provided cell iterator does not belong to the triangulation that corresponds to the CellDataStorage object.");
 };
+
+
+
+template <typename CellIteratorType, typename DataType>
+void InterfaceDataStorage<CellIteratorType, DataType>::initialize(
+  const CellIteratorType  &cell_start,
+  const CellIteratorType  &cell_end,
+  const unsigned int      n_face_q_points)
+{
+  Assert(n_face_q_points > 0,
+         dealii::ExcMessage(
+           "The number of quadrature points per face has to be bigger "
+           "than zero."));
+
+  for (CellIteratorType cell = cell_start; cell != cell_end; ++cell)
+    if (cell->is_locally_owned())
+      for (const auto &face_index : cell->face_indices())
+        if (!cell->face(face_index)->at_boundary() &&
+            cell->material_id() !=
+              cell->neighbor(face_index)->material_id())
+        {
+          // The first time this method is called, it has to initialize the reference
+          // to the triangulation object
+          if (!tria)
+            tria = &cell->get_triangulation();
+          Assert(&cell->get_triangulation() == tria,
+                 ExcTriangulationMismatch());
+
+          std::pair<dealii::CellId, dealii::CellId> key;
+
+          const dealii::CellId current_cell_id =
+            cell->id();
+          const dealii::CellId neighbor_cell_id =
+            cell->neighbor(face_index)->id();
+
+          if (current_cell_id < neighbor_cell_id)
+            key = std::make_pair(current_cell_id, neighbor_cell_id);
+          else
+            key = std::make_pair(neighbor_cell_id, current_cell_id);
+
+          if (map.find(key) == map.end())
+          {
+            map[key] =
+              std::vector<std::shared_ptr<DataType>>(n_face_q_points);
+
+            for (unsigned int face_q_point = 0;
+                 face_q_point < n_face_q_points; ++face_q_point)
+              map[key][face_q_point] = std::make_shared<DataType>();
+          }
+        }
+}
 
 
 

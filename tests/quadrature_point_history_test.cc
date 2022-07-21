@@ -10,6 +10,7 @@
 #include <deal.II/fe/fe_values.h>
 
 #include <deal.II/grid/tria.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
 
@@ -65,7 +66,9 @@ private:
 
   std::vector<unsigned int>                     repetitions;
 
-  gCP::InterfaceDataStorage<gCP::InterfaceData<dim>,dim> interface_data_storage;
+  gCP::InterfaceDataStorage<
+    typename dealii::Triangulation<dim>::cell_iterator,
+    gCP::InterfaceData<dim>>       interface_data_storage;
 
   void make_grid();
 
@@ -242,11 +245,19 @@ void QuadraturePointHistory<dim>::mark_grid()
 template<int dim>
 void QuadraturePointHistory<dim>::init_quadrature_point_history()
 {
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
   const unsigned int n_q_points =
     face_quadrature_formula.size();
 
-  interface_data_storage.initialize(triangulation,
-                                    n_q_points);
+  interface_data_storage.initialize(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.end()),
+    n_q_points);
 
   for (const auto &cell : dof_handler.active_cell_iterators())
     if (cell->is_locally_owned() &&
@@ -259,8 +270,8 @@ void QuadraturePointHistory<dim>::init_quadrature_point_history()
           const std::vector<std::shared_ptr<gCP::InterfaceData<dim>>>
             local_quadrature_point_history =
               interface_data_storage.get_data(
-                cell->active_cell_index(),
-                cell->neighbor(face_index)->active_cell_index());
+                cell->id(),
+                cell->neighbor(face_index)->id());
 
           Assert(local_quadrature_point_history.size() == n_q_points,
                   dealii::ExcInternalError());
@@ -290,8 +301,8 @@ void QuadraturePointHistory<dim>::prepare_quadrature_point_history_for_update()
           const std::vector<std::shared_ptr<gCP::InterfaceData<dim>>>
             local_quadrature_point_history =
               interface_data_storage.get_data(
-                cell->active_cell_index(),
-                cell->neighbor(face_index)->active_cell_index());
+                cell->id(),
+                cell->neighbor(face_index)->id());
 
           Assert(local_quadrature_point_history.size() == n_q_points,
                   dealii::ExcInternalError());
@@ -332,8 +343,8 @@ void QuadraturePointHistory<dim>::update_quadrature_point_history()
           const std::vector<std::shared_ptr<gCP::InterfaceData<dim>>>
             local_quadrature_point_history =
               interface_data_storage.get_data(
-                cell->active_cell_index(),
-                cell->neighbor(face_index)->active_cell_index());
+                cell->id(),
+                cell->neighbor(face_index)->id());
 
           Assert(local_quadrature_point_history.size() == n_q_points,
                   dealii::ExcInternalError());
@@ -363,19 +374,19 @@ void QuadraturePointHistory<dim>::read_quadrature_point_history()
           const std::vector<std::shared_ptr<gCP::InterfaceData<dim>>>
             local_quadrature_point_history =
               interface_data_storage.get_data(
-                cell->active_cell_index(),
-                cell->neighbor(face_index)->active_cell_index());
+                cell->id(),
+                cell->neighbor(face_index)->id());
 
           Assert(local_quadrature_point_history.size() == n_q_points,
                   dealii::ExcInternalError());
 
-          const unsigned int current_cell_id =
-            cell->active_cell_index();
+          const dealii::CellId current_cell_id =
+            cell->id();
 
-          const unsigned int neighbour_cell_id =
-            cell->neighbor(face_index)->active_cell_index();
+          const dealii::CellId neighbour_cell_id =
+            cell->neighbor(face_index)->id();
 
-          std::pair<unsigned int, unsigned int> cell_pair;
+          std::pair<dealii::CellId, dealii::CellId> cell_pair;
 
           if (current_cell_id < neighbour_cell_id)
             cell_pair =
@@ -384,9 +395,9 @@ void QuadraturePointHistory<dim>::read_quadrature_point_history()
             cell_pair =
               std::make_pair(neighbour_cell_id, current_cell_id);
 
-          std::cout
+          /*std::cout
             << "Pair {" << cell_pair.first << ", " << cell_pair.second
-            << "}\n";
+            << "}\n";*/
 
           for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
             std::cout
