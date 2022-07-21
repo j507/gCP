@@ -829,6 +829,9 @@ void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
   const unsigned int n_q_points =
     quadrature_collection.max_n_quadrature_points();
 
+  const unsigned int n_face_q_points =
+    face_quadrature_collection.max_n_quadrature_points();
+
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
     if (cell->is_locally_owned())
     {
@@ -843,6 +846,28 @@ void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
             q_point < n_q_points;
             ++q_point)
         local_quadrature_point_history[q_point]->store_current_values();
+
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+          fe_field->is_decohesion_allowed())
+        for (const auto &face_index : cell->face_indices())
+          if (!cell->face(face_index)->at_boundary() &&
+              cell->material_id() !=
+                cell->neighbor(face_index)->material_id())
+          {
+            const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+              local_interface_quadrature_point_history =
+                interface_quadrature_point_history.get_data(
+                  cell->id(),
+                  cell->neighbor(face_index)->id());
+
+            Assert(local_interface_quadrature_point_history.size() ==
+                     n_face_q_points,
+                   dealii::ExcInternalError());
+
+            for (unsigned int face_q_point = 0;
+                  face_q_point < n_face_q_points; ++face_q_point)
+              local_interface_quadrature_point_history[face_q_point]->store_current_values();
+          }
     }
 }
 
@@ -932,18 +957,20 @@ update_local_quadrature_point_history(
   // Reset local data
   scratch.reset();
 
-  // Compute the linear strain tensor at the quadrature points
+  // Get the slip values at the quadrature points
   for (unsigned int slip_id = 0;
        slip_id < fe_field->get_n_slips();
        ++slip_id)
   {
-    fe_values[fe_field->get_slip_extractor(crystal_id,
-                                           slip_id)].get_function_values(
+    fe_values[
+      fe_field->get_slip_extractor(crystal_id,
+                                   slip_id)].get_function_values(
       trial_solution,
       scratch.slips_values[slip_id]);
 
-    fe_values[fe_field->get_slip_extractor(crystal_id,
-                                           slip_id)].get_function_values(
+    fe_values[
+      fe_field->get_slip_extractor(crystal_id,
+                                   slip_id)].get_function_values(
       fe_field->old_solution,
       scratch.old_slips_values[slip_id]);
   }
@@ -956,6 +983,51 @@ update_local_quadrature_point_history(
       scratch.slips_values,
       scratch.old_slips_values);
   } // Loop over quadrature points
+
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      fe_field->is_decohesion_allowed())
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
+      {
+        // Get the crystal identifier for the neighbor cell
+        const unsigned int neighbor_crystal_id =
+          cell->neighbor(face_index)->active_fe_index();
+
+        const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+          local_interface_quadrature_point_history =
+            interface_quadrature_point_history.get_data(
+              cell->id(),
+              cell->neighbor(face_index)->id());
+
+        // Update the hp::FEFaceValues instance to the values of the
+        // current face
+        scratch.hp_fe_face_values.reinit(cell, face_index);
+
+        const dealii::FEFaceValues<dim> &fe_face_values =
+          scratch.hp_fe_face_values.get_present_fe_values();
+
+        Assert(local_interface_quadrature_point_history.size() ==
+                 scratch.n_face_q_points,
+               dealii::ExcInternalError());
+
+        fe_face_values[
+          fe_field->get_displacement_extractor(crystal_id)].get_function_values(
+          trial_solution,
+          scratch.current_cell_displacement_values);
+
+        fe_face_values[
+          fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
+          trial_solution,
+          scratch.neighbor_cell_displacement_values);
+
+        for (const unsigned int face_q_point :
+               fe_face_values.quadrature_point_indices())
+          local_interface_quadrature_point_history[face_q_point]->update_values(
+            scratch.neighbor_cell_displacement_values[face_q_point],
+            scratch.current_cell_displacement_values[face_q_point]);
+      }
 }
 
 

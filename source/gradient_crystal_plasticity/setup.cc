@@ -255,6 +255,30 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
         local_quadrature_point_history[q_point]->init(
           parameters.scalar_microscopic_stress_law_parameters,
           crystals_data->get_n_slips());
+
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+          fe_field->is_decohesion_allowed())
+        for (const auto &face_index : cell->face_indices())
+          if (!cell->face(face_index)->at_boundary() &&
+              cell->material_id() !=
+                cell->neighbor(face_index)->material_id())
+          {
+            const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+              local_interface_quadrature_point_history =
+                interface_quadrature_point_history.get_data(
+                  cell->id(),
+                  cell->neighbor(face_index)->id());
+
+            Assert(local_interface_quadrature_point_history.size() ==
+                     n_face_q_points,
+                   dealii::ExcInternalError());
+
+            for (unsigned int face_q_point = 0;
+                  face_q_point < n_face_q_points; ++face_q_point)
+              local_interface_quadrature_point_history[face_q_point]->init(
+                parameters.decohesion_law_parameters);
+          }
+
     }
 }
 
