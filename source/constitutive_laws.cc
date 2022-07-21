@@ -879,9 +879,9 @@ InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
                      critical_opening_displacement) *
       (dealii::unit_symmetric_tensor<dim>() -
        effective_opening_displacement / critical_opening_displacement *
-       dealii::outer_product(
+       dealii::symmetrize(dealii::outer_product(
          opening_displacement / effective_opening_displacement,
-         opening_displacement / effective_opening_displacement));
+         opening_displacement / effective_opening_displacement)));
   }
   else if (effective_opening_displacement <
              max_effective_opening_displacement ||
@@ -943,9 +943,9 @@ InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
                      critical_opening_displacement) *
       (dealii::unit_symmetric_tensor<dim>() -
        effective_opening_displacement / critical_opening_displacement *
-       dealii::outer_product(
+       dealii::symmetrize(dealii::outer_product(
          opening_displacement / effective_opening_displacement,
-         opening_displacement / effective_opening_displacement));
+         opening_displacement / effective_opening_displacement)));
   }
   else if (effective_opening_displacement <
              max_effective_opening_displacement ||
@@ -990,3 +990,6 @@ template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
 
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
+
+template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<2>;
+template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<3>;
