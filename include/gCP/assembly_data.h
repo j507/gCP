@@ -290,6 +290,8 @@ struct Scratch : ScratchBase<dim>
 
   dealii::hp::FEFaceValues<dim>       hp_fe_face_values;
 
+  dealii::hp::FEFaceValues<dim>       neighbor_hp_fe_face_values;
+
   const unsigned int                  n_face_q_points;
 
   unsigned int                        n_slips;

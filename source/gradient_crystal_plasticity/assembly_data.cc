@@ -402,6 +402,11 @@ hp_fe_face_values(
   finite_element_collection,
   face_quadrature_collection,
   face_update_flags),
+neighbor_hp_fe_face_values(
+  mapping_collection,
+  finite_element_collection,
+  face_quadrature_collection,
+  face_update_flags),
 n_face_q_points(face_quadrature_collection.max_n_quadrature_points()),
 n_slips(n_slips),
 slips_values(
@@ -428,6 +433,11 @@ hp_fe_face_values(
   data.hp_fe_face_values.get_fe_collection(),
   data.hp_fe_face_values.get_quadrature_collection(),
   data.hp_fe_face_values.get_update_flags()),
+neighbor_hp_fe_face_values(
+  data.neighbor_hp_fe_face_values.get_mapping_collection(),
+  data.neighbor_hp_fe_face_values.get_fe_collection(),
+  data.neighbor_hp_fe_face_values.get_quadrature_collection(),
+  data.neighbor_hp_fe_face_values.get_update_flags()),
 n_face_q_points(data.n_face_q_points),
 n_slips(data.n_slips),
 slips_values(
