@@ -10,6 +10,8 @@ SET(SOURCE_FILES
     crystal_data_test.cc
     fe_collection_test.cc
     make_periodicity_constraints.cc
+    quadrature_point_history_test.cc
+    mark_interface_test.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})

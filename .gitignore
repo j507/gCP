@@ -12,7 +12,8 @@ constitutive_laws_test
 crystal_data_test
 fe_collection_test
 line_search_test
-material_id_test
+simple_shear
+make_periodicity_constraints
 
 # Compiled Object files
 *.slo
@@ -104,6 +105,7 @@ _deps
 *.pvd
 *.gpl
 /results/
+/documentation/weak_form
 
 # Python compiled modules
 *.pyc

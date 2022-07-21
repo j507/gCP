@@ -287,24 +287,3 @@ template class
 gCP::InterfaceDataStorage<
   typename dealii::Triangulation<3>::cell_iterator,
   gCP::InterfaceData<3>>;
-/*
-template void
-gCP::InterfaceDataStorage<
-  typename dealii::Triangulation<2>::cell_iterator,
-  gCP::InterfaceData<2>>::initialize(
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<2>::active_cell_iterator> &,
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<2>::active_cell_iterator> &,
-    const unsigned int);
-
-template void
-gCP::InterfaceDataStorage<
-  typename dealii::Triangulation<3>::cell_iterator,
-  gCP::InterfaceData<3>>::initialize(
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<3>::active_cell_iterator> &,
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<3>::active_cell_iterator> &,
-    const unsigned int);
-*/

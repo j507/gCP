@@ -98,6 +98,10 @@ private:
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
 
+  InterfaceDataStorage<
+    typename dealii::Triangulation<dim>::cell_iterator,
+    InterfaceQuadraturePointHistory<dim>>      interface_quadrature_point_history;
+
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
