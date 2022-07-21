@@ -107,6 +107,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             face_JxW_values;
 
+  std::vector<double>                             face_neighbor_JxW_values;
+
   dealii::SymmetricTensor<4,dim>                  stiffness_tetrad;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     reduced_gradient_hardening_tensors;
@@ -198,6 +200,8 @@ struct Scratch : ScratchBase<dim>
   std::vector<double>                             JxW_values;
 
   std::vector<double>                             face_JxW_values;
+
+  std::vector<double>                             face_neighbor_JxW_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
 
