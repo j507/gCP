@@ -55,6 +55,9 @@ template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
   const RunTimeParameters::DecohesionLawParameters &parameters)
 {
+  if (flag_init_was_called)
+    return;
+
   critical_cohesive_traction    = parameters.critical_cohesive_traction;
 
   critical_opening_displacement = parameters.critical_opening_displacement;
@@ -287,3 +290,15 @@ template class
 gCP::InterfaceDataStorage<
   typename dealii::Triangulation<3>::cell_iterator,
   gCP::InterfaceData<3>>;
+
+template class
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<2>::cell_iterator,
+  gCP::InterfaceQuadraturePointHistory<2>>;
+template class
+gCP::InterfaceDataStorage<
+  typename dealii::Triangulation<3>::cell_iterator,
+  gCP::InterfaceQuadraturePointHistory<3>>;
+
+
+
