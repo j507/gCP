@@ -100,7 +100,7 @@ private:
 
   InterfaceDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
-    InterfaceQuadraturePointHistory<dim>>      interface_quadrature_point_history;
+    InterfaceQuadraturePointHistory<dim>>           interface_quadrature_point_history;
 
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
