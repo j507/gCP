@@ -131,6 +131,12 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::Tensor<1,dim>>              neighbor_cell_displacement_values;
 
+  std::vector<dealii::Tensor<1,dim>>              current_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_old_displacement_values;
+
+  std::vector<double>                             damage_variable_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     current_cell_gateaux_derivative_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     neighbor_cell_gateaux_derivative_values;
@@ -140,6 +146,10 @@ struct Scratch : ScratchBase<dim>
   std::vector<std::vector<double>>                scalar_phi;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> grad_scalar_phi;
+
+  std::vector<dealii::Tensor<1,dim>>              face_vector_phi;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_face_vector_phi;
 
   std::vector<std::vector<double>>                face_scalar_phi;
 
@@ -233,7 +243,13 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::Tensor<1,dim>>              neighbor_cell_displacement_values;
 
+  std::vector<dealii::Tensor<1,dim>>              current_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_old_displacement_values;
+
   std::vector<dealii::Tensor<1,dim>>              interface_macrotraction_values;
+
+  std::vector<double>                             damage_variable_values;
 
   std::vector<std::vector<double>>                face_slip_values;
 
