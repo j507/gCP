@@ -81,6 +81,8 @@ class DisplacementControl : public dealii::Function<dim>
 public:
   DisplacementControl(const double        shear_strain_at_upper_boundary,
                       const double        height,
+                      const unsigned int  n_crystals,
+                      const bool          flag_is_decohesion_allowed = false,
                       const unsigned int  n_components = 3,
                       const double        time = 0.0);
 
@@ -89,9 +91,13 @@ public:
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-  const double shear_strain_at_upper_boundary;
+  const unsigned int  n_crystals;
 
-  const double height;
+  const bool          flag_is_decohesion_allowed;
+
+  const double        shear_strain_at_upper_boundary;
+
+  const double        height;
 };
 
 
@@ -100,10 +106,14 @@ template<int dim>
 DisplacementControl<dim>::DisplacementControl(
   const double        shear_strain_at_upper_boundary,
   const double        height,
+  const unsigned int  n_crystals,
+  const bool          flag_is_decohesion_allowed,
   const unsigned int  n_components,
   const double        time)
 :
 dealii::Function<dim>(n_components, time),
+n_crystals(n_crystals),
+flag_is_decohesion_allowed(flag_is_decohesion_allowed),
 shear_strain_at_upper_boundary(shear_strain_at_upper_boundary),
 height(height)
 {}
@@ -120,6 +130,10 @@ void DisplacementControl<dim>::vector_value(
   return_vector = 0.0;
 
   return_vector[0] = t * height * shear_strain_at_upper_boundary;
+
+  if (flag_is_decohesion_allowed)
+    for (unsigned int i = 1; i < n_crystals; ++i)
+      return_vector[i*dim] = t * height * shear_strain_at_upper_boundary;
 }
 
 
@@ -378,6 +392,8 @@ void SimpleShearProblem<dim>::setup()
     std::make_unique<DisplacementControl<dim>>(
       parameters.shear_strain_at_upper_boundary,
       parameters.height,
+      crystals_data->get_n_crystals(),
+      fe_field->is_decohesion_allowed(),
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -679,11 +695,34 @@ void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
+  std::vector<std::string> displacement_names;
+  std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+                           component_interpretation;
+
   // Explicit declaration of the velocity as a vector
-  std::vector<std::string> displacement_names(dim, "displacement");
-  std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-    component_interpretation(
-      dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
+  if (fe_field->is_decohesion_allowed())
+  {
+    for (unsigned int crystal_id = 0;
+        crystal_id < crystals_data->get_n_crystals();
+        ++crystal_id)
+      for (unsigned int i = 0; i < dim; ++i)
+      {
+        displacement_names.emplace_back("crystal_" +
+          std::to_string(crystal_id) + "_displacement");
+        component_interpretation.push_back(
+          dealii::DataComponentInterpretation::component_is_part_of_vector);
+      }
+  }
+  else
+  {
+    for (unsigned int i = 0; i < dim; ++i)
+    {
+      displacement_names.emplace_back("displacement");
+      component_interpretation.push_back(
+        dealii::DataComponentInterpretation::component_is_part_of_vector);
+    }
+  }
 
   // Explicit declaration of the slips as scalars
   for (unsigned int crystal_id = 0;
