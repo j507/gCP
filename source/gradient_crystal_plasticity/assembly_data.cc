@@ -430,7 +430,9 @@ slips_values(
   std::vector<double>(this->n_q_points, 0.0)),
 old_slips_values(
   n_slips,
-  std::vector<double>(this->n_q_points, 0.0))
+  std::vector<double>(this->n_q_points, 0.0)),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points)
 {}
 
 
@@ -461,7 +463,9 @@ slips_values(
   std::vector<double>(this->n_q_points, 0.0)),
 old_slips_values(
   n_slips,
-  std::vector<double>(this->n_q_points, 0.0))
+  std::vector<double>(this->n_q_points, 0.0)),
+current_cell_displacement_values(this->n_face_q_points),
+neighbor_cell_displacement_values(this->n_face_q_points)
 {}
 
 
