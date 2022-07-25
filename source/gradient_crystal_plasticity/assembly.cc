@@ -927,6 +927,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
                     scratch.face_neighbor_JxW_values[face_q_point]);
+
+              AssertIsFinite(data.local_rhs(i));
             }
             else
             {
@@ -1187,7 +1189,8 @@ update_local_quadrature_point_history(
         // Update the hp::FEFaceValues instance to the values of the
         // neighbor face
         scratch.neighbor_hp_fe_face_values.reinit(
-          cell->neighbor(face_index), face_index);
+          cell->neighbor(face_index),
+          cell->neighbor_of_neighbor(face_index));
 
         const dealii::FEFaceValues<dim> &neighbor_fe_face_values =
           scratch.neighbor_hp_fe_face_values.get_present_fe_values();
@@ -1206,11 +1209,13 @@ update_local_quadrature_point_history(
           trial_solution,
           scratch.neighbor_cell_displacement_values);
 
-        for (const unsigned int face_q_point :
-               fe_face_values.quadrature_point_indices())
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_face_q_points; ++face_q_point)
+        {
           local_interface_quadrature_point_history[face_q_point]->update_values(
             scratch.neighbor_cell_displacement_values[face_q_point],
             scratch.current_cell_displacement_values[face_q_point]);
+        }
       }
 }
 
