@@ -87,8 +87,8 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
   const dealii::Tensor<1,dim> current_cell_displacement)
 {
-  if (flag_values_were_updated)
-    return;
+  /*if (flag_values_were_updated)
+    return;*/
 
   max_effective_opening_displacement  = tmp_values.first;
   damage_variable                     = tmp_values.second;
