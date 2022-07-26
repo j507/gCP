@@ -53,6 +53,34 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
 
 
 
+template <int dim>
+const dealii::SymmetricTensor<2,dim>
+ElasticStrain<dim>::get_plastic_strain_tensor(
+  const unsigned int                      crystal_id,
+  const unsigned int                      q_point,
+  const std::vector<std::vector<double>>  slip_values) const
+{
+  AssertThrow(crystals_data->is_initialized(),
+              dealii::ExcMessage("The underlying CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
+
+  dealii::SymmetricTensor<2,dim> plastic_strain_tensor;
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips();
+       ++slip_id)
+  {
+    plastic_strain_tensor +=
+      slip_values[slip_id][q_point] *
+      crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
+  }
+
+  return plastic_strain_tensor;
+}
+
+
+
 } // namespace Kinematics
 
 

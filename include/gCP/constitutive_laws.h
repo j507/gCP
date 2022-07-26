@@ -34,6 +34,11 @@ public:
     const dealii::SymmetricTensor<2,dim>    strain_tensor_value,
     const std::vector<std::vector<double>>  slip_values) const;
 
+  const dealii::SymmetricTensor<2,dim> get_plastic_strain_tensor(
+    const unsigned int                      crystal_id,
+    const unsigned int                      q_point,
+    const std::vector<std::vector<double>>  slip_values) const;
+
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 };
