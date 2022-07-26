@@ -32,6 +32,9 @@ public:
   const dealii::Tensor<2,dim> &get_rotation_tensor(
     const unsigned int crystal_id) const;
 
+  const dealii::Tensor<2,3> &get_3d_rotation_tensor(
+    const unsigned int crystal_id) const;
+
   const dealii::Tensor<1,dim> &get_slip_direction(
     const unsigned int crystal_id,
     const unsigned int slip_id) const;
@@ -75,6 +78,8 @@ private:
 
   std::vector<dealii::Tensor<2,dim>>              rotation_tensors;
 
+  std::vector<dealii::Tensor<2,3>>                rotation_tensors_3d;
+
   std::vector<dealii::Tensor<1,dim>>              reference_slip_directions;
 
   std::vector<dealii::Tensor<1,dim>>              reference_slip_normals;
@@ -102,6 +107,8 @@ private:
     const std::string slip_normals_file_name);
 
   void compute_rotation_matrices();
+
+  void compute_3d_rotation_matrices();
 
   void compute_slip_systems();
 
@@ -147,6 +154,20 @@ inline const dealii::Tensor<2,dim>
                                   " initialized."));
   AssertIndexRange(crystal_id, n_crystals);
   return (rotation_tensors[crystal_id]);
+}
+
+
+
+template <int dim>
+inline const dealii::Tensor<2,3>
+&CrystalsData<dim>::get_3d_rotation_tensor(const unsigned int crystal_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The CrystalsData<dim>"
+                                  " instance has not been"
+                                  " initialized."));
+  AssertIndexRange(crystal_id, n_crystals);
+  return (rotation_tensors_3d[crystal_id]);
 }
 
 
