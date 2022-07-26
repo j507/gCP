@@ -134,6 +134,24 @@ void HookeLaw<dim>::init()
           else if (i == j && k == l)
             reference_stiffness_tetrad[i][j][k][l] = C1122;
 
+  if constexpr(dim == 3)
+    reference_stiffness_tetrad_3d = reference_stiffness_tetrad;
+  else if constexpr(dim == 2)
+  {
+    for (unsigned int i = 0; i < 3; i++)
+      for (unsigned int j = 0; j < 3; j++)
+        for (unsigned int k = 0; k < 3; k++)
+          for (unsigned int l = 0; l < 3; l++)
+            if (i == j && j == k && k == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1111;
+            else if (i == k && j == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1212;
+            else if (i == j && k == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1122;
+  }
+  else
+    Assert(false, dealii::ExcNotImplemented());
+
   switch (crystallite)
   {
   case Crystallite::Monocrystalline:
@@ -150,10 +168,12 @@ void HookeLaw<dim>::init()
            crystal_id < crystals_data->get_n_crystals();
            crystal_id++)
         {
-          dealii::SymmetricTensor<4,dim> stiffness_tetrad;
+          dealii::SymmetricTensor<4,dim>  stiffness_tetrad;
 
           dealii::Tensor<2,dim> rotation_tensor =
             crystals_data->get_rotation_tensor(crystal_id);
+
+          dealii::SymmetricTensor<4,3>    stiffness_tetrad_3d;
 
           // The indices j and l do not start at zero due to the
           // nature of the dealii::SymmetricTensor<4,dim> class, where
@@ -174,7 +194,33 @@ void HookeLaw<dim>::init()
                             rotation_tensor[l][r] *
                             reference_stiffness_tetrad[o][p][q][r];
 
+          if constexpr(dim == 3)
+            stiffness_tetrad_3d = stiffness_tetrad;
+          else if constexpr(dim == 2)
+          {
+            dealii::Tensor<2,3>   rotation_tensor_3d =
+              crystals_data->get_3d_rotation_tensor(crystal_id);
+
+            for (unsigned int i = 0; i < 3; i++)
+              for (unsigned int j = i; j < 3; j++)
+                for (unsigned int k = 0; k < 3; k++)
+                  for (unsigned int l = k; l < 3; l++)
+                    for (unsigned int o = 0; o < 3; o++)
+                      for (unsigned int p = 0; p < 3; p++)
+                        for (unsigned int q = 0; q < 3; q++)
+                          for (unsigned int r = 0; r < 3; r++)
+                            stiffness_tetrad_3d[i][j][k][l] +=
+                              rotation_tensor_3d[i][o] *
+                              rotation_tensor_3d[j][p] *
+                              rotation_tensor_3d[k][q] *
+                              rotation_tensor_3d[l][r] *
+                              reference_stiffness_tetrad_3d[o][p][q][r];
+          }
+          else
+            Assert(false, dealii::ExcNotImplemented());
+
           stiffness_tetrads.push_back(stiffness_tetrad);
+          stiffness_tetrads_3d.push_back(stiffness_tetrad_3d);
         }
     }
     break;

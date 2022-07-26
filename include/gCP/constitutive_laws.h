@@ -69,6 +69,11 @@ public:
   const dealii::SymmetricTensor<4,dim> &get_stiffness_tetrad(
     const unsigned int crystal_id) const;
 
+  const dealii::SymmetricTensor<4,3> &get_stiffness_tetrad_3d() const;
+
+  const dealii::SymmetricTensor<4,3> &get_stiffness_tetrad_3d(
+    const unsigned int crystal_id) const;
+
   const dealii::SymmetricTensor<2,dim> get_stress_tensor(
     const dealii::SymmetricTensor<2,dim> strain_tensor_values) const;
 
@@ -96,6 +101,11 @@ private:
   dealii::SymmetricTensor<4,dim>              reference_stiffness_tetrad;
 
   std::vector<dealii::SymmetricTensor<4,dim>> stiffness_tetrads;
+
+  dealii::SymmetricTensor<4,3>                reference_stiffness_tetrad_3d;
+
+  std::vector<dealii::SymmetricTensor<4,3>>   stiffness_tetrads_3d;
+
 
   bool                                        flag_init_was_called;
 };
@@ -140,6 +150,48 @@ inline const dealii::SymmetricTensor<4,dim>
   AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
 
   return (stiffness_tetrads[crystal_id]);
+}
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<4,3>
+&HookeLaw<dim>::get_stiffness_tetrad_3d() const
+{
+  AssertThrow(crystallite == Crystallite::Monocrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a monocrystalline."
+                                 " Nonetheless a CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  return (reference_stiffness_tetrad_3d);
+}
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<4,3>
+&HookeLaw<dim>::get_stiffness_tetrad_3d(const unsigned int crystal_id) const
+{
+  AssertThrow(crystallite == Crystallite::Polycrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a polycrystalline."
+                                 " Nonetheless no CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+
+  return (stiffness_tetrads_3d[crystal_id]);
 }
 
 
