@@ -87,6 +87,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   extrapolate_initial_trial_solution();
 
+  print_decohesion_data();
+
   *pcout << std::endl;
 }
 

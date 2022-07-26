@@ -1085,7 +1085,8 @@ void GradientCrystalPlasticitySolver<dim>::reset_and_update_quadrature_point_his
     dealii::update_values;
 
   const dealii::UpdateFlags face_update_flags  =
-    dealii::update_values;
+    dealii::update_values |
+    dealii::update_normal_vectors;
 
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
@@ -1118,7 +1119,7 @@ update_local_quadrature_point_history(
   // Get the crystal identifier for the current cell
   const unsigned int crystal_id = cell->active_fe_index();
 
-  //
+  // Get the local quadrature point history instance
   const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
     local_quadrature_point_history =
       quadrature_point_history.get_data(cell);
@@ -1173,6 +1174,7 @@ update_local_quadrature_point_history(
         const unsigned int neighbor_crystal_id =
           cell->neighbor(face_index)->active_fe_index();
 
+        // Get the local quadrature point history instance
         const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
           local_interface_quadrature_point_history =
             interface_quadrature_point_history.get_data(
@@ -1199,6 +1201,7 @@ update_local_quadrature_point_history(
                  scratch.n_face_q_points,
                dealii::ExcInternalError());
 
+        // Get the displacement values o
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
           trial_solution,
@@ -1209,12 +1212,17 @@ update_local_quadrature_point_history(
           trial_solution,
           scratch.neighbor_cell_displacement_values);
 
+        // Get normal vector values values at the quadrature points
+        scratch.normal_vector_values =
+          fe_face_values.get_normal_vectors();
+
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
           local_interface_quadrature_point_history[face_q_point]->update_values(
             scratch.neighbor_cell_displacement_values[face_q_point],
-            scratch.current_cell_displacement_values[face_q_point]);
+            scratch.current_cell_displacement_values[face_q_point],
+            scratch.normal_vector_values[face_q_point]);
         }
       }
 }

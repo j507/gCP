@@ -121,6 +121,8 @@ private:
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
+  Utilities::Logger                                 decohesion_logger;
+
   bool                                              flag_init_was_called;
 
   void init_quadrature_point_history();
@@ -167,6 +169,8 @@ private:
   void update_trial_solution(const double relaxation_parameter);
 
   void extrapolate_initial_trial_solution();
+
+  void print_decohesion_data();
 };
 
 

@@ -316,6 +316,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>    old_slips_values;
 
+  std::vector<dealii::Tensor<1,dim>>  normal_vector_values;
+
   std::vector<dealii::Tensor<1,dim>>  current_cell_displacement_values;
 
   std::vector<dealii::Tensor<1,dim>>  neighbor_cell_displacement_values;

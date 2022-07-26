@@ -45,6 +45,9 @@ template <int dim>
 InterfaceQuadraturePointHistory<dim>::InterfaceQuadraturePointHistory()
 :
 max_effective_opening_displacement(0.0),
+max_effective_normal_opening_displacement(0.0),
+max_effective_tangential_opening_displacement(0.0),
+max_cohesive_traction(0.0),
 damage_variable(0.0),
 flag_init_was_called(false)
 {}
@@ -85,7 +88,8 @@ void InterfaceQuadraturePointHistory<dim>::store_current_values()
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
-  const dealii::Tensor<1,dim> current_cell_displacement)
+  const dealii::Tensor<1,dim> current_cell_displacement,
+  const dealii::Tensor<1,dim> normal_vector)
 {
   /*if (flag_values_were_updated)
     return;*/
@@ -93,12 +97,30 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
   max_effective_opening_displacement  = tmp_values.first;
   damage_variable                     = tmp_values.second;
 
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                             normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+
   const dealii::Tensor<1,dim> displacement_jump =
     neighbor_cell_displacement - current_cell_displacement;
 
   max_effective_opening_displacement =
     std::max(max_effective_opening_displacement,
              displacement_jump.norm());
+
+  max_effective_normal_opening_displacement =
+    std::max(max_effective_normal_opening_displacement,
+             (normal_projector * displacement_jump).norm());
+
+  max_effective_tangential_opening_displacement =
+    std::max(max_effective_tangential_opening_displacement,
+             (tangential_projector * displacement_jump).norm());
+
+  max_cohesive_traction =
+    get_master_relation(max_effective_opening_displacement);
 
   const double displacement_ratio =
      max_effective_opening_displacement / critical_opening_displacement;
