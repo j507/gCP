@@ -302,10 +302,6 @@ void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
                   cell->id(),
                   cell->neighbor(face_index)->id());
 
-            Assert(local_interface_quadrature_point_history.size() ==
-                     n_face_q_points,
-                   dealii::ExcInternalError());
-
             decohesion_logger.update_value(
               "Effective opening displacement",
               local_interface_quadrature_point_history[0]->
