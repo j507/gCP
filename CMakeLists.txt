@@ -3,6 +3,8 @@
 ##
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1.0)
 
+SET(CMAKE_CXX_STANDARD 17)
+
 ##
 # Is the deal.ii library installed?
 ##
