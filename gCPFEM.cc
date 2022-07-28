@@ -763,14 +763,6 @@ void ProblemClass<dim>::data_output()
                            displacement_names,
                            component_interpretation);
 
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[0],
-                           std::vector<std::string>(1, "2e12"));
-
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[1],
-                           std::vector<std::string>(1, "s12"));
-
   data_out.build_patches(*mapping,
                          1/*fe_field->get_displacement_fe_degree()*/,
                          dealii::DataOut<dim>::curved_inner_cells);

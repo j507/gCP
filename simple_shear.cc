@@ -170,6 +170,8 @@ private:
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
+  Postprocessing::Postprocessor<dim>                postprocessor;
+
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
@@ -229,6 +231,8 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
+postprocessor(fe_field,
+              crystals_data),
 simple_shear(fe_field,
              mapping,
              parameters.shear_strain_at_upper_boundary,
@@ -746,14 +750,6 @@ void SimpleShearProblem<dim>::data_output()
                            displacement_names,
                            component_interpretation);
 
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[0],
-                           std::vector<std::string>(1, "2e12"));
-
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[1],
-                           std::vector<std::string>(1, "s12"));
-
   data_out.build_patches(*mapping,
                          1/*fe_field->get_displacement_fe_degree()*/,
                          dealii::DataOut<dim>::curved_inner_cells);
@@ -768,6 +764,25 @@ void SimpleShearProblem<dim>::data_output()
     5);
 
   out_index++;
+
+  dealii::DataOut<dim> test;
+
+  test.attach_dof_handler(fe_field->get_dof_handler());
+
+  test.add_data_vector(fe_field->solution, postprocessor);
+
+  test.build_patches();
+
+  static int second_out_index = 0;
+
+  test.write_vtu_with_pvtu_record(
+    parameters.graphical_output_directory + "paraview/",
+    "Test",
+    second_out_index,
+    MPI_COMM_WORLD,
+    5);
+
+  second_out_index++;
 }
 
 
@@ -792,6 +807,8 @@ void SimpleShearProblem<dim>::run()
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
                     gCP_solver.get_hooke_law());
+
+  postprocessor.init(gCP_solver.get_hooke_law());
 
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
