@@ -68,6 +68,12 @@ Postprocessor<dim>::get_names() const
   solution_names.emplace_back("Stress_23");
   solution_names.emplace_back("Stress_13");
   solution_names.emplace_back("Stress_12");
+  solution_names.emplace_back("Strain_11");
+  solution_names.emplace_back("Strain_22");
+  solution_names.emplace_back("Strain_33");
+  solution_names.emplace_back("Strain_23*2");
+  solution_names.emplace_back("Strain_13*2");
+  solution_names.emplace_back("Strain_12*2");
 
   return solution_names;
 }
@@ -90,6 +96,12 @@ Postprocessor<dim>::get_data_component_interpretation()
     interpretation.push_back(
       dealii::DataComponentInterpretation::component_is_scalar);
 
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
@@ -165,6 +177,7 @@ void Postprocessor<dim>::evaluate_vector_field(
 
   dealii::Tensor<2,dim>           displacement_gradient;
   dealii::SymmetricTensor<2,dim>  strain_tensor;
+  dealii::SymmetricTensor<2,3>    strain_tensor_3d;
   dealii::SymmetricTensor<2,dim>  plastic_strain_tensor;
   dealii::SymmetricTensor<2,dim>  elastic_strain_tensor;
   dealii::SymmetricTensor<2,3>    stress_tensor;
@@ -176,6 +189,7 @@ void Postprocessor<dim>::evaluate_vector_field(
     // Reset
     displacement_gradient                 = 0.0;
     strain_tensor                         = 0.0;
+    strain_tensor_3d                      = 0.0;
     plastic_strain_tensor                 = 0.0;
     elastic_strain_tensor                 = 0.0;
     stress_tensor                         = 0.0;
@@ -196,7 +210,9 @@ void Postprocessor<dim>::evaluate_vector_field(
           inputs.solution_gradients[q_point][d + dim * crystal_id];
       }
 
-      strain_tensor = dealii::symmetrize(displacement_gradient);
+      strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+      strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
 
       for (unsigned int slip_id = 0;
           slip_id < n_slips; ++slip_id)
@@ -257,6 +273,12 @@ void Postprocessor<dim>::evaluate_vector_field(
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
         computed_quantities[q_point](dim + n_slips + 5 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+      // Strain components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 11 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
     else
     {
@@ -270,7 +292,9 @@ void Postprocessor<dim>::evaluate_vector_field(
           inputs.solution_gradients[q_point][d];
       }
 
-      strain_tensor = dealii::symmetrize(displacement_gradient);
+      strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+      strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
 
       for (unsigned int slip_id = 0;
           slip_id < n_slips; ++slip_id)
@@ -331,9 +355,17 @@ void Postprocessor<dim>::evaluate_vector_field(
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
         computed_quantities[q_point](dim + n_slips + 5 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+      // Strain components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 11 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
   }
 }
+
+
 
 template <int dim>
 dealii::SymmetricTensor<2,3>
