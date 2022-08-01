@@ -699,59 +699,14 @@ void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
-  std::vector<std::string> displacement_names;
-  std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-                           component_interpretation;
-
-  // Explicit declaration of the velocity as a vector
-  if (fe_field->is_decohesion_allowed())
-  {
-    for (unsigned int crystal_id = 0;
-        crystal_id < crystals_data->get_n_crystals();
-        ++crystal_id)
-      for (unsigned int i = 0; i < dim; ++i)
-      {
-        displacement_names.emplace_back("crystal_" +
-          std::to_string(crystal_id) + "_displacement");
-        component_interpretation.push_back(
-          dealii::DataComponentInterpretation::component_is_part_of_vector);
-      }
-  }
-  else
-  {
-    for (unsigned int i = 0; i < dim; ++i)
-    {
-      displacement_names.emplace_back("displacement");
-      component_interpretation.push_back(
-        dealii::DataComponentInterpretation::component_is_part_of_vector);
-    }
-  }
-
-  // Explicit declaration of the slips as scalars
-  for (unsigned int crystal_id = 0;
-       crystal_id < crystals_data->get_n_crystals();
-       ++crystal_id)
-    for (unsigned int slip_id = 0;
-        slip_id < crystals_data->get_n_slips();
-        ++slip_id)
-    {
-      displacement_names.emplace_back(
-        "crystal_" + std::to_string(crystal_id) +
-        "_slip_" + std::to_string(slip_id));
-      component_interpretation.push_back(
-        dealii::DataComponentInterpretation::component_is_scalar);
-    }
-
   dealii::DataOut<dim> data_out;
 
-  data_out.add_data_vector(fe_field->get_dof_handler(),
-                           fe_field->solution,
-                           displacement_names,
-                           component_interpretation);
+  data_out.attach_dof_handler(fe_field->get_dof_handler());
+
+  data_out.add_data_vector(fe_field->solution, postprocessor);
 
   data_out.build_patches(*mapping,
-                         1/*fe_field->get_displacement_fe_degree()*/,
+                         fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
@@ -764,25 +719,6 @@ void SimpleShearProblem<dim>::data_output()
     5);
 
   out_index++;
-
-  dealii::DataOut<dim> test;
-
-  test.attach_dof_handler(fe_field->get_dof_handler());
-
-  test.add_data_vector(fe_field->solution, postprocessor);
-
-  test.build_patches();
-
-  static int second_out_index = 0;
-
-  test.write_vtu_with_pvtu_record(
-    parameters.graphical_output_directory + "paraview/",
-    "Test",
-    second_out_index,
-    MPI_COMM_WORLD,
-    5);
-
-  second_out_index++;
 }
 
 
