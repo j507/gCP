@@ -145,6 +145,10 @@ void Postprocessor<dim>::evaluate_vector_field(
   const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
   std::vector<dealii::Vector<double>>                 &computed_quantities) const
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The Postprocessor<dim> instance has"
+                                 " not been initialized."));
+
   const typename dealii::DoFHandler<dim>::cell_iterator current_cell =
     inputs.template get_cell<dim>();
 
