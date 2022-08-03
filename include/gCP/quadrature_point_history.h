@@ -107,6 +107,8 @@ private:
 
   std::pair<double, double> tmp_values;
 
+  bool                      flag_set_damage_to_zero;
+
   bool                      flag_values_were_updated;
 
   bool                      flag_init_was_called;

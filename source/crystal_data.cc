@@ -37,6 +37,8 @@ void CrystalsData<dim>::init(
 
   compute_rotation_matrices();
 
+  compute_3d_rotation_matrices();
+
   compute_slip_systems();
 
   flag_init_was_called = true;
@@ -325,6 +327,59 @@ void CrystalsData<dim>::compute_rotation_matrices()
 
     rotation_tensors.push_back(rotation_tensor);
   }
+}
+
+
+
+template<int dim>
+void CrystalsData<dim>::compute_3d_rotation_matrices()
+{
+  if constexpr(dim == 3)
+    rotation_tensors_3d = rotation_tensors;
+  else if constexpr (dim == 2)
+    for (unsigned int crystal_id = 0;
+        crystal_id < n_crystals; crystal_id++)
+    {
+      dealii::Tensor<2,3> rotation_tensor;
+
+      const double deg_to_rad = M_PI / 180.0;
+
+      const double alpha  = 0.0;
+      const double beta   = 0.0;
+      const double gamma  = euler_angles[crystal_id][0] * deg_to_rad;
+
+      dealii::Tensor<2,3> rotation_tensor_alpha;
+      dealii::Tensor<2,3> rotation_tensor_beta;
+      dealii::Tensor<2,3> rotation_tensor_gamma;
+
+      rotation_tensor_alpha[0][0] = 1.0;
+      rotation_tensor_alpha[1][1] = std::cos(alpha);
+      rotation_tensor_alpha[1][2] = -std::sin(alpha);
+      rotation_tensor_alpha[2][1] = std::sin(alpha);
+      rotation_tensor_alpha[2][2] = std::cos(alpha);
+
+      rotation_tensor_beta[0][0] = std::cos(beta);
+      rotation_tensor_beta[0][2] = std::sin(beta);
+      rotation_tensor_beta[1][1] = 1.0;
+      rotation_tensor_beta[2][0] = -std::sin(beta);
+      rotation_tensor_beta[2][2] = std::cos(beta);
+
+      rotation_tensor_gamma[0][0] = std::cos(gamma);
+      rotation_tensor_gamma[0][1] = -std::sin(gamma);
+      rotation_tensor_gamma[1][0] = std::sin(gamma);
+      rotation_tensor_gamma[1][1] = std::cos(gamma);
+      rotation_tensor_gamma[2][2] = 1.0;
+
+      rotation_tensor = dealii::contract<1,0>(
+                          rotation_tensor_gamma,
+                          dealii::contract<1,0>(
+                            rotation_tensor_beta,
+                            rotation_tensor_alpha));
+
+      rotation_tensors_3d.push_back(rotation_tensor);
+    }
+  else
+    Assert(false, dealii::ExcNotImplemented());
 }
 
 

@@ -170,6 +170,8 @@ private:
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
+  Postprocessing::Postprocessor<dim>                postprocessor;
+
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
@@ -229,6 +231,8 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
+postprocessor(fe_field,
+              crystals_data),
 simple_shear(fe_field,
              mapping,
              parameters.shear_strain_at_upper_boundary,
@@ -695,67 +699,14 @@ void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
-  std::vector<std::string> displacement_names;
-  std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-                           component_interpretation;
-
-  // Explicit declaration of the velocity as a vector
-  if (fe_field->is_decohesion_allowed())
-  {
-    for (unsigned int crystal_id = 0;
-        crystal_id < crystals_data->get_n_crystals();
-        ++crystal_id)
-      for (unsigned int i = 0; i < dim; ++i)
-      {
-        displacement_names.emplace_back("crystal_" +
-          std::to_string(crystal_id) + "_displacement");
-        component_interpretation.push_back(
-          dealii::DataComponentInterpretation::component_is_part_of_vector);
-      }
-  }
-  else
-  {
-    for (unsigned int i = 0; i < dim; ++i)
-    {
-      displacement_names.emplace_back("displacement");
-      component_interpretation.push_back(
-        dealii::DataComponentInterpretation::component_is_part_of_vector);
-    }
-  }
-
-  // Explicit declaration of the slips as scalars
-  for (unsigned int crystal_id = 0;
-       crystal_id < crystals_data->get_n_crystals();
-       ++crystal_id)
-    for (unsigned int slip_id = 0;
-        slip_id < crystals_data->get_n_slips();
-        ++slip_id)
-    {
-      displacement_names.emplace_back(
-        "crystal_" + std::to_string(crystal_id) +
-        "_slip_" + std::to_string(slip_id));
-      component_interpretation.push_back(
-        dealii::DataComponentInterpretation::component_is_scalar);
-    }
-
   dealii::DataOut<dim> data_out;
 
-  data_out.add_data_vector(fe_field->get_dof_handler(),
-                           fe_field->solution,
-                           displacement_names,
-                           component_interpretation);
+  data_out.attach_dof_handler(fe_field->get_dof_handler());
 
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[0],
-                           std::vector<std::string>(1, "2e12"));
-
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[1],
-                           std::vector<std::string>(1, "s12"));
+  data_out.add_data_vector(fe_field->solution, postprocessor);
 
   data_out.build_patches(*mapping,
-                         1/*fe_field->get_displacement_fe_degree()*/,
+                         fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
@@ -792,6 +743,8 @@ void SimpleShearProblem<dim>::run()
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
                     gCP_solver.get_hooke_law());
+
+  postprocessor.init(gCP_solver.get_hooke_law());
 
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
@@ -891,6 +844,14 @@ int main(int argc, char *argv[])
                     "the parameters file) is currently supported."));
       break;
     }
+
+    int rank;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0)
+      std::cout << "Running with \""
+                << parameters_filepath << "\"" << "\n";
 
     gCP::RunTimeParameters::SimpleShearParameters parameters(parameters_filepath);
 
