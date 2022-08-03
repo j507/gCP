@@ -65,6 +65,7 @@ void InterfaceQuadraturePointHistory<dim>::init(
 
   critical_opening_displacement = parameters.critical_opening_displacement;
 
+  flag_set_damage_to_zero       = parameters.flag_set_damage_to_zero;
   /*critical_energy_release_rate  = critical_cohesive_traction *
                                   critical_opening_displacement *
                                   std::exp(1.0);*/
@@ -137,6 +138,9 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
   damage_variable =
     1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio);
+
+  if (flag_set_damage_to_zero)
+    damage_variable = 0.0;
 
   flag_values_were_updated = true;
 }

@@ -320,6 +320,13 @@ struct DecohesionLawParameters
    * @todo Docu
    */
   double  critical_opening_displacement;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool  flag_set_damage_to_zero;
 };
 
 
