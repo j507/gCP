@@ -61,7 +61,7 @@ Postprocessor<dim>::get_names() const
   solution_names.emplace_back("EquivalentEdgeDislocationDensity");
   solution_names.emplace_back("EquivalentScrewDislocationDensity");
   solution_names.emplace_back("VonMisesStress");
-  solution_names.emplace_back("VonMisesStrain");
+  solution_names.emplace_back("VonMisesPlasticStrain");
   solution_names.emplace_back("Stress_11");
   solution_names.emplace_back("Stress_22");
   solution_names.emplace_back("Stress_33");
