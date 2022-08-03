@@ -246,6 +246,68 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 
 
+DecohesionLawParameters::DecohesionLawParameters()
+:
+critical_cohesive_traction(0.0),
+critical_opening_displacement(0.0),
+flag_set_damage_to_zero(false)
+{}
+
+
+
+void DecohesionLawParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Decohesion law's parameters");
+  {
+    prm.declare_entry("Maximum cohesive traction",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Critical opening displacement",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Set damage to zero",
+                      "false",
+                      dealii::Patterns::Bool());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DecohesionLawParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Decohesion law's parameters");
+  {
+    critical_cohesive_traction =
+      prm.get_double("Maximum cohesive traction");
+
+    AssertThrow(critical_cohesive_traction >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  critical_cohesive_traction, 0.0));
+
+    AssertIsFinite(critical_cohesive_traction);
+
+    critical_opening_displacement =
+      prm.get_double("Critical opening displacement");
+
+    AssertThrow(critical_opening_displacement >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  critical_opening_displacement, 0.0));
+
+    AssertIsFinite(critical_opening_displacement);
+
+    flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
+
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 residual_tolerance(1e-10),
@@ -254,6 +316,7 @@ n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
+allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
@@ -299,8 +362,13 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
     MicroscopicTractionLawParameters::declare_parameters(prm);
+    DecohesionLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
+
+  prm.declare_entry("Allow decohesion at grain boundaries",
+                    "false",
+                    dealii::Patterns::Bool());
 
   prm.declare_entry("Boundary conditions at grain boundaries",
                     "microfree",
@@ -366,8 +434,11 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
     microscopic_traction_law_parameters.parse_parameters(prm);
+    decohesion_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
   const std::string string_boundary_conditions_at_grain_boundaries(
                     prm.get("Boundary conditions at grain boundaries"));

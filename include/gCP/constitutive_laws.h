@@ -34,6 +34,11 @@ public:
     const dealii::SymmetricTensor<2,dim>    strain_tensor_value,
     const std::vector<std::vector<double>>  slip_values) const;
 
+  const dealii::SymmetricTensor<2,dim> get_plastic_strain_tensor(
+    const unsigned int                      crystal_id,
+    const unsigned int                      q_point,
+    const std::vector<std::vector<double>>  slip_values) const;
+
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 };
@@ -64,6 +69,11 @@ public:
   const dealii::SymmetricTensor<4,dim> &get_stiffness_tetrad(
     const unsigned int crystal_id) const;
 
+  const dealii::SymmetricTensor<4,3> &get_stiffness_tetrad_3d() const;
+
+  const dealii::SymmetricTensor<4,3> &get_stiffness_tetrad_3d(
+    const unsigned int crystal_id) const;
+
   const dealii::SymmetricTensor<2,dim> get_stress_tensor(
     const dealii::SymmetricTensor<2,dim> strain_tensor_values) const;
 
@@ -91,6 +101,11 @@ private:
   dealii::SymmetricTensor<4,dim>              reference_stiffness_tetrad;
 
   std::vector<dealii::SymmetricTensor<4,dim>> stiffness_tetrads;
+
+  dealii::SymmetricTensor<4,3>                reference_stiffness_tetrad_3d;
+
+  std::vector<dealii::SymmetricTensor<4,3>>   stiffness_tetrads_3d;
+
 
   bool                                        flag_init_was_called;
 };
@@ -135,6 +150,48 @@ inline const dealii::SymmetricTensor<4,dim>
   AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
 
   return (stiffness_tetrads[crystal_id]);
+}
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<4,3>
+&HookeLaw<dim>::get_stiffness_tetrad_3d() const
+{
+  AssertThrow(crystallite == Crystallite::Monocrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a monocrystalline."
+                                 " Nonetheless a CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  return (reference_stiffness_tetrad_3d);
+}
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<4,3>
+&HookeLaw<dim>::get_stiffness_tetrad_3d(const unsigned int crystal_id) const
+{
+  AssertThrow(crystallite == Crystallite::Polycrystalline,
+              dealii::ExcMessage("This overload is meant for the"
+                                 " case of a polycrystalline."
+                                 " Nonetheless no CrystalsData<dim>'s"
+                                 " shared pointer was passed on to the"
+                                 " constructor"));
+
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+
+  return (stiffness_tetrads_3d[crystal_id]);
 }
 
 
@@ -355,11 +412,52 @@ private:
 
 
 template<int dim>
-class MicroscopicInterfaceTractionLaw
+class InterfaceMacrotractionLaw
 {
 public:
-  MicroscopicInterfaceTractionLaw();
+  InterfaceMacrotractionLaw(
+    const RunTimeParameters::DecohesionLawParameters parameters);
+
+  dealii::Tensor<1,dim> get_interface_macrotraction(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+    const double                max_effective_opening_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
+    const double                old_effective_opening_displacement,
+    const double                time_step_size) const;
+
+private:
+  double critical_cohesive_traction;
+
+  double critical_opening_displacement;
+
+  double get_master_relation(
+    const double effective_opening_displacement) const;
 };
+
+
+
+template <int dim>
+inline double
+InterfaceMacrotractionLaw<dim>::get_master_relation(
+  const double effective_opening_displacement) const
+{
+  return (critical_cohesive_traction *
+          effective_opening_displacement /
+          critical_opening_displacement *
+          std::exp(1.0 - effective_opening_displacement /
+                         critical_opening_displacement));
+}
 
 
 

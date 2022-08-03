@@ -107,6 +107,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             face_JxW_values;
 
+  std::vector<double>                             face_neighbor_JxW_values;
+
   dealii::SymmetricTensor<4,dim>                  stiffness_tetrad;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     reduced_gradient_hardening_tensors;
@@ -125,11 +127,29 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::FullMatrix<double>>         inter_gateaux_derivative_values;
 
+  std::vector<dealii::Tensor<1,dim>>              current_cell_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              current_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_old_displacement_values;
+
+  std::vector<double>                             damage_variable_values;
+
+  std::vector<dealii::SymmetricTensor<2,dim>>     current_cell_gateaux_derivative_values;
+
+  std::vector<dealii::SymmetricTensor<2,dim>>     neighbor_cell_gateaux_derivative_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     sym_grad_vector_phi;
 
   std::vector<std::vector<double>>                scalar_phi;
 
   std::vector<std::vector<dealii::Tensor<1,dim>>> grad_scalar_phi;
+
+  std::vector<dealii::Tensor<1,dim>>              face_vector_phi;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_face_vector_phi;
 
   std::vector<std::vector<double>>                face_scalar_phi;
 
@@ -191,6 +211,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             face_JxW_values;
 
+  std::vector<double>                             face_neighbor_JxW_values;
+
   std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     elastic_strain_tensor_values;
@@ -216,6 +238,18 @@ struct Scratch : ScratchBase<dim>
   std::vector<dealii::Tensor<1,dim>>              supply_term_values;
 
   std::vector<dealii::Tensor<1,dim>>              neumann_boundary_values;
+
+  std::vector<dealii::Tensor<1,dim>>              current_cell_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              current_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              neighbor_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>              interface_macrotraction_values;
+
+  std::vector<double>                             damage_variable_values;
 
   std::vector<std::vector<double>>                face_slip_values;
 
@@ -258,21 +292,36 @@ struct Scratch : ScratchBase<dim>
 {
   Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
-          const dealii::hp::FECollection<dim>       &finite_element,
+          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element_collection,
           const dealii::UpdateFlags                 update_flags,
+          const dealii::UpdateFlags                 face_update_flags,
           const unsigned int                        n_slips);
 
   Scratch(const Scratch<dim>  &data);
 
   void reset();
 
-  dealii::hp::FEValues<dim>         hp_fe_values;
+  dealii::hp::FEValues<dim>           hp_fe_values;
 
-  unsigned int                      n_slips;
+  dealii::hp::FEFaceValues<dim>       hp_fe_face_values;
 
-  std::vector<std::vector<double>>  slips_values;
+  dealii::hp::FEFaceValues<dim>       neighbor_hp_fe_face_values;
 
-  std::vector<std::vector<double>>  old_slips_values;
+  const unsigned int                  n_face_q_points;
+
+  unsigned int                        n_slips;
+
+  std::vector<std::vector<double>>    slips_values;
+
+  std::vector<std::vector<double>>    old_slips_values;
+
+  std::vector<dealii::Tensor<1,dim>>  normal_vector_values;
+
+  std::vector<dealii::Tensor<1,dim>>  current_cell_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>  neighbor_cell_displacement_values;
+
 };
 
 

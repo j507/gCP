@@ -53,6 +53,34 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
 
 
 
+template <int dim>
+const dealii::SymmetricTensor<2,dim>
+ElasticStrain<dim>::get_plastic_strain_tensor(
+  const unsigned int                      crystal_id,
+  const unsigned int                      q_point,
+  const std::vector<std::vector<double>>  slip_values) const
+{
+  AssertThrow(crystals_data->is_initialized(),
+              dealii::ExcMessage("The underlying CrystalsData<dim>"
+                                  " instance has not been "
+                                  " initialized."));
+
+  dealii::SymmetricTensor<2,dim> plastic_strain_tensor;
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips();
+       ++slip_id)
+  {
+    plastic_strain_tensor +=
+      slip_values[slip_id][q_point] *
+      crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
+  }
+
+  return plastic_strain_tensor;
+}
+
+
+
 } // namespace Kinematics
 
 
@@ -106,6 +134,24 @@ void HookeLaw<dim>::init()
           else if (i == j && k == l)
             reference_stiffness_tetrad[i][j][k][l] = C1122;
 
+  if constexpr(dim == 3)
+    reference_stiffness_tetrad_3d = reference_stiffness_tetrad;
+  else if constexpr(dim == 2)
+  {
+    for (unsigned int i = 0; i < 3; i++)
+      for (unsigned int j = 0; j < 3; j++)
+        for (unsigned int k = 0; k < 3; k++)
+          for (unsigned int l = 0; l < 3; l++)
+            if (i == j && j == k && k == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1111;
+            else if (i == k && j == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1212;
+            else if (i == j && k == l)
+              reference_stiffness_tetrad_3d[i][j][k][l] = C1122;
+  }
+  else
+    Assert(false, dealii::ExcNotImplemented());
+
   switch (crystallite)
   {
   case Crystallite::Monocrystalline:
@@ -122,10 +168,12 @@ void HookeLaw<dim>::init()
            crystal_id < crystals_data->get_n_crystals();
            crystal_id++)
         {
-          dealii::SymmetricTensor<4,dim> stiffness_tetrad;
+          dealii::SymmetricTensor<4,dim>  stiffness_tetrad;
 
           dealii::Tensor<2,dim> rotation_tensor =
             crystals_data->get_rotation_tensor(crystal_id);
+
+          dealii::SymmetricTensor<4,3>    stiffness_tetrad_3d;
 
           // The indices j and l do not start at zero due to the
           // nature of the dealii::SymmetricTensor<4,dim> class, where
@@ -146,7 +194,33 @@ void HookeLaw<dim>::init()
                             rotation_tensor[l][r] *
                             reference_stiffness_tetrad[o][p][q][r];
 
+          if constexpr(dim == 3)
+            stiffness_tetrad_3d = stiffness_tetrad;
+          else if constexpr(dim == 2)
+          {
+            dealii::Tensor<2,3>   rotation_tensor_3d =
+              crystals_data->get_3d_rotation_tensor(crystal_id);
+
+            for (unsigned int i = 0; i < 3; i++)
+              for (unsigned int j = i; j < 3; j++)
+                for (unsigned int k = 0; k < 3; k++)
+                  for (unsigned int l = k; l < 3; l++)
+                    for (unsigned int o = 0; o < 3; o++)
+                      for (unsigned int p = 0; p < 3; p++)
+                        for (unsigned int q = 0; q < 3; q++)
+                          for (unsigned int r = 0; r < 3; r++)
+                            stiffness_tetrad_3d[i][j][k][l] +=
+                              rotation_tensor_3d[i][o] *
+                              rotation_tensor_3d[j][p] *
+                              rotation_tensor_3d[k][q] *
+                              rotation_tensor_3d[l][r] *
+                              reference_stiffness_tetrad_3d[o][p][q][r];
+          }
+          else
+            Assert(false, dealii::ExcNotImplemented());
+
           stiffness_tetrads.push_back(stiffness_tetrad);
+          stiffness_tetrads_3d.push_back(stiffness_tetrad_3d);
         }
     }
     break;
@@ -552,17 +626,23 @@ MicroscopicTractionLaw<2>::get_grain_interaction_moduli(
 
         AssertThrow(
           std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
-            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= (1.0 + 1e-14),
           dealii::ExcMessage(
             "The interaction moduli should be inside the "
-            "range [0,1]."));
+            "range [0,1]. Its value is " +
+            std::to_string(
+              std::fabs(
+                intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]))));
 
         AssertThrow(
           std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
-            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= (1.0 + __DBL_EPSILON__),
           dealii::ExcMessage(
             "The interaction moduli should be inside the "
-            "range [0,1]."));
+            "range [0,1].  Its value is " +
+            std::to_string(
+              std::fabs(
+                inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]))));
 
         AssertIsFinite(
           intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
@@ -772,6 +852,240 @@ MicroscopicTractionLaw<dim>::
 
 
 
+template<int dim>
+InterfaceMacrotractionLaw<dim>::InterfaceMacrotractionLaw(
+  const RunTimeParameters::DecohesionLawParameters parameters)
+:
+critical_cohesive_traction(parameters.critical_cohesive_traction),
+critical_opening_displacement(parameters.critical_opening_displacement)
+{}
+
+
+
+template <int dim>
+dealii::Tensor<1,dim>
+InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  AssertIsFinite(effective_opening_displacement);
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::Tensor<1,dim> interface_macrotraction;
+
+  if (opening_displacement.norm() != 0.0)
+    interface_macrotraction =
+      opening_displacement / opening_displacement.norm();
+  else
+    interface_macrotraction =
+      opening_displacement;
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    interface_macrotraction *=
+      get_master_relation(effective_opening_displacement);
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    interface_macrotraction *=
+      get_master_relation(max_effective_opening_displacement) *
+      effective_opening_displacement /
+      max_effective_opening_displacement;
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  for (unsigned int i = 0; i < dim; ++i)
+    AssertIsFinite(interface_macrotraction[i]);
+
+  return (interface_macrotraction);
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim>
+InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  AssertIsFinite(effective_opening_displacement);
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::SymmetricTensor<2,dim> current_cell_gateaux_derivative;
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    if (effective_opening_displacement != 0)
+      current_cell_gateaux_derivative =
+        -1.0 *
+        critical_cohesive_traction /
+        critical_opening_displacement *
+        std::exp(1.0 - effective_opening_displacement /
+                      critical_opening_displacement) *
+        (dealii::unit_symmetric_tensor<dim>() -
+        effective_opening_displacement / critical_opening_displacement *
+        dealii::symmetrize(dealii::outer_product(
+          opening_displacement / effective_opening_displacement,
+          opening_displacement / effective_opening_displacement)));
+    else
+      current_cell_gateaux_derivative =
+        -1.0 *
+        critical_cohesive_traction /
+        critical_opening_displacement *
+        std::exp(1.0 - effective_opening_displacement /
+                      critical_opening_displacement) *
+        dealii::unit_symmetric_tensor<dim>();
+
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    current_cell_gateaux_derivative =
+      -1.0 *
+      get_master_relation(max_effective_opening_displacement) /
+      max_effective_opening_displacement *
+      dealii::unit_symmetric_tensor<dim>();
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  for (unsigned int i = 0;
+       i < current_cell_gateaux_derivative.n_independent_components; ++i)
+    AssertIsFinite(current_cell_gateaux_derivative.access_raw_entry(i));
+
+  return (current_cell_gateaux_derivative);
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim>
+InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
+  const double                max_effective_opening_displacement,
+  const dealii::Tensor<1,dim> opening_displacement,
+  const double                old_effective_opening_displacement,
+  const double                time_step_size) const
+{
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
+  const double effective_opening_displacement =
+    opening_displacement.norm();
+
+  AssertIsFinite(effective_opening_displacement);
+  Assert(effective_opening_displacement <=
+           max_effective_opening_displacement,
+         dealii::ExcMessage(
+           "The effective opening displacement is not suppose to be "
+           "bigger than the maximum. An update_values() call ought to "
+           "be missing in code."));
+
+  const double effective_opening_displacement_rate =
+    (effective_opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
+
+  dealii::SymmetricTensor<2,dim> neighbor_cell_gateaux_derivative;
+
+  if (effective_opening_displacement ==
+        max_effective_opening_displacement &&
+      effective_opening_displacement_rate >= 0.0)
+  {
+    if (effective_opening_displacement != 0)
+      neighbor_cell_gateaux_derivative =
+        critical_cohesive_traction /
+        critical_opening_displacement *
+        std::exp(1.0 - effective_opening_displacement /
+                      critical_opening_displacement) *
+        (dealii::unit_symmetric_tensor<dim>() -
+        effective_opening_displacement / critical_opening_displacement *
+        dealii::symmetrize(dealii::outer_product(
+          opening_displacement / effective_opening_displacement,
+          opening_displacement / effective_opening_displacement)));
+    else
+      neighbor_cell_gateaux_derivative =
+        critical_cohesive_traction /
+        critical_opening_displacement *
+        std::exp(1.0 - effective_opening_displacement /
+                      critical_opening_displacement) *
+        dealii::unit_symmetric_tensor<dim>();
+
+  }
+  else if (effective_opening_displacement <
+             max_effective_opening_displacement ||
+           (effective_opening_displacement ==
+              max_effective_opening_displacement &&
+            effective_opening_displacement_rate < 0.0))
+  {
+    neighbor_cell_gateaux_derivative =
+      get_master_relation(max_effective_opening_displacement) /
+      max_effective_opening_displacement *
+      dealii::unit_symmetric_tensor<dim>();
+  }
+  else
+    Assert(false, dealii::ExcInternalError());
+
+  for (unsigned int i = 0;
+       i < neighbor_cell_gateaux_derivative.n_independent_components; ++i)
+    AssertIsFinite(neighbor_cell_gateaux_derivative.access_raw_entry(i));
+
+
+  return (neighbor_cell_gateaux_derivative);
+}
+
+
+
 } // ConstitutiveLaws
 
 
@@ -796,3 +1110,6 @@ template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
 
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
+
+template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<2>;
+template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<3>;

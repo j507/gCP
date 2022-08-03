@@ -81,6 +81,8 @@ class DisplacementControl : public dealii::Function<dim>
 public:
   DisplacementControl(const double        shear_strain_at_upper_boundary,
                       const double        height,
+                      const unsigned int  n_crystals,
+                      const bool          flag_is_decohesion_allowed = false,
                       const unsigned int  n_components = 3,
                       const double        time = 0.0);
 
@@ -89,9 +91,13 @@ public:
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-  const double shear_strain_at_upper_boundary;
+  const unsigned int  n_crystals;
 
-  const double height;
+  const bool          flag_is_decohesion_allowed;
+
+  const double        shear_strain_at_upper_boundary;
+
+  const double        height;
 };
 
 
@@ -100,10 +106,14 @@ template<int dim>
 DisplacementControl<dim>::DisplacementControl(
   const double        shear_strain_at_upper_boundary,
   const double        height,
+  const unsigned int  n_crystals,
+  const bool          flag_is_decohesion_allowed,
   const unsigned int  n_components,
   const double        time)
 :
 dealii::Function<dim>(n_components, time),
+n_crystals(n_crystals),
+flag_is_decohesion_allowed(flag_is_decohesion_allowed),
 shear_strain_at_upper_boundary(shear_strain_at_upper_boundary),
 height(height)
 {}
@@ -120,6 +130,10 @@ void DisplacementControl<dim>::vector_value(
   return_vector = 0.0;
 
   return_vector[0] = t * height * shear_strain_at_upper_boundary;
+
+  if (flag_is_decohesion_allowed)
+    for (unsigned int i = 1; i < n_crystals; ++i)
+      return_vector[i*dim] = t * height * shear_strain_at_upper_boundary;
 }
 
 
@@ -155,6 +169,8 @@ private:
   std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
+
+  Postprocessing::Postprocessor<dim>                postprocessor;
 
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
@@ -205,7 +221,8 @@ triangulation(
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.fe_degree_displacements,
-  parameters.fe_degree_slips)),
+  parameters.fe_degree_slips,
+  parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
            discrete_time,
@@ -214,6 +231,8 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
+postprocessor(fe_field,
+              crystals_data),
 simple_shear(fe_field,
              mapping,
              parameters.shear_strain_at_upper_boundary,
@@ -377,6 +396,8 @@ void SimpleShearProblem<dim>::setup()
     std::make_unique<DisplacementControl<dim>>(
       parameters.shear_strain_at_upper_boundary,
       parameters.height,
+      crystals_data->get_n_crystals(),
+      fe_field->is_decohesion_allowed(),
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -678,44 +699,14 @@ void SimpleShearProblem<dim>::data_output()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
 
-  // Explicit declaration of the velocity as a vector
-  std::vector<std::string> displacement_names(dim, "displacement");
-  std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-    component_interpretation(
-      dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
-
-  // Explicit declaration of the slips as scalars
-  for (unsigned int crystal_id = 0;
-       crystal_id < crystals_data->get_n_crystals();
-       ++crystal_id)
-    for (unsigned int slip_id = 0;
-        slip_id < crystals_data->get_n_slips();
-        ++slip_id)
-    {
-      displacement_names.emplace_back(
-        "crystal_" + std::to_string(crystal_id) +
-        "_slip_" + std::to_string(slip_id));
-      component_interpretation.push_back(
-        dealii::DataComponentInterpretation::component_is_scalar);
-    }
-
   dealii::DataOut<dim> data_out;
 
-  data_out.add_data_vector(fe_field->get_dof_handler(),
-                           fe_field->solution,
-                           displacement_names,
-                           component_interpretation);
+  data_out.attach_dof_handler(fe_field->get_dof_handler());
 
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[0],
-                           std::vector<std::string>(1, "2e12"));
-
-  data_out.add_data_vector(simple_shear.get_dof_handler(),
-                           simple_shear.get_data()[1],
-                           std::vector<std::string>(1, "s12"));
+  data_out.add_data_vector(fe_field->solution, postprocessor);
 
   data_out.build_patches(*mapping,
-                         1/*fe_field->get_displacement_fe_degree()*/,
+                         fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
@@ -752,6 +743,8 @@ void SimpleShearProblem<dim>::run()
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
                     gCP_solver.get_hooke_law());
+
+  postprocessor.init(gCP_solver.get_hooke_law());
 
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
@@ -851,6 +844,14 @@ int main(int argc, char *argv[])
                     "the parameters file) is currently supported."));
       break;
     }
+
+    int rank;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0)
+      std::cout << "Running with \""
+                << parameters_filepath << "\"" << "\n";
 
     gCP::RunTimeParameters::SimpleShearParameters parameters(parameters_filepath);
 

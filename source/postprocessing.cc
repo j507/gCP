@@ -16,6 +16,415 @@ namespace Postprocessing
 
 
 template <int dim>
+Postprocessor<dim>::Postprocessor(
+  std::shared_ptr<FEField<dim>>       &fe_field,
+  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
+:
+fe_field(fe_field),
+crystals_data(crystals_data),
+voigt_indices(6),
+deviatoric_projector(
+  dealii::identity_tensor<dim>() -
+  1.0 / 3.0 *
+  dealii::outer_product(
+    dealii::unit_symmetric_tensor<dim>(),
+    dealii::unit_symmetric_tensor<dim>())),
+deviatoric_projector_3d(
+  dealii::identity_tensor<3>() -
+  1.0 / 3.0 *
+  dealii::outer_product(
+    dealii::unit_symmetric_tensor<3>(),
+    dealii::unit_symmetric_tensor<3>()))
+{
+  voigt_indices[0] = std::make_pair<unsigned int, unsigned int>(0,0);
+  voigt_indices[1] = std::make_pair<unsigned int, unsigned int>(1,1);
+  voigt_indices[2] = std::make_pair<unsigned int, unsigned int>(2,2);
+  voigt_indices[3] = std::make_pair<unsigned int, unsigned int>(1,2);
+  voigt_indices[4] = std::make_pair<unsigned int, unsigned int>(0,2);
+  voigt_indices[5] = std::make_pair<unsigned int, unsigned int>(0,1);
+}
+
+
+
+template <int dim>
+std::vector<std::string>
+Postprocessor<dim>::get_names() const
+{
+  std::vector<std::string> solution_names(dim, "Displacement");
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    solution_names.emplace_back("Slip_" + std::to_string(slip_id));
+
+  solution_names.emplace_back("EquivalentPlasticStrain");
+  solution_names.emplace_back("EquivalentEdgeDislocationDensity");
+  solution_names.emplace_back("EquivalentScrewDislocationDensity");
+  solution_names.emplace_back("VonMisesStress");
+  solution_names.emplace_back("VonMisesPlasticStrain");
+  solution_names.emplace_back("Stress_11");
+  solution_names.emplace_back("Stress_22");
+  solution_names.emplace_back("Stress_33");
+  solution_names.emplace_back("Stress_23");
+  solution_names.emplace_back("Stress_13");
+  solution_names.emplace_back("Stress_12");
+  solution_names.emplace_back("Strain_11");
+  solution_names.emplace_back("Strain_22");
+  solution_names.emplace_back("Strain_33");
+  solution_names.emplace_back("Strain_23x2");
+  solution_names.emplace_back("Strain_13x2");
+  solution_names.emplace_back("Strain_12x2");
+
+  return solution_names;
+}
+
+
+template <int dim>
+std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+Postprocessor<dim>::get_data_component_interpretation()
+  const
+{
+  std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      interpretation(
+        dim,
+        dealii::DataComponentInterpretation::component_is_part_of_vector);
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+
+  return interpretation;
+}
+
+
+template <int dim>
+dealii::UpdateFlags
+Postprocessor<dim>::get_needed_update_flags() const
+{
+  return dealii::update_values |
+         dealii::update_gradients |
+         dealii::update_quadrature_points;
+}
+
+
+
+template <int dim>
+void Postprocessor<dim>::init(
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law)
+{
+  this->hooke_law       = hooke_law;
+
+  flag_init_was_called  = true;
+}
+
+
+
+template <int dim>
+void Postprocessor<dim>::evaluate_vector_field(
+  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+  std::vector<dealii::Vector<double>>                 &computed_quantities) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The Postprocessor<dim> instance has"
+                                 " not been initialized."));
+
+  const typename dealii::DoFHandler<dim>::cell_iterator current_cell =
+    inputs.template get_cell<dim>();
+
+  const unsigned int material_id  = current_cell->material_id();
+
+  const unsigned int n_q_points   = inputs.solution_values.size();
+
+  const unsigned int n_components = fe_field->get_n_components();
+
+  const unsigned int n_slips      = crystals_data->get_n_slips();
+
+  const unsigned int n_crystals   = crystals_data->get_n_crystals();
+
+  (void)n_components;
+
+  Assert(inputs.solution_gradients.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(computed_quantities.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(inputs.solution_values[0].size() == n_components,
+         dealii::ExcInternalError());
+
+  // Reset
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
+      computed_quantities[q_point](d) = 0.0;
+
+
+  dealii::Tensor<2,dim>           displacement_gradient;
+  dealii::SymmetricTensor<2,dim>  strain_tensor;
+  dealii::SymmetricTensor<2,3>    strain_tensor_3d;
+  dealii::SymmetricTensor<2,dim>  plastic_strain_tensor;
+  dealii::SymmetricTensor<2,dim>  elastic_strain_tensor;
+  dealii::SymmetricTensor<2,3>    stress_tensor;
+  double                          equivalent_edge_dislocation_density;
+  double                          equivalent_screw_dislocation_density;
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+    // Reset
+    displacement_gradient                 = 0.0;
+    strain_tensor                         = 0.0;
+    strain_tensor_3d                      = 0.0;
+    plastic_strain_tensor                 = 0.0;
+    elastic_strain_tensor                 = 0.0;
+    stress_tensor                         = 0.0;
+    equivalent_edge_dislocation_density   = 0.0;
+    equivalent_screw_dislocation_density  = 0.0;
+
+    if (fe_field->is_decohesion_allowed())
+    {
+      // Displacement
+      for (unsigned int d = 0; d < dim; ++d)
+        for (unsigned int crystal_id = 0;
+              crystal_id < n_crystals; ++crystal_id)
+      {
+        computed_quantities[q_point](d) +=
+            inputs.solution_values[q_point](d + dim * crystal_id);
+
+        displacement_gradient[d] +=
+          inputs.solution_gradients[q_point][d + dim * crystal_id];
+      }
+
+      strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+      strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
+
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](dim + slip_id) +=
+            inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id);
+
+          // Equivalent plastic strain
+          computed_quantities[q_point](dim + n_slips) +=
+            inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id);
+
+          // Equivalent edge dislocation density
+          equivalent_edge_dislocation_density +=
+            std::pow(inputs.solution_gradients[q_point][
+                dim * n_crystals + slip_id + n_slips * crystal_id] *
+            crystals_data->get_slip_direction(crystal_id, slip_id), 2);
+
+          // Equivalent screw dislocation density
+          equivalent_screw_dislocation_density +=
+            std::pow(inputs.solution_gradients[q_point][
+                dim * n_crystals + slip_id + n_slips * crystal_id] *
+            crystals_data->get_slip_orthogonal(crystal_id, slip_id), 2);
+
+          // Plastic strain tensor
+          plastic_strain_tensor +=
+            inputs.solution_values[q_point](
+                dim * n_crystals + slip_id + n_slips * crystal_id) *
+            crystals_data->get_symmetrized_schmid_tensor(
+              crystal_id, slip_id);
+        }
+
+      computed_quantities[q_point](dim + n_slips + 1) =
+        std::sqrt(equivalent_edge_dislocation_density);
+
+      computed_quantities[q_point](dim + n_slips + 2) =
+        std::sqrt(equivalent_screw_dislocation_density);
+
+      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+
+      stress_tensor =
+        hooke_law->get_stiffness_tetrad_3d(material_id) *
+        convert_2d_to_3d(elastic_strain_tensor);
+
+      // Von-Mises stress
+      computed_quantities[q_point](dim + n_slips + 3) =
+        get_von_mises_stress(stress_tensor);
+
+      // Von-Mises plastic strain
+      computed_quantities[q_point](dim + n_slips + 4) =
+        get_von_mises_plastic_strain(plastic_strain_tensor);
+
+      // Stress components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 5 + i) =
+          stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+      // Strain components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 11 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+    }
+    else
+    {
+      // Displacement
+      for (unsigned int d = 0; d < dim; ++d)
+      {
+        computed_quantities[q_point](d) =
+          inputs.solution_values[q_point](d);
+
+        displacement_gradient[d] =
+          inputs.solution_gradients[q_point][d];
+      }
+
+      strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+      strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
+
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](dim + slip_id) +=
+              inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id);
+
+          // Equivalent plastic strain
+          computed_quantities[q_point](dim + n_slips) +=
+              inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id);
+
+          // Equivalent edge dislocation density
+          equivalent_edge_dislocation_density +=
+            std::pow(inputs.solution_gradients[q_point][
+                dim + slip_id + n_slips * crystal_id] *
+            crystals_data->get_slip_direction(crystal_id, slip_id), 2);
+
+          // Equivalent screw dislocation density
+          equivalent_screw_dislocation_density +=
+            std::pow(inputs.solution_gradients[q_point][
+                dim + slip_id + n_slips * crystal_id] *
+            crystals_data->get_slip_orthogonal(crystal_id, slip_id), 2);
+
+          // Plastic strain tensor
+          plastic_strain_tensor +=
+            inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id) *
+            crystals_data->get_symmetrized_schmid_tensor(
+              crystal_id, slip_id);
+        }
+
+      computed_quantities[q_point](dim + n_slips + 1) =
+        std::sqrt(equivalent_edge_dislocation_density);
+
+      computed_quantities[q_point](dim + n_slips + 2) =
+        std::sqrt(equivalent_screw_dislocation_density);
+
+      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+
+      stress_tensor =
+        hooke_law->get_stiffness_tetrad_3d(material_id) *
+        convert_2d_to_3d(elastic_strain_tensor);
+
+      // Von-Mises stress
+      computed_quantities[q_point](dim + n_slips + 3) =
+        get_von_mises_stress(stress_tensor);
+
+      // Von-Mises plastic strain
+      computed_quantities[q_point](dim + n_slips + 4) =
+        get_von_mises_plastic_strain(plastic_strain_tensor);
+
+      // Stress components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 5 + i) =
+          stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+      // Strain components
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+        computed_quantities[q_point](dim + n_slips + 11 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+    }
+  }
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,3>
+Postprocessor<dim>::convert_2d_to_3d(
+  dealii::SymmetricTensor<2,dim> symmetric_tensor) const
+{
+  dealii::SymmetricTensor<2,3> symmetric_tensor_in_3d;
+
+  if constexpr(dim == 3)
+    symmetric_tensor_in_3d = symmetric_tensor;
+  else if constexpr(dim ==2)
+  {
+    symmetric_tensor_in_3d[0][0] = symmetric_tensor[0][0];
+    symmetric_tensor_in_3d[1][1] = symmetric_tensor[1][1];
+    symmetric_tensor_in_3d[0][1] = symmetric_tensor[0][1];
+  }
+  else
+    Assert(false, dealii::ExcNotImplemented());
+
+  return (symmetric_tensor_in_3d);
+}
+
+
+
+template <int dim>
+double Postprocessor<dim>::get_von_mises_stress(
+  dealii::SymmetricTensor<2,3> stress_tensor_in_3d) const
+{
+  const dealii::SymmetricTensor<2,3> deviatoric_stress_tensor =
+    deviatoric_projector_3d * stress_tensor_in_3d;
+
+  double von_mises_stress =
+    deviatoric_stress_tensor * deviatoric_stress_tensor;
+
+  return (std::sqrt(3.0 / 2.0 * von_mises_stress));
+}
+
+
+
+template <int dim>
+double Postprocessor<dim>::get_von_mises_plastic_strain(
+  dealii::SymmetricTensor<2,dim> strain_tensor) const
+{
+  const dealii::SymmetricTensor<2,dim> deviatoric_strain_tensor =
+    deviatoric_projector * strain_tensor;
+
+  double von_mises_strain =
+    deviatoric_strain_tensor * deviatoric_strain_tensor;
+
+  return (std::sqrt(2.0 / 3.0 * von_mises_strain));
+}
+
+
+
+template <int dim>
 SimpleShear<dim>::SimpleShear(
   std::shared_ptr<FEField<dim>>         &fe_field,
   std::shared_ptr<dealii::Mapping<dim>> &mapping,
@@ -25,31 +434,22 @@ SimpleShear<dim>::SimpleShear(
 :
 fe_field(fe_field),
 mapping_collection(*mapping),
-dof_handler(fe_field->get_triangulation()),
-projection_rhs(2),
-projected_data(2),
 shear_at_upper_boundary(shear_at_upper_boundary),
 upper_boundary_id(upper_boundary_id),
 width(width),
 flag_init_was_called(false)
 {
-  fe_collection.push_back(dealii::FE_Q<dim>(1));
-
-  const dealii::QGauss<dim> quadrature_formula(3);
-
-  quadrature_collection.push_back(quadrature_formula);
-
   // Setting up columns
-  table_handler.declare_column("shear at upper boundary");
-  table_handler.declare_column("stress 12 at upper boundary");
+  table_handler.declare_column("shear_at_upper_boundary");
+  table_handler.declare_column("stress_12_at_upper_boundary");
 
   // Setting all columns to scientific notation
-  table_handler.set_scientific("shear at upper boundary", true);
-  table_handler.set_scientific("stress 12 at upper boundary", true);
+  table_handler.set_scientific("shear_at_upper_boundary", true);
+  table_handler.set_scientific("stress_12_at_upper_boundary", true);
 
   // Setting columns' precision
-  table_handler.set_precision("shear at upper boundary", 6);
-  table_handler.set_precision("stress 12 at upper boundary", 6);
+  table_handler.set_precision("shear_at_upper_boundary", 6);
+  table_handler.set_precision("stress_12_at_upper_boundary", 6);
 }
 
 
@@ -62,167 +462,7 @@ void SimpleShear<dim>::init(
   this->elastic_strain  = elastic_strain;
   this->hooke_law       = hooke_law;
 
-  dof_handler.distribute_dofs(fe_collection);
-
-  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
-
-  locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
-
-  hanging_node_constraints.clear();
-  {
-    hanging_node_constraints.reinit(locally_relevant_dofs);
-    dealii::DoFTools::make_hanging_node_constraints(dof_handler,
-                                                    hanging_node_constraints);
-  }
-  hanging_node_constraints.close();
-
-  // Initiate the matrix
-  {
-    dealii::TrilinosWrappers::SparsityPattern
-      sparsity_pattern(locally_owned_dofs,
-                       locally_owned_dofs,
-                       locally_relevant_dofs,
-                       MPI_COMM_WORLD);
-
-    dealii::DoFTools::make_sparsity_pattern(
-      dof_handler,
-      sparsity_pattern,
-      hanging_node_constraints,
-      false,
-      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
-
-    sparsity_pattern.compress();
-
-    projection_matrix.reinit(sparsity_pattern);
-  }
-
-  for (unsigned int i = 0; i < projected_data.size(); ++i)
-  {
-    projected_data[i].reinit(locally_relevant_dofs,
-                             MPI_COMM_WORLD);
-    projection_rhs[i].reinit(locally_owned_dofs,
-                             locally_relevant_dofs,
-                             MPI_COMM_WORLD,
-                             true);
-  }
-
-  assemble_projection_matrix();
-
   flag_init_was_called = true;
-}
-
-
-
-template <int dim>
-void SimpleShear<dim>::assemble_projection_matrix()
-{
-  // Set up local aliases
-  using CellIterator =
-    typename dealii::DoFHandler<dim>::active_cell_iterator;
-
-  using CellFilter =
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
-  // Reset data
-  projection_matrix = 0.0;
-
-  // Set up the lambda function for the local assembly operation
-  auto worker = [this](
-    const CellIterator                                                &cell,
-    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim> &scratch,
-    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data)
-  {
-    this->assemble_local_projection_matrix(cell, scratch, data);
-  };
-
-  // Set up the lambda function for the copy local to global operation
-  auto copier = [this](
-    const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data)
-  {
-    this->copy_local_to_global_projection_matrix(data);
-  };
-
-  // Define the update flags for the FEValues instances
-  const dealii::UpdateFlags update_flags =
-    dealii::update_JxW_values |
-    dealii::update_values;
-
-  // Assemble using the WorkStream approach
-  dealii::WorkStream::run(
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
-    worker,
-    copier,
-    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim>(
-      mapping_collection,
-      quadrature_collection,
-      fe_collection,
-      update_flags),
-    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy(
-      fe_collection.max_dofs_per_cell()));
-
-  // Compress global data
-  projection_matrix.compress(dealii::VectorOperation::add);
-}
-
-
-template <int dim>
-void SimpleShear<dim>::assemble_local_projection_matrix(
-  const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
-  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim> &scratch,
-  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data)
-{
-  // Reset local data
-  data.local_matrix = 0.0;
-
-  // Local to global indices mapping
-  cell->get_dof_indices(data.local_dof_indices);
-
-  const dealii::FEValuesExtractors::Scalar  extractor(0);
-
-  // Update the hp::FEValues instance to the values of the current cell
-  scratch.hp_fe_values.reinit(cell);
-
-  const dealii::FEValues<dim> &fe_values =
-    scratch.hp_fe_values.get_present_fe_values();
-
-  // Get JxW values at the quadrature points
-  scratch.JxW_values = fe_values.get_JxW_values();
-
-  // Loop over quadrature points
-  for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
-  {
-    // Extract test function values at the quadrature points (Displacement)
-    for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-    {
-      scratch.scalar_phi[i] = fe_values[extractor].value(i,q_point);
-    }
-
-    // Loop over local degrees of freedom
-    for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-      for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
-            data.local_matrix(i,j) +=
-              scratch.scalar_phi[i] *
-              scratch.scalar_phi[j] *
-              scratch.JxW_values[q_point];
-  } // Loop over quadrature points
-}
-
-
-
-template <int dim>
-void SimpleShear<dim>::copy_local_to_global_projection_matrix(
-  const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data)
-{
-  hanging_node_constraints.distribute_local_to_global(
-    data.local_matrix,
-    data.local_dof_indices,
-    projection_matrix);
 }
 
 
@@ -237,10 +477,8 @@ void SimpleShear<dim>::compute_data(const double time)
 
   compute_stress_12_at_boundary();
 
-  compute_strain_12();
-
-  table_handler.add_value("shear at upper boundary", time * shear_at_upper_boundary);
-  table_handler.add_value("stress 12 at upper boundary", average_stress_12);
+  table_handler.add_value("shear_at_upper_boundary", time * shear_at_upper_boundary);
+  table_handler.add_value("stress_12_at_upper_boundary", average_stress_12);
 }
 
 
@@ -357,248 +595,6 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
 
 
 template <int dim>
-void SimpleShear<dim>::compute_strain_12()
-{
-  assemble_projection_rhs();
-
-  project();
-}
-
-
-
-template <int dim>
-void SimpleShear<dim>::assemble_projection_rhs()
-{
-  // Set up local aliases
-  using CellIterator =
-    typename dealii::DoFHandler<dim>::active_cell_iterator;
-
-  using CellFilter =
-    dealii::FilteredIterator<
-      typename dealii::DoFHandler<dim>::active_cell_iterator>;
-
-  // Reset data
-  for (auto &right_hand_side: projection_rhs)
-    right_hand_side = 0.0;
-
-  // Set up the lambda function for the local assembly operation
-  auto worker = [this](
-    const CellIterator                                             &cell,
-    gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim> &scratch,
-    gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy         &data)
-  {
-    this->assemble_local_projection_rhs(cell, scratch, data);
-  };
-
-  // Set up the lambda function for the copy local to global operation
-  auto copier = [this](
-    const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
-  {
-    this->copy_local_to_global_projection_rhs(data);
-  };
-
-  // Define the update flags for the FEValues instances
-  const dealii::UpdateFlags scalar_update_flags =
-    dealii::update_JxW_values |
-    dealii::update_values;
-
-  const dealii::UpdateFlags vector_update_flags =
-    dealii::update_values |
-    dealii::update_gradients;
-
-  // Assemble using the WorkStream approach
-  dealii::WorkStream::run(
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
-    worker,
-    copier,
-    gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>(
-      mapping_collection,
-      quadrature_collection,
-      fe_collection,
-      scalar_update_flags,
-      fe_field->get_fe_collection(),
-      vector_update_flags,
-      fe_field->get_n_slips()),
-    gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy(
-      fe_collection.max_dofs_per_cell()));
-
-  // Compress global data
-  for (auto &right_hand_side: projection_rhs)
-    right_hand_side.compress(dealii::VectorOperation::add);
-}
-
-
-template <int dim>
-void SimpleShear<dim>::assemble_local_projection_rhs(
-  const typename dealii::DoFHandler<dim>::active_cell_iterator    &cell,
-  gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>  &scratch,
-  gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy          &data)
-{
-  // Reset local data
-  for (auto &local_right_hand_side: data.local_rhs)
-    local_right_hand_side = 0.0;
-
-  data.local_matrix_for_inhomogeneous_bcs = 0.0;
-
-  // Local to global mapping of the indices of the degrees of freedom
-  cell->get_dof_indices(data.local_dof_indices);
-
-  const dealii::FEValuesExtractors::Scalar  extractor(0);
-
-  // Get the crystal identifier for the current cell
-  const unsigned int crystal_id = cell->active_fe_index();
-
-  // Update the hp::FEValues instance to the values of the current cell
-  scratch.scalar_hp_fe_values.reinit(cell);
-
-  const dealii::FEValues<dim> &scalar_fe_values =
-    scratch.scalar_hp_fe_values.get_present_fe_values();
-
-  typename dealii::DoFHandler<dim>::active_cell_iterator
-    vector_cell(&fe_field->get_triangulation(),
-                cell->level(),
-                cell->index(),
-                &fe_field->get_dof_handler());
-
-  scratch.vector_hp_fe_values.reinit(vector_cell);
-
-  const dealii::FEValues<dim> &vector_fe_values =
-    scratch.vector_hp_fe_values.get_present_fe_values();
-
-  // Get JxW values at the quadrature points
-  scratch.JxW_values = scalar_fe_values.get_JxW_values();
-
-  // Get the linear strain tensor values at the quadrature points
-  vector_fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    fe_field->solution,
-    scratch.strain_tensor_values);
-
-  // Get the slips and their gradients values at the quadrature points
-  for (unsigned int slip_id = 0; slip_id < scratch.n_slips; ++slip_id)
-  {
-    vector_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      fe_field->solution,
-      scratch.slip_values[slip_id]);
-  }
-
-  // Loop over quadrature points
-  for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
-  {
-    // Compute the elastic strain tensor at the quadrature point
-    scratch.elastic_strain_tensor_values[q_point] =
-      elastic_strain->get_elastic_strain_tensor(
-        crystal_id,
-        q_point,
-        scratch.strain_tensor_values[q_point],
-        scratch.slip_values);
-
-    // Compute the stress tensor at the quadrature point
-    scratch.stress_tensor_values[q_point] =
-      hooke_law->get_stress_tensor(
-        crystal_id,
-        scratch.elastic_strain_tensor_values[q_point]);
-
-    // Extract test function values at the quadrature points (Slips)
-    for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-      scratch.scalar_phi[i] =
-        scalar_fe_values[extractor].value(i,q_point);
-
-    // Loop over the degrees of freedom
-    for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-    {
-      data.local_rhs[0](i) +=
-        scratch.scalar_phi[i] *
-        2.0 * scratch.strain_tensor_values[q_point][0][1] *
-        scratch.JxW_values[q_point];
-
-      data.local_rhs[1](i) +=
-        scratch.scalar_phi[i] *
-        scratch.stress_tensor_values[q_point][0][1] *
-        scratch.JxW_values[q_point];
-    }
-  } // Loop over quadrature points
-}
-
-template <int dim>
-void SimpleShear<dim>::copy_local_to_global_projection_rhs(
-  const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
-{
-  for (unsigned int i = 0; i < data.local_rhs.size(); ++i)
-    hanging_node_constraints.distribute_local_to_global(
-      data.local_rhs[i],
-      data.local_dof_indices,
-      projection_rhs[i],
-      data.local_matrix_for_inhomogeneous_bcs);
-}
-
-
-
-template <int dim>
-void SimpleShear<dim>::project()
-{
-// In this method we create temporal non ghosted copies
-  // of the pertinent vectors to be able to perform the solve()
-  // operation.
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
-
-  distributed_solution.reinit(projection_rhs[0]);
-
-  distributed_solution = 0.;
-
-  for (unsigned int i = 0; i < projection_rhs.size(); ++i)
-  {
-    // The solver's tolerances are passed to the SolverControl instance
-    // used to initialize the solver
-    dealii::SolverControl solver_control(
-      5000,
-      std::max(projection_rhs[i].l2_norm() * 1e-8, 1e-9));
-
-    dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
-
-    // try-catch scope for the solve() call
-    try
-    {
-      solver.solve(projection_matrix,
-                  distributed_solution,
-                  projection_rhs[i],
-                  preconditioner);
-    }
-    catch (std::exception &exc)
-    {
-      std::cerr << std::endl << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::cerr << "Exception in the solve method: " << std::endl
-                << exc.what() << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::abort();
-    }
-    catch (...)
-    {
-      std::cerr << std::endl << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::cerr << "Unknown exception in the solve method!" << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::abort();
-    }
-
-    hanging_node_constraints.distribute(
-      distributed_solution);
-
-    projected_data[i]  = distributed_solution;
-  }
-}
-
-
-template <int dim>
 void SimpleShear<dim>::output_data_to_file(
   std::ostream &file) const
 {
@@ -616,6 +612,9 @@ void SimpleShear<dim>::output_data_to_file(
 } // namespace gCP
 
 
+
+template class gCP::Postprocessing::Postprocessor<2>;
+template class gCP::Postprocessing::Postprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;

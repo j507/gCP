@@ -222,12 +222,22 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
   const unsigned int n_q_points =
     quadrature_collection.max_n_quadrature_points();
 
+  const unsigned int n_face_q_points =
+    face_quadrature_collection.max_n_quadrature_points();
+
   quadrature_point_history.initialize(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
                fe_field->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
                fe_field->get_dof_handler().end()),
     n_q_points);
+
+  interface_quadrature_point_history.initialize(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().end()),
+    n_face_q_points);
 
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
     if (cell->is_locally_owned())
@@ -245,7 +255,78 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
         local_quadrature_point_history[q_point]->init(
           parameters.scalar_microscopic_stress_law_parameters,
           crystals_data->get_n_slips());
+
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+          fe_field->is_decohesion_allowed())
+        for (const auto &face_index : cell->face_indices())
+          if (!cell->face(face_index)->at_boundary() &&
+              cell->material_id() !=
+                cell->neighbor(face_index)->material_id())
+          {
+            const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+              local_interface_quadrature_point_history =
+                interface_quadrature_point_history.get_data(
+                  cell->id(),
+                  cell->neighbor(face_index)->id());
+
+            Assert(local_interface_quadrature_point_history.size() ==
+                     n_face_q_points,
+                   dealii::ExcInternalError());
+
+            for (unsigned int face_q_point = 0;
+                  face_q_point < n_face_q_points; ++face_q_point)
+              local_interface_quadrature_point_history[face_q_point]->init(
+                parameters.decohesion_law_parameters);
+          }
+
     }
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
+{
+  for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
+    if (cell->is_locally_owned())
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+          fe_field->is_decohesion_allowed())
+        for (const auto &face_index : cell->face_indices())
+          if (!cell->face(face_index)->at_boundary() &&
+              cell->material_id() !=
+                cell->neighbor(face_index)->material_id())
+          {
+            const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+              local_interface_quadrature_point_history =
+                interface_quadrature_point_history.get_data(
+                  cell->id(),
+                  cell->neighbor(face_index)->id());
+
+            decohesion_logger.update_value(
+              "Effective opening displacement",
+              local_interface_quadrature_point_history[0]->
+                get_max_effective_opening_displacement());
+            decohesion_logger.update_value(
+              "Normal opening displacement",
+              local_interface_quadrature_point_history[0]->
+                get_max_effective_normal_opening_displacement());
+            decohesion_logger.update_value(
+              "Tangential opening displacement",
+              local_interface_quadrature_point_history[0]->
+                get_max_effective_tangential_opening_displacement());
+            decohesion_logger.update_value(
+              "Cohesive traction",
+              local_interface_quadrature_point_history[0]->
+                get_max_cohesive_traction());
+            decohesion_logger.update_value(
+              "Damage",
+              local_interface_quadrature_point_history[0]->
+                get_damage_variable());
+
+            decohesion_logger.log_to_file();
+            return;
+          }
+
 }
 
 
@@ -272,3 +353,6 @@ gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
 
 template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::print_decohesion_data();
+template void gCP::GradientCrystalPlasticitySolver<3>::print_decohesion_data();

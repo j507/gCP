@@ -94,9 +94,16 @@ private:
   std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
                                                     microscopic_traction_law;
 
+  std::shared_ptr<ConstitutiveLaws::InterfaceMacrotractionLaw<dim>>
+                                                    interface_macrotraction_law;
+
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;
+
+  InterfaceDataStorage<
+    typename dealii::Triangulation<dim>::cell_iterator,
+    InterfaceQuadraturePointHistory<dim>>           interface_quadrature_point_history;
 
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
@@ -113,6 +120,8 @@ private:
   double                                            newton_update_norm;
 
   Utilities::Logger                                 nonlinear_solver_logger;
+
+  Utilities::Logger                                 decohesion_logger;
 
   bool                                              flag_init_was_called;
 
@@ -160,6 +169,8 @@ private:
   void update_trial_solution(const double relaxation_parameter);
 
   void extrapolate_initial_trial_solution();
+
+  void print_decohesion_data();
 };
 
 
