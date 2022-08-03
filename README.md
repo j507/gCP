@@ -13,4 +13,3 @@ Yet to be implemented:
 - Dimensionless formulation
 - Microhard boundary conditions
 - Neumann boundary conditions at the domain's boundary
-- Decohesion model
