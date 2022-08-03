@@ -71,9 +71,9 @@ Postprocessor<dim>::get_names() const
   solution_names.emplace_back("Strain_11");
   solution_names.emplace_back("Strain_22");
   solution_names.emplace_back("Strain_33");
-  solution_names.emplace_back("Strain_23*2");
-  solution_names.emplace_back("Strain_13*2");
-  solution_names.emplace_back("Strain_12*2");
+  solution_names.emplace_back("Strain_23x2");
+  solution_names.emplace_back("Strain_13x2");
+  solution_names.emplace_back("Strain_12x2");
 
   return solution_names;
 }
@@ -440,16 +440,16 @@ width(width),
 flag_init_was_called(false)
 {
   // Setting up columns
-  table_handler.declare_column("shear at upper boundary");
-  table_handler.declare_column("stress 12 at upper boundary");
+  table_handler.declare_column("shear_at_upper_boundary");
+  table_handler.declare_column("stress_12_at_upper_boundary");
 
   // Setting all columns to scientific notation
-  table_handler.set_scientific("shear at upper boundary", true);
-  table_handler.set_scientific("stress 12 at upper boundary", true);
+  table_handler.set_scientific("shear_at_upper_boundary", true);
+  table_handler.set_scientific("stress_12_at_upper_boundary", true);
 
   // Setting columns' precision
-  table_handler.set_precision("shear at upper boundary", 6);
-  table_handler.set_precision("stress 12 at upper boundary", 6);
+  table_handler.set_precision("shear_at_upper_boundary", 6);
+  table_handler.set_precision("stress_12_at_upper_boundary", 6);
 }
 
 
@@ -477,8 +477,8 @@ void SimpleShear<dim>::compute_data(const double time)
 
   compute_stress_12_at_boundary();
 
-  table_handler.add_value("shear at upper boundary", time * shear_at_upper_boundary);
-  table_handler.add_value("stress 12 at upper boundary", average_stress_12);
+  table_handler.add_value("shear_at_upper_boundary", time * shear_at_upper_boundary);
+  table_handler.add_value("stress_12_at_upper_boundary", average_stress_12);
 }
 
 
