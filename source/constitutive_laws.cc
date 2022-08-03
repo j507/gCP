@@ -626,17 +626,23 @@ MicroscopicTractionLaw<2>::get_grain_interaction_moduli(
 
         AssertThrow(
           std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
-            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+            std::fabs(intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= (1.0 + 1e-14),
           dealii::ExcMessage(
             "The interaction moduli should be inside the "
-            "range [0,1]."));
+            "range [0,1]. Its value is " +
+            std::to_string(
+              std::fabs(
+                intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]))));
 
         AssertThrow(
           std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) >= 0.0 &&
-            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= 1.0,
+            std::fabs(inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]) <= (1.0 + __DBL_EPSILON__),
           dealii::ExcMessage(
             "The interaction moduli should be inside the "
-            "range [0,1]."));
+            "range [0,1].  Its value is " +
+            std::to_string(
+              std::fabs(
+                inter_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]))));
 
         AssertIsFinite(
           intra_grain_interaction_moduli_per_q_point[slip_id_alpha][slip_id_beta]);
