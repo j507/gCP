@@ -4,14 +4,14 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/simple_shear_Lara/euler_angles_15_0
+  set Euler angles path name    = input/simple_shear_Lara/euler_angles_45_0
   set Slip directions path name = input/simple_shear_Lara/slip_directions
   set Slip normals path name    = input/simple_shear_Lara/slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear_Lara/double_slip_jump_true_alpha_15_lambda_0E0_gamma_20Em2/
+  set Graphical output directory = results/simple_shear_Lara/double_slip_jump_true_alpha_45_lambda_1E3_gamma_20Em2/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
@@ -28,7 +28,7 @@ end
 subsection Solver parameters
   set Allow decohesion at grain boundaries    = true
   set Boundary conditions at grain boundaries = microtraction
-  set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_15_lambda_0E0_gamma_20Em2/
+  set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_45_lambda_1E3_gamma_20Em2/
   set Print sparsity pattern                  = false
   set Verbose                                 = false
 
@@ -46,7 +46,7 @@ subsection Solver parameters
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0e3
+      set Grain boundary modulus = 1e3
     end
 
     subsection Scalar microscopic stress law's parameters
@@ -54,7 +54,7 @@ subsection Solver parameters
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
       set Regularization function  = tanh
-      set Regularization parameter = 3e-4
+      set Regularization parameter = 3.0e-3
     end
 
     subsection Vector microscopic stress law's parameters

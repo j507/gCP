@@ -54,7 +54,7 @@ subsection Solver parameters
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
       set Regularization function  = tanh
-      set Regularization parameter = 3e-4
+      set Regularization parameter = 7.5e-4
     end
 
     subsection Vector microscopic stress law's parameters
@@ -88,5 +88,5 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-3
+  set Time step size = 5e-4
 end

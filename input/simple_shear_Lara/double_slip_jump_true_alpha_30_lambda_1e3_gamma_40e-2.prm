@@ -4,14 +4,14 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/simple_shear_Lara/euler_angles_15_0
+  set Euler angles path name    = input/simple_shear_Lara/euler_angles_30_0
   set Slip directions path name = input/simple_shear_Lara/slip_directions
   set Slip normals path name    = input/simple_shear_Lara/slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear_Lara/double_slip_jump_true_alpha_15_lambda_0E0_gamma_20Em2/
+  set Graphical output directory = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_40Em2/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
@@ -20,7 +20,7 @@ end
 subsection Simple shear
   set Height of the strip                              = 1.0
   set Number of equally sized divisions in y-direction = 2
-  set Shear strain at the upper boundary               = 0.20
+  set Shear strain at the upper boundary               = 0.40
   set Width of the strip                               = 0.1
 end
 
@@ -28,7 +28,7 @@ end
 subsection Solver parameters
   set Allow decohesion at grain boundaries    = true
   set Boundary conditions at grain boundaries = microtraction
-  set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_15_lambda_0E0_gamma_20Em2/
+  set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_40Em2/
   set Print sparsity pattern                  = false
   set Verbose                                 = false
 
@@ -46,7 +46,7 @@ subsection Solver parameters
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0e3
+      set Grain boundary modulus = 1e3
     end
 
     subsection Scalar microscopic stress law's parameters
@@ -54,7 +54,7 @@ subsection Solver parameters
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
       set Regularization function  = tanh
-      set Regularization parameter = 3e-4
+      set Regularization parameter = 3e-3
     end
 
     subsection Vector microscopic stress law's parameters
@@ -88,5 +88,5 @@ end
 subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-3
+  set Time step size = 1.25e-4
 end
