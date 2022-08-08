@@ -52,7 +52,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     assemble_jacobian();
 
-    solve_linearized_system();
+    const unsigned int n_krylov_iterations = solve_linearized_system();
 
     update_trial_solution(relaxation_parameter);
 
@@ -62,6 +62,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     nonlinear_solver_logger.update_value("Iteration",
                                          nonlinear_iteration);
+    nonlinear_solver_logger.update_value("Krylov-Iterations",
+                                         n_krylov_iterations);
     nonlinear_solver_logger.update_value("L2-Norm(Newton update)",
                                          newton_update_norm);
     nonlinear_solver_logger.update_value("L2-Norm(Residual)",
@@ -95,7 +97,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
+unsigned int GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
 {
   if (parameters.verbose)
     *pcout << std::setw(38) << std::left
@@ -170,6 +172,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
+
+  return (solver_control.last_step());
 }
 
 
@@ -231,8 +235,8 @@ template void gCP::GradientCrystalPlasticitySolver<3>::distribute_constraints_to
 template void gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
 template void gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();
 
-template void gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
-template void gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
+template unsigned int gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
+template unsigned int gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::update_trial_solution(const double);
 template void gCP::GradientCrystalPlasticitySolver<3>::update_trial_solution(const double);

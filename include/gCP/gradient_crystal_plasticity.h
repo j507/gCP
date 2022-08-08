@@ -164,7 +164,7 @@ private:
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
-  void solve_linearized_system();
+  unsigned int solve_linearized_system();
 
   void update_trial_solution(const double relaxation_parameter);
 
