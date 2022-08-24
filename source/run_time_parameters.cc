@@ -250,6 +250,7 @@ DecohesionLawParameters::DecohesionLawParameters()
 :
 critical_cohesive_traction(0.0),
 critical_opening_displacement(0.0),
+damage_exponent(1.0),
 flag_set_damage_to_zero(false)
 {}
 
@@ -266,6 +267,10 @@ void DecohesionLawParameters::declare_parameters(
 
     prm.declare_entry("Critical opening displacement",
                       "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage exponent",
+                      "1.0",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Set damage to zero",
@@ -299,6 +304,14 @@ void DecohesionLawParameters::parse_parameters(
                   critical_opening_displacement, 0.0));
 
     AssertIsFinite(critical_opening_displacement);
+
+    damage_exponent = prm.get_double("Damage exponent");
+
+    AssertThrow(damage_exponent >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_exponent, 0.0));
+
+    AssertIsFinite(damage_exponent);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 
