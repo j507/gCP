@@ -8,6 +8,7 @@ Known problems:
 - Low values of the energetic length scale lead to divergence near the rate-independent case (See issue #1)
 - Problems considering polycrystals can only be run in serial (See issue #2)
 - Method of marking cells at grain boundaries does not work properly in parallel (See issue #3)
+- The cohesive law introduces a normal vector mismatch between cells at the interface. 
 
 Yet to be implemented:
 - Dimensionless formulation
