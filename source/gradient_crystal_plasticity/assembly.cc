@@ -434,6 +434,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
+                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                             parameters.cohesive_law_parameters.damage_exponent) *
                     scratch.current_cell_gateaux_derivative_values[face_q_point] *
                     scratch.face_vector_phi[j] *
                     0.5 *
@@ -442,6 +444,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
+                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                             parameters.cohesive_law_parameters.damage_exponent) *
                     scratch.neighbor_cell_gateaux_derivative_values[face_q_point] *
                     scratch.neighbor_face_vector_phi[j] *
                     0.5 *
@@ -925,6 +929,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                  data.local_rhs(i) +=
                    scratch.face_vector_phi[i] *
+                   std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                            parameters.cohesive_law_parameters.damage_exponent) *
                    scratch.cohesive_traction_values[face_q_point] *
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
