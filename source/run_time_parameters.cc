@@ -250,7 +250,12 @@ CohesiveLawParameters::CohesiveLawParameters()
 :
 critical_cohesive_traction(0.0),
 critical_opening_displacement(0.0),
-damage_exponent(1.0),
+tangential_to_normal_stiffness_ratio(1.0),
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
+degradation_exponent(1.0),
 flag_set_damage_to_zero(false)
 {}
 
@@ -269,7 +274,27 @@ void CohesiveLawParameters::declare_parameters(
                       "0.0",
                       dealii::Patterns::Double());
 
-    prm.declare_entry("Damage exponent",
+    prm.declare_entry("Tangential to normal stiffness ratio",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage accumulation constant",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage decay constant",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage decay exponent",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Endurance limit",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Degradation exponent",
                       "1.0",
                       dealii::Patterns::Double());
 
@@ -290,7 +315,7 @@ void CohesiveLawParameters::parse_parameters(
     critical_cohesive_traction =
       prm.get_double("Maximum cohesive traction");
 
-    AssertThrow(critical_cohesive_traction >= 0.0,
+    AssertThrow(critical_cohesive_traction > 0.0,
                 dealii::ExcLowerRangeType<double>(
                   critical_cohesive_traction, 0.0));
 
@@ -299,19 +324,61 @@ void CohesiveLawParameters::parse_parameters(
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");
 
-    AssertThrow(critical_opening_displacement >= 0.0,
+    AssertThrow(critical_opening_displacement > 0.0,
                 dealii::ExcLowerRangeType<double>(
                   critical_opening_displacement, 0.0));
 
     AssertIsFinite(critical_opening_displacement);
 
-    damage_exponent = prm.get_double("Damage exponent");
+    tangential_to_normal_stiffness_ratio =
+      prm.get_double("Tangential to normal stiffness ratio");
 
-    AssertThrow(damage_exponent >= 0.0,
+    AssertThrow(tangential_to_normal_stiffness_ratio > 0.0,
                 dealii::ExcLowerRangeType<double>(
-                  damage_exponent, 0.0));
+                  tangential_to_normal_stiffness_ratio, 0.0));
 
-    AssertIsFinite(damage_exponent);
+    AssertIsFinite(tangential_to_normal_stiffness_ratio);
+
+    damage_accumulation_constant =
+      prm.get_double("Damage accumulation constant");
+
+    AssertThrow(damage_accumulation_constant > 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_accumulation_constant, 0.0));
+
+    AssertIsFinite(damage_accumulation_constant);
+
+    damage_decay_constant = prm.get_double("Damage decay constant");
+
+    AssertThrow(damage_decay_constant >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_decay_constant, 0.0));
+
+    AssertIsFinite(damage_decay_constant);
+
+    damage_decay_exponent = prm.get_double("Damage decay exponent");
+
+    AssertThrow(damage_decay_exponent >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_decay_exponent, 0.0));
+
+    AssertIsFinite(damage_decay_exponent);
+
+    endurance_limit = prm.get_double("Endurance limit");
+
+    AssertThrow(endurance_limit >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  endurance_limit, 0.0));
+
+    AssertIsFinite(endurance_limit);
+
+    degradation_exponent = prm.get_double("Degradation exponent");
+
+    AssertThrow(degradation_exponent >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  degradation_exponent, 0.0));
+
+    AssertIsFinite(degradation_exponent);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 

@@ -326,7 +326,42 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  double  damage_exponent;
+  double  tangential_to_normal_stiffness_ratio;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_accumulation_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  endurance_limit;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
 
   /*!
    * @brief
