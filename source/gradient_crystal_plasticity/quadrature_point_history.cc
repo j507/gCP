@@ -56,7 +56,7 @@ flag_init_was_called(false)
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
-  const RunTimeParameters::DecohesionLawParameters &parameters)
+  const RunTimeParameters::CohesiveLawParameters &parameters)
 {
   if (flag_init_was_called)
     return;

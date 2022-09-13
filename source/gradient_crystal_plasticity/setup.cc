@@ -276,7 +276,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             for (unsigned int face_q_point = 0;
                   face_q_point < n_face_q_points; ++face_q_point)
               local_interface_quadrature_point_history[face_q_point]->init(
-                parameters.decohesion_law_parameters);
+                parameters.cohesive_law_parameters);
           }
 
     }

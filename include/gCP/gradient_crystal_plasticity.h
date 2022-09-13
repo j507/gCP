@@ -94,8 +94,8 @@ private:
   std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
                                                     microscopic_traction_law;
 
-  std::shared_ptr<ConstitutiveLaws::InterfaceMacrotractionLaw<dim>>
-                                                    interface_macrotraction_law;
+  std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
+                                                    cohesive_law;
 
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,

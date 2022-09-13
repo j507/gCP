@@ -853,8 +853,8 @@ MicroscopicTractionLaw<dim>::
 
 
 template<int dim>
-InterfaceMacrotractionLaw<dim>::InterfaceMacrotractionLaw(
-  const RunTimeParameters::DecohesionLawParameters parameters)
+CohesiveLaw<dim>::CohesiveLaw(
+  const RunTimeParameters::CohesiveLawParameters parameters)
 :
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement)
@@ -864,7 +864,7 @@ critical_opening_displacement(parameters.critical_opening_displacement)
 
 template <int dim>
 dealii::Tensor<1,dim>
-InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
+CohesiveLaw<dim>::get_cohesive_traction(
   const double                max_effective_opening_displacement,
   const dealii::Tensor<1,dim> opening_displacement,
   const double                old_effective_opening_displacement,
@@ -930,7 +930,7 @@ InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
+CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
   const double                max_effective_opening_displacement,
   const dealii::Tensor<1,dim> opening_displacement,
   const double                old_effective_opening_displacement,
@@ -1010,7 +1010,7 @@ InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
+CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
   const double                max_effective_opening_displacement,
   const dealii::Tensor<1,dim> opening_displacement,
   const double                old_effective_opening_displacement,
@@ -1111,5 +1111,5 @@ template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
 
-template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<2>;
-template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<3>;
+template class gCP::ConstitutiveLaws::CohesiveLaw<2>;
+template class gCP::ConstitutiveLaws::CohesiveLaw<3>;

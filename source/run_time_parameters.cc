@@ -246,7 +246,7 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 
 
-DecohesionLawParameters::DecohesionLawParameters()
+CohesiveLawParameters::CohesiveLawParameters()
 :
 critical_cohesive_traction(0.0),
 critical_opening_displacement(0.0),
@@ -256,7 +256,7 @@ flag_set_damage_to_zero(false)
 
 
 
-void DecohesionLawParameters::declare_parameters(
+void CohesiveLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Decohesion law's parameters");
@@ -282,7 +282,7 @@ void DecohesionLawParameters::declare_parameters(
 
 
 
-void DecohesionLawParameters::parse_parameters(
+void CohesiveLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Decohesion law's parameters");
@@ -375,7 +375,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
     MicroscopicTractionLawParameters::declare_parameters(prm);
-    DecohesionLawParameters::declare_parameters(prm);
+    CohesiveLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -447,7 +447,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
     microscopic_traction_law_parameters.parse_parameters(prm);
-    decohesion_law_parameters.parse_parameters(prm);
+    cohesive_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 

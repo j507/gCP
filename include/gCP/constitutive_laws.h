@@ -412,13 +412,13 @@ private:
 
 
 template<int dim>
-class InterfaceMacrotractionLaw
+class CohesiveLaw
 {
 public:
-  InterfaceMacrotractionLaw(
-    const RunTimeParameters::DecohesionLawParameters parameters);
+  CohesiveLaw(
+    const RunTimeParameters::CohesiveLawParameters parameters);
 
-  dealii::Tensor<1,dim> get_interface_macrotraction(
+  dealii::Tensor<1,dim> get_cohesive_traction(
     const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
     const double                old_effective_opening_displacement,
@@ -449,7 +449,7 @@ private:
 
 template <int dim>
 inline double
-InterfaceMacrotractionLaw<dim>::get_master_relation(
+CohesiveLaw<dim>::get_master_relation(
   const double effective_opening_displacement) const
 {
   return (critical_cohesive_traction *

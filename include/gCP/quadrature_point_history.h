@@ -79,7 +79,7 @@ public:
   double get_damage_variable() const;
 
   void init(
-    const RunTimeParameters::DecohesionLawParameters &parameters);
+    const RunTimeParameters::CohesiveLawParameters &parameters);
 
   void store_current_values();
 

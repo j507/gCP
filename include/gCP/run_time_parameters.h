@@ -288,12 +288,12 @@ struct MicroscopicTractionLawParameters
 
 
 
-struct DecohesionLawParameters
+struct CohesiveLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  DecohesionLawParameters();
+  CohesiveLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -435,8 +435,8 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  DecohesionLawParameters
-                      decohesion_law_parameters;
+  CohesiveLawParameters
+                      cohesive_law_parameters;
 
   /*!
    * @brief
