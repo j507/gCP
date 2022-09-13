@@ -326,7 +326,14 @@ struct DecohesionLawParameters
    *
    * @todo Docu
    */
-  bool  flag_set_damage_to_zero;
+  double  damage_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_set_damage_to_zero;
 };
 
 

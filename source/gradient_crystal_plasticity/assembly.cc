@@ -468,14 +468,16 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                 data.local_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  (1.0 - scratch.damage_variable_values[face_q_point]) *
+                  std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                           parameters.decohesion_law_parameters.damage_exponent) *
                   scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
                   scratch.face_scalar_phi[slip_id_beta][j] *
                   scratch.face_JxW_values[face_q_point];
 
                 data.local_coupling_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  (1.0 - scratch.damage_variable_values[face_q_point]) *
+                  std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                           parameters.decohesion_law_parameters.damage_exponent) *
                   scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
                   scratch.neighbour_face_scalar_phi[neighbour_slip_id_beta][j] *
                   scratch.face_JxW_values[face_q_point];
@@ -937,7 +939,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
               data.local_rhs(i) +=
                 scratch.face_scalar_phi[slip_id][i] *
-                (1.0 - scratch.damage_variable_values[face_q_point]) *
+                std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                         parameters.decohesion_law_parameters.damage_exponent) *
                 scratch.microscopic_traction_values[slip_id][face_q_point] *
                 scratch.face_JxW_values[face_q_point];
 
