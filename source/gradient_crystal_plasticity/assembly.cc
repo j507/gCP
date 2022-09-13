@@ -903,7 +903,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               (scratch.neighbor_cell_old_displacement_values[face_q_point] -
                scratch.current_cell_old_displacement_values[face_q_point]).norm();
 
-            scratch.interface_macrotraction_values[face_q_point] =
+            scratch.cohesive_traction_values[face_q_point] =
               cohesive_law->get_cohesive_traction(
                 local_interface_quadrature_point_history[face_q_point]->
                   get_max_effective_opening_displacement(),
@@ -925,7 +925,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                  data.local_rhs(i) +=
                    scratch.face_vector_phi[i] *
-                   scratch.interface_macrotraction_values[face_q_point] *
+                   scratch.cohesive_traction_values[face_q_point] *
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
                     scratch.face_neighbor_JxW_values[face_q_point]);
