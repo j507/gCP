@@ -436,14 +436,30 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
+  double get_degradation_function_value(const double damage_variable) const;
+
 private:
   double critical_cohesive_traction;
 
   double critical_opening_displacement;
 
+  double tangential_to_normal_stiffness_ratio;
+
+  double degradation_exponent;
+
   double get_master_relation(
     const double effective_opening_displacement) const;
 };
+
+
+
+template <int dim>
+inline double
+CohesiveLaw<dim>::get_degradation_function_value(
+  const double damage_variable) const
+{
+  return std::pow(1.0 - damage_variable, degradation_exponent);
+}
 
 
 
