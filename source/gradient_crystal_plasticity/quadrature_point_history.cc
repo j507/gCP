@@ -44,11 +44,16 @@ void InterfaceData<dim>::update(
 template <int dim>
 InterfaceQuadraturePointHistory<dim>::InterfaceQuadraturePointHistory()
 :
-max_effective_opening_displacement(0.0),
+tangential_to_normal_stiffness_ratio(1.0),
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
 max_effective_normal_opening_displacement(0.0),
 max_effective_tangential_opening_displacement(0.0),
 max_cohesive_traction(0.0),
 damage_variable(0.0),
+max_effective_opening_displacement(0.0),
 flag_init_was_called(false)
 {}
 
@@ -61,16 +66,27 @@ void InterfaceQuadraturePointHistory<dim>::init(
   if (flag_init_was_called)
     return;
 
-  critical_cohesive_traction    = parameters.critical_cohesive_traction;
+  critical_cohesive_traction =
+    parameters.critical_cohesive_traction;
 
-  critical_opening_displacement = parameters.critical_opening_displacement;
+  critical_opening_displacement =
+    parameters.critical_opening_displacement;
 
-  flag_set_damage_to_zero       = parameters.flag_set_damage_to_zero;
-  /*critical_energy_release_rate  = critical_cohesive_traction *
-                                  critical_opening_displacement *
-                                  std::exp(1.0);*/
+  tangential_to_normal_stiffness_ratio =
+    parameters.tangential_to_normal_stiffness_ratio;
 
-  flag_init_was_called          = true;
+  damage_accumulation_constant =
+    parameters.damage_accumulation_constant;
+
+  damage_decay_constant   = parameters.damage_decay_constant;
+
+  damage_decay_exponent   = parameters.damage_decay_exponent;
+
+  endurance_limit         = parameters.endurance_limit;
+
+  flag_set_damage_to_zero = parameters.flag_set_damage_to_zero;
+
+  flag_init_was_called    = true;
 }
 
 

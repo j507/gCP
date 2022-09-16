@@ -93,9 +93,17 @@ private:
 
   double                    critical_opening_displacement;
 
-  //double                    critical_energy_release_rate;
+  double                    tangential_to_normal_stiffness_ratio;
 
-  double                    max_effective_opening_displacement;
+  double                    damage_accumulation_constant;
+
+  double                    damage_decay_constant;
+
+  double                    damage_decay_exponent;
+
+  double                    endurance_limit;
+
+  // The variables
 
   double                    max_effective_normal_opening_displacement;
 
@@ -103,15 +111,29 @@ private:
 
   double                    max_cohesive_traction;
 
+  // are temporary and will be deleted eventually.
+
   double                    damage_variable;
 
+  double                    max_effective_opening_displacement;
+
   std::pair<double, double> tmp_values;
+
+  dealii::Tensor<1,dim>     old_current_cell_displacement;
+
+  dealii::Tensor<1,dim>     old_neighbor_cell_displacement;
+
+  dealii::Tensor<1,dim>     old_current_cell_normal_vector;
+
+  dealii::Tensor<1,dim>     old_neighbor_cell_normal_vector;
 
   bool                      flag_set_damage_to_zero;
 
   bool                      flag_values_were_updated;
 
   bool                      flag_init_was_called;
+
+  double macaulay_brackets(const double value) const;
 
   double get_master_relation(
     const double effective_opening_displacement) const;
@@ -160,6 +182,19 @@ inline double InterfaceQuadraturePointHistory<dim>::
 get_damage_variable() const
 {
   return (damage_variable);
+}
+
+
+
+template <int dim>
+inline double
+InterfaceQuadraturePointHistory<dim>::macaulay_brackets(
+  const double value) const
+{
+  if (value > 0)
+    return value;
+  else
+    return 0.0;
 }
 
 
