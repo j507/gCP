@@ -1088,6 +1088,38 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
 
 
 
+template <int dim>
+double CohesiveLaw<dim>::get_effective_opening_displacement(
+  const dealii::Tensor<1,dim> current_cell_displacement,
+  const dealii::Tensor<1,dim> neighbor_cell_displacement,
+  const dealii::Tensor<1,dim> normal_vector) const
+{
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                              normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+
+  dealii::Tensor<1,dim> opening_displacement =
+    neighbor_cell_displacement - current_cell_displacement;
+
+  double normal_opening_displacement =
+    (normal_projector * opening_displacement).norm();
+
+  double tangential_opening_displacement =
+    (tangential_projector * opening_displacement).norm();
+
+  return std::sqrt(normal_opening_displacement *
+                   normal_opening_displacement
+                   +
+                   tangential_to_normal_stiffness_ratio *
+                   tangential_opening_displacement *
+                   tangential_opening_displacement);
+}
+
+
+
 } // ConstitutiveLaws
 
 

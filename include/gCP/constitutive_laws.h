@@ -438,6 +438,11 @@ public:
 
   double get_degradation_function_value(const double damage_variable) const;
 
+  double get_effective_opening_displacement(
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
+
 private:
   double critical_cohesive_traction;
 
