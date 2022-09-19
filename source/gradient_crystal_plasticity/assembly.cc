@@ -1190,6 +1190,10 @@ update_local_quadrature_point_history(
               cell->id(),
               cell->neighbor(face_index)->id());
 
+        Assert(local_interface_quadrature_point_history.size() ==
+                 scratch.n_face_q_points,
+               dealii::ExcInternalError());
+
         // Update the hp::FEFaceValues instance to the values of the
         // current face
         scratch.hp_fe_face_values.reinit(cell, face_index);
@@ -1206,11 +1210,7 @@ update_local_quadrature_point_history(
         const dealii::FEFaceValues<dim> &neighbor_fe_face_values =
           scratch.neighbor_hp_fe_face_values.get_present_fe_values();
 
-        Assert(local_interface_quadrature_point_history.size() ==
-                 scratch.n_face_q_points,
-               dealii::ExcInternalError());
-
-        // Get the displacement values o
+        // Get the displacement values
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
           trial_solution,
@@ -1229,6 +1229,144 @@ update_local_quadrature_point_history(
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
           local_interface_quadrature_point_history[face_q_point]->update_values(
+            scratch.neighbor_cell_displacement_values[face_q_point],
+            scratch.current_cell_displacement_values[face_q_point],
+            scratch.normal_vector_values[face_q_point]);
+        }
+      }
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+store_effective_opening_displacement_in_quadrature_history()
+{
+  dealii::TimerOutput::Scope
+    t(*timer_output, "Solver: Store effective opening displacement");
+
+  // Set up local aliases
+  using CellIterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](
+    const CellIterator                                      &cell,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim> &scratch,
+    gCP::AssemblyData::QuadraturePointHistory::Copy         &data)
+  {
+    this->store_local_effective_opening_displacement(cell, scratch, data);
+  };
+
+  // Set up the lambda function for the copy local to global operation
+  auto copier = [this](const gCP::AssemblyData::QuadraturePointHistory::Copy  &data)
+  {
+    this->copy_local_to_global_quadrature_point_history(data);
+  };
+
+  // Define the update flags for the FEValues instances
+  const dealii::UpdateFlags update_flags  =
+    dealii::update_default;
+
+  const dealii::UpdateFlags face_update_flags  =
+    dealii::update_values |
+    dealii::update_normal_vectors;
+
+  // Assemble using the WorkStream approach
+  dealii::WorkStream::run(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               fe_field->get_dof_handler().end()),
+    worker,
+    copier,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      face_quadrature_collection,
+      fe_field->get_fe_collection(),
+      update_flags,
+      face_update_flags,
+      crystals_data->get_n_slips()),
+    gCP::AssemblyData::QuadraturePointHistory::Copy());
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+store_local_effective_opening_displacement(
+  const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
+  gCP::AssemblyData::QuadraturePointHistory::Copy               &)
+{
+  // Get the crystal identifier for the current cell
+  const unsigned int crystal_id = cell->active_fe_index();
+
+  // Reset local data
+  scratch.reset();
+
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      fe_field->is_decohesion_allowed())
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
+      {
+        // Get the crystal identifier for the neighbor cell
+        const unsigned int neighbor_crystal_id =
+          cell->neighbor(face_index)->active_fe_index();
+
+        // Get the local quadrature point history instance
+        const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+          local_interface_quadrature_point_history =
+            interface_quadrature_point_history.get_data(
+              cell->id(),
+              cell->neighbor(face_index)->id());
+
+        Assert(local_interface_quadrature_point_history.size() ==
+                 scratch.n_face_q_points,
+               dealii::ExcInternalError());
+
+        // Update the hp::FEFaceValues instance to the values of the
+        // current face
+        scratch.hp_fe_face_values.reinit(cell, face_index);
+
+        const dealii::FEFaceValues<dim> &fe_face_values =
+          scratch.hp_fe_face_values.get_present_fe_values();
+
+        // Update the hp::FEFaceValues instance to the values of the
+        // neighbor face
+        scratch.neighbor_hp_fe_face_values.reinit(
+          cell->neighbor(face_index),
+          cell->neighbor_of_neighbor(face_index));
+
+        const dealii::FEFaceValues<dim> &neighbor_fe_face_values =
+          scratch.neighbor_hp_fe_face_values.get_present_fe_values();
+
+        // Get the displacement values
+        fe_face_values[
+          fe_field->get_displacement_extractor(crystal_id)].get_function_values(
+          trial_solution,
+          scratch.current_cell_displacement_values);
+
+        neighbor_fe_face_values[
+          fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
+          trial_solution,
+          scratch.neighbor_cell_displacement_values);
+
+        // Get normal vector values values at the quadrature points
+        scratch.normal_vector_values =
+          fe_face_values.get_normal_vectors();
+
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_face_q_points; ++face_q_point)
+        {
+          local_interface_quadrature_point_history[face_q_point]->store_effective_opening_displacement(
             scratch.neighbor_cell_displacement_values[face_q_point],
             scratch.current_cell_displacement_values[face_q_point],
             scratch.normal_vector_values[face_q_point]);
@@ -1288,6 +1426,22 @@ template void gCP::GradientCrystalPlasticitySolver<2>::update_local_quadrature_p
   gCP::AssemblyData::QuadraturePointHistory::Scratch<2>       &,
   gCP::AssemblyData::QuadraturePointHistory::Copy             &);
 template void gCP::GradientCrystalPlasticitySolver<3>::update_local_quadrature_point_history(
+  const typename dealii::DoFHandler<3>::active_cell_iterator  &,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<3>       &,
+  gCP::AssemblyData::QuadraturePointHistory::Copy             &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::
+store_effective_opening_displacement_in_quadrature_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::
+store_effective_opening_displacement_in_quadrature_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::
+store_local_effective_opening_displacement(
+  const typename dealii::DoFHandler<2>::active_cell_iterator  &,
+  gCP::AssemblyData::QuadraturePointHistory::Scratch<2>       &,
+  gCP::AssemblyData::QuadraturePointHistory::Copy             &);
+template void gCP::GradientCrystalPlasticitySolver<3>::
+store_local_effective_opening_displacement(
   const typename dealii::DoFHandler<3>::active_cell_iterator  &,
   gCP::AssemblyData::QuadraturePointHistory::Scratch<3>       &,
   gCP::AssemblyData::QuadraturePointHistory::Copy             &);

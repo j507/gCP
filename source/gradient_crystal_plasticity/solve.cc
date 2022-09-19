@@ -85,6 +85,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
                 + std::to_string(parameters.n_max_nonlinear_iterations)
                 + ")."));
 
+  store_effective_opening_displacement_in_quadrature_history();
+
   fe_field->solution = trial_solution;
 
   extrapolate_initial_trial_solution();

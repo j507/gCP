@@ -161,6 +161,13 @@ private:
     gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
     gCP::AssemblyData::QuadraturePointHistory::Copy               &data);
 
+  void store_effective_opening_displacement_in_quadrature_history();
+
+  void store_local_effective_opening_displacement(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
+    gCP::AssemblyData::QuadraturePointHistory::Copy               &data);
+
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 

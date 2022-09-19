@@ -82,6 +82,11 @@ public:
     const dealii::Tensor<1,dim> current_cell_displacement,
     const dealii::Tensor<1,dim> normal_vector);
 
+  void store_effective_opening_displacement(
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector);
+
   // The methods
 
   double get_max_effective_normal_opening_displacement() const;
