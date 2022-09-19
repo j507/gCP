@@ -158,6 +158,34 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
 
 template <int dim>
+void InterfaceQuadraturePointHistory<dim>::update_values(
+  const double  effective_opening_displacement,
+  const double  cohesive_traction_norm)
+{
+  damage_variable                     = tmp_scalar_values[0];
+  max_effective_opening_displacement  = tmp_scalar_values[1];
+
+  max_effective_opening_displacement =
+    std::max(max_effective_opening_displacement,
+             effective_opening_displacement);
+
+  damage_variable +=
+    damage_accumulation_constant *
+    macaulay_brackets(effective_opening_displacement -
+                      old_effective_opening_displacement) *
+    std::pow(1.0 - damage_variable + damage_decay_constant,
+     damage_decay_exponent) *
+    (cohesive_traction_norm - endurance_limit);
+
+  if (flag_set_damage_to_zero)
+    damage_variable = 0.0;
+
+  flag_values_were_updated = true;
+}
+
+
+
+template <int dim>
 void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
   const dealii::Tensor<1,dim> current_cell_displacement,
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
