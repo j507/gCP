@@ -1114,6 +1114,7 @@ double CohesiveLaw<dim>::get_effective_opening_displacement(
                    normal_opening_displacement
                    +
                    tangential_to_normal_stiffness_ratio *
+                   tangential_to_normal_stiffness_ratio *
                    tangential_opening_displacement *
                    tangential_opening_displacement);
 }
