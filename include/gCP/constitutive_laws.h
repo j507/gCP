@@ -419,20 +419,20 @@ public:
     const RunTimeParameters::CohesiveLawParameters parameters);
 
   dealii::Tensor<1,dim> get_cohesive_traction(
-    const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
-    const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 

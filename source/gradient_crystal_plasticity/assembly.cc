@@ -381,17 +381,17 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
             scratch.current_cell_gateaux_derivative_values[face_q_point] =
               cohesive_law->get_current_cell_gateaux_derivative(
+                opening_displacement,
                 local_interface_quadrature_point_history[face_q_point]->
                   get_max_effective_opening_displacement(),
-                opening_displacement,
                 old_effective_opening_displacement,
                 discrete_time.get_next_step_size());
 
             scratch.neighbor_cell_gateaux_derivative_values[face_q_point] =
               cohesive_law->get_neighbor_cell_gateaux_derivative(
+                opening_displacement,
                 local_interface_quadrature_point_history[face_q_point]->
                   get_max_effective_opening_displacement(),
-                opening_displacement,
                 old_effective_opening_displacement,
                 discrete_time.get_next_step_size());
 
@@ -909,9 +909,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
             scratch.cohesive_traction_values[face_q_point] =
               cohesive_law->get_cohesive_traction(
+                opening_displacement,
                 local_interface_quadrature_point_history[face_q_point]->
                   get_max_effective_opening_displacement(),
-                opening_displacement,
                 old_effective_opening_displacement,
                 discrete_time.get_next_step_size());
 
