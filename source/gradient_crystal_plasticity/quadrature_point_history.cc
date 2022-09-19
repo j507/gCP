@@ -49,11 +49,13 @@ damage_accumulation_constant(1.0),
 damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
+damage_variable(0.0),
+max_effective_opening_displacement(0.0),
+old_effective_opening_displacement(0.0),
+tmp_scalar_values(3),
 max_effective_normal_opening_displacement(0.0),
 max_effective_tangential_opening_displacement(0.0),
 max_cohesive_traction(0.0),
-damage_variable(0.0),
-max_effective_opening_displacement(0.0),
 flag_init_was_called(false)
 {}
 
@@ -94,8 +96,9 @@ void InterfaceQuadraturePointHistory<dim>::init(
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::store_current_values()
 {
-  tmp_values = std::make_pair(max_effective_opening_displacement,
-                              damage_variable);
+  tmp_scalar_values[0]  = damage_variable;
+  tmp_scalar_values[1]  = max_effective_opening_displacement;
+  tmp_scalar_values[2]  = old_effective_opening_displacement;
 
   flag_values_were_updated = false;
 }
@@ -111,15 +114,9 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
   /*if (flag_values_were_updated)
     return;*/
 
-  max_effective_opening_displacement  = tmp_values.first;
-  damage_variable                     = tmp_values.second;
-
-  dealii::SymmetricTensor<2,dim> normal_projector =
-    dealii::symmetrize(dealii::outer_product(normal_vector,
-                                             normal_vector));
-
-  dealii::SymmetricTensor<2,dim> tangential_projector =
-    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+  damage_variable                     = tmp_scalar_values[0];
+  max_effective_opening_displacement  = tmp_scalar_values[1];
+  old_effective_opening_displacement  = tmp_scalar_values[2];
 
   const dealii::Tensor<1,dim> displacement_jump =
     neighbor_cell_displacement - current_cell_displacement;
@@ -127,6 +124,23 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
   max_effective_opening_displacement =
     std::max(max_effective_opening_displacement,
              displacement_jump.norm());
+
+  const double displacement_ratio =
+     max_effective_opening_displacement / critical_opening_displacement;
+
+  damage_variable =
+    1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio);
+
+  if (flag_set_damage_to_zero)
+    damage_variable = 0.0;
+
+  // The variables
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                             normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
 
   max_effective_normal_opening_displacement =
     std::max(max_effective_normal_opening_displacement,
@@ -138,25 +152,7 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
   max_cohesive_traction =
     get_master_relation(max_effective_opening_displacement);
-
-  const double displacement_ratio =
-     max_effective_opening_displacement / critical_opening_displacement;
-
-  /*
-  const double free_energy_density =
-    std::exp(1.0) *
-    critical_cohesive_traction *
-    critical_opening_displacement *
-    (1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio));
-
-  damage_variable = free_energy_density/critical_energy_release_rate;
-  */
-
-  damage_variable =
-    1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio);
-
-  if (flag_set_damage_to_zero)
-    damage_variable = 0.0;
+  // are temporary and will be deleted eventually.
 
   flag_values_were_updated = true;
 }

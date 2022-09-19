@@ -68,15 +68,9 @@ public:
 
   virtual ~InterfaceQuadraturePointHistory() = default;
 
-  double get_max_effective_opening_displacement() const;
-
-  double get_max_effective_normal_opening_displacement() const;
-
-  double get_max_effective_tangential_opening_displacement() const;
-
-  double get_max_cohesive_traction() const;
-
   double get_damage_variable() const;
+
+  double get_max_effective_opening_displacement() const;
 
   void init(
     const RunTimeParameters::CohesiveLawParameters &parameters);
@@ -87,6 +81,16 @@ public:
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
     const dealii::Tensor<1,dim> current_cell_displacement,
     const dealii::Tensor<1,dim> normal_vector);
+
+  // The methods
+
+  double get_max_effective_normal_opening_displacement() const;
+
+  double get_max_effective_tangential_opening_displacement() const;
+
+  double get_max_cohesive_traction() const;
+
+  // are temporary and will be deleted eventually.
 
 private:
   double                    critical_cohesive_traction;
@@ -103,6 +107,14 @@ private:
 
   double                    endurance_limit;
 
+  double                    damage_variable;
+
+  double                    max_effective_opening_displacement;
+
+  double                    old_effective_opening_displacement;
+
+  std::vector<double>       tmp_scalar_values;
+
   // The variables
 
   double                    max_effective_normal_opening_displacement;
@@ -112,20 +124,6 @@ private:
   double                    max_cohesive_traction;
 
   // are temporary and will be deleted eventually.
-
-  double                    damage_variable;
-
-  double                    max_effective_opening_displacement;
-
-  std::pair<double, double> tmp_values;
-
-  dealii::Tensor<1,dim>     old_current_cell_displacement;
-
-  dealii::Tensor<1,dim>     old_neighbor_cell_displacement;
-
-  dealii::Tensor<1,dim>     old_current_cell_normal_vector;
-
-  dealii::Tensor<1,dim>     old_neighbor_cell_normal_vector;
 
   bool                      flag_set_damage_to_zero;
 
@@ -138,6 +136,15 @@ private:
   double get_master_relation(
     const double effective_opening_displacement) const;
 };
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_damage_variable() const
+{
+  return (damage_variable);
+}
 
 
 
@@ -173,15 +180,6 @@ inline double InterfaceQuadraturePointHistory<dim>::
 get_max_cohesive_traction() const
 {
   return (max_cohesive_traction);
-}
-
-
-
-template <int dim>
-inline double InterfaceQuadraturePointHistory<dim>::
-get_damage_variable() const
-{
-  return (damage_variable);
 }
 
 
