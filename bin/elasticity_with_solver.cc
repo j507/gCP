@@ -306,9 +306,10 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.mapping_degree)),
-discrete_time(parameters.start_time,
-              parameters.end_time,
-              parameters.time_step_size),
+discrete_time(
+  parameters.temporal_discretization_parameters.start_time,
+  parameters.temporal_discretization_parameters.end_time,
+  parameters.temporal_discretization_parameters.time_step_size),
 triangulation(
   MPI_COMM_WORLD,
   typename dealii::Triangulation<dim>::MeshSmoothing(
@@ -326,10 +327,13 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
-dirichlet_boundary_function(parameters.start_time),
-neumann_boundary_function(parameters.start_time),
+dirichlet_boundary_function(
+  parameters.temporal_discretization_parameters.start_time),
+neumann_boundary_function(
+  parameters.temporal_discretization_parameters.start_time),
 supply_term_function(
-  std::make_shared<SupplyTermFunction<dim>>(parameters.start_time))
+  std::make_shared<SupplyTermFunction<dim>>(
+    parameters.temporal_discretization_parameters.start_time))
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {

@@ -678,39 +678,35 @@ struct ProblemParameters
                             const Parameters &prm);
   */
 
-  unsigned int            dim;
+  unsigned int                      dim;
 
-  unsigned int            mapping_degree;
+  unsigned int                      mapping_degree;
 
-  bool                    mapping_interior_cells;
+  bool                              mapping_interior_cells;
 
-  unsigned int            n_global_refinements;
+  unsigned int                      n_global_refinements;
 
-  double                  start_time;
+  unsigned int                      fe_degree_displacements;
 
-  double                  end_time;
+  unsigned int                      fe_degree_slips;
 
-  double                  time_step_size;
+  TemporalDiscretizationParameters  temporal_discretization_parameters;
 
-  unsigned int            fe_degree_displacements;
+  SolverParameters                  solver_parameters;
 
-  unsigned int            fe_degree_slips;
+  std::string                       slips_normals_pathname;
 
-  SolverParameters        solver_parameters;
+  std::string                       slips_directions_pathname;
 
-  std::string             slips_normals_pathname;
+  std::string                       euler_angles_pathname;
 
-  std::string             slips_directions_pathname;
+  unsigned int                      graphical_output_frequency;
 
-  std::string             euler_angles_pathname;
+  unsigned int                      terminal_output_frequency;
 
-  unsigned int            graphical_output_frequency;
+  std::string                       graphical_output_directory;
 
-  unsigned int            terminal_output_frequency;
-
-  std::string             graphical_output_directory;
-
-  bool                    verbose;
+  bool                              verbose;
 };
 
 

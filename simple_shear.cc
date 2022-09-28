@@ -210,9 +210,10 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.mapping_degree)),
-discrete_time(parameters.start_time,
-              parameters.end_time,
-              parameters.time_step_size),
+discrete_time(
+  parameters.temporal_discretization_parameters.start_time,
+  parameters.temporal_discretization_parameters.end_time,
+  parameters.temporal_discretization_parameters.time_step_size),
 triangulation(
   MPI_COMM_WORLD,
   typename dealii::Triangulation<dim>::MeshSmoothing(
@@ -238,10 +239,12 @@ simple_shear(fe_field,
              parameters.shear_strain_at_upper_boundary,
              3,
              parameters.width),
-string_width((std::to_string((unsigned int)(
-              (parameters.end_time - parameters.start_time) /
-              parameters.time_step_size)) +
-             "Step ").size())
+string_width(
+  (std::to_string((unsigned int)(
+  (parameters.temporal_discretization_parameters.end_time -
+   parameters.temporal_discretization_parameters.start_time) /
+  parameters.temporal_discretization_parameters.time_step_size)) +
+  "Step ").size())
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
