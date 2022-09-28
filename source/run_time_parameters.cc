@@ -557,6 +557,151 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
 
+TemporalDiscretizationParameters::TemporalDiscretizationParameters()
+:
+start_time(0.0),
+end_time(1.0),
+time_step_size(0.25),
+period(1.0),
+n_cycles(1.0),
+n_discrete_time_points_per_half_cycle(5),
+initial_loading_time(1.0),
+n_discrete_time_points_in_loading_phase(10),
+time_step_size_in_loading_phase(time_step_size),
+simulation_time_control(SimulationTimeControl::TimeSteered)
+{}
+
+
+
+void TemporalDiscretizationParameters::
+declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    prm.declare_entry("Start time",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("End time",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Time step size",
+                      "1e-1",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Period",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Number of cycles",
+                      "1",
+                      dealii::Patterns::Integer());
+
+    prm.declare_entry("Discrete time points per half cycle",
+                      "1",
+                      dealii::Patterns::Integer());
+
+    prm.declare_entry("Initial loading time",
+                      "0.5",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Discrete time points in loading phase",
+                      "1e-1",
+                      dealii::Patterns::Integer());
+
+    prm.declare_entry("Simulation time control",
+                      "time-steered",
+                      dealii::Patterns::Selection(
+                        "time-steered|cycle-steered"));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void TemporalDiscretizationParameters::
+parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    start_time            = prm.get_double("Start time");
+
+    end_time              = prm.get_double("End time");
+
+    time_step_size        = prm.get_double("Time step size");
+
+    period                = prm.get_double("Period");
+
+    n_cycles              = prm.get_integer("Number of cycles");
+
+    initial_loading_time  = prm.get_double("Period");
+
+    n_discrete_time_points_per_half_cycle
+      = prm.get_integer("Discrete time points per half cycle");
+
+    n_discrete_time_points_in_loading_phase
+      = prm.get_integer("Discrete time points in loading phase");
+
+    const std::string string_simulation_time_control(
+                      prm.get("Simulation time control"));
+
+    if (string_simulation_time_control == std::string("time-steered"))
+      simulation_time_control = SimulationTimeControl::TimeSteered;
+    else if (string_simulation_time_control == std::string("cycle-steered"))
+      simulation_time_control = SimulationTimeControl::CycleSteered;
+    else
+      AssertThrow(
+        false,
+        dealii::ExcMessage("Unexpected identifier for the simulation"
+                           " time control"));
+
+    if (simulation_time_control == SimulationTimeControl::CycleSteered)
+    {
+      end_time = start_time + initial_loading_time + n_cycles * period;
+
+      time_step_size =
+        0.5 * period / (n_discrete_time_points_per_half_cycle - 1);
+
+      time_step_size_in_loading_phase =
+        initial_loading_time /
+        (n_discrete_time_points_in_loading_phase - 1);
+    }
+    else
+      time_step_size_in_loading_phase = time_step_size;
+
+    Assert(start_time >= 0.0,
+           dealii::ExcLowerRangeType<double>(start_time, 0.0));
+
+    Assert(end_time > start_time,
+           dealii::ExcLowerRangeType<double>(end_time, start_time));
+
+    Assert(time_step_size > 0,
+           dealii::ExcLowerRangeType<double>(time_step_size, 0));
+
+    Assert(period > 0,
+           dealii::ExcLowerRangeType<double>(period, 0));
+
+    Assert(n_cycles > 0,
+           dealii::ExcLowerRangeType<int>(n_cycles, 0));
+
+    Assert(n_discrete_time_points_per_half_cycle > 1,
+           dealii::ExcLowerRangeType<int>(
+            n_discrete_time_points_per_half_cycle, 1));
+
+    Assert(n_discrete_time_points_in_loading_phase > 1,
+           dealii::ExcLowerRangeType<int>(
+            n_discrete_time_points_in_loading_phase, 1));
+
+    Assert(end_time >= (start_time + time_step_size),
+           dealii::ExcLowerRangeType<double>(
+            end_time, start_time + time_step_size));
+  }
+  prm.leave_subsection();
+}
+
+
+
 ProblemParameters::ProblemParameters()
 :
 dim(2),

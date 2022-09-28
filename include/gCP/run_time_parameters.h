@@ -7,9 +7,33 @@ namespace gCP
 {
 
 
-
+/*!
+ * @brief Namespace encompasing all the structs containing the suite's
+ * parameters
+ */
 namespace RunTimeParameters
 {
+
+
+
+/*!
+ * @brief A enum class specifiying which criteria determines the end
+ * time of the simulation
+ */
+enum class SimulationTimeControl
+{
+  /*!
+   * @brief The end time is specified by the user
+   */
+  TimeSteered,
+
+  /*!
+   * @brief The end time is computed through number of cycles and the
+   * period
+   */
+  CycleSteered,
+};
+
 
 
 /*!
@@ -33,6 +57,7 @@ enum class RegularizationFunction
    */
   Tanh,
 };
+
 
 
 /*!
@@ -510,6 +535,115 @@ struct SolverParameters
   bool                verbose;
 };
 
+
+/*!
+ * @brief A struct containing the parameters of the temporal
+ * discretization
+ */
+struct TemporalDiscretizationParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  TemporalDiscretizationParameters();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  TemporalDiscretizationParameters(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*
+  template<typename Stream>
+  friend Stream& operator<<(Stream &stream,
+                            const Parameters &prm);
+  */
+
+  /*!
+   * @brief The start time of the simulation
+   */
+  double                  start_time;
+
+  /*!
+   * @brief The end time of the simulation
+   */
+  double                  end_time;
+
+  /*!
+   * @brief The time step size used during the simulation
+   */
+  double                  time_step_size;
+
+  /*!
+   * @brief The period of the cyclic load
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  double                  period;
+
+  /*!
+   * @brief The number of cycles to be simulated
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  int                     n_cycles;
+
+  /*!
+   * @brief The number of discrete points per half cycle at which
+   * the quasi static problem will be solved
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  int                     n_discrete_time_points_per_half_cycle;
+
+  /*!
+   * @brief The time in which the initial loading takes place
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  double                  initial_loading_time;
+
+  /*!
+   * @brief The time step used during the initial loading phase
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  int                     n_discrete_time_points_in_loading_phase;
+
+  /*!
+   * @brief The time step used during the loading phase
+   *
+   * @details It is internally computed using @ref initial_loading_time
+   * and @ref n_discrete_time_points_in_loading_phase
+   *
+   * @note This member is only relevant if @ref simulation_time_control
+   * corresponds to @ref SimulationTimeControl::CycleSteered
+   */
+  double                  time_step_size_in_loading_phase;
+
+  /*!
+   * @brief The simulation time control to be used. See @ref
+   * RunTimeParameters::SimulationTimeControl
+   */
+  SimulationTimeControl   simulation_time_control;
+};
 
 
 
