@@ -66,7 +66,6 @@ ADD_SUBDIRECTORY(bin)
 ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
-    gCPFEM.cc
     simple_shear.cc
     )
 
