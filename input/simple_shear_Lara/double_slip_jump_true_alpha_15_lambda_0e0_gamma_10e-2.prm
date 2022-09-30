@@ -20,7 +20,7 @@ end
 subsection Simple shear
   set Height of the strip                              = 1.0
   set Number of equally sized divisions in y-direction = 2
-  set Shear strain at the upper boundary               = 0.10
+  set Maximum shear strain at the upper boundary               = 0.10
   set Width of the strip                               = 0.1
 end
 
