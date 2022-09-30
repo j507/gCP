@@ -80,29 +80,35 @@ class DisplacementControl : public dealii::Function<dim>
 {
 public:
   DisplacementControl(
+    const unsigned int                    n_crystals,
+    const double                          height,
     const double                          max_shear_strain_at_upper_boundary,
     const double                          min_shear_strain_at_upper_boundary,
+    const double                          period,
+    const double                          initial_loading_time,
     const RunTimeParameters::LoadingType  loading_type,
-    const double                          height,
-    const unsigned int                    n_crystals,
     const bool                            flag_is_decohesion_allowed,
     const unsigned int                    n_components,
-    const double                          time);
+    const double                          start_time);
 
   virtual void vector_value(
     const dealii::Point<dim>  &point,
     dealii::Vector<double>    &return_vector) const override;
 
 private:
+  const unsigned int                    n_crystals;
+
+  const double                          height;
+
   const double                          max_shear_strain_at_upper_boundary;
 
   const double                          min_shear_strain_at_upper_boundary;
 
+  const double                          period;
+
+  const double                          initial_loading_time;
+
   const RunTimeParameters::LoadingType  loading_type;
-
-  const unsigned int                    n_crystals;
-
-  const double                          height;
 
   const bool                            flag_is_decohesion_allowed;
 };
@@ -111,21 +117,25 @@ private:
 
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
-  const double                        max_shear_strain_at_upper_boundary,
-  const double                        min_shear_strain_at_upper_boundary,
-  const RunTimeParameters::LoadingType loading_type,
-  const double                        height,
-  const unsigned int                  n_crystals,
-  const bool                          flag_is_decohesion_allowed,
-  const unsigned int                  n_components,
-  const double                        time)
+  const unsigned int                    n_crystals,
+  const double                          height,
+  const double                          max_shear_strain_at_upper_boundary,
+  const double                          min_shear_strain_at_upper_boundary,
+  const double                          period,
+  const double                          initial_loading_time,
+  const RunTimeParameters::LoadingType  loading_type,
+  const bool                            flag_is_decohesion_allowed,
+  const unsigned int                    n_components,
+  const double                          start_time)
 :
-dealii::Function<dim>(n_components, time),
-max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
-min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
-loading_type(loading_type),
+dealii::Function<dim>(n_components, start_time),
 n_crystals(n_crystals),
 height(height),
+max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
+min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
+period(period),
+initial_loading_time(initial_loading_time + start_time),
+loading_type(loading_type),
 flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {}
 
@@ -140,11 +150,40 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * height * max_shear_strain_at_upper_boundary;
+  double displacement_load = 0.0;
+
+  switch (loading_type)
+  {
+    case RunTimeParameters::LoadingType::Monotonic:
+      {
+        displacement_load =
+          t * height * max_shear_strain_at_upper_boundary;
+      }
+      break;
+    case RunTimeParameters::LoadingType::Cyclic:
+      {
+        if (t >= initial_loading_time)
+          displacement_load =
+            (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+        else
+          displacement_load =
+            max_shear_strain_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * t);
+      }
+      break;
+    default:
+      Assert(false, dealii::ExcNotImplemented());
+  }
+
+  return_vector[0] = displacement_load;
 
   if (flag_is_decohesion_allowed)
     for (unsigned int i = 1; i < n_crystals; ++i)
-      return_vector[i*dim] = t * height * max_shear_strain_at_upper_boundary;
+      return_vector[i*dim] = displacement_load;
 }
 
 
@@ -408,11 +447,13 @@ void SimpleShearProblem<dim>::setup()
   // depends on the number of crystals and slips
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
+      crystals_data->get_n_crystals(),
+      parameters.height,
       parameters.max_shear_strain_at_upper_boundary,
       parameters.min_shear_strain_at_upper_boundary,
+      parameters.temporal_discretization_parameters.period,
+      parameters.temporal_discretization_parameters.initial_loading_time,
       parameters.temporal_discretization_parameters.loading_type,
-      parameters.height,
-      crystals_data->get_n_crystals(),
       fe_field->is_decohesion_allowed(),
       fe_field->get_n_components(),
       discrete_time.get_start_time());
