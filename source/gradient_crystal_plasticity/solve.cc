@@ -41,9 +41,9 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   prepare_quadrature_point_history();
 
-  unsigned int nonlinear_iteration = 0;
+  unsigned int nonlinear_iteration = 1;
 
-  for (;nonlinear_iteration < parameters.n_max_nonlinear_iterations;
+  for (;nonlinear_iteration <= parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
     reset_and_update_quadrature_point_history();
