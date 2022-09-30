@@ -79,43 +79,54 @@ template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
-  DisplacementControl(const double        shear_strain_at_upper_boundary,
-                      const double        height,
-                      const unsigned int  n_crystals,
-                      const bool          flag_is_decohesion_allowed = false,
-                      const unsigned int  n_components = 3,
-                      const double        time = 0.0);
+  DisplacementControl(
+    const double                          max_shear_strain_at_upper_boundary,
+    const double                          min_shear_strain_at_upper_boundary,
+    const RunTimeParameters::LoadingType  loading_type,
+    const double                          height,
+    const unsigned int                    n_crystals,
+    const bool                            flag_is_decohesion_allowed,
+    const unsigned int                    n_components,
+    const double                          time);
 
   virtual void vector_value(
     const dealii::Point<dim>  &point,
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-  const unsigned int  n_crystals;
+  const double                          max_shear_strain_at_upper_boundary;
 
-  const bool          flag_is_decohesion_allowed;
+  const double                          min_shear_strain_at_upper_boundary;
 
-  const double        shear_strain_at_upper_boundary;
+  const RunTimeParameters::LoadingType  loading_type;
 
-  const double        height;
+  const unsigned int                    n_crystals;
+
+  const double                          height;
+
+  const bool                            flag_is_decohesion_allowed;
 };
 
 
 
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
-  const double        shear_strain_at_upper_boundary,
-  const double        height,
-  const unsigned int  n_crystals,
-  const bool          flag_is_decohesion_allowed,
-  const unsigned int  n_components,
-  const double        time)
+  const double                        max_shear_strain_at_upper_boundary,
+  const double                        min_shear_strain_at_upper_boundary,
+  const RunTimeParameters::LoadingType loading_type,
+  const double                        height,
+  const unsigned int                  n_crystals,
+  const bool                          flag_is_decohesion_allowed,
+  const unsigned int                  n_components,
+  const double                        time)
 :
 dealii::Function<dim>(n_components, time),
+max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
+min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
+loading_type(loading_type),
 n_crystals(n_crystals),
-flag_is_decohesion_allowed(flag_is_decohesion_allowed),
-shear_strain_at_upper_boundary(shear_strain_at_upper_boundary),
-height(height)
+height(height),
+flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {}
 
 
@@ -129,11 +140,11 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * height * shear_strain_at_upper_boundary;
+  return_vector[0] = t * height * max_shear_strain_at_upper_boundary;
 
   if (flag_is_decohesion_allowed)
     for (unsigned int i = 1; i < n_crystals; ++i)
-      return_vector[i*dim] = t * height * shear_strain_at_upper_boundary;
+      return_vector[i*dim] = t * height * max_shear_strain_at_upper_boundary;
 }
 
 
@@ -236,7 +247,7 @@ postprocessor(fe_field,
               crystals_data),
 simple_shear(fe_field,
              mapping,
-             parameters.shear_strain_at_upper_boundary,
+             parameters.max_shear_strain_at_upper_boundary,
              3,
              parameters.width),
 string_width(
@@ -397,7 +408,9 @@ void SimpleShearProblem<dim>::setup()
   // depends on the number of crystals and slips
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
-      parameters.shear_strain_at_upper_boundary,
+      parameters.max_shear_strain_at_upper_boundary,
+      parameters.min_shear_strain_at_upper_boundary,
+      parameters.temporal_discretization_parameters.loading_type,
       parameters.height,
       crystals_data->get_n_crystals(),
       fe_field->is_decohesion_allowed(),
