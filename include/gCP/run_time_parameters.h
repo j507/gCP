@@ -17,21 +17,22 @@ namespace RunTimeParameters
 
 
 /*!
- * @brief A enum class specifiying which criteria determines the end
- * time of the simulation
+ * @brief A enum class specifiying the type of loading
  */
-enum class SimulationTimeControl
+enum class LoadingType
 {
   /*!
-   * @brief The end time is specified by the user
+   * @brief Monotonic load
    */
-  TimeSteered,
+  Monotonic,
 
   /*!
-   * @brief The end time is computed through number of cycles and the
-   * period
+   * @brief Cyclic loading.
+   *
+   * @details The load is divided into a initial loading phase and a
+   * cyclic loading phase
    */
-  CycleSteered,
+  Cyclic,
 };
 
 
@@ -574,58 +575,58 @@ struct TemporalDiscretizationParameters
   /*!
    * @brief The start time of the simulation
    */
-  double                  start_time;
+  double      start_time;
 
   /*!
    * @brief The end time of the simulation
    */
-  double                  end_time;
+  double      end_time;
 
   /*!
    * @brief The time step size used during the simulation
    */
-  double                  time_step_size;
+  double      time_step_size;
 
   /*!
    * @brief The period of the cyclic load
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  double                  period;
+  double      period;
 
   /*!
    * @brief The number of cycles to be simulated
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int                     n_cycles;
+  int         n_cycles;
 
   /*!
    * @brief The number of discrete points per half cycle at which
    * the quasi static problem will be solved
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int                     n_discrete_time_points_per_half_cycle;
+  int         n_discrete_time_points_per_half_cycle;
 
   /*!
    * @brief The time in which the initial loading takes place
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  double                  initial_loading_time;
+  double      initial_loading_time;
 
   /*!
    * @brief The time step used during the initial loading phase
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int                     n_discrete_time_points_in_loading_phase;
+  int         n_discrete_time_points_in_loading_phase;
 
   /*!
    * @brief The time step used during the loading phase
@@ -633,16 +634,16 @@ struct TemporalDiscretizationParameters
    * @details It is internally computed using @ref initial_loading_time
    * and @ref n_discrete_time_points_in_loading_phase
    *
-   * @note This member is only relevant if @ref simulation_time_control
-   * corresponds to @ref SimulationTimeControl::CycleSteered
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  double                  time_step_size_in_loading_phase;
+  double      time_step_size_in_loading_phase;
 
   /*!
    * @brief The simulation time control to be used. See @ref
    * RunTimeParameters::SimulationTimeControl
    */
-  SimulationTimeControl   simulation_time_control;
+  LoadingType  loading_type;
 };
 
 
@@ -736,7 +737,9 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double        shear_strain_at_upper_boundary;
+  double        max_shear_strain_at_upper_boundary;
+
+  double        min_shear_strain_at_upper_boundary;
 
   unsigned int  n_equal_sized_divisions;
 

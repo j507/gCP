@@ -568,7 +568,7 @@ n_discrete_time_points_per_half_cycle(2),
 initial_loading_time(1.0),
 n_discrete_time_points_in_loading_phase(2),
 time_step_size_in_loading_phase(time_step_size),
-simulation_time_control(SimulationTimeControl::TimeSteered)
+loading_type(LoadingType::Monotonic)
 {}
 
 
@@ -608,10 +608,10 @@ declare_parameters(dealii::ParameterHandler &prm)
                     "2",
                     dealii::Patterns::Integer());
 
-  prm.declare_entry("Simulation time control",
-                    "time-steered",
+  prm.declare_entry("Loading type",
+                    "monotonic",
                     dealii::Patterns::Selection(
-                      "time-steered|cycle-steered"));
+                      "monotonic|cyclic"));
 }
 
 
@@ -637,20 +637,20 @@ parse_parameters(dealii::ParameterHandler &prm)
   n_discrete_time_points_in_loading_phase
     = prm.get_integer("Discrete time points in loading phase");
 
-  const std::string string_simulation_time_control(
-                    prm.get("Simulation time control"));
+  const std::string string_loading_type(
+                    prm.get("Loading type"));
 
-  if (string_simulation_time_control == std::string("time-steered"))
-    simulation_time_control = SimulationTimeControl::TimeSteered;
-  else if (string_simulation_time_control == std::string("cycle-steered"))
-    simulation_time_control = SimulationTimeControl::CycleSteered;
+  if (string_loading_type == std::string("monotonic"))
+    loading_type = LoadingType::Monotonic;
+  else if (string_loading_type == std::string("cyclic"))
+    loading_type = LoadingType::Cyclic;
   else
     AssertThrow(
       false,
       dealii::ExcMessage("Unexpected identifier for the simulation"
                           " time control"));
 
-  if (simulation_time_control == SimulationTimeControl::CycleSteered)
+  if (loading_type == LoadingType::Cyclic)
   {
     end_time = start_time + initial_loading_time + n_cycles * period;
 
@@ -920,6 +920,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
+max_shear_strain_at_upper_boundary(0.1),
+min_shear_strain_at_upper_boundary(0.5),
 n_equal_sized_divisions(1),
 height(1),
 width(0.1)
@@ -971,7 +973,11 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Simple shear");
   {
-    prm.declare_entry("Shear strain at the upper boundary",
+    prm.declare_entry("Maximum shear strain at the upper boundary",
+                      "0.0218",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Minimum shear strain at the upper boundary",
                       "0.0218",
                       dealii::Patterns::Double());
 
@@ -998,10 +1004,15 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Simple shear");
   {
-    shear_strain_at_upper_boundary =
-      prm.get_double("Shear strain at the upper boundary");
+    max_shear_strain_at_upper_boundary =
+      prm.get_double("Maximum shear strain at the upper boundary");
 
-    AssertIsFinite(shear_strain_at_upper_boundary);
+    AssertIsFinite(max_shear_strain_at_upper_boundary);
+
+    min_shear_strain_at_upper_boundary =
+      prm.get_double("Minimum shear strain at the upper boundary");
+
+    AssertIsFinite(min_shear_strain_at_upper_boundary);
 
     n_equal_sized_divisions =
       prm.get_integer("Number of equally sized divisions in y-direction");
