@@ -920,8 +920,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
-max_shear_strain_at_upper_boundary(0.1),
-min_shear_strain_at_upper_boundary(0.5),
+max_shear_strain_at_upper_boundary(0.5),
+min_shear_strain_at_upper_boundary(0.1),
 n_equal_sized_divisions(1),
 height(1),
 width(0.1)
