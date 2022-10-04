@@ -287,6 +287,10 @@ postprocessor(fe_field,
 simple_shear(fe_field,
              mapping,
              parameters.max_shear_strain_at_upper_boundary,
+             parameters.min_shear_strain_at_upper_boundary,
+             parameters.temporal_discretization_parameters.period,
+             parameters.temporal_discretization_parameters.initial_loading_time,
+             parameters.temporal_discretization_parameters.loading_type,
              3,
              parameters.width),
 string_width(
@@ -803,10 +807,22 @@ void SimpleShearProblem<dim>::run()
 
   postprocessor.init(gCP_solver.get_hooke_law());
 
+  if (parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::Cyclic)
+    discrete_time.set_desired_next_step_size(
+      parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
+
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
+    if (parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::Cyclic &&
+        discrete_time.get_current_time() ==
+        parameters.temporal_discretization_parameters.initial_loading_time)
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size);
+
     if (parameters.verbose)
       *pcout << std::setw(string_width) << std::left
              << "Step " +
