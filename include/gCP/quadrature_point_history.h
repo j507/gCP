@@ -86,6 +86,21 @@ public:
     const double  effective_opening_displacement,
     const double  cohesive_traction_norm);
 
+  /*!
+   * @brief Computes the effective opening displacement and stores it
+   * in @ref old_effective_opening_displacement.
+   *
+   * @details This method is to be called at the end of each pseudo-time
+   * iteration. It is needed as the effective opening displacement is
+   * dependent of the normal vector when the material is anisotropic,
+   * i.e., @ref tangential_to_normal_stiffness_ratio is different than
+   * zero
+   *
+   * @param neighbor_cell_displacement
+   * @param current_cell_displacement
+   * @param normal_vector
+   * @todo Docu
+   */
   void store_effective_opening_displacement(
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
     const dealii::Tensor<1,dim> current_cell_displacement,

@@ -194,6 +194,7 @@ void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
   /*if (flag_values_were_updated)
     return;*/
 
+  // Define projectors
   dealii::SymmetricTensor<2,dim> normal_projector =
     dealii::symmetrize(dealii::outer_product(normal_vector,
                                              normal_vector));
@@ -201,15 +202,19 @@ void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
   dealii::SymmetricTensor<2,dim> tangential_projector =
     dealii::unit_symmetric_tensor<dim>() - normal_projector;
 
+  // Compute opening displacement
   dealii::Tensor<1,dim> opening_displacement =
     neighbor_cell_displacement - current_cell_displacement;
 
+  // Compute normal and tangential components
   double normal_opening_displacement =
     (normal_projector * opening_displacement).norm();
 
   double tangential_opening_displacement =
     (tangential_projector * opening_displacement).norm();
 
+  // Compute effective opening displacements (Needed for the next
+  // pseudo-time iteration)
   old_effective_opening_displacement =
      std::sqrt(normal_opening_displacement *
                normal_opening_displacement
