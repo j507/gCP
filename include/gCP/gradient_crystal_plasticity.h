@@ -53,6 +53,9 @@ public:
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
     get_hooke_law() const;
 
+  std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
+    get_cohesive_law() const;
+
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
 
 private:
@@ -197,6 +200,16 @@ GradientCrystalPlasticitySolver<dim>::get_hooke_law() const
 {
   return (hooke_law);
 }
+
+
+
+template <int dim>
+inline std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
+GradientCrystalPlasticitySolver<dim>::get_cohesive_law() const
+{
+  return (cohesive_law);
+}
+
 
 
 template <int dim>
