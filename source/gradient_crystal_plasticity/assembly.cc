@@ -261,7 +261,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   } // Loop over quadrature points
 
   // Grain boundary integral
-  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+  if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
       parameters.boundary_conditions_at_grain_boundaries ==
         RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
   {
@@ -434,8 +434,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                    //         parameters.cohesive_law_parameters.degradation_exponent) *
                     scratch.current_cell_gateaux_derivative_values[face_q_point] *
                     scratch.face_vector_phi[j] *
                     0.5 *
@@ -444,8 +444,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                    //         parameters.cohesive_law_parameters.degradation_exponent) *
                     scratch.neighbor_cell_gateaux_derivative_values[face_q_point] *
                     scratch.neighbor_face_vector_phi[j] *
                     0.5 *
@@ -774,7 +774,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   } // Loop over quadrature points
 
   // Grain boundary integral
-  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+  if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
       parameters.boundary_conditions_at_grain_boundaries ==
         RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
     for (const auto &face_index : cell->face_indices())
@@ -929,8 +929,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                  data.local_rhs(i) +=
                    scratch.face_vector_phi[i] *
-                   std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                            parameters.cohesive_law_parameters.degradation_exponent) *
+                   //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                   //         parameters.cohesive_law_parameters.degradation_exponent) *
                    scratch.cohesive_traction_values[face_q_point] *
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
@@ -1034,7 +1034,7 @@ void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
             ++q_point)
         local_quadrature_point_history[q_point]->store_current_values();
 
-      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
         for (const auto &face_index : cell->face_indices())
           if (!cell->face(face_index)->at_boundary() &&
@@ -1172,7 +1172,7 @@ update_local_quadrature_point_history(
       scratch.old_slips_values);
   } // Loop over quadrature points
 
-  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+  if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
       fe_field->is_decohesion_allowed())
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&
@@ -1310,7 +1310,7 @@ store_local_effective_opening_displacement(
   // Reset local data
   scratch.reset();
 
-  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+  if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
       fe_field->is_decohesion_allowed())
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&

@@ -56,7 +56,8 @@ public:
   std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
     get_cohesive_law() const;
 
-  const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
+  std::shared_ptr<const dealii::Vector<float>>
+    get_cell_is_at_grain_boundary_vector() const;
 
 private:
   const RunTimeParameters::SolverParameters         &parameters;
@@ -108,7 +109,7 @@ private:
     typename dealii::Triangulation<dim>::cell_iterator,
     InterfaceQuadraturePointHistory<dim>>           interface_quadrature_point_history;
 
-  dealii::Vector<float>                             cell_is_at_grain_boundary;
+  std::shared_ptr<dealii::Vector<float>>            cell_is_at_grain_boundary;
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
@@ -213,7 +214,7 @@ GradientCrystalPlasticitySolver<dim>::get_cohesive_law() const
 
 
 template <int dim>
-inline const dealii::Vector<float> &
+inline std::shared_ptr<const dealii::Vector<float>>
 GradientCrystalPlasticitySolver<dim>::get_cell_is_at_grain_boundary_vector() const
 {
   return (cell_is_at_grain_boundary);

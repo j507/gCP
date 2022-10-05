@@ -745,7 +745,7 @@ void SimpleShearProblem<dim>::triangulation_output()
   data_out.add_data_vector(active_fe_index,
                            "active_fe_index");
 
-  data_out.add_data_vector(gCP_solver.get_cell_is_at_grain_boundary_vector(),
+  data_out.add_data_vector(*gCP_solver.get_cell_is_at_grain_boundary_vector(),
                            "cell_is_at_grain_boundary");
 
   data_out.build_patches();
@@ -803,7 +803,8 @@ void SimpleShearProblem<dim>::run()
 
   // Initiate the benchmark data
   simple_shear.init(gCP_solver.get_elastic_strain_law(),
-                    gCP_solver.get_hooke_law());
+                    gCP_solver.get_hooke_law(),
+                    gCP_solver.get_cohesive_law());
 
   postprocessor.init(gCP_solver.get_hooke_law());
 
