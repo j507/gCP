@@ -31,13 +31,13 @@ void GradientCrystalPlasticitySolver<dim>::init()
   trial_solution.reinit(fe_field->solution);
   newton_update.reinit(fe_field->solution);
   residual.reinit(fe_field->distributed_vector);
-  cell_is_at_grain_boundary->reinit(
+  cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
-  trial_solution              = 0.0;
-  newton_update               = 0.0;
-  residual                    = 0.0;
-  *cell_is_at_grain_boundary  = 0.0;
+  trial_solution            = 0.0;
+  newton_update             = 0.0;
+  residual                  = 0.0;
+  cell_is_at_grain_boundary = 0.0;
 
   // Identify which cells are located at a grain boundary
   for (const auto &cell :
@@ -48,7 +48,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
             cell->active_fe_index() !=
               cell->neighbor(face_index)->active_fe_index())
         {
-          (*cell_is_at_grain_boundary)(cell->active_cell_index()) = 1.0;
+          cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
           break;
         }
 
@@ -179,7 +179,7 @@ void GradientCrystalPlasticitySolver<dim>::make_sparsity_pattern(
           sparsity_pattern,
           false);
 
-        if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
+        if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
             parameters.boundary_conditions_at_grain_boundaries ==
              RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
           for (const auto &face_index : cell->face_indices())
@@ -256,7 +256,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
           parameters.scalar_microscopic_stress_law_parameters,
           crystals_data->get_n_slips());
 
-      if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
         for (const auto &face_index : cell->face_indices())
           if (!cell->face(face_index)->at_boundary() &&
@@ -289,7 +289,7 @@ void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
 {
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
     if (cell->is_locally_owned())
-      if ((*cell_is_at_grain_boundary)(cell->active_cell_index()) &&
+      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
         for (const auto &face_index : cell->face_indices())
           if (!cell->face(face_index)->at_boundary() &&
