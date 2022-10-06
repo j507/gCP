@@ -9,9 +9,10 @@
 #include <gCP/utilities.h>
 
 #include <deal.II/base/discrete_time.h>
+#include <deal.II/base/table_handler.h>
 #include <deal.II/base/tensor_function.h>
-#include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/timer.h>
+#include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/utilities.h>
 
 #include <memory>
@@ -124,7 +125,7 @@ private:
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
-  Utilities::Logger                                 decohesion_logger;
+  dealii::TableHandler                              decohesion_logger;
 
   bool                                              flag_init_was_called;
 

@@ -302,28 +302,41 @@ void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
                   cell->id(),
                   cell->neighbor(face_index)->id());
 
-            decohesion_logger.update_value(
-              "Effective opening displacement",
+            decohesion_logger.add_value(
+              "time",
+              discrete_time.get_next_time());
+            decohesion_logger.add_value(
+              "max_effective_opening_displacement",
               local_interface_quadrature_point_history[0]->
                 get_max_effective_opening_displacement());
-            decohesion_logger.update_value(
-              "Normal opening displacement",
+            decohesion_logger.add_value(
+              "effective_opening_displacement",
               local_interface_quadrature_point_history[0]->
-                get_max_effective_normal_opening_displacement());
-            decohesion_logger.update_value(
-              "Tangential opening displacement",
+                get_effective_opening_displacement());
+            decohesion_logger.add_value(
+              "normal_opening_displacement",
               local_interface_quadrature_point_history[0]->
-                get_max_effective_tangential_opening_displacement());
-            decohesion_logger.update_value(
-              "Cohesive traction",
+                get_normal_opening_displacement());
+            decohesion_logger.add_value(
+              "tangential_opening_displacement",
               local_interface_quadrature_point_history[0]->
-                get_max_cohesive_traction());
-            decohesion_logger.update_value(
-              "Damage",
+                get_tangential_opening_displacement());
+            decohesion_logger.add_value(
+              "effective_cohesive_traction",
+              local_interface_quadrature_point_history[0]->
+                get_effective_cohesive_traction());
+            decohesion_logger.add_value(
+              "damage_variable",
               local_interface_quadrature_point_history[0]->
                 get_damage_variable());
 
-            decohesion_logger.log_to_file();
+            std::ofstream fstream(
+              parameters.logger_output_directory + "decohesion_log.txt");
+
+            decohesion_logger.write_text(
+              fstream,
+              dealii::TableHandler::TextOutputFormat::org_mode_table);
+
             return;
           }
 
