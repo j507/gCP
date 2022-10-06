@@ -106,13 +106,23 @@ public:
     const dealii::Tensor<1,dim> current_cell_displacement,
     const dealii::Tensor<1,dim> normal_vector);
 
+  /*!
+   * @brief Temporary method
+   */
+  void store_effective_opening_displacement(
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector,
+    const double                effective_cohesive_traction);
+
   // The methods
+  double get_effective_opening_displacement() const;
 
-  double get_max_effective_normal_opening_displacement() const;
+  double get_normal_opening_displacement() const;
 
-  double get_max_effective_tangential_opening_displacement() const;
+  double get_tangential_opening_displacement() const;
 
-  double get_max_cohesive_traction() const;
+  double get_effective_cohesive_traction() const;
 
   // are temporary and will be deleted eventually.
 
@@ -140,12 +150,13 @@ private:
   std::vector<double>       tmp_scalar_values;
 
   // The variables
+  double                    effective_opening_displacement;
 
-  double                    max_effective_normal_opening_displacement;
+  double                    normal_opening_displacement;
 
-  double                    max_effective_tangential_opening_displacement;
+  double                    tangential_opening_displacement;
 
-  double                    max_cohesive_traction;
+  double                    effective_cohesive_traction;
 
   // are temporary and will be deleted eventually.
 
@@ -183,27 +194,36 @@ get_max_effective_opening_displacement() const
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_effective_normal_opening_displacement() const
+get_effective_opening_displacement() const
 {
-  return (max_effective_normal_opening_displacement);
+  return (effective_opening_displacement);
 }
 
 
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_effective_tangential_opening_displacement() const
+get_normal_opening_displacement() const
 {
-  return (max_effective_tangential_opening_displacement);
+  return (normal_opening_displacement);
 }
 
 
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_cohesive_traction() const
+get_tangential_opening_displacement() const
 {
-  return (max_cohesive_traction);
+  return (tangential_opening_displacement);
+}
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_effective_cohesive_traction() const
+{
+  return (effective_cohesive_traction);
 }
 
 
