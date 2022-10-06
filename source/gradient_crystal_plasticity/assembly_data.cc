@@ -433,7 +433,10 @@ old_slips_values(
   std::vector<double>(this->n_q_points, 0.0)),
 normal_vector_values(this->n_face_q_points),
 current_cell_displacement_values(this->n_face_q_points),
-neighbor_cell_displacement_values(this->n_face_q_points)
+neighbor_cell_displacement_values(this->n_face_q_points),
+current_cell_old_displacement_values(this->n_face_q_points),
+neighbor_cell_old_displacement_values(this->n_face_q_points),
+cohesive_traction_values(this->n_face_q_points)
 {}
 
 
@@ -467,7 +470,10 @@ old_slips_values(
   std::vector<double>(this->n_q_points, 0.0)),
 normal_vector_values(this->n_face_q_points),
 current_cell_displacement_values(this->n_face_q_points),
-neighbor_cell_displacement_values(this->n_face_q_points)
+neighbor_cell_displacement_values(this->n_face_q_points),
+current_cell_old_displacement_values(this->n_face_q_points),
+neighbor_cell_old_displacement_values(this->n_face_q_points),
+cohesive_traction_values(this->n_face_q_points)
 {}
 
 
