@@ -434,8 +434,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                    //         parameters.cohesive_law_parameters.degradation_exponent) *
                     scratch.current_cell_gateaux_derivative_values[face_q_point] *
                     scratch.face_vector_phi[j] *
                     0.5 *
@@ -444,8 +444,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                    //         parameters.cohesive_law_parameters.degradation_exponent) *
                     scratch.neighbor_cell_gateaux_derivative_values[face_q_point] *
                     scratch.neighbor_face_vector_phi[j] *
                     0.5 *
@@ -929,8 +929,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                  data.local_rhs(i) +=
                    scratch.face_vector_phi[i] *
-                   std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                            parameters.cohesive_law_parameters.degradation_exponent) *
+                   //std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                   //         parameters.cohesive_law_parameters.degradation_exponent) *
                    scratch.cohesive_traction_values[face_q_point] *
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
@@ -1354,10 +1354,20 @@ store_local_effective_opening_displacement(
           trial_solution,
           scratch.current_cell_displacement_values);
 
+        fe_face_values[
+          fe_field->get_displacement_extractor(crystal_id)].get_function_values(
+          fe_field->old_solution,
+          scratch.current_cell_old_displacement_values);
+
         neighbor_fe_face_values[
           fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
           trial_solution,
           scratch.neighbor_cell_displacement_values);
+
+        neighbor_fe_face_values[
+          fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
+          fe_field->old_solution,
+          scratch.neighbor_cell_old_displacement_values);
 
         // Get normal vector values values at the quadrature points
         scratch.normal_vector_values =
@@ -1366,10 +1376,21 @@ store_local_effective_opening_displacement(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
+          scratch.cohesive_traction_values[face_q_point] =
+            cohesive_law->get_cohesive_traction(
+              scratch.neighbor_cell_displacement_values[face_q_point] -
+              scratch.current_cell_displacement_values[face_q_point],
+              local_interface_quadrature_point_history[face_q_point]->
+                get_max_effective_opening_displacement(),
+              (scratch.neighbor_cell_old_displacement_values[face_q_point] -
+               scratch.current_cell_old_displacement_values[face_q_point]).norm(),
+              discrete_time.get_next_step_size());
+
           local_interface_quadrature_point_history[face_q_point]->store_effective_opening_displacement(
             scratch.neighbor_cell_displacement_values[face_q_point],
             scratch.current_cell_displacement_values[face_q_point],
-            scratch.normal_vector_values[face_q_point]);
+            scratch.normal_vector_values[face_q_point],
+            scratch.cohesive_traction_values[face_q_point].norm());
         }
       }
 }
