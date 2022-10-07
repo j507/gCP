@@ -610,7 +610,7 @@ struct TemporalDiscretizationParameters
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int         n_discrete_time_points_per_half_cycle;
+  int         n_steps_per_half_cycle;
 
   /*!
    * @brief The time in which the initial loading takes place
@@ -626,13 +626,13 @@ struct TemporalDiscretizationParameters
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int         n_discrete_time_points_in_loading_phase;
+  int         n_steps_in_loading_phase;
 
   /*!
    * @brief The time step used during the loading phase
    *
    * @details It is internally computed using @ref initial_loading_time
-   * and @ref n_discrete_time_points_in_loading_phase
+   * and @ref n_steps_in_loading_phase
    *
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic

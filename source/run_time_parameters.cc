@@ -564,9 +564,9 @@ end_time(1.0),
 time_step_size(0.25),
 period(1.0),
 n_cycles(1.0),
-n_discrete_time_points_per_half_cycle(2),
+n_steps_per_half_cycle(2),
 initial_loading_time(1.0),
-n_discrete_time_points_in_loading_phase(2),
+n_steps_in_loading_phase(2),
 time_step_size_in_loading_phase(time_step_size),
 loading_type(LoadingType::Monotonic)
 {}
@@ -596,7 +596,7 @@ declare_parameters(dealii::ParameterHandler &prm)
                     "1",
                     dealii::Patterns::Integer());
 
-  prm.declare_entry("Discrete time points per half cycle",
+  prm.declare_entry("Number of steps per half cycle",
                     "2",
                     dealii::Patterns::Integer());
 
@@ -604,7 +604,7 @@ declare_parameters(dealii::ParameterHandler &prm)
                     "0.5",
                     dealii::Patterns::Double());
 
-  prm.declare_entry("Discrete time points in loading phase",
+  prm.declare_entry("Number of steps in loading phase",
                     "2",
                     dealii::Patterns::Integer());
 
@@ -631,11 +631,11 @@ parse_parameters(dealii::ParameterHandler &prm)
 
   initial_loading_time  = prm.get_double("Period");
 
-  n_discrete_time_points_per_half_cycle
-    = prm.get_integer("Discrete time points per half cycle");
+  n_steps_per_half_cycle
+    = prm.get_integer("Number of steps per half cycle");
 
-  n_discrete_time_points_in_loading_phase
-    = prm.get_integer("Discrete time points in loading phase");
+  n_steps_in_loading_phase
+    = prm.get_integer("Number of steps in loading phase");
 
   const std::string string_loading_type(
                     prm.get("Loading type"));
@@ -654,12 +654,10 @@ parse_parameters(dealii::ParameterHandler &prm)
   {
     end_time = start_time + initial_loading_time + n_cycles * period;
 
-    time_step_size =
-      0.5 * period / (n_discrete_time_points_per_half_cycle - 1);
+    time_step_size = 0.5 * period / n_steps_per_half_cycle;
 
     time_step_size_in_loading_phase =
-      initial_loading_time /
-      (n_discrete_time_points_in_loading_phase - 1);
+      initial_loading_time / n_steps_in_loading_phase;
   }
   else
     time_step_size_in_loading_phase = time_step_size;
@@ -679,13 +677,13 @@ parse_parameters(dealii::ParameterHandler &prm)
   Assert(n_cycles > 0,
           dealii::ExcLowerRangeType<int>(n_cycles, 0));
 
-  Assert(n_discrete_time_points_per_half_cycle > 1,
+  Assert(n_steps_per_half_cycle > 1,
           dealii::ExcLowerRangeType<int>(
-          n_discrete_time_points_per_half_cycle, 1));
+          n_steps_per_half_cycle, 1));
 
-  Assert(n_discrete_time_points_in_loading_phase > 1,
+  Assert(n_steps_in_loading_phase > 1,
           dealii::ExcLowerRangeType<int>(
-          n_discrete_time_points_in_loading_phase, 1));
+          n_steps_in_loading_phase, 1));
 
   Assert(end_time >= (start_time + time_step_size),
           dealii::ExcLowerRangeType<double>(
