@@ -118,6 +118,8 @@ public:
   // The methods
   double get_effective_opening_displacement() const;
 
+  double get_old_effective_opening_displacement() const;
+
   double get_normal_opening_displacement() const;
 
   double get_tangential_opening_displacement() const;
@@ -197,6 +199,15 @@ inline double InterfaceQuadraturePointHistory<dim>::
 get_effective_opening_displacement() const
 {
   return (effective_opening_displacement);
+}
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_old_effective_opening_displacement() const
+{
+  return (old_effective_opening_displacement);
 }
 
 
