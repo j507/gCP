@@ -20,8 +20,8 @@ end
 subsection Simple shear
   set Height of the strip                              = 1.0
   set Number of equally sized divisions in y-direction = 2
-  set Maximum shear strain at the upper boundary       = 0.05
-  set Minimum shear strain at the upper boundary       = 0.025
+  set Maximum shear strain at the upper boundary       = 0.03
+  set Minimum shear strain at the upper boundary       = 0.015
   set Width of the strip                               = 0.1
 end
 
@@ -37,7 +37,7 @@ subsection Solver parameters
   subsection Constitutive laws' parameters
     subsection Decohesion law's parameters
       set Critical opening displacement        = 0.025
-      set Damage accumulation constant         = 1.0
+      set Damage accumulation constant         = 1e-2
       set Damage decay constant                = 0.0
       set Damage decay exponent                = 1.0
       set Degradation exponent                 = 1.0
@@ -94,12 +94,12 @@ subsection Spatial discretization parameters
 end
 
 subsection Temporal discretization parameters
-  set Discrete time points in loading phase = 501
-  set Discrete time points per half cycle   = 501
+  set Discrete time points in loading phase = 201
+  set Discrete time points per half cycle   = 101
   set End time                              = 1.0
   set Initial loading time                  = 1.0
   set Loading type                          = cyclic
-  set Number of cycles                      = 2
+  set Number of cycles                      = 10
   set Period                                = 1.0
   set Start time                            = 0.0
   set Time step size                        = 1e-1
