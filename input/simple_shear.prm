@@ -36,6 +36,8 @@ subsection Solver parameters
 
   subsection Constitutive laws' parameters
     subsection Decohesion law's parameters
+      set Couple macrotraction to damage       = true
+      set Couple microtraction to damage       = true
       set Critical opening displacement        = 0.025
       set Damage accumulation constant         = 1e-2
       set Damage decay constant                = 0.0
@@ -96,13 +98,13 @@ end
 subsection Temporal discretization parameters
   set Number of steps in loading phase = 201
   set Number of steps per half cycle   = 101
-  set End time                              = 1.0
-  set Initial loading time                  = 1.0
-  set Loading type                          = cyclic
-  set Number of cycles                      = 10
-  set Period                                = 1.0
-  set Start time                            = 0.0
-  set Time step size                        = 1e-1
+  set End time                         = 1.0
+  set Initial loading time             = 1.0
+  set Loading type                     = cyclic
+  set Number of cycles                 = 2
+  set Period                           = 1.0
+  set Start time                       = 0.0
+  set Time step size                   = 1e-1
 end
 
 
