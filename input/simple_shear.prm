@@ -4,9 +4,9 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/euler_angles
-  set Slip directions path name = input/slip_directions
-  set Slip normals path name    = input/slip_normals
+  set Euler angles path name    = input/simple_shear_Lara/euler_angles_15_0
+  set Slip directions path name = input/simple_shear_Lara/slip_directions
+  set Slip normals path name    = input/simple_shear_Lara/slip_normals
 end
 
 
@@ -19,15 +19,16 @@ end
 
 subsection Simple shear
   set Height of the strip                              = 1.0
-  set Number of equally sized divisions in y-direction = 1
-  set Shear strain at the upper boundary               = 0.02
+  set Number of equally sized divisions in y-direction = 2
+  set Maximum shear strain at the upper boundary       = 0.03
+  set Minimum shear strain at the upper boundary       = 0.015
   set Width of the strip                               = 0.1
 end
 
 
 subsection Solver parameters
-  set Allow decohesion at grain boundaries    = false
-  set Boundary conditions at grain boundaries = microfree
+  set Allow decohesion at grain boundaries    = true
+  set Boundary conditions at grain boundaries = microtraction
   set Logger output directory                 = results/simple_shear_default/
   set Print sparsity pattern                  = false
   set Verbose                                 = false
@@ -35,31 +36,40 @@ subsection Solver parameters
 
   subsection Constitutive laws' parameters
     subsection Decohesion law's parameters
-      set Critical opening displacement = 0.0
-      set Maximum cohesive traction     = 0.0
+      set Couple macrotraction to damage       = true
+      set Couple microtraction to damage       = true
+      set Critical opening displacement        = 0.025
+      set Damage accumulation constant         = 1e-2
+      set Damage decay constant                = 0.0
+      set Damage decay exponent                = 1.0
+      set Degradation exponent                 = 1.0
+      set Endurance limit                      = 0.0
+      set Maximum cohesive traction            = 700
+      set Set damage to zero                   = false
+      set Tangential to normal stiffness ratio = 1.0
     end
 
     subsection Hooke-Law's parameters
-      set C1111 = 107942.28436442571
-      set C1122 = 61246.24912213496
-      set C1212 = 28500
+      set C1111 = 235467.76549434732
+      set C1122 = 147905.34667489285
+      set C1212 = 107212
     end
 
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 1e4
+      set Grain boundary modulus = 1e3
     end
 
     subsection Scalar microscopic stress law's parameters
       set Hardening parameter      = 1.4
-      set Initial slip resistance  = 60
-      set Linear hardening modulus = 0.0
+      set Initial slip resistance  = 490
+      set Linear hardening modulus = 550
       set Regularization function  = tanh
-      set Regularization parameter = 1e-3
+      set Regularization parameter = 3e-4
     end
 
     subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 5
-      set Initial slip resistance = 60
+      set Energetic length scale  = 0.2
+      set Initial slip resistance = 490
     end
 
   end
@@ -86,9 +96,15 @@ subsection Spatial discretization parameters
 end
 
 subsection Temporal discretization parameters
-  set End time       = 1.0
-  set Start time     = 0.0
-  set Time step size = 1e-3
+  set Number of steps in loading phase = 201
+  set Number of steps per half cycle   = 101
+  set End time                         = 1.0
+  set Initial loading time             = 1.0
+  set Loading type                     = cyclic
+  set Number of cycles                 = 2
+  set Period                           = 1.0
+  set Start time                       = 0.0
+  set Time step size                   = 1e-1
 end
 
 

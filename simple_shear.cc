@@ -79,43 +79,64 @@ template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
-  DisplacementControl(const double        shear_strain_at_upper_boundary,
-                      const double        height,
-                      const unsigned int  n_crystals,
-                      const bool          flag_is_decohesion_allowed = false,
-                      const unsigned int  n_components = 3,
-                      const double        time = 0.0);
+  DisplacementControl(
+    const unsigned int                    n_crystals,
+    const double                          height,
+    const double                          max_shear_strain_at_upper_boundary,
+    const double                          min_shear_strain_at_upper_boundary,
+    const double                          period,
+    const double                          initial_loading_time,
+    const RunTimeParameters::LoadingType  loading_type,
+    const bool                            flag_is_decohesion_allowed,
+    const unsigned int                    n_components,
+    const double                          start_time);
 
   virtual void vector_value(
     const dealii::Point<dim>  &point,
     dealii::Vector<double>    &return_vector) const override;
 
 private:
-  const unsigned int  n_crystals;
+  const unsigned int                    n_crystals;
 
-  const bool          flag_is_decohesion_allowed;
+  const double                          height;
 
-  const double        shear_strain_at_upper_boundary;
+  const double                          max_shear_strain_at_upper_boundary;
 
-  const double        height;
+  const double                          min_shear_strain_at_upper_boundary;
+
+  const double                          period;
+
+  const double                          initial_loading_time;
+
+  const RunTimeParameters::LoadingType  loading_type;
+
+  const bool                            flag_is_decohesion_allowed;
 };
 
 
 
 template<int dim>
 DisplacementControl<dim>::DisplacementControl(
-  const double        shear_strain_at_upper_boundary,
-  const double        height,
-  const unsigned int  n_crystals,
-  const bool          flag_is_decohesion_allowed,
-  const unsigned int  n_components,
-  const double        time)
+  const unsigned int                    n_crystals,
+  const double                          height,
+  const double                          max_shear_strain_at_upper_boundary,
+  const double                          min_shear_strain_at_upper_boundary,
+  const double                          period,
+  const double                          initial_loading_time,
+  const RunTimeParameters::LoadingType  loading_type,
+  const bool                            flag_is_decohesion_allowed,
+  const unsigned int                    n_components,
+  const double                          start_time)
 :
-dealii::Function<dim>(n_components, time),
+dealii::Function<dim>(n_components, start_time),
 n_crystals(n_crystals),
-flag_is_decohesion_allowed(flag_is_decohesion_allowed),
-shear_strain_at_upper_boundary(shear_strain_at_upper_boundary),
-height(height)
+height(height),
+max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
+min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
+period(period),
+initial_loading_time(initial_loading_time + start_time),
+loading_type(loading_type),
+flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {}
 
 
@@ -129,11 +150,40 @@ void DisplacementControl<dim>::vector_value(
 
   return_vector = 0.0;
 
-  return_vector[0] = t * height * shear_strain_at_upper_boundary;
+  double displacement_load = 0.0;
+
+  switch (loading_type)
+  {
+    case RunTimeParameters::LoadingType::Monotonic:
+      {
+        displacement_load =
+          t * height * max_shear_strain_at_upper_boundary;
+      }
+      break;
+    case RunTimeParameters::LoadingType::Cyclic:
+      {
+        if (t >= initial_loading_time)
+          displacement_load =
+            (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+        else
+          displacement_load =
+            max_shear_strain_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * t);
+      }
+      break;
+    default:
+      Assert(false, dealii::ExcNotImplemented());
+  }
+
+  return_vector[0] = displacement_load;
 
   if (flag_is_decohesion_allowed)
     for (unsigned int i = 1; i < n_crystals; ++i)
-      return_vector[i*dim] = t * height * shear_strain_at_upper_boundary;
+      return_vector[i*dim] = displacement_load;
 }
 
 
@@ -210,9 +260,10 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.mapping_degree)),
-discrete_time(parameters.start_time,
-              parameters.end_time,
-              parameters.time_step_size),
+discrete_time(
+  parameters.temporal_discretization_parameters.start_time,
+  parameters.temporal_discretization_parameters.end_time,
+  parameters.temporal_discretization_parameters.time_step_size),
 triangulation(
   MPI_COMM_WORLD,
   typename dealii::Triangulation<dim>::MeshSmoothing(
@@ -230,18 +281,25 @@ gCP_solver(parameters.solver_parameters,
            crystals_data,
            mapping,
            pcout,
-           timer_output),
+           timer_output,
+           parameters.temporal_discretization_parameters.loading_type),
 postprocessor(fe_field,
               crystals_data),
 simple_shear(fe_field,
              mapping,
-             parameters.shear_strain_at_upper_boundary,
+             parameters.max_shear_strain_at_upper_boundary,
+             parameters.min_shear_strain_at_upper_boundary,
+             parameters.temporal_discretization_parameters.period,
+             parameters.temporal_discretization_parameters.initial_loading_time,
+             parameters.temporal_discretization_parameters.loading_type,
              3,
              parameters.width),
-string_width((std::to_string((unsigned int)(
-              (parameters.end_time - parameters.start_time) /
-              parameters.time_step_size)) +
-             "Step ").size())
+string_width(
+  (std::to_string((unsigned int)(
+  (parameters.temporal_discretization_parameters.end_time -
+   parameters.temporal_discretization_parameters.start_time) /
+  parameters.temporal_discretization_parameters.time_step_size)) +
+  "Step ").size())
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
@@ -394,9 +452,13 @@ void SimpleShearProblem<dim>::setup()
   // depends on the number of crystals and slips
   displacement_control =
     std::make_unique<DisplacementControl<dim>>(
-      parameters.shear_strain_at_upper_boundary,
-      parameters.height,
       crystals_data->get_n_crystals(),
+      parameters.height,
+      parameters.max_shear_strain_at_upper_boundary,
+      parameters.min_shear_strain_at_upper_boundary,
+      parameters.temporal_discretization_parameters.period,
+      parameters.temporal_discretization_parameters.initial_loading_time,
+      parameters.temporal_discretization_parameters.loading_type,
       fe_field->is_decohesion_allowed(),
       fe_field->get_n_components(),
       discrete_time.get_start_time());
@@ -746,10 +808,22 @@ void SimpleShearProblem<dim>::run()
 
   postprocessor.init(gCP_solver.get_hooke_law());
 
+  if (parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::Cyclic)
+    discrete_time.set_desired_next_step_size(
+      parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
+
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
+    if (parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::Cyclic &&
+        discrete_time.get_current_time() ==
+        parameters.temporal_discretization_parameters.initial_loading_time)
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size);
+
     if (parameters.verbose)
       *pcout << std::setw(string_width) << std::left
              << "Step " +

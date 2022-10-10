@@ -7,9 +7,34 @@ namespace gCP
 {
 
 
-
+/*!
+ * @brief Namespace encompasing all the structs containing the suite's
+ * parameters
+ */
 namespace RunTimeParameters
 {
+
+
+
+/*!
+ * @brief A enum class specifiying the type of loading
+ */
+enum class LoadingType
+{
+  /*!
+   * @brief Monotonic load
+   */
+  Monotonic,
+
+  /*!
+   * @brief Cyclic loading.
+   *
+   * @details The load is divided into a initial loading phase and a
+   * cyclic loading phase
+   */
+  Cyclic,
+};
+
 
 
 /*!
@@ -33,6 +58,7 @@ enum class RegularizationFunction
    */
   Tanh,
 };
+
 
 
 /*!
@@ -288,12 +314,12 @@ struct MicroscopicTractionLawParameters
 
 
 
-struct DecohesionLawParameters
+struct CohesiveLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  DecohesionLawParameters();
+  CohesiveLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -326,7 +352,56 @@ struct DecohesionLawParameters
    *
    * @todo Docu
    */
-  double  damage_exponent;
+  double  tangential_to_normal_stiffness_ratio;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_accumulation_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  endurance_limit;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_microtraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_macrotraction_to_damage;
 
   /*!
    * @brief
@@ -435,8 +510,8 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  DecohesionLawParameters
-                      decohesion_law_parameters;
+  CohesiveLawParameters
+                      cohesive_law_parameters;
 
   /*!
    * @brief
@@ -476,6 +551,115 @@ struct SolverParameters
 };
 
 
+/*!
+ * @brief A struct containing the parameters of the temporal
+ * discretization
+ */
+struct TemporalDiscretizationParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  TemporalDiscretizationParameters();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  TemporalDiscretizationParameters(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*
+  template<typename Stream>
+  friend Stream& operator<<(Stream &stream,
+                            const Parameters &prm);
+  */
+
+  /*!
+   * @brief The start time of the simulation
+   */
+  double      start_time;
+
+  /*!
+   * @brief The end time of the simulation
+   */
+  double      end_time;
+
+  /*!
+   * @brief The time step size used during the simulation
+   */
+  double      time_step_size;
+
+  /*!
+   * @brief The period of the cyclic load
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  double      period;
+
+  /*!
+   * @brief The number of cycles to be simulated
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  int         n_cycles;
+
+  /*!
+   * @brief The number of discrete points per half cycle at which
+   * the quasi static problem will be solved
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  int         n_steps_per_half_cycle;
+
+  /*!
+   * @brief The time in which the initial loading takes place
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  double      initial_loading_time;
+
+  /*!
+   * @brief The time step used during the initial loading phase
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  int         n_steps_in_loading_phase;
+
+  /*!
+   * @brief The time step used during the loading phase
+   *
+   * @details It is internally computed using @ref initial_loading_time
+   * and @ref n_steps_in_loading_phase
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  double      time_step_size_in_loading_phase;
+
+  /*!
+   * @brief The simulation time control to be used. See @ref
+   * RunTimeParameters::SimulationTimeControl
+   */
+  LoadingType  loading_type;
+};
+
 
 
 struct ProblemParameters
@@ -509,39 +693,35 @@ struct ProblemParameters
                             const Parameters &prm);
   */
 
-  unsigned int            dim;
+  unsigned int                      dim;
 
-  unsigned int            mapping_degree;
+  unsigned int                      mapping_degree;
 
-  bool                    mapping_interior_cells;
+  bool                              mapping_interior_cells;
 
-  unsigned int            n_global_refinements;
+  unsigned int                      n_global_refinements;
 
-  double                  start_time;
+  unsigned int                      fe_degree_displacements;
 
-  double                  end_time;
+  unsigned int                      fe_degree_slips;
 
-  double                  time_step_size;
+  TemporalDiscretizationParameters  temporal_discretization_parameters;
 
-  unsigned int            fe_degree_displacements;
+  SolverParameters                  solver_parameters;
 
-  unsigned int            fe_degree_slips;
+  std::string                       slips_normals_pathname;
 
-  SolverParameters        solver_parameters;
+  std::string                       slips_directions_pathname;
 
-  std::string             slips_normals_pathname;
+  std::string                       euler_angles_pathname;
 
-  std::string             slips_directions_pathname;
+  unsigned int                      graphical_output_frequency;
 
-  std::string             euler_angles_pathname;
+  unsigned int                      terminal_output_frequency;
 
-  unsigned int            graphical_output_frequency;
+  std::string                       graphical_output_directory;
 
-  unsigned int            terminal_output_frequency;
-
-  std::string             graphical_output_directory;
-
-  bool                    verbose;
+  bool                              verbose;
 };
 
 
@@ -571,7 +751,9 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double        shear_strain_at_upper_boundary;
+  double        max_shear_strain_at_upper_boundary;
+
+  double        min_shear_strain_at_upper_boundary;
 
   unsigned int  n_equal_sized_divisions;
 

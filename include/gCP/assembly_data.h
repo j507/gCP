@@ -247,7 +247,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::Tensor<1,dim>>              neighbor_cell_old_displacement_values;
 
-  std::vector<dealii::Tensor<1,dim>>              interface_macrotraction_values;
+  std::vector<dealii::Tensor<1,dim>>              cohesive_traction_values;
 
   std::vector<double>                             damage_variable_values;
 
@@ -322,6 +322,11 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::Tensor<1,dim>>  neighbor_cell_displacement_values;
 
+  std::vector<dealii::Tensor<1,dim>>  current_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>  neighbor_cell_old_displacement_values;
+
+  std::vector<dealii::Tensor<1,dim>>  cohesive_traction_values;
 };
 
 

@@ -246,17 +246,24 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 
 
-DecohesionLawParameters::DecohesionLawParameters()
+CohesiveLawParameters::CohesiveLawParameters()
 :
 critical_cohesive_traction(0.0),
 critical_opening_displacement(0.0),
-damage_exponent(1.0),
+tangential_to_normal_stiffness_ratio(1.0),
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
+degradation_exponent(1.0),
+flag_couple_microtraction_to_damage(true),
+flag_couple_macrotraction_to_damage(false),
 flag_set_damage_to_zero(false)
 {}
 
 
 
-void DecohesionLawParameters::declare_parameters(
+void CohesiveLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Decohesion law's parameters");
@@ -269,11 +276,39 @@ void DecohesionLawParameters::declare_parameters(
                       "0.0",
                       dealii::Patterns::Double());
 
-    prm.declare_entry("Damage exponent",
+    prm.declare_entry("Tangential to normal stiffness ratio",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage accumulation constant",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage decay constant",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Damage decay exponent",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Endurance limit",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Degradation exponent",
                       "1.0",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Set damage to zero",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple microtraction to damage",
+                      "true",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple macrotraction to damage",
                       "false",
                       dealii::Patterns::Bool());
   }
@@ -282,7 +317,7 @@ void DecohesionLawParameters::declare_parameters(
 
 
 
-void DecohesionLawParameters::parse_parameters(
+void CohesiveLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Decohesion law's parameters");
@@ -290,7 +325,7 @@ void DecohesionLawParameters::parse_parameters(
     critical_cohesive_traction =
       prm.get_double("Maximum cohesive traction");
 
-    AssertThrow(critical_cohesive_traction >= 0.0,
+    AssertThrow(critical_cohesive_traction > 0.0,
                 dealii::ExcLowerRangeType<double>(
                   critical_cohesive_traction, 0.0));
 
@@ -299,21 +334,69 @@ void DecohesionLawParameters::parse_parameters(
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");
 
-    AssertThrow(critical_opening_displacement >= 0.0,
+    AssertThrow(critical_opening_displacement > 0.0,
                 dealii::ExcLowerRangeType<double>(
                   critical_opening_displacement, 0.0));
 
     AssertIsFinite(critical_opening_displacement);
 
-    damage_exponent = prm.get_double("Damage exponent");
+    tangential_to_normal_stiffness_ratio =
+      prm.get_double("Tangential to normal stiffness ratio");
 
-    AssertThrow(damage_exponent >= 0.0,
+    AssertThrow(tangential_to_normal_stiffness_ratio > 0.0,
                 dealii::ExcLowerRangeType<double>(
-                  damage_exponent, 0.0));
+                  tangential_to_normal_stiffness_ratio, 0.0));
 
-    AssertIsFinite(damage_exponent);
+    AssertIsFinite(tangential_to_normal_stiffness_ratio);
+
+    damage_accumulation_constant =
+      prm.get_double("Damage accumulation constant");
+
+    AssertThrow(damage_accumulation_constant > 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_accumulation_constant, 0.0));
+
+    AssertIsFinite(damage_accumulation_constant);
+
+    damage_decay_constant = prm.get_double("Damage decay constant");
+
+    AssertThrow(damage_decay_constant >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_decay_constant, 0.0));
+
+    AssertIsFinite(damage_decay_constant);
+
+    damage_decay_exponent = prm.get_double("Damage decay exponent");
+
+    AssertThrow(damage_decay_exponent >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  damage_decay_exponent, 0.0));
+
+    AssertIsFinite(damage_decay_exponent);
+
+    endurance_limit = prm.get_double("Endurance limit");
+
+    AssertThrow(endurance_limit >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  endurance_limit, 0.0));
+
+    AssertIsFinite(endurance_limit);
+
+    degradation_exponent = prm.get_double("Degradation exponent");
+
+    AssertThrow(degradation_exponent >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  degradation_exponent, 0.0));
+
+    AssertIsFinite(degradation_exponent);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
+
+    flag_couple_microtraction_to_damage =
+      prm.get_bool("Couple microtraction to damage");
+
+    flag_couple_macrotraction_to_damage =
+      prm.get_bool("Couple macrotraction to damage");
 
   }
   prm.leave_subsection();
@@ -375,7 +458,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     ScalarMicroscopicStressLawParameters::declare_parameters(prm);
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
     MicroscopicTractionLawParameters::declare_parameters(prm);
-    DecohesionLawParameters::declare_parameters(prm);
+    CohesiveLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -447,7 +530,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     scalar_microscopic_stress_law_parameters.parse_parameters(prm);
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
     microscopic_traction_law_parameters.parse_parameters(prm);
-    decohesion_law_parameters.parse_parameters(prm);
+    cohesive_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -490,15 +573,147 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
 
+TemporalDiscretizationParameters::TemporalDiscretizationParameters()
+:
+start_time(0.0),
+end_time(1.0),
+time_step_size(0.25),
+period(1.0),
+n_cycles(1.0),
+n_steps_per_half_cycle(2),
+initial_loading_time(1.0),
+n_steps_in_loading_phase(2),
+time_step_size_in_loading_phase(time_step_size),
+loading_type(LoadingType::Monotonic)
+{}
+
+
+
+void TemporalDiscretizationParameters::
+declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.declare_entry("Start time",
+                    "0.0",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("End time",
+                    "1.0",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Time step size",
+                    "1e-1",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Period",
+                    "1.0",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Number of cycles",
+                    "1",
+                    dealii::Patterns::Integer());
+
+  prm.declare_entry("Number of steps per half cycle",
+                    "2",
+                    dealii::Patterns::Integer());
+
+  prm.declare_entry("Initial loading time",
+                    "0.5",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Number of steps in loading phase",
+                    "2",
+                    dealii::Patterns::Integer());
+
+  prm.declare_entry("Loading type",
+                    "monotonic",
+                    dealii::Patterns::Selection(
+                      "monotonic|cyclic"));
+}
+
+
+
+void TemporalDiscretizationParameters::
+parse_parameters(dealii::ParameterHandler &prm)
+{
+  start_time            = prm.get_double("Start time");
+
+  end_time              = prm.get_double("End time");
+
+  time_step_size        = prm.get_double("Time step size");
+
+  period                = prm.get_double("Period");
+
+  n_cycles              = prm.get_integer("Number of cycles");
+
+  initial_loading_time  = prm.get_double("Period");
+
+  n_steps_per_half_cycle
+    = prm.get_integer("Number of steps per half cycle");
+
+  n_steps_in_loading_phase
+    = prm.get_integer("Number of steps in loading phase");
+
+  const std::string string_loading_type(
+                    prm.get("Loading type"));
+
+  if (string_loading_type == std::string("monotonic"))
+    loading_type = LoadingType::Monotonic;
+  else if (string_loading_type == std::string("cyclic"))
+    loading_type = LoadingType::Cyclic;
+  else
+    AssertThrow(
+      false,
+      dealii::ExcMessage("Unexpected identifier for the simulation"
+                          " time control"));
+
+  if (loading_type == LoadingType::Cyclic)
+  {
+    end_time = start_time + initial_loading_time + n_cycles * period;
+
+    time_step_size = 0.5 * period / n_steps_per_half_cycle;
+
+    time_step_size_in_loading_phase =
+      initial_loading_time / n_steps_in_loading_phase;
+  }
+  else
+    time_step_size_in_loading_phase = time_step_size;
+
+  Assert(start_time >= 0.0,
+          dealii::ExcLowerRangeType<double>(start_time, 0.0));
+
+  Assert(end_time > start_time,
+          dealii::ExcLowerRangeType<double>(end_time, start_time));
+
+  Assert(time_step_size > 0,
+          dealii::ExcLowerRangeType<double>(time_step_size, 0));
+
+  Assert(period > 0,
+          dealii::ExcLowerRangeType<double>(period, 0));
+
+  Assert(n_cycles > 0,
+          dealii::ExcLowerRangeType<int>(n_cycles, 0));
+
+  Assert(n_steps_per_half_cycle > 1,
+          dealii::ExcLowerRangeType<int>(
+          n_steps_per_half_cycle, 1));
+
+  Assert(n_steps_in_loading_phase > 1,
+          dealii::ExcLowerRangeType<int>(
+          n_steps_in_loading_phase, 1));
+
+  Assert(end_time >= (start_time + time_step_size),
+          dealii::ExcLowerRangeType<double>(
+          end_time, start_time + time_step_size));
+}
+
+
+
 ProblemParameters::ProblemParameters()
 :
 dim(2),
 mapping_degree(1),
 mapping_interior_cells(false),
 n_global_refinements(0),
-start_time(0.0),
-end_time(1.0),
-time_step_size(0.5),
 fe_degree_displacements(2),
 fe_degree_slips(1),
 slips_normals_pathname("input/slip_normals"),
@@ -596,6 +811,12 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    TemporalDiscretizationParameters::declare_parameters(prm);
+  }
+  prm.leave_subsection();
+
   prm.declare_entry("Verbose",
                     "false",
                     dealii::Patterns::Bool());
@@ -670,24 +891,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Temporal discretization parameters");
   {
-    start_time = prm.get_double("Start time");
-
-    end_time = prm.get_double("End time");
-
-    time_step_size = prm.get_double("Time step size");
-
-    Assert(start_time >= 0.0,
-           dealii::ExcLowerRangeType<double>(start_time, 0.0));
-    Assert(end_time > start_time,
-           dealii::ExcLowerRangeType<double>(end_time, start_time));
-    Assert(time_step_size > 0,
-           dealii::ExcLowerRangeType<double>(time_step_size, 0));
-    Assert(time_step_size > 0,
-           dealii::ExcLowerRangeType<double>(time_step_size, 0));
-    Assert(end_time >= (start_time + time_step_size),
-           dealii::ExcLowerRangeType<double>(end_time,
-                                             start_time + time_step_size));
-
+    temporal_discretization_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -730,6 +934,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 SimpleShearParameters::SimpleShearParameters()
 :
 ProblemParameters(),
+max_shear_strain_at_upper_boundary(0.5),
+min_shear_strain_at_upper_boundary(0.1),
 n_equal_sized_divisions(1),
 height(1),
 width(0.1)
@@ -781,7 +987,11 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Simple shear");
   {
-    prm.declare_entry("Shear strain at the upper boundary",
+    prm.declare_entry("Maximum shear strain at the upper boundary",
+                      "0.0218",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Minimum shear strain at the upper boundary",
                       "0.0218",
                       dealii::Patterns::Double());
 
@@ -808,10 +1018,15 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   prm.enter_subsection("Simple shear");
   {
-    shear_strain_at_upper_boundary =
-      prm.get_double("Shear strain at the upper boundary");
+    max_shear_strain_at_upper_boundary =
+      prm.get_double("Maximum shear strain at the upper boundary");
 
-    AssertIsFinite(shear_strain_at_upper_boundary);
+    AssertIsFinite(max_shear_strain_at_upper_boundary);
+
+    min_shear_strain_at_upper_boundary =
+      prm.get_double("Minimum shear strain at the upper boundary");
+
+    AssertIsFinite(min_shear_strain_at_upper_boundary);
 
     n_equal_sized_divisions =
       prm.get_integer("Number of equally sized divisions in y-direction");

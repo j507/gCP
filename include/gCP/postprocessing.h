@@ -78,7 +78,11 @@ public:
   SimpleShear(
     std::shared_ptr<FEField<dim>>         &fe_field,
     std::shared_ptr<dealii::Mapping<dim>> &mapping,
-    const double                          shear_at_upper_boundary,
+    const double                          max_shear_strain_at_upper_boundary,
+    const double                          min_shear_strain_at_upper_boundary,
+    const double                          period,
+    const double                          initial_loading_time,
+    const RunTimeParameters::LoadingType  loading_type,
     const dealii::types::boundary_id      upper_boundary_id,
     const double                          width);
 
@@ -101,7 +105,15 @@ private:
 
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
 
-  const double                                            shear_at_upper_boundary;
+  const double                                            max_shear_strain_at_upper_boundary;
+
+  const double                                            min_shear_strain_at_upper_boundary;
+
+  const double                                            period;
+
+  const double                                            initial_loading_time;
+
+  RunTimeParameters::LoadingType                          loading_type;
 
   const dealii::types::boundary_id                        upper_boundary_id;
 

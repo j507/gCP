@@ -15,7 +15,8 @@ GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
   std::shared_ptr<CrystalsData<dim>>                &crystals_data,
   const std::shared_ptr<dealii::Mapping<dim>>       external_mapping,
   const std::shared_ptr<dealii::ConditionalOStream> external_pcout,
-  const std::shared_ptr<dealii::TimerOutput>        external_timer)
+  const std::shared_ptr<dealii::TimerOutput>        external_timer,
+  const RunTimeParameters::LoadingType              loading_type)
 :
 parameters(parameters),
 discrete_time(discrete_time),
@@ -43,14 +44,13 @@ microscopic_traction_law(
   std::make_shared<ConstitutiveLaws::MicroscopicTractionLaw<dim>>(
     crystals_data,
     parameters.microscopic_traction_law_parameters)),
-interface_macrotraction_law(
-  std::make_shared<ConstitutiveLaws::InterfaceMacrotractionLaw<dim>>(
-    parameters.decohesion_law_parameters)),
+cohesive_law(
+  std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
+    parameters.cohesive_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
 nonlinear_solver_logger(parameters.logger_output_directory +
                         "nonlinear_solver_log.txt"),
-decohesion_logger(parameters.logger_output_directory +
-                        "decohesion_log.txt"),
+loading_type(loading_type),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,
@@ -103,16 +103,20 @@ flag_init_was_called(false)
   nonlinear_solver_logger.set_scientific("L2-Norm(Newton update)", true);
   nonlinear_solver_logger.set_scientific("L2-Norm(Residual)", true);
 
-  decohesion_logger.declare_column("Effective opening displacement");
-  decohesion_logger.declare_column("Normal opening displacement");
-  decohesion_logger.declare_column("Tangential opening displacement");
-  decohesion_logger.declare_column("Cohesive traction");
-  decohesion_logger.declare_column("Damage");
-  decohesion_logger.set_scientific("Effective opening displacement", true);
-  decohesion_logger.set_scientific("Normal opening displacement", true);
-  decohesion_logger.set_scientific("Tangential opening displacement", true);
-  decohesion_logger.set_scientific("Cohesive traction", true);
-  decohesion_logger.set_scientific("Damage", true);
+  decohesion_logger.declare_column("time");
+  decohesion_logger.declare_column("max_effective_opening_displacement");
+  decohesion_logger.declare_column("effective_opening_displacement");
+  decohesion_logger.declare_column("normal_opening_displacement");
+  decohesion_logger.declare_column("tangential_opening_displacement");
+  decohesion_logger.declare_column("effective_cohesive_traction");
+  decohesion_logger.declare_column("damage_variable");
+  decohesion_logger.set_scientific("time", true);
+  decohesion_logger.set_scientific("max_effective_opening_displacement", true);
+  decohesion_logger.set_scientific("effective_opening_displacement", true);
+  decohesion_logger.set_scientific("normal_opening_displacement", true);
+  decohesion_logger.set_scientific("tangential_opening_displacement", true);
+  decohesion_logger.set_scientific("effective_cohesive_traction", true);
+  decohesion_logger.set_scientific("damage_variable", true);
 
   // Initialize supply term shared pointer
   supply_term = nullptr;

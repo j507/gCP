@@ -68,44 +68,98 @@ public:
 
   virtual ~InterfaceQuadraturePointHistory() = default;
 
-  double get_max_effective_opening_displacement() const;
-
-  double get_max_effective_normal_opening_displacement() const;
-
-  double get_max_effective_tangential_opening_displacement() const;
-
-  double get_max_cohesive_traction() const;
-
   double get_damage_variable() const;
 
+  double get_max_effective_opening_displacement() const;
+
   void init(
-    const RunTimeParameters::DecohesionLawParameters &parameters);
+    const RunTimeParameters::CohesiveLawParameters &parameters);
 
   void store_current_values();
 
   void update_values(
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> current_cell_displacement);
+
+  void update_values(
+    const double  effective_opening_displacement,
+    const double  cohesive_traction_norm);
+
+  /*!
+   * @brief Computes the effective opening displacement and stores it
+   * in @ref old_effective_opening_displacement.
+   *
+   * @details This method is to be called at the end of each pseudo-time
+   * iteration. It is needed as the effective opening displacement is
+   * dependent of the normal vector when the material is anisotropic,
+   * i.e., @ref tangential_to_normal_stiffness_ratio is different than
+   * zero
+   *
+   * @param neighbor_cell_displacement
+   * @param current_cell_displacement
+   * @param normal_vector
+   * @todo Docu
+   */
+  void store_effective_opening_displacement(
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
     const dealii::Tensor<1,dim> current_cell_displacement,
     const dealii::Tensor<1,dim> normal_vector);
+
+  /*!
+   * @brief Temporary method
+   */
+  void store_effective_opening_displacement(
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector,
+    const double                effective_cohesive_traction);
+
+  // The methods
+  double get_effective_opening_displacement() const;
+
+  double get_old_effective_opening_displacement() const;
+
+  double get_normal_opening_displacement() const;
+
+  double get_tangential_opening_displacement() const;
+
+  double get_effective_cohesive_traction() const;
+
+  // are temporary and will be deleted eventually.
 
 private:
   double                    critical_cohesive_traction;
 
   double                    critical_opening_displacement;
 
-  //double                    critical_energy_release_rate;
+  double                    tangential_to_normal_stiffness_ratio;
 
-  double                    max_effective_opening_displacement;
+  double                    damage_accumulation_constant;
 
-  double                    max_effective_normal_opening_displacement;
+  double                    damage_decay_constant;
 
-  double                    max_effective_tangential_opening_displacement;
+  double                    damage_decay_exponent;
 
-  double                    max_cohesive_traction;
+  double                    endurance_limit;
 
   double                    damage_variable;
 
-  std::pair<double, double> tmp_values;
+  double                    max_effective_opening_displacement;
+
+  double                    old_effective_opening_displacement;
+
+  std::vector<double>       tmp_scalar_values;
+
+  // The variables
+  double                    effective_opening_displacement;
+
+  double                    normal_opening_displacement;
+
+  double                    tangential_opening_displacement;
+
+  double                    effective_cohesive_traction;
+
+  // are temporary and will be deleted eventually.
 
   bool                      flag_set_damage_to_zero;
 
@@ -113,9 +167,20 @@ private:
 
   bool                      flag_init_was_called;
 
+  double macaulay_brackets(const double value) const;
+
   double get_master_relation(
     const double effective_opening_displacement) const;
 };
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_damage_variable() const
+{
+  return (damage_variable);
+}
 
 
 
@@ -130,36 +195,58 @@ get_max_effective_opening_displacement() const
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_effective_normal_opening_displacement() const
+get_effective_opening_displacement() const
 {
-  return (max_effective_normal_opening_displacement);
+  return (effective_opening_displacement);
 }
 
 
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_effective_tangential_opening_displacement() const
+get_old_effective_opening_displacement() const
 {
-  return (max_effective_tangential_opening_displacement);
+  return (old_effective_opening_displacement);
 }
 
 
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_max_cohesive_traction() const
+get_normal_opening_displacement() const
 {
-  return (max_cohesive_traction);
+  return (normal_opening_displacement);
 }
 
 
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_damage_variable() const
+get_tangential_opening_displacement() const
 {
-  return (damage_variable);
+  return (tangential_opening_displacement);
+}
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_effective_cohesive_traction() const
+{
+  return (effective_cohesive_traction);
+}
+
+
+
+template <int dim>
+inline double
+InterfaceQuadraturePointHistory<dim>::macaulay_brackets(
+  const double value) const
+{
+  if (value > 0)
+    return value;
+  else
+    return 0.0;
 }
 
 

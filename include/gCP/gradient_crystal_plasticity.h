@@ -9,9 +9,10 @@
 #include <gCP/utilities.h>
 
 #include <deal.II/base/discrete_time.h>
+#include <deal.II/base/table_handler.h>
 #include <deal.II/base/tensor_function.h>
-#include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/timer.h>
+#include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/utilities.h>
 
 #include <memory>
@@ -36,7 +37,9 @@ public:
     const std::shared_ptr<dealii::ConditionalOStream> external_pcout =
         std::shared_ptr<dealii::ConditionalOStream>(),
     const std::shared_ptr<dealii::TimerOutput>        external_timer =
-      std::shared_ptr<dealii::TimerOutput>());
+      std::shared_ptr<dealii::TimerOutput>(),
+    const RunTimeParameters::LoadingType              loading_type =
+      RunTimeParameters::LoadingType::Monotonic);
 
   void init();
 
@@ -52,6 +55,9 @@ public:
 
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>
     get_hooke_law() const;
+
+  std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
+    get_cohesive_law() const;
 
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
 
@@ -94,8 +100,8 @@ private:
   std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
                                                     microscopic_traction_law;
 
-  std::shared_ptr<ConstitutiveLaws::InterfaceMacrotractionLaw<dim>>
-                                                    interface_macrotraction_law;
+  std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
+                                                    cohesive_law;
 
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
@@ -121,7 +127,12 @@ private:
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
-  Utilities::Logger                                 decohesion_logger;
+  dealii::TableHandler                              decohesion_logger;
+
+  /*!
+   * @todo Temporary member
+   */
+  RunTimeParameters::LoadingType                    loading_type;
 
   bool                                              flag_init_was_called;
 
@@ -161,6 +172,13 @@ private:
     gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
     gCP::AssemblyData::QuadraturePointHistory::Copy               &data);
 
+  void store_effective_opening_displacement_in_quadrature_history();
+
+  void store_local_effective_opening_displacement(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::QuadraturePointHistory::Scratch<dim>       &scratch,
+    gCP::AssemblyData::QuadraturePointHistory::Copy               &data);
+
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
@@ -190,6 +208,16 @@ GradientCrystalPlasticitySolver<dim>::get_hooke_law() const
 {
   return (hooke_law);
 }
+
+
+
+template <int dim>
+inline std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
+GradientCrystalPlasticitySolver<dim>::get_cohesive_law() const
+{
+  return (cohesive_law);
+}
+
 
 
 template <int dim>

@@ -44,11 +44,19 @@ void InterfaceData<dim>::update(
 template <int dim>
 InterfaceQuadraturePointHistory<dim>::InterfaceQuadraturePointHistory()
 :
-max_effective_opening_displacement(0.0),
-max_effective_normal_opening_displacement(0.0),
-max_effective_tangential_opening_displacement(0.0),
-max_cohesive_traction(0.0),
+tangential_to_normal_stiffness_ratio(1.0),
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
 damage_variable(0.0),
+max_effective_opening_displacement(0.0),
+old_effective_opening_displacement(0.0),
+tmp_scalar_values(2),
+effective_opening_displacement(0.0),
+normal_opening_displacement(0.0),
+tangential_opening_displacement(0.0),
+effective_cohesive_traction(0.0),
 flag_init_was_called(false)
 {}
 
@@ -56,21 +64,32 @@ flag_init_was_called(false)
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
-  const RunTimeParameters::DecohesionLawParameters &parameters)
+  const RunTimeParameters::CohesiveLawParameters &parameters)
 {
   if (flag_init_was_called)
     return;
 
-  critical_cohesive_traction    = parameters.critical_cohesive_traction;
+  critical_cohesive_traction =
+    parameters.critical_cohesive_traction;
 
-  critical_opening_displacement = parameters.critical_opening_displacement;
+  critical_opening_displacement =
+    parameters.critical_opening_displacement;
 
-  flag_set_damage_to_zero       = parameters.flag_set_damage_to_zero;
-  /*critical_energy_release_rate  = critical_cohesive_traction *
-                                  critical_opening_displacement *
-                                  std::exp(1.0);*/
+  tangential_to_normal_stiffness_ratio =
+    parameters.tangential_to_normal_stiffness_ratio;
 
-  flag_init_was_called          = true;
+  damage_accumulation_constant =
+    parameters.damage_accumulation_constant;
+
+  damage_decay_constant   = parameters.damage_decay_constant;
+
+  damage_decay_exponent   = parameters.damage_decay_exponent;
+
+  endurance_limit         = parameters.endurance_limit;
+
+  flag_set_damage_to_zero = parameters.flag_set_damage_to_zero;
+
+  flag_init_was_called    = true;
 }
 
 
@@ -78,8 +97,8 @@ void InterfaceQuadraturePointHistory<dim>::init(
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::store_current_values()
 {
-  tmp_values = std::make_pair(max_effective_opening_displacement,
-                              damage_variable);
+  tmp_scalar_values[0]  = damage_variable;
+  tmp_scalar_values[1]  = max_effective_opening_displacement;
 
   flag_values_were_updated = false;
 }
@@ -89,21 +108,13 @@ void InterfaceQuadraturePointHistory<dim>::store_current_values()
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
-  const dealii::Tensor<1,dim> current_cell_displacement,
-  const dealii::Tensor<1,dim> normal_vector)
+  const dealii::Tensor<1,dim> current_cell_displacement)
 {
   /*if (flag_values_were_updated)
     return;*/
 
-  max_effective_opening_displacement  = tmp_values.first;
-  damage_variable                     = tmp_values.second;
-
-  dealii::SymmetricTensor<2,dim> normal_projector =
-    dealii::symmetrize(dealii::outer_product(normal_vector,
-                                             normal_vector));
-
-  dealii::SymmetricTensor<2,dim> tangential_projector =
-    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+  damage_variable                     = tmp_scalar_values[0];
+  max_effective_opening_displacement  = tmp_scalar_values[1];
 
   const dealii::Tensor<1,dim> displacement_jump =
     neighbor_cell_displacement - current_cell_displacement;
@@ -112,29 +123,8 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
     std::max(max_effective_opening_displacement,
              displacement_jump.norm());
 
-  max_effective_normal_opening_displacement =
-    std::max(max_effective_normal_opening_displacement,
-             (normal_projector * displacement_jump).norm());
-
-  max_effective_tangential_opening_displacement =
-    std::max(max_effective_tangential_opening_displacement,
-             (tangential_projector * displacement_jump).norm());
-
-  max_cohesive_traction =
-    get_master_relation(max_effective_opening_displacement);
-
   const double displacement_ratio =
      max_effective_opening_displacement / critical_opening_displacement;
-
-  /*
-  const double free_energy_density =
-    std::exp(1.0) *
-    critical_cohesive_traction *
-    critical_opening_displacement *
-    (1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio));
-
-  damage_variable = free_energy_density/critical_energy_release_rate;
-  */
 
   damage_variable =
     1.0 - (1.0 + displacement_ratio) * std::exp(-displacement_ratio);
@@ -143,6 +133,127 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
     damage_variable = 0.0;
 
   flag_values_were_updated = true;
+}
+
+
+
+template <int dim>
+void InterfaceQuadraturePointHistory<dim>::update_values(
+  const double  effective_opening_displacement,
+  const double  cohesive_traction_norm)
+{
+  damage_variable                     = tmp_scalar_values[0];
+  max_effective_opening_displacement  = tmp_scalar_values[1];
+
+  max_effective_opening_displacement =
+    std::max(max_effective_opening_displacement,
+             effective_opening_displacement);
+
+  damage_variable +=
+    damage_accumulation_constant *
+    macaulay_brackets(effective_opening_displacement -
+                      old_effective_opening_displacement) *
+    std::pow(1.0 - damage_variable + damage_decay_constant,
+     damage_decay_exponent) *
+    (cohesive_traction_norm - endurance_limit);
+
+  if (flag_set_damage_to_zero)
+    damage_variable = 0.0;
+
+  flag_values_were_updated = true;
+}
+
+
+
+template <int dim>
+void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
+  const dealii::Tensor<1,dim> current_cell_displacement,
+  const dealii::Tensor<1,dim> neighbor_cell_displacement,
+  const dealii::Tensor<1,dim> normal_vector)
+{
+  /*if (flag_values_were_updated)
+    return;*/
+
+  // Define projectors
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                             normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+
+  // Compute opening displacement
+  dealii::Tensor<1,dim> opening_displacement =
+    neighbor_cell_displacement - current_cell_displacement;
+
+  // Compute normal and tangential components
+  double normal_opening_displacement =
+    (normal_projector * opening_displacement).norm();
+
+  double tangential_opening_displacement =
+    (tangential_projector * opening_displacement).norm();
+
+  // Compute effective opening displacements (Needed for the next
+  // pseudo-time iteration)
+  old_effective_opening_displacement =
+     std::sqrt(normal_opening_displacement *
+               normal_opening_displacement
+               +
+               tangential_to_normal_stiffness_ratio *
+               tangential_to_normal_stiffness_ratio *
+               tangential_opening_displacement *
+               tangential_opening_displacement);
+}
+
+
+
+template <int dim>
+void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
+  const dealii::Tensor<1,dim> current_cell_displacement,
+  const dealii::Tensor<1,dim> neighbor_cell_displacement,
+  const dealii::Tensor<1,dim> normal_vector,
+  const double                effective_cohesive_traction)
+{
+  /*if (flag_values_were_updated)
+    return;*/
+
+  // Define projectors
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                             normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+
+  // Compute opening displacement
+  dealii::Tensor<1,dim> opening_displacement =
+    neighbor_cell_displacement - current_cell_displacement;
+
+  // Compute normal and tangential components
+  double normal_opening_displacement =
+    (normal_projector * opening_displacement).norm();
+
+  double tangential_opening_displacement =
+    (tangential_projector * opening_displacement).norm();
+
+  // Compute effective opening displacements (Needed for the next
+  // pseudo-time iteration)
+  old_effective_opening_displacement =
+     std::sqrt(normal_opening_displacement *
+               normal_opening_displacement
+               +
+               tangential_to_normal_stiffness_ratio *
+               tangential_to_normal_stiffness_ratio *
+               tangential_opening_displacement *
+               tangential_opening_displacement);
+
+  this->effective_opening_displacement = old_effective_opening_displacement;
+
+  this->normal_opening_displacement = normal_opening_displacement;
+
+  this->tangential_opening_displacement = tangential_opening_displacement;
+
+  this->effective_cohesive_traction = effective_cohesive_traction;
 }
 
 

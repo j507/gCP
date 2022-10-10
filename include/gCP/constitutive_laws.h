@@ -412,34 +412,45 @@ private:
 
 
 template<int dim>
-class InterfaceMacrotractionLaw
+class CohesiveLaw
 {
 public:
-  InterfaceMacrotractionLaw(
-    const RunTimeParameters::DecohesionLawParameters parameters);
+  CohesiveLaw(
+    const RunTimeParameters::CohesiveLawParameters parameters);
 
-  dealii::Tensor<1,dim> get_interface_macrotraction(
-    const double                max_effective_opening_displacement,
+  dealii::Tensor<1,dim> get_cohesive_traction(
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
-    const double                max_effective_opening_displacement,
     const dealii::Tensor<1,dim> opening_displacement,
+    const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
+
+  double get_degradation_function_value(const double damage_variable) const;
+
+  double get_effective_opening_displacement(
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
 
 private:
   double critical_cohesive_traction;
 
   double critical_opening_displacement;
+
+  double tangential_to_normal_stiffness_ratio;
+
+  double degradation_exponent;
 
   double get_master_relation(
     const double effective_opening_displacement) const;
@@ -449,7 +460,17 @@ private:
 
 template <int dim>
 inline double
-InterfaceMacrotractionLaw<dim>::get_master_relation(
+CohesiveLaw<dim>::get_degradation_function_value(
+  const double damage_variable) const
+{
+  return std::pow(1.0 - damage_variable, degradation_exponent);
+}
+
+
+
+template <int dim>
+inline double
+CohesiveLaw<dim>::get_master_relation(
   const double effective_opening_displacement) const
 {
   return (critical_cohesive_traction *

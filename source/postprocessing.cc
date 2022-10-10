@@ -428,13 +428,21 @@ template <int dim>
 SimpleShear<dim>::SimpleShear(
   std::shared_ptr<FEField<dim>>         &fe_field,
   std::shared_ptr<dealii::Mapping<dim>> &mapping,
-  const double                          shear_at_upper_boundary,
+  const double                          max_shear_strain_at_upper_boundary,
+  const double                          min_shear_strain_at_upper_boundary,
+  const double                          period,
+  const double                          initial_loading_time,
+  const RunTimeParameters::LoadingType  loading_type,
   const dealii::types::boundary_id      upper_boundary_id,
   const double                          width)
 :
 fe_field(fe_field),
 mapping_collection(*mapping),
-shear_at_upper_boundary(shear_at_upper_boundary),
+max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
+min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
+period(period),
+initial_loading_time(initial_loading_time),
+loading_type(loading_type),
 upper_boundary_id(upper_boundary_id),
 width(width),
 flag_init_was_called(false)
@@ -477,7 +485,36 @@ void SimpleShear<dim>::compute_data(const double time)
 
   compute_stress_12_at_boundary();
 
-  table_handler.add_value("shear_at_upper_boundary", time * shear_at_upper_boundary);
+  double displacement_load = 0.0;
+
+  switch (loading_type)
+  {
+    case RunTimeParameters::LoadingType::Monotonic:
+      {
+        displacement_load =
+          time * max_shear_strain_at_upper_boundary;
+      }
+      break;
+    case RunTimeParameters::LoadingType::Cyclic:
+      {
+        if (time >= initial_loading_time)
+          displacement_load =
+            (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (time - initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+        else
+          displacement_load =
+            max_shear_strain_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * time);
+      }
+      break;
+    default:
+      Assert(false, dealii::ExcNotImplemented());
+  }
+
+  table_handler.add_value("shear_at_upper_boundary", displacement_load);
   table_handler.add_value("stress_12_at_upper_boundary", average_stress_12);
 }
 

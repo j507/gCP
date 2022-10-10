@@ -853,20 +853,22 @@ MicroscopicTractionLaw<dim>::
 
 
 template<int dim>
-InterfaceMacrotractionLaw<dim>::InterfaceMacrotractionLaw(
-  const RunTimeParameters::DecohesionLawParameters parameters)
+CohesiveLaw<dim>::CohesiveLaw(
+  const RunTimeParameters::CohesiveLawParameters parameters)
 :
 critical_cohesive_traction(parameters.critical_cohesive_traction),
-critical_opening_displacement(parameters.critical_opening_displacement)
+critical_opening_displacement(parameters.critical_opening_displacement),
+tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
+degradation_exponent(parameters.degradation_exponent)
 {}
 
 
 
 template <int dim>
 dealii::Tensor<1,dim>
-InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
-  const double                max_effective_opening_displacement,
+CohesiveLaw<dim>::get_cohesive_traction(
   const dealii::Tensor<1,dim> opening_displacement,
+  const double                max_effective_opening_displacement,
   const double                old_effective_opening_displacement,
   const double                time_step_size) const
 {
@@ -930,9 +932,9 @@ InterfaceMacrotractionLaw<dim>::get_interface_macrotraction(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
-  const double                max_effective_opening_displacement,
+CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
   const dealii::Tensor<1,dim> opening_displacement,
+  const double                max_effective_opening_displacement,
   const double                old_effective_opening_displacement,
   const double                time_step_size) const
 {
@@ -1010,9 +1012,9 @@ InterfaceMacrotractionLaw<dim>::get_current_cell_gateaux_derivative(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
-  const double                max_effective_opening_displacement,
+CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
   const dealii::Tensor<1,dim> opening_displacement,
+  const double                max_effective_opening_displacement,
   const double                old_effective_opening_displacement,
   const double                time_step_size) const
 {
@@ -1086,6 +1088,39 @@ InterfaceMacrotractionLaw<dim>::get_neighbor_cell_gateaux_derivative(
 
 
 
+template <int dim>
+double CohesiveLaw<dim>::get_effective_opening_displacement(
+  const dealii::Tensor<1,dim> current_cell_displacement,
+  const dealii::Tensor<1,dim> neighbor_cell_displacement,
+  const dealii::Tensor<1,dim> normal_vector) const
+{
+  dealii::SymmetricTensor<2,dim> normal_projector =
+    dealii::symmetrize(dealii::outer_product(normal_vector,
+                                              normal_vector));
+
+  dealii::SymmetricTensor<2,dim> tangential_projector =
+    dealii::unit_symmetric_tensor<dim>() - normal_projector;
+
+  dealii::Tensor<1,dim> opening_displacement =
+    neighbor_cell_displacement - current_cell_displacement;
+
+  double normal_opening_displacement =
+    (normal_projector * opening_displacement).norm();
+
+  double tangential_opening_displacement =
+    (tangential_projector * opening_displacement).norm();
+
+  return std::sqrt(normal_opening_displacement *
+                   normal_opening_displacement
+                   +
+                   tangential_to_normal_stiffness_ratio *
+                   tangential_to_normal_stiffness_ratio *
+                   tangential_opening_displacement *
+                   tangential_opening_displacement);
+}
+
+
+
 } // ConstitutiveLaws
 
 
@@ -1111,5 +1146,5 @@ template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
 
-template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<2>;
-template class gCP::ConstitutiveLaws::InterfaceMacrotractionLaw<3>;
+template class gCP::ConstitutiveLaws::CohesiveLaw<2>;
+template class gCP::ConstitutiveLaws::CohesiveLaw<3>;
