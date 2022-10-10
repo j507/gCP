@@ -15,7 +15,8 @@ GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
   std::shared_ptr<CrystalsData<dim>>                &crystals_data,
   const std::shared_ptr<dealii::Mapping<dim>>       external_mapping,
   const std::shared_ptr<dealii::ConditionalOStream> external_pcout,
-  const std::shared_ptr<dealii::TimerOutput>        external_timer)
+  const std::shared_ptr<dealii::TimerOutput>        external_timer,
+  const RunTimeParameters::LoadingType              loading_type)
 :
 parameters(parameters),
 discrete_time(discrete_time),
@@ -49,6 +50,7 @@ cohesive_law(
 residual_norm(std::numeric_limits<double>::max()),
 nonlinear_solver_logger(parameters.logger_output_directory +
                         "nonlinear_solver_log.txt"),
+loading_type(loading_type),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,

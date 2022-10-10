@@ -37,7 +37,9 @@ public:
     const std::shared_ptr<dealii::ConditionalOStream> external_pcout =
         std::shared_ptr<dealii::ConditionalOStream>(),
     const std::shared_ptr<dealii::TimerOutput>        external_timer =
-      std::shared_ptr<dealii::TimerOutput>());
+      std::shared_ptr<dealii::TimerOutput>(),
+    const RunTimeParameters::LoadingType              loading_type =
+      RunTimeParameters::LoadingType::Monotonic);
 
   void init();
 
@@ -126,6 +128,11 @@ private:
   Utilities::Logger                                 nonlinear_solver_logger;
 
   dealii::TableHandler                              decohesion_logger;
+
+  /*!
+   * @todo Temporary member
+   */
+  RunTimeParameters::LoadingType                    loading_type;
 
   bool                                              flag_init_was_called;
 
