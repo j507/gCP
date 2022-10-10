@@ -394,6 +394,20 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
+  bool    flag_couple_microtraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_macrotraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool    flag_set_damage_to_zero;
 };
 

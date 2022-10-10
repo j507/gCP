@@ -256,6 +256,8 @@ damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
 degradation_exponent(1.0),
+flag_couple_microtraction_to_damage(true),
+flag_couple_macrotraction_to_damage(false),
 flag_set_damage_to_zero(false)
 {}
 
@@ -299,6 +301,14 @@ void CohesiveLawParameters::declare_parameters(
                       dealii::Patterns::Double());
 
     prm.declare_entry("Set damage to zero",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple microtraction to damage",
+                      "true",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple macrotraction to damage",
                       "false",
                       dealii::Patterns::Bool());
   }
@@ -381,6 +391,12 @@ void CohesiveLawParameters::parse_parameters(
     AssertIsFinite(degradation_exponent);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
+
+    flag_couple_microtraction_to_damage =
+      prm.get_bool("Couple microtraction to damage");
+
+    flag_couple_macrotraction_to_damage =
+      prm.get_bool("Couple macrotraction to damage");
 
   }
   prm.leave_subsection();
