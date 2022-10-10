@@ -79,8 +79,7 @@ public:
 
   void update_values(
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
-    const dealii::Tensor<1,dim> current_cell_displacement,
-    const dealii::Tensor<1,dim> normal_vector);
+    const dealii::Tensor<1,dim> current_cell_displacement);
 
   void update_values(
     const double  effective_opening_displacement,

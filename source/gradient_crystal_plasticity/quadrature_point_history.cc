@@ -108,8 +108,7 @@ void InterfaceQuadraturePointHistory<dim>::store_current_values()
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
-  const dealii::Tensor<1,dim> current_cell_displacement,
-  const dealii::Tensor<1,dim> normal_vector)
+  const dealii::Tensor<1,dim> current_cell_displacement)
 {
   /*if (flag_values_were_updated)
     return;*/
