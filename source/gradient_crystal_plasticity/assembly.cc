@@ -434,8 +434,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    (parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage ?
+                      std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                               parameters.cohesive_law_parameters.degradation_exponent) :
+                      1.0 ) *
                     scratch.current_cell_gateaux_derivative_values[face_q_point] *
                     scratch.face_vector_phi[j] *
                     0.5 *
@@ -444,8 +446,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                             parameters.cohesive_law_parameters.degradation_exponent) *
+                    (parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage ?
+                      std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                               parameters.cohesive_law_parameters.degradation_exponent) :
+                      1.0 ) *
                     scratch.neighbor_cell_gateaux_derivative_values[face_q_point] *
                     scratch.neighbor_face_vector_phi[j] *
                     0.5 *
@@ -472,16 +476,20 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                 data.local_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                           parameters.cohesive_law_parameters.degradation_exponent) *
+                  (parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage ?
+                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                             parameters.cohesive_law_parameters.degradation_exponent) :
+                    1.0 ) *
                   scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
                   scratch.face_scalar_phi[slip_id_beta][j] *
                   scratch.face_JxW_values[face_q_point];
 
                 data.local_coupling_matrix(i,j) -=
                   scratch.face_scalar_phi[slip_id_alpha][i] *
-                  std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                           parameters.cohesive_law_parameters.degradation_exponent) *
+                  (parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage ?
+                    std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                             parameters.cohesive_law_parameters.degradation_exponent) :
+                    1.0 ) *
                   scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
                   scratch.neighbour_face_scalar_phi[neighbour_slip_id_beta][j] *
                   scratch.face_JxW_values[face_q_point];
@@ -929,8 +937,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                  data.local_rhs(i) +=
                    scratch.face_vector_phi[i] *
-                   std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                            parameters.cohesive_law_parameters.degradation_exponent) *
+                   (parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage ?
+                      std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                               parameters.cohesive_law_parameters.degradation_exponent) :
+                      1.0 ) *
                    scratch.cohesive_traction_values[face_q_point] *
                    0.5 *
                    (scratch.face_JxW_values[face_q_point] +
@@ -945,8 +955,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
               data.local_rhs(i) +=
                 scratch.face_scalar_phi[slip_id][i] *
-                std::pow(1.0 - scratch.damage_variable_values[face_q_point],
-                         parameters.cohesive_law_parameters.degradation_exponent) *
+                (parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage ?
+                  std::pow(1.0 - scratch.damage_variable_values[face_q_point],
+                           parameters.cohesive_law_parameters.degradation_exponent) :
+                  1.0 ) *
                 scratch.microscopic_traction_values[slip_id][face_q_point] *
                 scratch.face_JxW_values[face_q_point];
 
@@ -1228,25 +1240,38 @@ update_local_quadrature_point_history(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
-          /**
-          local_interface_quadrature_point_history[face_q_point]->update_values(
-            scratch.neighbor_cell_displacement_values[face_q_point],
-            scratch.current_cell_displacement_values[face_q_point],
-            scratch.normal_vector_values[face_q_point]);
-          */
-          local_interface_quadrature_point_history[face_q_point]->update_values(
-            cohesive_law->get_effective_opening_displacement(
-              scratch.current_cell_displacement_values[face_q_point],
-              scratch.neighbor_cell_displacement_values[face_q_point],
-              scratch.normal_vector_values[face_q_point]),
-            cohesive_law->get_cohesive_traction(
-              scratch.neighbor_cell_displacement_values[face_q_point] -
-              scratch.current_cell_displacement_values[face_q_point],
-              local_interface_quadrature_point_history[face_q_point]->
-                get_max_effective_opening_displacement(),
-              local_interface_quadrature_point_history[face_q_point]->
-                get_old_effective_opening_displacement(),
-              discrete_time.get_next_step_size()).norm());
+          switch (loading_type)
+          {
+            case RunTimeParameters::LoadingType::Monotonic:
+              {
+                local_interface_quadrature_point_history[face_q_point]->update_values(
+                  scratch.neighbor_cell_displacement_values[face_q_point],
+                  scratch.current_cell_displacement_values[face_q_point]);
+              }
+              break;
+
+            case RunTimeParameters::LoadingType::Cyclic:
+              {
+                local_interface_quadrature_point_history[face_q_point]->update_values(
+                  cohesive_law->get_effective_opening_displacement(
+                    scratch.current_cell_displacement_values[face_q_point],
+                    scratch.neighbor_cell_displacement_values[face_q_point],
+                    scratch.normal_vector_values[face_q_point]),
+                  cohesive_law->get_cohesive_traction(
+                    scratch.neighbor_cell_displacement_values[face_q_point] -
+                    scratch.current_cell_displacement_values[face_q_point],
+                    local_interface_quadrature_point_history[face_q_point]->
+                      get_max_effective_opening_displacement(),
+                    local_interface_quadrature_point_history[face_q_point]->
+                      get_old_effective_opening_displacement(),
+                    discrete_time.get_next_step_size()).norm());
+              }
+              break;
+
+            default:
+              Assert(false, dealii::ExcNotImplemented());
+              break;
+          }
         }
       }
 }
@@ -1405,9 +1430,10 @@ store_local_effective_opening_displacement(
             scratch.neighbor_cell_displacement_values[face_q_point],
             scratch.current_cell_displacement_values[face_q_point],
             scratch.normal_vector_values[face_q_point],
-            std::pow(
-              1.0 - local_interface_quadrature_point_history[face_q_point]->get_damage_variable(),
-              parameters.cohesive_law_parameters.degradation_exponent) *
+            (parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage ?
+              std::pow(1.0 - local_interface_quadrature_point_history[face_q_point]->get_damage_variable(),
+                        parameters.cohesive_law_parameters.degradation_exponent) :
+              1.0 ) *
             scratch.cohesive_traction_values[face_q_point].norm());
         }
       }
