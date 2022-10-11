@@ -9,8 +9,12 @@ Known problems:
 - Problems considering polycrystals can only be run in serial (See issue #2)
 - Method of marking cells at grain boundaries does not work properly in parallel (See issue #3)
 - The cohesive law introduces a normal vector mismatch between cells at the interface. 
+- Cell penetration is not prevented in the current code. 
 
 Yet to be implemented:
 - Dimensionless formulation
+- Penalty term 
+- Cohesive element
+- Node-to-segment contact discretization
 - Microhard boundary conditions
 - Neumann boundary conditions at the domain's boundary
