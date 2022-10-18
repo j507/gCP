@@ -927,14 +927,6 @@ CohesiveLaw<dim>::get_cohesive_traction(
   else
     Assert(false, dealii::ExcInternalError());
 
-  std::cout <<
-    opening_displacement.norm() << ", " <<
-    effective_quantities.normal_opening_displacement
-    << ", "<<
-    macaulay_brackets(
-      -effective_quantities.normal_opening_displacement)
-      << std::endl;
-
   cohesive_traction -=
     2.0 *
     macaulay_brackets(
