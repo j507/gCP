@@ -859,7 +859,8 @@ CohesiveLaw<dim>::CohesiveLaw(
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
 tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
-degradation_exponent(parameters.degradation_exponent)
+degradation_exponent(parameters.degradation_exponent),
+penalty_coefficient(parameters.penalty_coefficient)
 {}
 
 
@@ -928,7 +929,7 @@ CohesiveLaw<dim>::get_cohesive_traction(
     Assert(false, dealii::ExcInternalError());
 
   cohesive_traction -=
-    2.0 *
+    penalty_coefficient *
     macaulay_brackets(
       -effective_quantities.normal_opening_displacement) *
     critical_cohesive_traction /
@@ -1014,7 +1015,7 @@ CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
 
   current_cell_gateaux_derivative -=
     -1.0 *
-    2.0 *
+    penalty_coefficient *
     macaulay_brackets(
       -effective_quantities.normal_opening_displacement /
       std::abs(effective_quantities.normal_opening_displacement)) *
@@ -1100,7 +1101,7 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
     Assert(false, dealii::ExcInternalError());
 
   neighbor_cell_gateaux_derivative -=
-    2.0 *
+    penalty_coefficient *
     macaulay_brackets(
       -effective_quantities.normal_opening_displacement /
       std::abs(effective_quantities.normal_opening_displacement)) *
