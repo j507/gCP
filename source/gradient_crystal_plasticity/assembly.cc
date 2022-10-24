@@ -1264,8 +1264,13 @@ update_local_quadrature_point_history(
                     scratch.neighbor_cell_displacement_values[face_q_point] -
                     scratch.current_cell_displacement_values[face_q_point],
                     scratch.normal_vector_values[face_q_point],
-                    local_interface_quadrature_point_history[face_q_point]->
-                      get_max_effective_opening_displacement(),
+                    std::max(
+                      cohesive_law->get_effective_opening_displacement(
+                        scratch.neighbor_cell_displacement_values[face_q_point] -
+                        scratch.current_cell_displacement_values[face_q_point],
+                        scratch.normal_vector_values[face_q_point]),
+                      local_interface_quadrature_point_history[face_q_point]->
+                        get_max_effective_opening_displacement()),
                     local_interface_quadrature_point_history[face_q_point]->
                       get_old_effective_opening_displacement(),
                     discrete_time.get_next_step_size()).norm());
