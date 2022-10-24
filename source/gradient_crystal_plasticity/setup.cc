@@ -104,6 +104,21 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   init_quadrature_point_history();
 
+  // Check boundary ids of the Neumann boundary conditions
+  {
+    const std::vector<dealii::types::boundary_id> boundary_ids =
+      fe_field->get_triangulation().get_boundary_ids();
+
+    for (const auto &neumann_boundary_condition : neumann_boundary_conditions)
+    {
+      Assert(
+        std::find(boundary_ids.begin(), boundary_ids.end(), neumann_boundary_condition.first)
+          != boundary_ids.end(),
+        dealii::ExcMessage("The boundary id assigned does not exist in"
+        " the dealii::parallel::Triangulation<dim> instance"));
+    }
+  }
+
   flag_init_was_called = true;
 
   if (parameters.verbose)
@@ -117,6 +132,23 @@ void GradientCrystalPlasticitySolver<dim>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term)
 {
   this->supply_term = supply_term;
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+set_neumann_boundary_condition(
+  const dealii::types::boundary_id              boundary_id,
+  const std::shared_ptr<dealii::Function<dim>>  function)
+{
+  Assert(
+    function.get() != nullptr,
+    dealii::ExcMessage(
+      "The Neumann boundary conditions's shared pointer contains a "
+      "nullptr."));
+
+  neumann_boundary_conditions[boundary_id] = function;
 }
 
 
@@ -356,6 +388,13 @@ template void gCP::GradientCrystalPlasticitySolver<2>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,2>>);
 template void gCP::GradientCrystalPlasticitySolver<3>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,3>>);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::set_neumann_boundary_condition(
+  const dealii::types::boundary_id,
+  const std::shared_ptr<dealii::Function<2>>);
+template void gCP::GradientCrystalPlasticitySolver<3>::set_neumann_boundary_condition(
+  const dealii::types::boundary_id,
+  const std::shared_ptr<dealii::Function<3>>);
 
 template void
 gCP::GradientCrystalPlasticitySolver<2>::make_sparsity_pattern(
