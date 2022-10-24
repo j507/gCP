@@ -414,24 +414,51 @@ private:
 template<int dim>
 class CohesiveLaw
 {
+private:
+  struct EffectiveQuantities
+  {
+    EffectiveQuantities(
+      const double                          effective_opening_displacement,
+      const dealii::Tensor<1,dim>           effective_direction,
+      const dealii::SymmetricTensor<2,dim>  effective_identity_tensor,
+      const double                          normal_opening_displacement)
+    :
+    opening_displacement(effective_opening_displacement),
+    direction(effective_direction),
+    identity_tensor(effective_identity_tensor),
+    normal_opening_displacement(normal_opening_displacement)
+    {}
+
+    const double                          opening_displacement;
+
+    const dealii::Tensor<1,dim>           direction;
+
+    const dealii::SymmetricTensor<2,dim>  identity_tensor;
+
+    double                                normal_opening_displacement;
+  };
+
 public:
   CohesiveLaw(
     const RunTimeParameters::CohesiveLawParameters parameters);
 
   dealii::Tensor<1,dim> get_cohesive_traction(
     const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector,
     const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
     const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector,
     const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
   dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
     const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector,
     const double                max_effective_opening_displacement,
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
@@ -439,11 +466,16 @@ public:
   double get_degradation_function_value(const double damage_variable) const;
 
   double get_effective_opening_displacement(
-    const dealii::Tensor<1,dim> current_cell_displacement,
-    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
 
+  EffectiveQuantities
+    get_effective_quantities(
+      const dealii::Tensor<1,dim> opening_displacement,
+      const dealii::Tensor<1,dim> normal_vector) const;
+
 private:
+
   double critical_cohesive_traction;
 
   double critical_opening_displacement;
@@ -452,8 +484,17 @@ private:
 
   double degradation_exponent;
 
-  double get_master_relation(
+  double penalty_coefficient;
+
+  double macaulay_brackets(const double value) const;
+
+  double get_effective_cohesive_traction(
     const double effective_opening_displacement) const;
+
+  dealii::Tensor<1,dim> get_cohesive_traction_direction(
+    const dealii::Tensor<1,dim> current_cell_displacement,
+    const dealii::Tensor<1,dim> neighbor_cell_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
 };
 
 
@@ -470,7 +511,19 @@ CohesiveLaw<dim>::get_degradation_function_value(
 
 template <int dim>
 inline double
-CohesiveLaw<dim>::get_master_relation(
+CohesiveLaw<dim>::macaulay_brackets(const double value) const
+{
+  if (value > 0)
+    return value;
+  else
+    return 0.0;
+}
+
+
+
+template <int dim>
+inline double
+CohesiveLaw<dim>::get_effective_cohesive_traction(
   const double effective_opening_displacement) const
 {
   return (critical_cohesive_traction *
