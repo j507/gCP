@@ -76,6 +76,99 @@ void DirichletBoundaryFunction<dim>::vector_value(
 
 
 template <int dim>
+class NeumannBoundaryFunction : public dealii::TensorFunction<1,dim>
+{
+public:
+  NeumannBoundaryFunction(
+    const double                          max_traction_at_upper_boundary,
+    const double                          min_traction_at_upper_boundary,
+    const double                          period,
+    const double                          initial_loading_time,
+    const RunTimeParameters::LoadingType  loading_type,
+    const double                          start_time);
+
+  virtual dealii::Tensor<1, dim> value(
+    const dealii::Point<dim>  &point) const override;
+
+private:
+
+  const double                          max_traction_at_upper_boundary;
+
+  const double                          min_traction_at_upper_boundary;
+
+  const double                          period;
+
+  const double                          initial_loading_time;
+
+  const RunTimeParameters::LoadingType  loading_type;
+};
+
+
+
+template<int dim>
+NeumannBoundaryFunction<dim>::NeumannBoundaryFunction(
+  const double                          max_traction_at_upper_boundary,
+  const double                          min_traction_at_upper_boundary,
+  const double                          period,
+  const double                          initial_loading_time,
+  const RunTimeParameters::LoadingType  loading_type,
+  const double                          start_time)
+:
+dealii::TensorFunction<1, dim>(start_time),
+max_traction_at_upper_boundary(max_traction_at_upper_boundary),
+min_traction_at_upper_boundary(min_traction_at_upper_boundary),
+period(period),
+initial_loading_time(initial_loading_time),
+loading_type(loading_type)
+{}
+
+
+
+template<int dim>
+dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
+  const dealii::Point<dim>  &/*point*/) const
+{
+  const double t = this->get_time();
+
+  dealii::Tensor<1, dim> return_vector;
+
+  double traction_load = 0.0;
+
+  switch (loading_type)
+  {
+    case RunTimeParameters::LoadingType::Monotonic:
+      {
+        traction_load =
+          t * max_traction_at_upper_boundary;
+      }
+      break;
+    case RunTimeParameters::LoadingType::Cyclic:
+      {
+        if (t >= initial_loading_time)
+          traction_load =
+            (max_traction_at_upper_boundary -
+             min_traction_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            (max_traction_at_upper_boundary +
+             min_traction_at_upper_boundary) / 2.0;
+        else
+          traction_load =
+            max_traction_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * t);
+      }
+      break;
+    default:
+      Assert(false, dealii::ExcNotImplemented());
+  }
+
+  return_vector[1] = traction_load;
+
+  return return_vector;
+}
+
+
+
+template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {
 public:
@@ -218,6 +311,8 @@ private:
 
   std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
+  std::shared_ptr<NeumannBoundaryFunction<dim>>     neumann_boundary_function;
+
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
   Postprocessing::Postprocessor<dim>                postprocessor;
@@ -283,6 +378,14 @@ gCP_solver(parameters.solver_parameters,
            pcout,
            timer_output,
            parameters.temporal_discretization_parameters.loading_type),
+neumann_boundary_function(
+  std::make_shared<NeumannBoundaryFunction<dim>>(
+  parameters.max_shear_strain_at_upper_boundary * 10000.0,
+  parameters.min_shear_strain_at_upper_boundary * 10000.0,
+  parameters.temporal_discretization_parameters.period,
+  parameters.temporal_discretization_parameters.initial_loading_time,
+  parameters.temporal_discretization_parameters.loading_type,
+  discrete_time.get_start_time())),
 postprocessor(fe_field,
               crystals_data),
 simple_shear(fe_field,
@@ -623,6 +726,10 @@ void SimpleShearProblem<dim>::setup_constraints()
   // The constraints are now passed to the FEField instance
   fe_field->set_affine_constraints(affine_constraints);
   fe_field->set_newton_method_constraints(newton_method_constraints);
+
+  // Neumann boundary conditions
+  //gCP_solver.set_neumann_boundary_condition(
+  //  upper_boundary_id, neumann_boundary_function);
 }
 
 
