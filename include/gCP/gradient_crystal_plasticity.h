@@ -46,6 +46,10 @@ public:
   void set_supply_term(
     std::shared_ptr<dealii::TensorFunction<1,dim>> supply_term);
 
+  void set_neumann_boundary_condition(
+    const dealii::types::boundary_id                      boundary_id,
+    const std::shared_ptr<dealii::TensorFunction<1,dim>>  function);
+
   void solve_nonlinear_system();
 
   double get_residual_norm() const;
@@ -124,6 +128,10 @@ private:
   double                                            residual_norm;
 
   double                                            newton_update_norm;
+
+  std::map<dealii::types::boundary_id,
+           std::shared_ptr<dealii::TensorFunction<1,dim>>>
+                                                    neumann_boundary_conditions;
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
