@@ -278,7 +278,7 @@ microscopic_traction_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
 supply_term_values(this->n_q_points),
-neumann_boundary_values(n_face_q_points),
+neumann_boundary_values(this->n_face_q_points),
 current_cell_displacement_values(this->n_face_q_points),
 neighbor_cell_displacement_values(this->n_face_q_points),
 current_cell_old_displacement_values(this->n_face_q_points),

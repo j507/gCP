@@ -139,8 +139,8 @@ void GradientCrystalPlasticitySolver<dim>::set_supply_term(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::
 set_neumann_boundary_condition(
-  const dealii::types::boundary_id              boundary_id,
-  const std::shared_ptr<dealii::Function<dim>>  function)
+  const dealii::types::boundary_id                      boundary_id,
+  const std::shared_ptr<dealii::TensorFunction<1,dim>>  function)
 {
   Assert(
     function.get() != nullptr,
@@ -391,10 +391,10 @@ template void gCP::GradientCrystalPlasticitySolver<3>::set_supply_term(
 
 template void gCP::GradientCrystalPlasticitySolver<2>::set_neumann_boundary_condition(
   const dealii::types::boundary_id,
-  const std::shared_ptr<dealii::Function<2>>);
+  const std::shared_ptr<dealii::TensorFunction<1,2>>);
 template void gCP::GradientCrystalPlasticitySolver<3>::set_neumann_boundary_condition(
   const dealii::types::boundary_id,
-  const std::shared_ptr<dealii::Function<3>>);
+  const std::shared_ptr<dealii::TensorFunction<1,3>>);
 
 template void
 gCP::GradientCrystalPlasticitySolver<2>::make_sparsity_pattern(
