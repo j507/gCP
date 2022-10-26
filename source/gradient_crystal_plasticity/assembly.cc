@@ -970,12 +970,16 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         } // Loop over face quadrature points
       } // Loop over cell's faces
 
-  /*
+
   // Boundary integral
-  if (cell->at_boundary())
+  if (!neumann_boundary_conditions.empty() && cell->at_boundary())
     for (const auto &face : cell->face_iterators())
-      if (face->at_boundary() && face->boundary_id() == 1)
+      if (face->at_boundary() &&
+          neumann_boundary_conditions.find(face->boundary_id()) !=
+            neumann_boundary_conditions.end())
       {
+        //std::cout << face->boundary_id() << std::endl << std::endl;
+
         // Update the hp::FEFaceValues instance to the values of the current cell
         scratch.hp_fe_face_values.reinit(cell, face);
 
@@ -984,30 +988,46 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
         // Compute the Neumann boundary function values at the
         // quadrature points
-        neumann_boundary_function.value_list(
+        neumann_boundary_conditions.at(face->boundary_id())->set_time(
+          discrete_time.get_next_time());
+
+        neumann_boundary_conditions.at(face->boundary_id())->value_list(
           fe_face_values.get_quadrature_points(),
           scratch.neumann_boundary_values);
 
+        // Get JxW values at the quadrature points
+        scratch.face_JxW_values = fe_face_values.get_JxW_values();
+
         // Loop over face quadrature points
-        for (unsigned int q_point = 0; q_point < scratch.n_face_q_points; ++q_point)
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
           // Extract the test function's values at the face quadrature points
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-            scratch.face_phi[i] =
-              fe_face_values[fe_field->get_displacement_extractor(crystal_id)].value(i,q_point);
-
-          // Mapped quadrature weight
-          double da = fe_face_values.JxW(q_point);
+            scratch.face_vector_phi[i] =
+              fe_face_values[fe_field->get_displacement_extractor(crystal_id)].value(i,face_q_point);
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-            data.local_rhs(i) -=
-              scratch.face_phi[i] *
-              scratch.neumann_boundary_values[q_point] *
-              da;
+          {
+            /*std::cout <<  scratch.face_vector_phi[i]
+                      << ", "
+                      << scratch.neumann_boundary_values[face_q_point]
+                      << ", "
+                      << scratch.face_JxW_values[face_q_point]
+                      << std::endl << std::endl;*/
+            //std::cout << "Quadrature point = "
+             //         << fe_face_values.get_quadrature_points()[face_q_point]
+              //        << std::endl;
+
+            data.local_rhs(i) +=
+              scratch.face_vector_phi[i] *
+              scratch.neumann_boundary_values[face_q_point] *
+              scratch.face_JxW_values[face_q_point];
+          }
         } // Loop over face quadrature points
       } // if (face->at_boundary() && face->boundary_id() == 3)
-  */
+
 }
 
 
