@@ -1013,7 +1013,7 @@ CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
   else
     Assert(false, dealii::ExcInternalError());
 
-  current_cell_gateaux_derivative -=
+  current_cell_gateaux_derivative +=
     -1.0 *
     penalty_coefficient *
     macaulay_brackets(
@@ -1100,7 +1100,7 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
   else
     Assert(false, dealii::ExcInternalError());
 
-  neighbor_cell_gateaux_derivative -=
+  neighbor_cell_gateaux_derivative +=
     penalty_coefficient *
     macaulay_brackets(
       -effective_quantities.normal_opening_displacement /
