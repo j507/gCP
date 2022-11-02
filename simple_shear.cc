@@ -13,6 +13,7 @@
 #include <deal.II/grid/grid_refinement.h>
 
 #include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/data_out_faces.h>
 #include <deal.II/numerics/vector_tools.h>
 
 
@@ -883,6 +884,27 @@ void SimpleShearProblem<dim>::data_output()
   data_out.write_vtu_with_pvtu_record(
     parameters.graphical_output_directory + "paraview/",
     "solution",
+    out_index,
+    MPI_COMM_WORLD,
+    5);
+
+  dealii::DataOutFaces<dim>        data_out_face(false);
+
+  std::vector<std::string> face_name(1, "damage");
+
+  std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+    face_component_type(1, dealii::DataComponentInterpretation::component_is_scalar);
+
+  data_out_face.add_data_vector(
+    gCP_solver.get_dof_handler(),
+    gCP_solver.get_damage_at_grain_boundaries(),
+    face_name,
+    face_component_type);
+
+  data_out_face.build_patches(2);
+  data_out_face.write_vtu_with_pvtu_record(
+    parameters.graphical_output_directory + "paraview/",
+    "damage",
     out_index,
     MPI_COMM_WORLD,
     5);
