@@ -510,7 +510,8 @@ namespace ProjectionMatrix
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_matrix(dofs_per_cell, dofs_per_cell)
+local_matrix(dofs_per_cell, dofs_per_cell),
+cell_is_at_grain_boundary(false)
 {}
 
 
@@ -519,19 +520,21 @@ template <int dim>
 Scratch<dim>::Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
   const dealii::hp::FECollection<dim>       &finite_element_collection,
   const dealii::UpdateFlags                 update_flags)
 :
 ScratchBase<dim>(
   quadrature_collection,
   finite_element_collection),
-hp_fe_values(
+hp_fe_face_values(
   mapping_collection,
   finite_element_collection,
-  quadrature_collection,
+  face_quadrature_collection,
   update_flags),
-JxW_values(this->n_q_points),
-scalar_phi(this->dofs_per_cell)
+n_face_q_points(face_quadrature_collection.max_n_quadrature_points()),
+face_JxW_values(this->n_q_points),
+scalar_test_function(this->dofs_per_cell)
 {}
 
 
@@ -540,13 +543,14 @@ template <int dim>
 Scratch<dim>::Scratch(const Scratch<dim> &data)
 :
 ScratchBase<dim>(data),
-hp_fe_values(
-  data.hp_fe_values.get_mapping_collection(),
-  data.hp_fe_values.get_fe_collection(),
-  data.hp_fe_values.get_quadrature_collection(),
-  data.hp_fe_values.get_update_flags()),
-JxW_values(this->n_q_points),
-scalar_phi(this->dofs_per_cell)
+hp_fe_face_values(
+  data.hp_fe_face_values.get_mapping_collection(),
+  data.hp_fe_face_values.get_fe_collection(),
+  data.hp_fe_face_values.get_quadrature_collection(),
+  data.hp_fe_face_values.get_update_flags()),
+n_face_q_points(data.n_face_q_points),
+face_JxW_values(this->n_face_q_points),
+scalar_test_function(this->dofs_per_cell)
 {}
 
 
@@ -563,8 +567,9 @@ namespace ProjectionRHS
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_rhs(2, dealii::Vector<double>(dofs_per_cell)),
-local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell)
+local_rhs(dofs_per_cell),
+local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell),
+cell_is_at_grain_boundary(false)
 {}
 
 
@@ -573,34 +578,22 @@ template <int dim>
 Scratch<dim>::Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
-  const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
-  const dealii::UpdateFlags                 scalar_update_flags,
-  const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
-  const dealii::UpdateFlags                 vector_update_flags,
-  const unsigned int                        n_slips)
+  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
+  const dealii::hp::FECollection<dim>       &finite_element_collection,
+  const dealii::UpdateFlags                 update_flags)
 :
 ScratchBase<dim>(
   quadrature_collection,
-  scalar_finite_element_collection),
-scalar_hp_fe_values(
+  finite_element_collection),
+hp_fe_face_values(
   mapping_collection,
-  scalar_finite_element_collection,
-  quadrature_collection,
-  scalar_update_flags),
-vector_hp_fe_values(
-  mapping_collection,
-  vector_finite_element_collection,
-  quadrature_collection,
-  vector_update_flags),
-n_slips(n_slips),
-JxW_values(this->n_q_points),
-slip_values(
-  n_slips,
-  std::vector<double>(this->n_q_points)),
-strain_tensor_values(this->n_q_points),
-elastic_strain_tensor_values(this->n_q_points),
-stress_tensor_values(this->n_q_points),
-scalar_phi(this->dofs_per_cell)
+  finite_element_collection,
+  face_quadrature_collection,
+  update_flags),
+n_face_q_points(face_quadrature_collection.max_n_quadrature_points()),
+face_JxW_values(this->n_q_points),
+damage_variable_values(this->n_q_points),
+scalar_test_function(this->dofs_per_cell)
 {}
 
 
@@ -609,25 +602,15 @@ template <int dim>
 Scratch<dim>::Scratch(const Scratch<dim> &data)
 :
 ScratchBase<dim>(data),
-scalar_hp_fe_values(
-  data.scalar_hp_fe_values.get_mapping_collection(),
-  data.scalar_hp_fe_values.get_fe_collection(),
-  data.scalar_hp_fe_values.get_quadrature_collection(),
-  data.scalar_hp_fe_values.get_update_flags()),
-vector_hp_fe_values(
-  data.vector_hp_fe_values.get_mapping_collection(),
-  data.vector_hp_fe_values.get_fe_collection(),
-  data.vector_hp_fe_values.get_quadrature_collection(),
-  data.vector_hp_fe_values.get_update_flags()),
-n_slips(data.n_slips),
-JxW_values(this->n_q_points),
-slip_values(
-  n_slips,
-  std::vector<double>(this->n_q_points)),
-strain_tensor_values(this->n_q_points),
-elastic_strain_tensor_values(this->n_q_points),
-stress_tensor_values(this->n_q_points),
-scalar_phi(this->dofs_per_cell)
+hp_fe_face_values(
+  data.hp_fe_face_values.get_mapping_collection(),
+  data.hp_fe_face_values.get_fe_collection(),
+  data.hp_fe_face_values.get_quadrature_collection(),
+  data.hp_fe_face_values.get_update_flags()),
+n_face_q_points(data.n_face_q_points),
+face_JxW_values(this->n_q_points),
+damage_variable_values(this->n_q_points),
+scalar_test_function(this->dofs_per_cell)
 {}
 
 
