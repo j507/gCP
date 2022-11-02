@@ -1,6 +1,9 @@
 #include <gCP/gradient_crystal_plasticity.h>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/dofs/dof_renumbering.h>
+
+#include <deal.II/fe/fe_q.h>
 
 #include <deal.II/grid/filtered_iterator.h>
 
@@ -118,6 +121,69 @@ void GradientCrystalPlasticitySolver<dim>::init()
         " the dealii::parallel::Triangulation<dim> instance"));
     }
   }
+
+  {
+    fe_collection.push_back(dealii::FE_Q<dim>(2));
+
+    dof_handler.reinit(fe_field->get_triangulation());
+
+    // Distribute degrees of freedom based on the defined finite elements
+    dof_handler.distribute_dofs(fe_collection);
+
+    // Renumbering of the degrees of freedom
+    dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
+
+    dealii::IndexSet locally_owned_dofs;
+    dealii::IndexSet locally_relevant_dofs;
+
+    // Get the locally owned and relevant degrees of freedom of
+    // each processor
+    locally_owned_dofs = dof_handler.locally_owned_dofs();
+
+    dealii::DoFTools::extract_locally_relevant_dofs(
+      dof_handler,
+      locally_relevant_dofs);
+
+    // Initiate the hanging node constraints
+    hanging_node_constraints.clear();
+    {
+      hanging_node_constraints.reinit(locally_relevant_dofs);
+
+      dealii::DoFTools::make_hanging_node_constraints(
+        dof_handler,
+        hanging_node_constraints);
+    }
+    hanging_node_constraints.close();
+
+    // Initiate the matrix
+    {
+      dealii::TrilinosWrappers::SparsityPattern
+        sparsity_pattern(locally_owned_dofs,
+                        locally_owned_dofs,
+                        locally_relevant_dofs,
+                        MPI_COMM_WORLD);
+
+      dealii::DoFTools::make_sparsity_pattern(
+        dof_handler,
+        sparsity_pattern,
+        hanging_node_constraints,
+        false,
+        dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
+
+      sparsity_pattern.compress();
+
+      projection_matrix.reinit(sparsity_pattern);
+    }
+
+    damage_variable_values.reinit(locally_relevant_dofs,
+                                  MPI_COMM_WORLD);
+    projection_rhs.reinit(locally_owned_dofs,
+                          locally_relevant_dofs,
+                          MPI_COMM_WORLD,
+                          true);
+  }
+
+  assemble_projection_matrix();
 
   flag_init_was_called = true;
 

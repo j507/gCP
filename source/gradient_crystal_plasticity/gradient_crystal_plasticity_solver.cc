@@ -123,6 +123,75 @@ flag_init_was_called(false)
 }
 
 
+template <int dim>
+const dealii::LinearAlgebraTrilinos::MPI::Vector &
+GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
+{
+  assemble_projection_rhs();
+
+  // In this method we create temporal non ghosted copies
+  // of the pertinent vectors to be able to perform the solve()
+  // operation.
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+
+  distributed_solution.reinit(projection_rhs);
+
+  distributed_solution = 0.;
+
+  // The solver's tolerances are passed to the SolverControl instance
+  // used to initialize the solver
+  dealii::SolverControl solver_control(
+    5000,
+    std::max(projection_rhs.l2_norm() * 1e-8, 1e-9));
+
+  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+
+  // The preconditioner is instanciated and initialized
+  dealii::LinearAlgebraTrilinos::MPI::PreconditionAMG preconditioner;
+
+  preconditioner.initialize(projection_matrix);
+
+  // try-catch scope for the solve() call
+  try
+  {
+    solver.solve(projection_matrix,
+                 distributed_solution,
+                 projection_rhs,
+                 preconditioner);
+  }
+  catch (std::exception &exc)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Exception in the solve method: " << std::endl
+              << exc.what() << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::cerr << "Unknown exception in the solve method!" << std::endl
+              << "Aborting!" << std::endl
+              << "----------------------------------------------------"
+              << std::endl;
+    std::abort();
+  }
+
+  hanging_node_constraints.distribute(distributed_solution);
+
+  damage_variable_values = distributed_solution;
+
+  return (damage_variable_values);
+}
+
+
+
 
 } // namespace gCP
 

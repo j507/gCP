@@ -1471,6 +1471,282 @@ store_local_effective_opening_displacement(
 
 
 
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::assemble_projection_matrix()
+{
+  // Set up local aliases
+  using CellIterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Reset data
+  projection_matrix = 0.0;
+
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](
+    const CellIterator                                                &cell,
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim> &scratch,
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data)
+  {
+    this->assemble_local_projection_matrix(cell, scratch, data);
+  };
+
+  // Set up the lambda function for the copy local to global operation
+  auto copier = [this](
+    const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data)
+  {
+    this->copy_local_to_global_projection_matrix(data);
+  };
+
+  // Define the update flags for the FEValues instances
+  const dealii::UpdateFlags update_flags =
+    dealii::update_JxW_values |
+    dealii::update_values;
+
+  // Assemble using the WorkStream approach
+  dealii::WorkStream::run(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.end()),
+    worker,
+    copier,
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      face_quadrature_collection,
+      fe_collection,
+      update_flags),
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy(
+      fe_collection.max_dofs_per_cell()));
+
+  // Compress global data
+  projection_matrix.compress(dealii::VectorOperation::add);
+}
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_matrix(
+  const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim> &scratch,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data)
+{
+  // Reset local data
+  data.local_matrix              = 0.0;
+  data.cell_is_at_grain_boundary = false;
+
+  // Grain boundary integral
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+  {
+    data.cell_is_at_grain_boundary = true;
+
+    // Local to global indices mapping
+    cell->get_dof_indices(data.local_dof_indices);
+
+    const dealii::FEValuesExtractors::Scalar  extractor(0);
+
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
+      {
+        // Update the hp::FEFaceValues instance to the values of the
+        // current face
+        scratch.hp_fe_face_values.reinit(cell, face_index);
+
+        const dealii::FEFaceValues<dim> &fe_face_values =
+          scratch.hp_fe_face_values.get_present_fe_values();
+
+        // Get JxW values at the face quadrature points
+        scratch.face_JxW_values = fe_face_values.get_JxW_values();
+
+        // Loop over quadrature points
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_face_q_points; ++face_q_point)
+        {
+          // Extract test function values at the quadrature points (Displacement)
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+          {
+            scratch.scalar_test_function[i] =
+              fe_face_values[extractor].value(i, face_q_point);
+          }
+
+          // Loop over local degrees of freedom
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+            for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
+                  data.local_matrix(i,j) +=
+                    scratch.scalar_test_function[i] *
+                    scratch.scalar_test_function[j] *
+                    scratch.face_JxW_values[face_q_point];
+        } // Loop over quadrature points
+      }
+  }
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_matrix(
+  const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data)
+{
+  if (data.cell_is_at_grain_boundary)
+    hanging_node_constraints.distribute_local_to_global(
+      data.local_matrix,
+      data.local_dof_indices,
+      projection_matrix);
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::assemble_projection_rhs()
+{
+  // Set up local aliases
+  using CellIterator =
+    typename dealii::DoFHandler<dim>::active_cell_iterator;
+
+  using CellFilter =
+    dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>;
+
+  // Reset data
+  projection_rhs = 0.0;
+
+  // Set up the lambda function for the local assembly operation
+  auto worker = [this](
+    const CellIterator                                             &cell,
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim> &scratch,
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy         &data)
+  {
+    this->assemble_local_projection_rhs(cell, scratch, data);
+  };
+
+  // Set up the lambda function for the copy local to global operation
+  auto copier = [this](
+    const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
+  {
+    this->copy_local_to_global_projection_rhs(data);
+  };
+
+  // Define the update flags for the FEValues instances
+  const dealii::UpdateFlags update_flags =
+    dealii::update_values |
+    dealii::update_JxW_values;
+
+  // Assemble using the WorkStream approach
+  dealii::WorkStream::run(
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.begin_active()),
+    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
+               dof_handler.end()),
+    worker,
+    copier,
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>(
+      mapping_collection,
+      quadrature_collection,
+      face_quadrature_collection,
+      fe_collection,
+      update_flags),
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy(
+      fe_collection.max_dofs_per_cell()));
+
+  // Compress global data
+  projection_rhs.compress(dealii::VectorOperation::add);
+}
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_rhs(
+  const typename dealii::DoFHandler<dim>::active_cell_iterator    &cell,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>  &scratch,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy          &data)
+{
+  // Reset local data
+  data.local_rhs                          = 0.0;
+  data.local_matrix_for_inhomogeneous_bcs = 0.0;
+  data.cell_is_at_grain_boundary          = false;
+
+  // Grain boundary integral
+  if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
+      parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+  {
+    data.cell_is_at_grain_boundary = true;
+
+    // Local to global indices mapping
+    cell->get_dof_indices(data.local_dof_indices);
+
+    const dealii::FEValuesExtractors::Scalar  extractor(0);
+
+    std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+      local_interface_quadrature_point_history;
+
+    for (const auto &face_index : cell->face_indices())
+      if (!cell->face(face_index)->at_boundary() &&
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
+      {
+        // Update the hp::FEFaceValues instance to the values of the
+        // current face
+        scratch.hp_fe_face_values.reinit(cell, face_index);
+
+        const dealii::FEFaceValues<dim> &fe_face_values =
+          scratch.hp_fe_face_values.get_present_fe_values();
+
+        // Get JxW values at the face quadrature points
+        scratch.face_JxW_values = fe_face_values.get_JxW_values();
+
+        // Get the internal variable values at the quadrature points
+        local_interface_quadrature_point_history =
+            interface_quadrature_point_history.get_data(
+              cell->id(),
+              cell->neighbor(face_index)->id());
+
+        // Loop over quadrature points
+        for (unsigned int face_q_point = 0;
+             face_q_point < scratch.n_face_q_points; ++face_q_point)
+        {
+          scratch.damage_variable_values[face_q_point] = 0.0;
+
+          scratch.damage_variable_values[face_q_point] =
+            local_interface_quadrature_point_history[face_q_point]->
+              get_damage_variable();
+
+          // Extract test function values at the quadrature points (Displacement)
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+          {
+            scratch.scalar_test_function[i] =
+              fe_face_values[extractor].value(i, face_q_point);
+          }
+
+          // Loop over local degrees of freedom
+          for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+            data.local_rhs(i) +=
+              scratch.scalar_test_function[i] *
+              scratch.damage_variable_values[face_q_point] *
+              scratch.face_JxW_values[face_q_point];
+        } // Loop over quadrature points
+      }
+  }
+}
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_rhs(
+  const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
+{
+  if (data.cell_is_at_grain_boundary)
+    hanging_node_constraints.distribute_local_to_global(
+      data.local_rhs,
+      data.local_dof_indices,
+      projection_rhs,
+      data.local_matrix_for_inhomogeneous_bcs);
+}
+
 
 } // namespace gCP
 
@@ -1540,3 +1816,37 @@ store_local_effective_opening_displacement(
   const typename dealii::DoFHandler<3>::active_cell_iterator  &,
   gCP::AssemblyData::QuadraturePointHistory::Scratch<3>       &,
   gCP::AssemblyData::QuadraturePointHistory::Copy             &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::assemble_projection_matrix();
+template void gCP::GradientCrystalPlasticitySolver<3>::assemble_projection_matrix();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_projection_matrix(
+  const typename dealii::DoFHandler<2>::active_cell_iterator      &,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<2> &,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy       &);
+template void gCP::GradientCrystalPlasticitySolver<3>::assemble_local_projection_matrix(
+  const typename dealii::DoFHandler<3>::active_cell_iterator      &,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<3> &,
+  gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy       &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_projection_matrix(
+  const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &);
+template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_projection_matrix(
+  const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::assemble_projection_rhs();
+template void gCP::GradientCrystalPlasticitySolver<3>::assemble_projection_rhs();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_projection_rhs(
+  const typename dealii::DoFHandler<2>::active_cell_iterator    &,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<2>  &,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy        &);
+template void gCP::GradientCrystalPlasticitySolver<3>::assemble_local_projection_rhs(
+  const typename dealii::DoFHandler<3>::active_cell_iterator    &,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<3>  &,
+  gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy        &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_projection_rhs(
+  const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &);
+template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_projection_rhs(
+  const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &);

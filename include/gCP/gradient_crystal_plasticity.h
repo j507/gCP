@@ -63,6 +63,13 @@ public:
   std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
     get_cohesive_law() const;
 
+  /*!
+   * @brief Returns a const reference to the @ref dof_handler
+   */
+  const dealii::DoFHandler<dim>& get_dof_handler() const;
+
+  const dealii::LinearAlgebraTrilinos::MPI::Vector &get_damage_at_grain_boundaries();
+
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
 
 private:
@@ -132,6 +139,40 @@ private:
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
                                                     neumann_boundary_conditions;
+
+  //
+  dealii::DoFHandler<dim>                           dof_handler;
+
+  dealii::hp::FECollection<dim>                     fe_collection;
+
+  dealii::AffineConstraints<double>                 hanging_node_constraints;
+
+  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  projection_matrix;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        projection_rhs;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        damage_variable_values;
+
+  void assemble_projection_matrix();
+
+  void assemble_local_projection_matrix(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim> &scratch,
+    gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data);
+
+  void copy_local_to_global_projection_matrix(
+    const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data);
+
+  void assemble_projection_rhs();
+
+  void assemble_local_projection_rhs(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator    &cell,
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>  &scratch,
+    gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy          &data);
+
+  void copy_local_to_global_projection_rhs(
+    const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
+  //
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
@@ -224,6 +265,15 @@ inline std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
 GradientCrystalPlasticitySolver<dim>::get_cohesive_law() const
 {
   return (cohesive_law);
+}
+
+
+
+template <int dim>
+inline const dealii::DoFHandler<dim> &
+GradientCrystalPlasticitySolver<dim>::get_dof_handler() const
+{
+  return (dof_handler);
 }
 
 
