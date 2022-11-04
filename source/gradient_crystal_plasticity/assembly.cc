@@ -1509,19 +1509,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_projection_matrix()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
+               projection_dof_handler.begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
+               projection_dof_handler.end()),
     worker,
     copier,
     gCP::AssemblyData::Postprocessing::ProjectionMatrix::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
       face_quadrature_collection,
-      fe_collection,
+      projection_fe_collection,
       update_flags),
     gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy(
-      fe_collection.max_dofs_per_cell()));
+      projection_fe_collection.max_dofs_per_cell()));
 
   // Compress global data
   projection_matrix.compress(dealii::VectorOperation::add);
@@ -1595,7 +1595,7 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_matri
   const gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy &data)
 {
   if (data.cell_is_at_grain_boundary)
-    hanging_node_constraints.distribute_local_to_global(
+    projection_hanging_node_constraints.distribute_local_to_global(
       data.local_matrix,
       data.local_dof_indices,
       projection_matrix);
@@ -1641,19 +1641,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_projection_rhs()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.begin_active()),
+               projection_dof_handler.begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               dof_handler.end()),
+               projection_dof_handler.end()),
     worker,
     copier,
     gCP::AssemblyData::Postprocessing::ProjectionRHS::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
       face_quadrature_collection,
-      fe_collection,
+      projection_fe_collection,
       update_flags),
     gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy(
-      fe_collection.max_dofs_per_cell()));
+      projection_fe_collection.max_dofs_per_cell()));
 
   // Compress global data
   projection_rhs.compress(dealii::VectorOperation::add);
@@ -1676,13 +1676,16 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_rhs(
       parameters.boundary_conditions_at_grain_boundaries ==
         RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
   {
+    // Indicate the Copy struct that its a cell at the grain boundary
     data.cell_is_at_grain_boundary = true;
 
     // Local to global indices mapping
     cell->get_dof_indices(data.local_dof_indices);
 
+    // Scalar extractor for the damage variable
     const dealii::FEValuesExtractors::Scalar  extractor(0);
 
+    // Instance of the interface quadrature point history
     std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
       local_interface_quadrature_point_history;
 
@@ -1740,7 +1743,7 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_rhs(
   const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data)
 {
   if (data.cell_is_at_grain_boundary)
-    hanging_node_constraints.distribute_local_to_global(
+    projection_hanging_node_constraints.distribute_local_to_global(
       data.local_rhs,
       data.local_dof_indices,
       projection_rhs,

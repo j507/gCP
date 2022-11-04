@@ -127,6 +127,7 @@ template <int dim>
 const dealii::LinearAlgebraTrilinos::MPI::Vector &
 GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
 {
+  // The right-hand side of the projection is updated
   assemble_projection_rhs();
 
   // In this method we create temporal non ghosted copies
@@ -183,7 +184,9 @@ GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
     std::abort();
   }
 
-  hanging_node_constraints.distribute(distributed_solution);
+  // Hanging node constraints are distributed and the solution is passed
+  // to the ghost vector
+  projection_hanging_node_constraints.distribute(distributed_solution);
 
   damage_variable_values = distributed_solution;
 

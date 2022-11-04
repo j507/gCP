@@ -92,12 +92,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
     }
 
     jacobian.reinit(sparsity_pattern);
-    /*
-    std::cout << "m()                  = " << jacobian.m() << "\n"
-              << "n()                  = " << jacobian.n()  << "\n"
-              << "n_nonzero_elements() = " << jacobian.n_nonzero_elements() << "\n"
-              << "memory_consumption() = " << jacobian.memory_consumption() << "\n\n";
-    */
   }
 
   // Initiate constitutive laws
@@ -122,51 +116,54 @@ void GradientCrystalPlasticitySolver<dim>::init()
     }
   }
 
+  // Set-up memberes related to the L2 projection of the damage variable
   {
-    fe_collection.push_back(dealii::FE_Q<dim>(2));
-
-    dof_handler.reinit(fe_field->get_triangulation());
+    // The FE collection consists of a single second order
+    // Lagrange-Element
+    projection_fe_collection.push_back(dealii::FE_Q<dim>(2));
 
     // Distribute degrees of freedom based on the defined finite elements
-    dof_handler.distribute_dofs(fe_collection);
+    projection_dof_handler.reinit(fe_field->get_triangulation());
+
+    projection_dof_handler.distribute_dofs(projection_fe_collection);
 
     // Renumbering of the degrees of freedom
-    dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
-
-    dealii::IndexSet locally_owned_dofs;
-    dealii::IndexSet locally_relevant_dofs;
+    dealii::DoFRenumbering::Cuthill_McKee(projection_dof_handler);
 
     // Get the locally owned and relevant degrees of freedom of
     // each processor
-    locally_owned_dofs = dof_handler.locally_owned_dofs();
+    dealii::IndexSet locally_owned_dofs;
+    dealii::IndexSet locally_relevant_dofs;
+
+    locally_owned_dofs = projection_dof_handler.locally_owned_dofs();
 
     dealii::DoFTools::extract_locally_relevant_dofs(
-      dof_handler,
+      projection_dof_handler,
       locally_relevant_dofs);
 
     // Initiate the hanging node constraints
-    hanging_node_constraints.clear();
+    projection_hanging_node_constraints.clear();
     {
-      hanging_node_constraints.reinit(locally_relevant_dofs);
+      projection_hanging_node_constraints.reinit(locally_relevant_dofs);
 
       dealii::DoFTools::make_hanging_node_constraints(
-        dof_handler,
-        hanging_node_constraints);
+        projection_dof_handler,
+        projection_hanging_node_constraints);
     }
-    hanging_node_constraints.close();
+    projection_hanging_node_constraints.close();
 
     // Initiate the matrix
     {
       dealii::TrilinosWrappers::SparsityPattern
         sparsity_pattern(locally_owned_dofs,
-                        locally_owned_dofs,
-                        locally_relevant_dofs,
-                        MPI_COMM_WORLD);
+                         locally_owned_dofs,
+                         locally_relevant_dofs,
+                         MPI_COMM_WORLD);
 
       dealii::DoFTools::make_sparsity_pattern(
-        dof_handler,
+        projection_dof_handler,
         sparsity_pattern,
-        hanging_node_constraints,
+        projection_hanging_node_constraints,
         false,
         dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
@@ -175,15 +172,19 @@ void GradientCrystalPlasticitySolver<dim>::init()
       projection_matrix.reinit(sparsity_pattern);
     }
 
-    damage_variable_values.reinit(locally_relevant_dofs,
-                                  MPI_COMM_WORLD);
-    projection_rhs.reinit(locally_owned_dofs,
-                          locally_relevant_dofs,
-                          MPI_COMM_WORLD,
-                          true);
-  }
+    // Initiate vectors
+    {
+      damage_variable_values.reinit(locally_relevant_dofs,
+                                    MPI_COMM_WORLD);
+      projection_rhs.reinit(locally_owned_dofs,
+                            locally_relevant_dofs,
+                            MPI_COMM_WORLD,
+                            true);
+    }
 
-  assemble_projection_matrix();
+      assemble_projection_matrix();
+  } // End of set-up memberes related to the L2 projection of the
+    // damage variable
 
   flag_init_was_called = true;
 

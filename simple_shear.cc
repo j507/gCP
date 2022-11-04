@@ -896,7 +896,7 @@ void SimpleShearProblem<dim>::data_output()
     face_component_type(1, dealii::DataComponentInterpretation::component_is_scalar);
 
   data_out_face.add_data_vector(
-    gCP_solver.get_dof_handler(),
+    gCP_solver.get_projection_dof_handler(),
     gCP_solver.get_damage_at_grain_boundaries(),
     face_name,
     face_component_type);
