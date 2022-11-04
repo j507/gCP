@@ -510,7 +510,8 @@ namespace ProjectionMatrix
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_matrix(dofs_per_cell, dofs_per_cell),
+local_lumped_projection_matrix(dofs_per_cell),
+local_matrix_for_inhomogeneous_bcs(dofs_per_cell, dofs_per_cell),
 cell_is_at_grain_boundary(false)
 {}
 

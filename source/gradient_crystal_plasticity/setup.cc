@@ -108,6 +108,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     for (const auto &neumann_boundary_condition : neumann_boundary_conditions)
     {
+      (void)neumann_boundary_condition;
       Assert(
         std::find(boundary_ids.begin(), boundary_ids.end(), neumann_boundary_condition.first)
           != boundary_ids.end(),
@@ -152,26 +153,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
     }
     projection_hanging_node_constraints.close();
 
-    // Initiate the matrix
-    {
-      dealii::TrilinosWrappers::SparsityPattern
-        sparsity_pattern(locally_owned_dofs,
-                         locally_owned_dofs,
-                         locally_relevant_dofs,
-                         MPI_COMM_WORLD);
-
-      dealii::DoFTools::make_sparsity_pattern(
-        projection_dof_handler,
-        sparsity_pattern,
-        projection_hanging_node_constraints,
-        false,
-        dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
-
-      sparsity_pattern.compress();
-
-      projection_matrix.reinit(sparsity_pattern);
-    }
-
     // Initiate vectors
     {
       damage_variable_values.reinit(locally_relevant_dofs,
@@ -180,9 +161,13 @@ void GradientCrystalPlasticitySolver<dim>::init()
                             locally_relevant_dofs,
                             MPI_COMM_WORLD,
                             true);
+      lumped_projection_matrix.reinit(locally_owned_dofs,
+                                      locally_relevant_dofs,
+                                      MPI_COMM_WORLD,
+                                      true);
     }
 
-      assemble_projection_matrix();
+    assemble_projection_matrix();
   } // End of set-up memberes related to the L2 projection of the
     // damage variable
 

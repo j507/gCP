@@ -57,8 +57,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
     dealii::update_normal_vectors |
     dealii::update_values;
 
-  //dealii::UpdateFlags face_update_flags = dealii::update_JxW_values;
-
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
@@ -1483,7 +1481,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_projection_matrix()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  projection_matrix = 0.0;
+  lumped_projection_matrix = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -1524,7 +1522,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_projection_matrix()
       projection_fe_collection.max_dofs_per_cell()));
 
   // Compress global data
-  projection_matrix.compress(dealii::VectorOperation::add);
+  lumped_projection_matrix.compress(dealii::VectorOperation::add);
 }
 
 
@@ -1535,19 +1533,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_matrix(
   gCP::AssemblyData::Postprocessing::ProjectionMatrix::Copy         &data)
 {
   // Reset local data
-  data.local_matrix              = 0.0;
-  data.cell_is_at_grain_boundary = false;
+  data.local_lumped_projection_matrix     = 0.0;
+  data.local_matrix_for_inhomogeneous_bcs = 0.0;
+  data.cell_is_at_grain_boundary          = false;
 
   // Grain boundary integral
   if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
       parameters.boundary_conditions_at_grain_boundaries ==
         RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
   {
+    // Indicate the Copy struct that its a cell at the grain boundary
     data.cell_is_at_grain_boundary = true;
 
     // Local to global indices mapping
     cell->get_dof_indices(data.local_dof_indices);
 
+    // Scalar extractor for the damage variable
     const dealii::FEValuesExtractors::Scalar  extractor(0);
 
     for (const auto &face_index : cell->face_indices())
@@ -1579,7 +1580,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_matrix(
           // Loop over local degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
-                  data.local_matrix(i,j) +=
+                  data.local_lumped_projection_matrix(i) +=
                     scratch.scalar_test_function[i] *
                     scratch.scalar_test_function[j] *
                     scratch.face_JxW_values[face_q_point];
@@ -1596,9 +1597,10 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_matri
 {
   if (data.cell_is_at_grain_boundary)
     projection_hanging_node_constraints.distribute_local_to_global(
-      data.local_matrix,
+      data.local_lumped_projection_matrix,
       data.local_dof_indices,
-      projection_matrix);
+      lumped_projection_matrix,
+      data.local_matrix_for_inhomogeneous_bcs);
 }
 
 

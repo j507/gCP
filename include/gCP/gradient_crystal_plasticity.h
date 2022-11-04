@@ -213,7 +213,7 @@ private:
 
   dealii::AffineConstraints<double>                 projection_hanging_node_constraints;
 
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  projection_matrix;
+  dealii::LinearAlgebraTrilinos::MPI::Vector        lumped_projection_matrix;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        projection_rhs;
 

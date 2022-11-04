@@ -351,7 +351,9 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  dealii::FullMatrix<double>  local_matrix;
+  dealii::Vector<double>      local_lumped_projection_matrix;
+
+  dealii::FullMatrix<double>  local_matrix_for_inhomogeneous_bcs;
 
   bool                        cell_is_at_grain_boundary;
 };

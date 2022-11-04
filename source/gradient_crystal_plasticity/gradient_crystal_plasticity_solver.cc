@@ -127,68 +127,34 @@ template <int dim>
 const dealii::LinearAlgebraTrilinos::MPI::Vector &
 GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
 {
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Damage L2-Projection");
+
   // The right-hand side of the projection is updated
   assemble_projection_rhs();
 
-  // In this method we create temporal non ghosted copies
-  // of the pertinent vectors to be able to perform the solve()
-  // operation.
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+  dealii::IndexSet locally_owned_dofs =
+    projection_dof_handler.locally_owned_dofs();
 
-  distributed_solution.reinit(projection_rhs);
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
 
-  distributed_solution = 0.;
+  distributed_vector.reinit(projection_rhs);
 
-  // The solver's tolerances are passed to the SolverControl instance
-  // used to initialize the solver
-  dealii::SolverControl solver_control(
-    5000,
-    std::max(projection_rhs.l2_norm() * 1e-8, 1e-9));
+  distributed_vector = 0.0;
 
-  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+  for (unsigned int i = 0; i < lumped_projection_matrix.size(); ++i)
+    if (locally_owned_dofs.is_element(i))
+    {
+      if (lumped_projection_matrix[i] != 0.0)
+        distributed_vector[i] = projection_rhs[i] /
+                                lumped_projection_matrix[i];
+    }
 
-  // The preconditioner is instanciated and initialized
-  dealii::LinearAlgebraTrilinos::MPI::PreconditionAMG preconditioner;
+  distributed_vector.compress(dealii::VectorOperation::insert);
 
-  preconditioner.initialize(projection_matrix);
+  projection_hanging_node_constraints.distribute(distributed_vector);
 
-  // try-catch scope for the solve() call
-  try
-  {
-    solver.solve(projection_matrix,
-                 distributed_solution,
-                 projection_rhs,
-                 preconditioner);
-  }
-  catch (std::exception &exc)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Exception in the solve method: " << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Unknown exception in the solve method!" << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
-
-  // Hanging node constraints are distributed and the solution is passed
-  // to the ghost vector
-  projection_hanging_node_constraints.distribute(distributed_solution);
-
-  damage_variable_values = distributed_solution;
+  damage_variable_values = distributed_vector;
 
   return (damage_variable_values);
 }
