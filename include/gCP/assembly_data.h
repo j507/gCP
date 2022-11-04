@@ -351,7 +351,11 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  dealii::FullMatrix<double>  local_matrix;
+  dealii::Vector<double>      local_lumped_projection_matrix;
+
+  dealii::FullMatrix<double>  local_matrix_for_inhomogeneous_bcs;
+
+  bool                        cell_is_at_grain_boundary;
 };
 
 
@@ -361,16 +365,19 @@ struct Scratch : ScratchBase<dim>
 {
   Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
           const dealii::hp::FECollection<dim>       &finite_element_collection,
           const dealii::UpdateFlags                 update_flags);
 
   Scratch(const Scratch<dim>  &data);
 
-  dealii::hp::FEValues<dim> hp_fe_values;
+  dealii::hp::FEFaceValues<dim> hp_fe_face_values;
 
-  std::vector<double>       JxW_values;
+  const unsigned int            n_face_q_points;
 
-  std::vector<double>       scalar_phi;
+  std::vector<double>           face_JxW_values;
+
+  std::vector<double>           scalar_test_function;
 };
 
 
@@ -388,9 +395,11 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  std::vector<dealii::Vector<double>> local_rhs;
+  dealii::Vector<double>      local_rhs;
 
-  dealii::FullMatrix<double>          local_matrix_for_inhomogeneous_bcs;
+  dealii::FullMatrix<double>  local_matrix_for_inhomogeneous_bcs;
+
+  bool                        cell_is_at_grain_boundary;
 };
 
 
@@ -400,31 +409,21 @@ struct Scratch : ScratchBase<dim>
 {
   Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
           const dealii::hp::QCollection<dim>        &quadrature_collection,
-          const dealii::hp::FECollection<dim>       &scalar_finite_element_collection,
-          const dealii::UpdateFlags                 scalar_update_flags,
-          const dealii::hp::FECollection<dim>       &vector_finite_element_collection,
-          const dealii::UpdateFlags                 vector_update_flags,
-          const unsigned int                        n_slips);
+          const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element_collection,
+          const dealii::UpdateFlags                 update_flags);
 
   Scratch(const Scratch<dim>  &data);
 
-  dealii::hp::FEValues<dim>                       scalar_hp_fe_values;
+  dealii::hp::FEFaceValues<dim>                   hp_fe_face_values;
 
-  dealii::hp::FEValues<dim>                       vector_hp_fe_values;
+  const unsigned int                              n_face_q_points;
 
-  unsigned int                                    n_slips;
+  std::vector<double>                             face_JxW_values;
 
-  std::vector<double>                             JxW_values;
+  std::vector<double>                             damage_variable_values;
 
-  std::vector<std::vector<double>>                slip_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     strain_tensor_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     elastic_strain_tensor_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     stress_tensor_values;
-
-  std::vector<double>                             scalar_phi;
+  std::vector<double>                             scalar_test_function;
 };
 
 

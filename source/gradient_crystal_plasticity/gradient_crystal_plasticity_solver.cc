@@ -123,6 +123,44 @@ flag_init_was_called(false)
 }
 
 
+template <int dim>
+const dealii::LinearAlgebraTrilinos::MPI::Vector &
+GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
+{
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Damage L2-Projection");
+
+  // The right-hand side of the projection is updated
+  assemble_projection_rhs();
+
+  dealii::IndexSet locally_owned_dofs =
+    projection_dof_handler.locally_owned_dofs();
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vector;
+
+  distributed_vector.reinit(projection_rhs);
+
+  distributed_vector = 0.0;
+
+  for (unsigned int i = 0; i < lumped_projection_matrix.size(); ++i)
+    if (locally_owned_dofs.is_element(i))
+    {
+      if (lumped_projection_matrix[i] != 0.0)
+        distributed_vector[i] = projection_rhs[i] /
+                                lumped_projection_matrix[i];
+    }
+
+  distributed_vector.compress(dealii::VectorOperation::insert);
+
+  projection_hanging_node_constraints.distribute(distributed_vector);
+
+  damage_variable_values = distributed_vector;
+
+  return (damage_variable_values);
+}
+
+
+
 
 } // namespace gCP
 
