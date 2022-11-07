@@ -859,8 +859,7 @@ CohesiveLaw<dim>::CohesiveLaw(
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
 tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
-degradation_exponent(parameters.degradation_exponent),
-penalty_coefficient(parameters.penalty_coefficient)
+degradation_exponent(parameters.degradation_exponent)
 {}
 
 
@@ -927,14 +926,6 @@ CohesiveLaw<dim>::get_cohesive_traction(
   }
   else
     Assert(false, dealii::ExcInternalError());
-
-  cohesive_traction -=
-    penalty_coefficient *
-    macaulay_brackets(
-      -effective_quantities.normal_opening_displacement) *
-    critical_cohesive_traction /
-    critical_opening_displacement *
-    normal_vector;
 
   for (unsigned int i = 0; i < dim; ++i)
     AssertIsFinite(cohesive_traction[i]);
@@ -1013,17 +1004,6 @@ CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
   else
     Assert(false, dealii::ExcInternalError());
 
-  current_cell_gateaux_derivative +=
-    -1.0 *
-    penalty_coefficient *
-    macaulay_brackets(
-      -effective_quantities.normal_opening_displacement /
-      std::abs(effective_quantities.normal_opening_displacement)) *
-    critical_cohesive_traction /
-    critical_opening_displacement *
-    dealii::symmetrize(dealii::outer_product(normal_vector,
-                                            normal_vector));
-
   for (unsigned int i = 0;
        i < current_cell_gateaux_derivative.n_independent_components; ++i)
     AssertIsFinite(current_cell_gateaux_derivative.access_raw_entry(i));
@@ -1099,17 +1079,6 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
   }
   else
     Assert(false, dealii::ExcInternalError());
-
-  neighbor_cell_gateaux_derivative +=
-    penalty_coefficient *
-    macaulay_brackets(
-      -effective_quantities.normal_opening_displacement /
-      std::abs(effective_quantities.normal_opening_displacement)) *
-    critical_cohesive_traction /
-    critical_opening_displacement *
-    dealii::symmetrize(dealii::outer_product(normal_vector,
-                                             normal_vector));
-
 
   for (unsigned int i = 0;
        i < neighbor_cell_gateaux_derivative.n_independent_components; ++i)

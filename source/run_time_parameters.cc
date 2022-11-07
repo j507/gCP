@@ -256,7 +256,6 @@ damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
 degradation_exponent(1.0),
-penalty_coefficient(2.0),
 flag_couple_microtraction_to_damage(true),
 flag_couple_macrotraction_to_damage(false),
 flag_set_damage_to_zero(false)
@@ -299,10 +298,6 @@ void CohesiveLawParameters::declare_parameters(
 
     prm.declare_entry("Degradation exponent",
                       "1.0",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Penalty coefficient",
-                      "2.0",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Set damage to zero",
@@ -394,14 +389,6 @@ void CohesiveLawParameters::parse_parameters(
                   degradation_exponent, 0.0));
 
     AssertIsFinite(degradation_exponent);
-
-    penalty_coefficient = prm.get_double("Penalty coefficient");
-
-    AssertThrow(penalty_coefficient > 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  penalty_coefficient, 0.0));
-
-    AssertIsFinite(penalty_coefficient);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 

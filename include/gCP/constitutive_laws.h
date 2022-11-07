@@ -484,8 +484,6 @@ private:
 
   double degradation_exponent;
 
-  double penalty_coefficient;
-
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(

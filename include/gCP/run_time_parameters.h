@@ -394,13 +394,6 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  double  penalty_coefficient;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
   bool    flag_couple_microtraction_to_damage;
 
   /*!
