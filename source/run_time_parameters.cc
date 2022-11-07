@@ -417,6 +417,59 @@ void CohesiveLawParameters::parse_parameters(
 
 
 
+ContactLawParameters::ContactLawParameters()
+:
+stiffness(1.0),
+penalty_coefficient(100.0)
+{}
+
+
+
+void ContactLawParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Contact law's parameters");
+  {
+    prm.declare_entry("Stiffness",
+                      "1.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Penalty coefficient",
+                      "100.0",
+                      dealii::Patterns::Double());
+
+  }
+  prm.leave_subsection();
+}
+
+
+
+void ContactLawParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Contact law's parameters");
+  {
+    stiffness = prm.get_double("Stiffness");
+
+    AssertThrow(stiffness >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  stiffness, 0.0));
+
+    AssertIsFinite(stiffness);
+
+    penalty_coefficient = prm.get_double("Penalty coefficient");
+
+    AssertThrow(penalty_coefficient >= 0.0,
+                dealii::ExcLowerRangeType<double>(
+                  penalty_coefficient, 0.0));
+
+    AssertIsFinite(penalty_coefficient);
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 residual_tolerance(1e-10),

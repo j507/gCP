@@ -419,6 +419,42 @@ struct CohesiveLawParameters
 };
 
 
+/*!
+ * @brief Struct containing all relevant parameters of the contact law
+ * @details See @ref ConstitutiveLaws::ContactLaw for explanation of
+ * each member
+ */
+struct ContactLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ContactLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief See @ref ConstitutiveLaws::ContactLaw
+   */
+  double  stiffness;
+
+  /*!
+   * @brief See @ref ConstitutiveLaws::ContactLaw
+   */
+  double  penalty_coefficient;
+};
+
+
 
 struct SolverParameters
 {
