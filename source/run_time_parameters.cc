@@ -512,6 +512,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     VectorMicroscopicStressLawParameters::declare_parameters(prm);
     MicroscopicTractionLawParameters::declare_parameters(prm);
     CohesiveLawParameters::declare_parameters(prm);
+    ContactLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -584,6 +585,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     vector_microscopic_stress_law_parameters.parse_parameters(prm);
     microscopic_traction_law_parameters.parse_parameters(prm);
     cohesive_law_parameters.parse_parameters(prm);
+    contact_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 

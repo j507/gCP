@@ -554,6 +554,14 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  ContactLawParameters
+                      contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                allow_decohesion;
 
   /*!
