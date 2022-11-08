@@ -114,6 +114,9 @@ private:
   std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
                                                     cohesive_law;
 
+  std::shared_ptr<ConstitutiveLaws::ContactLaw<dim>>
+                                                    contact_law;
+
   dealii::CellDataStorage<
     typename dealii::Triangulation<dim>::cell_iterator,
     QuadraturePointHistory<dim>>                    quadrature_point_history;

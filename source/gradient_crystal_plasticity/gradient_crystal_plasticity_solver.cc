@@ -47,6 +47,9 @@ microscopic_traction_law(
 cohesive_law(
   std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
     parameters.cohesive_law_parameters)),
+contact_law(
+  std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
+    parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
 nonlinear_solver_logger(parameters.logger_output_directory +
                         "nonlinear_solver_log.txt"),
