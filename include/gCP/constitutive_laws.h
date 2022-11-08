@@ -463,7 +463,9 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
-  double get_degradation_function_value(const double damage_variable) const;
+  double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    couple) const;
 
   double get_effective_opening_displacement(
     const dealii::Tensor<1,dim> opening_displacement,
@@ -500,9 +502,13 @@ private:
 template <int dim>
 inline double
 CohesiveLaw<dim>::get_degradation_function_value(
-  const double damage_variable) const
+  const double  damage_variable,
+  const bool    couple) const
 {
-  return std::pow(1.0 - damage_variable, degradation_exponent);
+  if (couple)
+    return std::pow(1.0 - damage_variable, degradation_exponent);
+  else
+    return 1.0;
 }
 
 
