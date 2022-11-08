@@ -394,13 +394,6 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  double  penalty_coefficient;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
   bool    flag_couple_microtraction_to_damage;
 
   /*!
@@ -416,6 +409,42 @@ struct CohesiveLawParameters
    * @todo Docu
    */
   bool    flag_set_damage_to_zero;
+};
+
+
+/*!
+ * @brief Struct containing all relevant parameters of the contact law
+ * @details See @ref ConstitutiveLaws::ContactLaw for explanation of
+ * each member
+ */
+struct ContactLawParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ContactLawParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief See @ref ConstitutiveLaws::ContactLaw
+   */
+  double  stiffness;
+
+  /*!
+   * @brief See @ref ConstitutiveLaws::ContactLaw
+   */
+  double  penalty_coefficient;
 };
 
 
@@ -519,6 +548,14 @@ struct SolverParameters
    */
   CohesiveLawParameters
                       cohesive_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  ContactLawParameters
+                      contact_law_parameters;
 
   /*!
    * @brief

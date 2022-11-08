@@ -463,7 +463,9 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
-  double get_degradation_function_value(const double damage_variable) const;
+  double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    couple) const;
 
   double get_effective_opening_displacement(
     const dealii::Tensor<1,dim> opening_displacement,
@@ -484,8 +486,6 @@ private:
 
   double degradation_exponent;
 
-  double penalty_coefficient;
-
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(
@@ -502,9 +502,13 @@ private:
 template <int dim>
 inline double
 CohesiveLaw<dim>::get_degradation_function_value(
-  const double damage_variable) const
+  const double  damage_variable,
+  const bool    couple) const
 {
-  return std::pow(1.0 - damage_variable, degradation_exponent);
+  if (couple)
+    return std::pow(1.0 - damage_variable, degradation_exponent);
+  else
+    return 1.0;
 }
 
 
@@ -531,6 +535,153 @@ CohesiveLaw<dim>::get_effective_cohesive_traction(
           critical_opening_displacement *
           std::exp(1.0 - effective_opening_displacement /
                          critical_opening_displacement));
+}
+
+
+/*!
+ * @brief The constitutive law describing the traction product of the
+ * mechanical contact of two bodies or one body with itself.
+ *
+ * @details The normal contact between two bodies is numerically
+ * considered through the penalty method by introducing the free energy
+ * density
+ *  \f[
+ *      \psi_{\mathrm{C}} =
+ *      \int_{\mathrm{I}} \frac{1}{2} \varepsilon k_0
+ *      \left\langle - \delta_{\mathrm{n}} \right\rangle^2 \,\mathrm{d}a
+ *  \f]
+ * at the contact surfaces, where \f$ \varepsilon \f$ is the penalty
+ * coefficient, \f$ k_0 \f$ the reference stiffness and
+ * \f$ \delta_{\mathrm{n}} \f$ the normal component of the displacement
+ * jump between bodies.
+ * @note Currently only frictionless contact implemented and
+ * node-to-node discretization at the grain boundaries
+ *
+ * @todo Frictional contact
+ *
+ * @tparam dim Spatial dimension
+ */
+template<int dim>
+class ContactLaw
+{
+public:
+  /*!
+   * @brief Constructor
+   *
+   * @param parameters The constitutive law's parameters
+   */
+  ContactLaw(
+    const RunTimeParameters::ContactLawParameters parameters);
+
+  /*!
+   * @brief Method returning the contact traction
+   *
+   * @details It is computed as
+   *  \f[
+   *      \bs{t}_{\mathrm{c}} = - \varepsilon k_0
+   *      \macaulay{-\delta_{\mathrm{n}}} \bs{n}
+   *  \f]
+   *
+   * @param opening_displacement Opening displacement at the evaluation
+   * point \f$ \bs{\delta} \f$
+   * @param normal_vector Normal vector at the evaluation point
+   * \f$ \bs{n} \f$
+   * @return dealii::Tensor<1,dim> Contact traction at the evaluation
+   * point \f$ \bs{t}_{\mathrm{c}} \f$
+   */
+  dealii::Tensor<1,dim> get_contact_traction(
+    const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
+
+  /*!
+   * @brief Method returning the Gateaux derivative of the
+   * contact traction with respect to the current cell
+   *
+   * @details It is computed as
+   *  \f[
+   *      \bs{J}_{\bs{t}_\mathrm{c}} = - \varepsilon k_0
+   *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
+   *      \bs{n} \otimes \bs{n}
+   *  \f]
+   *
+   * @param opening_displacement Opening displacement at the evaluation
+   * point \f$ \bs{\delta} \f$
+   * @param normal_vector Normal vector at the evaluation point
+   * \f$ \bs{n} \f$
+   * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
+   * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
+   */
+  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
+    const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
+
+  /*!
+   * @brief Method returning the Gateaux derivative of the
+   * contact traction with respect to the current cell
+   *
+   * @details It is computed as
+   *  \f[
+   *      \bs{J}_{\bs{t}_\mathrm{c}} = \varepsilon k_0
+   *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
+   *      \bs{n} \otimes \bs{n}
+   *  \f]
+   *
+   * @param opening_displacement Opening displacement at the evaluation
+   * point \f$ \bs{\delta} \f$
+   * @param normal_vector Normal vector at the evaluation point
+   * \f$ \bs{n} \f$
+   * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
+   * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
+   */
+  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+    const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector) const;
+
+private:
+
+  /*!
+   * @brief The stiffness of the fictitious spring between the two
+   * bodies in contact
+   */
+  double stiffness;
+
+  /*!
+   * @brief The penalty coefficient multiplying the @ref stiffness value
+   * leading to the effective stiffness
+   */
+  double penalty_coefficient;
+
+  /*!
+  * @brief A method returning the result of applying the Macaulay
+  * brackets to the input variable
+  *
+  * @details They are defined as
+  *
+  *  \f[
+  *      \left\langle a \right\rangle =
+  *      \begin{cases}
+  *        a, & a > 0 \\
+  *        0, & a < 0
+  *      \end{cases}
+  *  \f]
+  *
+  * @param value Input value
+  * @return double Output value
+  */
+  double macaulay_brackets(const double value) const;
+
+};
+
+
+
+template <int dim>
+inline double
+ContactLaw<dim>::macaulay_brackets(const double value) const
+{
+  if (value > 0)
+    return value;
+  else
+    return 0.0;
 }
 
 
