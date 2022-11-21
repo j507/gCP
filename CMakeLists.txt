@@ -67,6 +67,7 @@ ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
     simple_shear.cc
+    polycrystal.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
