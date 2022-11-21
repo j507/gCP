@@ -106,6 +106,7 @@ _deps
 *.gpl
 /results/
 /documentation/weak_form
+/documentation/html 
 
 # Python compiled modules
 *.pyc
