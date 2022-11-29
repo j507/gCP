@@ -38,25 +38,46 @@ enum class LoadingType
 
 
 /*!
- * @brief
+ * @brief Enum listing all the implemented regularizations of the sign
+ * function
  *
- * @todo Docu
+ * @details The approximations are controlled by the regularization
+ * paramter \f$ k \f$
  */
 enum class RegularizationFunction
 {
   /*!
-   * @brief
+   * @brief The square root approximation
    *
-   * @todo Docu
+   * @details Defined as
+   *
+   * \f[
+   *    \sgn(x) \approx \frac{x}{\sqrt{x^2 + k^2}}
+   * \f]
    */
-  PowerLaw,
+  Sqrt,
 
   /*!
-   * @brief
+   * @brief The hyperbolic tangent approximation
    *
-   * @todo Docu
+   * @details Defined as
+   *
+   * \f[
+   *    \sgn(x) \approx \tanh \left( \frac{x}{k} \right)
+   * \f]
    */
   Tanh,
+
+  /*!
+   * @brief The erf function approximation
+   *
+   * @details Defined as
+   *
+   * \f[
+   *    \sgn(x) \approx \erf  \left( \frac{\sqrt{\pi}}{k} x \right)
+   * \f]
+   */
+  Erf,
 };
 
 

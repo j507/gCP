@@ -129,10 +129,12 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
     const std::string string_regularization_function(
                       prm.get("Regularization function"));
 
-    if (string_regularization_function == std::string("tanh"))
+    if (string_regularization_function == std::string("sqrt"))
+      regularization_function = RegularizationFunction::Sqrt;
+    else if (string_regularization_function == std::string("tanh"))
       regularization_function = RegularizationFunction::Tanh;
-    else if (string_regularization_function == std::string("power-law"))
-      regularization_function = RegularizationFunction::PowerLaw;
+    else if (string_regularization_function == std::string("erf"))
+      regularization_function = RegularizationFunction::Erf;
     else
       AssertThrow(false,
                   dealii::ExcMessage("Unexpected identifier for the "
