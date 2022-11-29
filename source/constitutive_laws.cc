@@ -321,39 +321,15 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
                                   " instance has not been "
                                   " initialized."));
 
-  double regularization_factor;
-
-  const double slip_rate = (slip_value - old_slip_value) /
-                            time_step_size;
-
-  switch (regularization_function)
-  {
-  case RunTimeParameters::RegularizationFunction::PowerLaw:
-    {
-      regularization_factor = std::pow(slip_rate,
-                                       1.0 / regularization_parameter);
-    }
-    break;
-  case RunTimeParameters::RegularizationFunction::Tanh:
-    {
-      regularization_factor = std::tanh(slip_rate /
-                                        regularization_parameter);
-    }
-    break;
-  default:
-    {
-      AssertThrow(false, dealii::ExcMessage("The given regularization "
-                                            "function is not currently "
-                                            "implemented."));
-    }
-    break;
-  }
+  double regularization_function_value =
+    get_regularization_function_value(
+      (slip_value - old_slip_value) / time_step_size);
 
   AssertIsFinite(slip_resistance);
-  AssertIsFinite(regularization_factor);
+  AssertIsFinite(regularization_function_value);
 
   return ((initial_slip_resistance + slip_resistance) *
-          regularization_factor);
+          regularization_function_value);
 }
 
 
@@ -395,18 +371,15 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
     {
       matrix[slip_id_alpha][slip_id_beta] =
         (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
-          get_regularization_factor(
-            compute_slip_rate(q_point, slip_id_alpha)) *
-          sgn(compute_slip_rate(q_point, slip_id_beta)));
+          get_regularization_function_value(compute_slip_rate(q_point, slip_id_alpha)) *
+          get_regularization_function_value(compute_slip_rate(q_point, slip_id_beta)));
 
       if (slip_id_alpha == slip_id_beta)
         matrix[slip_id_alpha][slip_id_beta] +=
           ((initial_slip_resistance +
-            slip_resistances[slip_id_alpha]) /
-            (time_step_size * regularization_parameter) *
-            std::pow(1.0/std::cosh(
-                      compute_slip_rate(q_point, slip_id_alpha) /
-                      regularization_parameter), 2));
+            slip_resistances[slip_id_alpha]) / time_step_size *
+            get_regularization_function_derivative_value(
+              compute_slip_rate(q_point, slip_id_alpha)));
 
       AssertIsFinite(matrix[slip_id_alpha][slip_id_beta]);
     }
@@ -418,22 +391,30 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
 
 template <int dim>
 double ScalarMicroscopicStressLaw<dim>::
-get_regularization_factor(const double slip_rate) const
+get_regularization_function_value(const double slip_rate) const
 {
-  double regularization_factor = 0.0;
+  double regularization_function_value = 0.0;
 
   switch (regularization_function)
   {
-  case RunTimeParameters::RegularizationFunction::PowerLaw:
+  case RunTimeParameters::RegularizationFunction::Sqrt:
     {
-      regularization_factor = std::pow(slip_rate,
-                                       1.0 / regularization_parameter);
+      regularization_function_value =
+        slip_rate / std::sqrt(slip_rate * slip_rate +
+                              regularization_parameter *
+                              regularization_parameter);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:
     {
-      regularization_factor = std::tanh(slip_rate /
-                                        regularization_parameter);
+      regularization_function_value =
+        std::tanh(slip_rate / regularization_parameter);
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Erf:
+    {
+      regularization_function_value =
+        std::erf(slip_rate * std::sqrt(M_PI) / regularization_parameter);
     }
     break;
   default:
@@ -445,9 +426,57 @@ get_regularization_factor(const double slip_rate) const
     break;
   }
 
-  AssertIsFinite(regularization_factor);
+  AssertIsFinite(regularization_function_value);
 
-  return regularization_factor;
+  return regularization_function_value;
+}
+
+
+
+template <int dim>
+double ScalarMicroscopicStressLaw<dim>::
+get_regularization_function_derivative_value(const double slip_rate) const
+{
+  double regularization_function_derivative_value = 0.0;
+
+  switch (regularization_function)
+  {
+  case RunTimeParameters::RegularizationFunction::Sqrt:
+    {
+      regularization_function_derivative_value =
+        regularization_parameter * regularization_parameter /
+        std::pow(slip_rate * slip_rate +
+                  regularization_parameter * regularization_parameter,
+                 1.5);
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Tanh:
+    {
+      regularization_function_derivative_value =
+        std::pow(1.0 / std::cosh(slip_rate / regularization_parameter),
+                 2) / regularization_parameter;
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Erf:
+    {
+      regularization_function_derivative_value =
+        2. / regularization_parameter *
+        std::exp(-M_PI * slip_rate * slip_rate /
+                 regularization_parameter / regularization_parameter);
+    }
+    break;
+  default:
+    {
+      AssertThrow(false, dealii::ExcMessage("The given regularization "
+                                            "function is not currently "
+                                            "implemented."));
+    }
+    break;
+  }
+
+  AssertIsFinite(regularization_function_derivative_value);
+
+  return regularization_function_derivative_value;
 }
 
 

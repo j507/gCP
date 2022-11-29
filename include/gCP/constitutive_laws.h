@@ -274,7 +274,9 @@ private:
 
   double sgn(const double value) const;
 
-  double get_regularization_factor(const double slip_rate) const;
+  double get_regularization_function_value(const double slip_rate) const;
+
+  double get_regularization_function_derivative_value(const double slip_rate) const;
 };
 
 
