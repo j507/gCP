@@ -99,7 +99,7 @@ void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
   {
     prm.declare_entry("Regularization function",
                       "tanh",
-                      dealii::Patterns::Selection("tanh|power-law"));
+                      dealii::Patterns::Selection("sqrt|tanh|erf"));
 
     prm.declare_entry("Regularization parameter",
                       "3e-4",
