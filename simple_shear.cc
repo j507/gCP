@@ -454,6 +454,11 @@ string_width(
       }
     }
   }
+
+  gCP_solver.set_cyclic_step_data(
+    parameters.temporal_discretization_parameters.loading_type,
+    parameters.temporal_discretization_parameters.n_steps_in_loading_phase,
+    parameters.temporal_discretization_parameters.n_steps_per_half_cycle);
 }
 
 
