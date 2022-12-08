@@ -471,6 +471,7 @@ allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
+flag_skip_extrapolation_at_extrema(false),
 print_sparsity_pattern(false),
 verbose(false)
 {}
@@ -531,6 +532,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   prm.declare_entry("Logger output directory",
                     "results/default/",
                     dealii::Patterns::DirectoryName());
+
+  prm.declare_entry("Skip extrapolation of start value at extrema",
+                    "false",
+                    dealii::Patterns::Bool());
 
   prm.declare_entry("Print sparsity pattern",
                     "false",
@@ -621,6 +626,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
   logger_output_directory = prm.get("Logger output directory");
+
+  flag_skip_extrapolation_at_extrema =
+    prm.get_bool("Skip extrapolation of start value at extrema");
 
   print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
 
