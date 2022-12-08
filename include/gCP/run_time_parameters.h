@@ -605,6 +605,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                flag_skip_extrapolation_at_extrema;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                print_sparsity_pattern;
 
   /*!

@@ -63,6 +63,11 @@ public:
   std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
     get_cohesive_law() const;
 
+  void set_cyclic_step_data(
+    const RunTimeParameters::LoadingType  loading_type,
+    const unsigned int                    n_steps_in_loading_phase,
+    const unsigned int                    n_steps_per_half_cycle);
+
   /*!
    * @brief Returns a const reference to the @ref dof_handler
    */
@@ -151,6 +156,17 @@ private:
    * @todo Temporary member
    */
   RunTimeParameters::LoadingType                    loading_type;
+
+  struct CyclicStepData
+  {
+    RunTimeParameters::LoadingType  loading_type;
+
+    unsigned int                    n_steps_in_loading_phase;
+
+    unsigned int                    n_steps_per_half_cycle;
+  };
+
+  CyclicStepData                                    cyclic_step_data;
 
   bool                                              flag_init_was_called;
 
