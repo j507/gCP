@@ -93,7 +93,7 @@ enum class RegularizationFunction
   Tanh,
 
   /*!
-   * @brief The erf function approximation
+   * @brief The error function approximation
    *
    * @details Defined as
    *
