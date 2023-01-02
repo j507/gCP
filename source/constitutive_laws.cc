@@ -400,7 +400,7 @@ get_regularization_function_value(const double slip_rate) const
   case RunTimeParameters::RegularizationFunction::Atan:
     {
       regularization_function_value =
-        2.0 * M_PI * std::atan(
+        2.0 / M_PI * std::atan(
           M_PI / 2.0 * slip_rate / regularization_parameter);
     }
     break;
@@ -415,7 +415,7 @@ get_regularization_function_value(const double slip_rate) const
   case RunTimeParameters::RegularizationFunction::Gd:
     {
       regularization_function_value =
-        2.0 * M_PI * std::atan(std::sinh(
+        2.0 / M_PI * std::atan(std::sinh(
           M_PI / 2.0 * slip_rate / regularization_parameter));
     }
     break;
