@@ -893,26 +893,29 @@ void SimpleShearProblem<dim>::data_output()
     MPI_COMM_WORLD,
     5);
 
-  dealii::DataOutFaces<dim>        data_out_face(false);
+  if (parameters.flag_output_damage_variable)
+  {
+    dealii::DataOutFaces<dim>        data_out_face(false);
 
-  std::vector<std::string> face_name(1, "damage");
+    std::vector<std::string> face_name(1, "damage");
 
-  std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-    face_component_type(1, dealii::DataComponentInterpretation::component_is_scalar);
+    std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+      face_component_type(1, dealii::DataComponentInterpretation::component_is_scalar);
 
-  data_out_face.add_data_vector(
-    gCP_solver.get_projection_dof_handler(),
-    gCP_solver.get_damage_at_grain_boundaries(),
-    face_name,
-    face_component_type);
+    data_out_face.add_data_vector(
+      gCP_solver.get_projection_dof_handler(),
+      gCP_solver.get_damage_at_grain_boundaries(),
+      face_name,
+      face_component_type);
 
-  data_out_face.build_patches(2);
-  data_out_face.write_vtu_with_pvtu_record(
-    parameters.graphical_output_directory + "paraview/",
-    "damage",
-    out_index,
-    MPI_COMM_WORLD,
-    5);
+    data_out_face.build_patches(2);
+    data_out_face.write_vtu_with_pvtu_record(
+      parameters.graphical_output_directory + "paraview/",
+      "damage",
+      out_index,
+      MPI_COMM_WORLD,
+      5);
+  }
 
   out_index++;
 }

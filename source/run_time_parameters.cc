@@ -792,6 +792,7 @@ euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
 graphical_output_directory("results/default/"),
+flag_output_damage_variable(false),
 verbose(true)
 {}
 
@@ -930,6 +931,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Graphical output directory",
                       "results/default/",
                       dealii::Patterns::DirectoryName());
+
+    prm.declare_entry("Output damage variable field",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -1001,6 +1006,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
            dealii::ExcLowerRange(terminal_output_frequency, 0));
 
     graphical_output_directory = prm.get("Graphical output directory");
+
+    verbose = prm.get_bool("Output damage variable field");
   }
   prm.leave_subsection();
 }
