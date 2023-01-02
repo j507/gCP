@@ -782,6 +782,7 @@ ProblemParameters::ProblemParameters()
 dim(2),
 mapping_degree(1),
 mapping_interior_cells(false),
+n_elements_in_y_direction(100),
 n_global_refinements(0),
 fe_degree_displacements(2),
 fe_degree_slips(1),
@@ -849,6 +850,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Mapping - Apply to interior cells",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Number of elements in y-direction",
+                      "100",
+                      dealii::Patterns::Integer(0));
 
     prm.declare_entry("Number of global refinements",
                       "0",
@@ -945,6 +950,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     AssertThrow(mapping_degree > 0, dealii::ExcLowerRange(mapping_degree, 0) );
 
     mapping_interior_cells = prm.get_bool("Mapping - Apply to interior cells");
+
+    n_elements_in_y_direction = prm.get_integer("Number of elements in y-direction");
 
     n_global_refinements = prm.get_integer("Number of global refinements");
 
