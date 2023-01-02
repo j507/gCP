@@ -414,7 +414,7 @@ get_regularization_function_value(const double slip_rate) const
   case RunTimeParameters::RegularizationFunction::Erf:
     {
       regularization_function_value =
-        std::erf(slip_rate * std::sqrt(M_PI) / regularization_parameter);
+        std::erf(std::sqrt(M_PI) / 2.0 * slip_rate / regularization_parameter);
     }
     break;
   default:
@@ -460,9 +460,9 @@ get_regularization_function_derivative_value(const double slip_rate) const
   case RunTimeParameters::RegularizationFunction::Erf:
     {
       regularization_function_derivative_value =
-        2. / regularization_parameter *
+        1. / regularization_parameter *
         std::exp(-M_PI * slip_rate * slip_rate /
-                 regularization_parameter / regularization_parameter);
+                 regularization_parameter / regularization_parameter / 4.);
     }
     break;
   default:
