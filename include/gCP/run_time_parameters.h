@@ -795,6 +795,8 @@ struct ProblemParameters
 
   bool                              mapping_interior_cells;
 
+  unsigned int                      n_elements_in_y_direction;
+
   unsigned int                      n_global_refinements;
 
   unsigned int                      fe_degree_displacements;

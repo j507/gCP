@@ -397,7 +397,7 @@ simple_shear(fe_field,
              parameters.temporal_discretization_parameters.initial_loading_time,
              parameters.temporal_discretization_parameters.loading_type,
              3,
-             parameters.width),
+             1. / parameters.n_elements_in_y_direction),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.temporal_discretization_parameters.end_time -
@@ -468,8 +468,8 @@ void SimpleShearProblem<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
 
-  std::vector<unsigned int> repetitions(2, 10);
-  repetitions[1] = 100;
+  std::vector<unsigned int> repetitions(2, 1);
+  repetitions[1] = parameters.n_elements_in_y_direction;
 
   switch (dim)
   {
@@ -478,7 +478,7 @@ void SimpleShearProblem<dim>::make_grid()
       triangulation,
       repetitions,
       dealii::Point<dim>(0,0),
-      dealii::Point<dim>(parameters.width, parameters.height),
+      dealii::Point<dim>(1. / parameters.n_elements_in_y_direction, parameters.height),
       true);
     break;
   case 3:
@@ -487,7 +487,7 @@ void SimpleShearProblem<dim>::make_grid()
         triangulation,
         repetitions,
         dealii::Point<dim>(0,0,0),
-        dealii::Point<dim>(parameters.width, parameters.height, parameters.width),
+        dealii::Point<dim>(1./parameters.n_elements_in_y_direction, 1./parameters.n_elements_in_y_direction),
         true);
     }
     break;
