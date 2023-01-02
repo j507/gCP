@@ -397,12 +397,26 @@ get_regularization_function_value(const double slip_rate) const
 
   switch (regularization_function)
   {
+  case RunTimeParameters::RegularizationFunction::Atan:
+    {
+      regularization_function_value =
+        2.0 / M_PI * std::atan(
+          M_PI / 2.0 * slip_rate / regularization_parameter);
+    }
+    break;
   case RunTimeParameters::RegularizationFunction::Sqrt:
     {
       regularization_function_value =
         slip_rate / std::sqrt(slip_rate * slip_rate +
                               regularization_parameter *
                               regularization_parameter);
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Gd:
+    {
+      regularization_function_value =
+        2.0 / M_PI * std::atan(std::sinh(
+          M_PI / 2.0 * slip_rate / regularization_parameter));
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:
@@ -441,6 +455,14 @@ get_regularization_function_derivative_value(const double slip_rate) const
 
   switch (regularization_function)
   {
+  case RunTimeParameters::RegularizationFunction::Atan:
+    {
+      regularization_function_derivative_value =
+        regularization_parameter /
+        (regularization_parameter * regularization_parameter +
+         M_PI * M_PI * slip_rate * slip_rate / 4.);
+    }
+    break;
   case RunTimeParameters::RegularizationFunction::Sqrt:
     {
       regularization_function_derivative_value =
@@ -448,6 +470,13 @@ get_regularization_function_derivative_value(const double slip_rate) const
         std::pow(slip_rate * slip_rate +
                   regularization_parameter * regularization_parameter,
                  1.5);
+    }
+    break;
+  case RunTimeParameters::RegularizationFunction::Gd:
+    {
+      regularization_function_derivative_value =
+        1.0 / std::cosh(M_PI / 2. * slip_rate / regularization_parameter) /
+        regularization_parameter;
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:

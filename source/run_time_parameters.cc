@@ -99,7 +99,7 @@ void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
   {
     prm.declare_entry("Regularization function",
                       "tanh",
-                      dealii::Patterns::Selection("sqrt|tanh|erf"));
+                      dealii::Patterns::Selection("atan|sqrt|gd|tanh|erf"));
 
     prm.declare_entry("Regularization parameter",
                       "3e-4",
@@ -129,8 +129,12 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
     const std::string string_regularization_function(
                       prm.get("Regularization function"));
 
-    if (string_regularization_function == std::string("sqrt"))
+    if (string_regularization_function == std::string("atan"))
+      regularization_function = RegularizationFunction::Atan;
+    else if (string_regularization_function == std::string("sqrt"))
       regularization_function = RegularizationFunction::Sqrt;
+    else if (string_regularization_function == std::string("gd"))
+      regularization_function = RegularizationFunction::Gd;
     else if (string_regularization_function == std::string("tanh"))
       regularization_function = RegularizationFunction::Tanh;
     else if (string_regularization_function == std::string("erf"))
