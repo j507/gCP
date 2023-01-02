@@ -47,6 +47,17 @@ enum class LoadingType
 enum class RegularizationFunction
 {
   /*!
+   * @brief The arctangent function approximation
+   *
+   * @details Defined as
+   *
+   * \f[
+   *    \sgn(x) \approx  \frac{2}{\pi} \atan \left(\frac{\pi}{2} \frac{x}{k} \right)
+   * \f]
+   */
+  Atan,
+
+  /*!
    * @brief The square root approximation
    *
    * @details Defined as
@@ -56,6 +67,19 @@ enum class RegularizationFunction
    * \f]
    */
   Sqrt,
+
+
+  /*!
+   * @brief The Gudermannian function approximation
+   *
+   * @details Defined as
+   *
+   * \f[
+   *    \sgn(x) \approx \frac{2}{\pi} \gd \left( \frac{\pi}{2} \frac{x}{k} \right)
+   *    = \frac{2}{\pi} \atan \left( \sinh \left( \frac{\pi}{2} \frac{x}{k} \right) \right)
+   * \f]
+   */
+  Gd,
 
   /*!
    * @brief The hyperbolic tangent approximation
@@ -74,7 +98,7 @@ enum class RegularizationFunction
    * @details Defined as
    *
    * \f[
-   *    \sgn(x) \approx \erf  \left( \frac{\sqrt{\pi}}{k} x \right)
+   *    \sgn(x) \approx \erf  \left( \frac{\sqrt{\pi}}{2} \frac{x}{k} \right)
    * \f]
    */
   Erf,
@@ -792,6 +816,8 @@ struct ProblemParameters
   unsigned int                      terminal_output_frequency;
 
   std::string                       graphical_output_directory;
+
+  bool                              flag_output_damage_variable;
 
   bool                              verbose;
 };
