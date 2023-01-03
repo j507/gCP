@@ -1007,7 +1007,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     graphical_output_directory = prm.get("Graphical output directory");
 
-    verbose = prm.get_bool("Output damage variable field");
+    flag_output_damage_variable = prm.get_bool("Output damage variable field");
   }
   prm.leave_subsection();
 }
