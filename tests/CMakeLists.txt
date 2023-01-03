@@ -9,6 +9,7 @@ SET(SOURCE_FILES
     constitutive_laws_test.cc
     crystal_data_test.cc
     fe_collection_test.cc
+    line_search_test.cc
     make_periodicity_constraints.cc
     quadrature_point_history_test.cc
     mark_interface_test.cc
