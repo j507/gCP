@@ -9,7 +9,7 @@ namespace gCP
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::distribute_constraints_to_trial_solution()
+void GradientCrystalPlasticitySolver<dim>::distribute_constraints_to_initial_trial_solution()
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
 
@@ -35,9 +35,7 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   nonlinear_solver_logger.log_headers_to_terminal();
 
-  double relaxation_parameter = 1.0;
-
-  distribute_constraints_to_trial_solution();
+  distribute_constraints_to_initial_trial_solution();
 
   prepare_quadrature_point_history();
 
@@ -46,24 +44,47 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   for (;nonlinear_iteration <= parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
   {
+    store_trial_solution();
+
     reset_and_update_quadrature_point_history();
 
-    assemble_residual();
+    const double initial_value_scalar_function = assemble_residual();
 
     assemble_jacobian();
 
     const unsigned int n_krylov_iterations = solve_linearized_system();
 
+    double relaxation_parameter = 1.0;
+
     update_trial_solution(relaxation_parameter);
 
     reset_and_update_quadrature_point_history();
 
-    assemble_residual();
+    double trial_value_scalar_function = assemble_residual();
+
+    line_search.reinit(initial_value_scalar_function);
+
+    while (!line_search.suficient_descent_condition(
+        trial_value_scalar_function,relaxation_parameter))
+    {
+      relaxation_parameter =
+        line_search.get_lambda(trial_value_scalar_function, relaxation_parameter);
+
+      reset_trial_solution();
+
+      update_trial_solution(relaxation_parameter);
+
+      reset_and_update_quadrature_point_history();
+
+      trial_value_scalar_function = assemble_residual();
+    }
 
     nonlinear_solver_logger.update_value("Iteration",
                                          nonlinear_iteration);
     nonlinear_solver_logger.update_value("Krylov-Iterations",
                                          n_krylov_iterations);
+    nonlinear_solver_logger.update_value("Line-Search-Loops",
+                                         line_search.get_n_iterations());
     nonlinear_solver_logger.update_value("L2-Norm(Newton update)",
                                          newton_update_norm);
     nonlinear_solver_logger.update_value("L2-Norm(Residual)",
@@ -203,6 +224,38 @@ void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
 
 
 template <int dim>
+void GradientCrystalPlasticitySolver<dim>::store_trial_solution()
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_tmp_trial_solution;
+
+  distributed_tmp_trial_solution.reinit(fe_field->distributed_vector);
+
+  distributed_tmp_trial_solution  = trial_solution;
+
+  fe_field->get_affine_constraints().distribute(distributed_tmp_trial_solution);
+
+  tmp_trial_solution  = distributed_tmp_trial_solution;
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::reset_trial_solution()
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+
+  distributed_trial_solution.reinit(fe_field->distributed_vector);
+
+  distributed_trial_solution  = tmp_trial_solution;
+
+  fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+
+  trial_solution  = distributed_trial_solution;
+}
+
+
+
+template <int dim>
 void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
 {
   dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
@@ -252,8 +305,8 @@ void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
 } // namespace gCP
 
 
-template void gCP::GradientCrystalPlasticitySolver<2>::distribute_constraints_to_trial_solution();
-template void gCP::GradientCrystalPlasticitySolver<3>::distribute_constraints_to_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<2>::distribute_constraints_to_initial_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<3>::distribute_constraints_to_initial_trial_solution();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
 template void gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();

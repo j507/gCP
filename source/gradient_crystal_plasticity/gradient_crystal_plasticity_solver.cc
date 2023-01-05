@@ -101,6 +101,7 @@ flag_init_was_called(false)
   // Initialize logger
   nonlinear_solver_logger.declare_column("Iteration");
   nonlinear_solver_logger.declare_column("Krylov-Iterations");
+  nonlinear_solver_logger.declare_column("Line-Search-Loops");
   nonlinear_solver_logger.declare_column("L2-Norm(Newton update)");
   nonlinear_solver_logger.declare_column("L2-Norm(Residual)");
   nonlinear_solver_logger.set_scientific("L2-Norm(Newton update)", true);
