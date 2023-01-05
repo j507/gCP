@@ -187,7 +187,7 @@ private:
   void copy_local_to_global_jacobian(
     const gCP::AssemblyData::Jacobian::Copy &data);
 
-  void assemble_residual();
+  double assemble_residual();
 
   void assemble_local_residual(
     const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
