@@ -113,6 +113,8 @@ void LineSearch::run()
         0.5 * std::pow(trial_residual.l2_norm(),2);
     }
 
+    initial_guess = trial_solution;
+
     std::cout << "line search iterations = "
               << line_search.get_n_iterations() << std::endl;
   }
