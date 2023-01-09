@@ -4,6 +4,7 @@
 #include <gCP/assembly_data.h>
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
+#include <gCP/line_search.h>
 #include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 #include <gCP/utilities.h>
@@ -136,6 +137,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
+  dealii::LinearAlgebraTrilinos::MPI::Vector        tmp_trial_solution;
+
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
@@ -143,6 +146,8 @@ private:
   double                                            residual_norm;
 
   double                                            newton_update_norm;
+
+  gCP::LineSearch                                   line_search;
 
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
@@ -175,7 +180,7 @@ private:
   void make_sparsity_pattern(
     dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
 
-  void distribute_constraints_to_trial_solution();
+  void distribute_constraints_to_initial_trial_solution();
 
   void assemble_jacobian();
 
@@ -187,7 +192,7 @@ private:
   void copy_local_to_global_jacobian(
     const gCP::AssemblyData::Jacobian::Copy &data);
 
-  void assemble_residual();
+  double assemble_residual();
 
   void assemble_local_residual(
     const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
@@ -219,6 +224,10 @@ private:
   unsigned int solve_linearized_system();
 
   void update_trial_solution(const double relaxation_parameter);
+
+  void store_trial_solution();
+
+  void reset_trial_solution();
 
   void extrapolate_initial_trial_solution();
 

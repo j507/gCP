@@ -551,7 +551,7 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::assemble_residual()
+double GradientCrystalPlasticitySolver<dim>::assemble_residual()
 {
   if (parameters.verbose)
     *pcout << std::setw(38) << std::left
@@ -625,6 +625,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
+
+  return (0.5 * residual_norm * residual_norm);
 }
 
 
@@ -1771,8 +1773,8 @@ template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_jaco
 template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_jacobian(
   const gCP::AssemblyData::Jacobian::Copy &);
 
-template void gCP::GradientCrystalPlasticitySolver<2>::assemble_residual();
-template void gCP::GradientCrystalPlasticitySolver<3>::assemble_residual();
+template double gCP::GradientCrystalPlasticitySolver<2>::assemble_residual();
+template double gCP::GradientCrystalPlasticitySolver<3>::assemble_residual();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::assemble_local_residual(
   const typename dealii::DoFHandler<2>::active_cell_iterator  &,
