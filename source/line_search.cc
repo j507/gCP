@@ -46,6 +46,8 @@ double LineSearch::get_lambda(const double trial_scalar_function_value,
 
   n_iterations++;
 
+  AssertIsFinite(lambda);
+
   return lambda;
 }
 
