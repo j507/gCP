@@ -1148,6 +1148,20 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
 
 
 template <int dim>
+double CohesiveLaw<dim>::get_free_energy_density(
+  const double effective_opening_displacement) const
+{
+  return (critical_cohesive_traction *
+          critical_opening_displacement *
+          std::exp(1.0) *
+          (1.0 -
+           (1.0 + effective_opening_displacement / critical_opening_displacement) *
+           std::exp(-effective_opening_displacement / critical_opening_displacement)));
+}
+
+
+
+template <int dim>
 double CohesiveLaw<dim>::get_effective_opening_displacement(
   const dealii::Tensor<1,dim> opening_displacement,
   const dealii::Tensor<1,dim> normal_vector) const

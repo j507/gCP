@@ -465,7 +465,14 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
+  double get_free_energy_density(
+    const double effective_opening_displacement) const;
+
   double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    couple) const;
+
+  double get_degradation_function_derivative_value(
     const double  damage_variable,
     const bool    couple) const;
 
@@ -509,6 +516,21 @@ CohesiveLaw<dim>::get_degradation_function_value(
 {
   if (couple)
     return std::pow(1.0 - damage_variable, degradation_exponent);
+  else
+    return 1.0;
+}
+
+
+
+template <int dim>
+inline double
+CohesiveLaw<dim>::get_degradation_function_derivative_value(
+  const double  damage_variable,
+  const bool    couple) const
+{
+  if (couple)
+    return - degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0);
   else
     return 1.0;
 }
