@@ -954,12 +954,18 @@ void SimpleShearProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
+    /*
+     * @todo Check the boolean
+     */
     if (parameters.temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::Cyclic &&
-        discrete_time.get_current_time() ==
+        std::abs(discrete_time.get_current_time() -
         parameters.temporal_discretization_parameters.initial_loading_time)
+        < (parameters.temporal_discretization_parameters.time_step_size_in_loading_phase*0.1))
+    {
       discrete_time.set_desired_next_step_size(
         parameters.temporal_discretization_parameters.time_step_size);
+    }
 
     if (parameters.verbose)
       *pcout << std::setw(string_width) << std::left

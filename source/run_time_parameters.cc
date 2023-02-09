@@ -714,7 +714,7 @@ parse_parameters(dealii::ParameterHandler &prm)
 
   n_cycles              = prm.get_integer("Number of cycles");
 
-  initial_loading_time  = prm.get_double("Period");
+  initial_loading_time  = prm.get_double("Initial loading time");
 
   n_steps_per_half_cycle
     = prm.get_integer("Number of steps per half cycle");
