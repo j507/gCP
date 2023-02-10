@@ -405,6 +405,14 @@ public:
     const unsigned int            q_point,
     const GrainInteractionModuli  grain_interaction_moduli) const;
 
+  double get_free_energy_density(
+    const unsigned int                      neighbor_cell_crystal_id,
+    const unsigned int                      current_cell_crystal_id,
+    const unsigned int                      quadrature_point_id,
+    std::vector<dealii::Tensor<1,dim>>      normal_vector_values,
+    const std::vector<std::vector<double>>  neighbor_cell_slip_values,
+    const std::vector<std::vector<double>>  current_cell_slip_values) const;
+
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 

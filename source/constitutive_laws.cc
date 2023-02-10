@@ -910,6 +910,125 @@ MicroscopicTractionLaw<dim>::
 
 
 
+template <>
+double MicroscopicTractionLaw<2>::get_free_energy_density(
+  const unsigned int                      neighbor_cell_crystal_id,
+  const unsigned int                      current_cell_crystal_id,
+  const unsigned int                      quadrature_point_id,
+  std::vector<dealii::Tensor<1,2>>        normal_vector_values,
+  const std::vector<std::vector<double>>  neighbor_cell_slip_values,
+  const std::vector<std::vector<double>>  current_cell_slip_values) const
+{
+  std::vector<dealii::Tensor<1,2>> neighbor_cell_slip_directions =
+    crystals_data->get_slip_directions(neighbor_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,2>> neighbor_cell_slip_normals =
+    crystals_data->get_slip_normals(neighbor_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,2>> current_cell_slip_directions =
+    crystals_data->get_slip_directions(current_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,2>> current_cell_slip_normals =
+    crystals_data->get_slip_normals(current_cell_crystal_id);
+
+  dealii::Tensor<1,2> burgers_tensor;
+
+  burgers_tensor = 0.;
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips(); ++slip_id)
+  {
+    burgers_tensor +=
+      neighbor_cell_slip_values[slip_id][quadrature_point_id] *
+      neighbor_cell_slip_directions[slip_id] *
+      (neighbor_cell_slip_normals[slip_id][0] *
+       normal_vector_values[quadrature_point_id][1]
+       -
+       neighbor_cell_slip_normals[slip_id][1] *
+       normal_vector_values[quadrature_point_id][0])
+      -
+      current_cell_slip_values[slip_id][quadrature_point_id] *
+      current_cell_slip_directions[slip_id] *
+      (current_cell_slip_normals[slip_id][0] *
+       normal_vector_values[quadrature_point_id][1]
+       -
+       current_cell_slip_normals[slip_id][1] *
+       normal_vector_values[quadrature_point_id][0]);
+  }
+
+  for (unsigned int i = 0; i < 2; ++i)
+      AssertIsFinite(burgers_tensor[i]);
+
+  const double free_energy_density =
+    0.5 * grain_boundary_modulus *
+    dealii::scalar_product(burgers_tensor, burgers_tensor);
+
+  AssertIsFinite(free_energy_density);
+
+  return (free_energy_density);
+}
+
+
+
+template <>
+double MicroscopicTractionLaw<3>::get_free_energy_density(
+  const unsigned int                      neighbor_cell_crystal_id,
+  const unsigned int                      current_cell_crystal_id,
+  const unsigned int                      quadrature_point_id,
+  std::vector<dealii::Tensor<1,3>>      normal_vector_values,
+  const std::vector<std::vector<double>>  neighbor_cell_slip_values,
+  const std::vector<std::vector<double>>  current_cell_slip_values) const
+{
+  std::vector<dealii::Tensor<1,3>> neighbor_cell_slip_directions =
+    crystals_data->get_slip_directions(neighbor_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,3>> neighbor_cell_slip_normals =
+    crystals_data->get_slip_normals(neighbor_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,3>> current_cell_slip_directions =
+    crystals_data->get_slip_directions(current_cell_crystal_id);
+
+  std::vector<dealii::Tensor<1,3>> current_cell_slip_normals =
+    crystals_data->get_slip_normals(current_cell_crystal_id);
+
+  dealii::Tensor<2,3> burgers_tensor;
+
+  burgers_tensor = 0.;
+
+  for (unsigned int slip_id = 0;
+       slip_id < crystals_data->get_n_slips(); ++slip_id)
+  {
+    burgers_tensor +=
+      neighbor_cell_slip_values[slip_id][quadrature_point_id] *
+      dealii::outer_product(
+        neighbor_cell_slip_directions[slip_id],
+        dealii::cross_product_3d(
+          neighbor_cell_slip_normals[slip_id],
+          normal_vector_values[quadrature_point_id]))
+      -
+      current_cell_slip_values[slip_id][quadrature_point_id] *
+      dealii::outer_product(
+        current_cell_slip_directions[slip_id],
+        dealii::cross_product_3d(
+          current_cell_slip_normals[slip_id],
+          normal_vector_values[quadrature_point_id]));
+  }
+
+  for (unsigned int i = 0; i < 3; ++i)
+    for (unsigned int j = 0; j < 3; ++j)
+      AssertIsFinite(burgers_tensor[i][j]);
+
+  const double free_energy_density =
+    0.5 * grain_boundary_modulus *
+    dealii::scalar_product(burgers_tensor, burgers_tensor);
+
+  AssertIsFinite(free_energy_density);
+
+  return (free_energy_density);
+}
+
+
+
 template<int dim>
 CohesiveLaw<dim>::CohesiveLaw(
   const RunTimeParameters::CohesiveLawParameters parameters)
@@ -1151,12 +1270,19 @@ template <int dim>
 double CohesiveLaw<dim>::get_free_energy_density(
   const double effective_opening_displacement) const
 {
-  return (critical_cohesive_traction *
-          critical_opening_displacement *
-          std::exp(1.0) *
-          (1.0 -
-           (1.0 + effective_opening_displacement / critical_opening_displacement) *
-           std::exp(-effective_opening_displacement / critical_opening_displacement)));
+  AssertIsFinite(effective_opening_displacement);
+
+  const double free_energy_density =
+    critical_cohesive_traction *
+    critical_opening_displacement *
+    std::exp(1.0) *
+    (1.0 -
+    (1.0 + effective_opening_displacement / critical_opening_displacement) *
+    std::exp(-effective_opening_displacement / critical_opening_displacement));
+
+  AssertIsFinite(free_energy_density);
+
+  return (free_energy_density);
 }
 
 
