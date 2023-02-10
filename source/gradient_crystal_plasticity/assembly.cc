@@ -1253,6 +1253,21 @@ update_local_quadrature_point_history(
           trial_solution,
           scratch.neighbor_cell_displacement_values);
 
+        // Get plastic slips
+        for (unsigned int slip_id = 0;
+             slip_id < crystals_data->get_n_slips(); ++slip_id)
+        {
+          fe_face_values[fe_field->get_slip_extractor(
+              crystal_id, slip_id)].get_function_values(
+                trial_solution,
+                scratch.face_slip_values[slip_id]);
+
+          neighbor_fe_face_values[fe_field->get_slip_extractor(
+              neighbor_crystal_id, slip_id)].get_function_values(
+                trial_solution,
+                scratch.neighbor_face_slip_values[slip_id]);
+        }
+
         // Get normal vector values values at the quadrature points
         scratch.normal_vector_values =
           fe_face_values.get_normal_vectors();
@@ -1272,6 +1287,7 @@ update_local_quadrature_point_history(
 
             case RunTimeParameters::LoadingType::Cyclic:
               {
+                /*
                 local_interface_quadrature_point_history[face_q_point]->update_values(
                   cohesive_law->get_effective_opening_displacement(
                     scratch.neighbor_cell_displacement_values[face_q_point] -
@@ -1290,7 +1306,31 @@ update_local_quadrature_point_history(
                         get_max_effective_opening_displacement()),
                     local_interface_quadrature_point_history[face_q_point]->
                       get_old_effective_opening_displacement(),
-                    discrete_time.get_next_step_size()).norm());
+                    discrete_time.get_next_step_size()).norm());*/
+
+                scratch.effective_opening_displacement[face_q_point] =
+                  cohesive_law->get_effective_opening_displacement(
+                    scratch.neighbor_cell_displacement_values[face_q_point] -
+                    scratch.current_cell_displacement_values[face_q_point],
+                    scratch.normal_vector_values[face_q_point]);
+
+                scratch.thermodynamic_force_values[face_q_point] =
+                  - cohesive_law->get_degradation_function_derivative_value(
+                      local_interface_quadrature_point_history[face_q_point]->get_damage_variable(), true) *
+                  (cohesive_law->get_free_energy_density(
+                    scratch.effective_opening_displacement[face_q_point])
+                   +
+                   microscopic_traction_law->get_free_energy_density(
+                    neighbor_crystal_id,
+                    crystal_id,
+                    face_q_point,
+                    scratch.normal_vector_values,
+                    scratch.neighbor_face_slip_values,
+                    scratch.face_slip_values));
+
+                local_interface_quadrature_point_history[face_q_point]->update_values(
+                  scratch.effective_opening_displacement[face_q_point],
+                  scratch.thermodynamic_force_values[face_q_point]);
               }
               break;
 
