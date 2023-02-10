@@ -437,6 +437,14 @@ slips_values(
 old_slips_values(
   n_slips,
   std::vector<double>(this->n_q_points, 0.0)),
+face_slip_values(
+  n_slips,
+  std::vector<double>(this->n_q_points, 0.0)),
+neighbor_face_slip_values(
+  n_slips,
+  std::vector<double>(this->n_q_points, 0.0)),
+effective_opening_displacement(this->n_face_q_points),
+thermodynamic_force_values(this->n_face_q_points),
 normal_vector_values(this->n_face_q_points),
 current_cell_displacement_values(this->n_face_q_points),
 neighbor_cell_displacement_values(this->n_face_q_points),
@@ -474,6 +482,14 @@ slips_values(
 old_slips_values(
   n_slips,
   std::vector<double>(this->n_q_points, 0.0)),
+face_slip_values(
+  n_slips,
+  std::vector<double>(this->n_q_points, 0.0)),
+neighbor_face_slip_values(
+  n_slips,
+  std::vector<double>(this->n_q_points, 0.0)),
+effective_opening_displacement(this->n_face_q_points),
+thermodynamic_force_values(this->n_face_q_points),
 normal_vector_values(this->n_face_q_points),
 current_cell_displacement_values(this->n_face_q_points),
 neighbor_cell_displacement_values(this->n_face_q_points),
