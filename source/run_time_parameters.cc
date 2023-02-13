@@ -254,8 +254,8 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 CohesiveLawParameters::CohesiveLawParameters()
 :
-critical_cohesive_traction(0.0),
-critical_opening_displacement(0.0),
+critical_cohesive_traction(700.),
+critical_opening_displacement(2.5e-2),
 tangential_to_normal_stiffness_ratio(1.0),
 damage_accumulation_constant(1.0),
 damage_decay_constant(0.0),
@@ -275,11 +275,11 @@ void CohesiveLawParameters::declare_parameters(
   prm.enter_subsection("Decohesion law's parameters");
   {
     prm.declare_entry("Maximum cohesive traction",
-                      "0.0",
+                      "700.",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Critical opening displacement",
-                      "0.0",
+                      "2.5e-2",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Tangential to normal stiffness ratio",
