@@ -67,7 +67,11 @@ private:
 
   gCP::ConstitutiveLaws::MicroscopicTractionLaw<dim>      microscopic_traction_law;
 
+  gCP::ConstitutiveLaws::CohesiveLaw<dim>                 cohesive_law;
+
   gCP::QuadraturePointHistory<dim>                        quadrature_point_history;
+
+  gCP::InterfaceQuadraturePointHistory<dim>               interface_quadrature_point_history;
 
   void make_grid();
 
@@ -112,8 +116,12 @@ vector_microscopic_stress_law(
   parameters.solver_parameters.vector_microscopic_stress_law_parameters),
 microscopic_traction_law(
   crystals_data,
-  parameters.solver_parameters.microscopic_traction_law_parameters)
-{}
+  parameters.solver_parameters.microscopic_traction_law_parameters),
+cohesive_law(parameters.solver_parameters.cohesive_law_parameters)
+{
+  this->pcout << "TESTING CONSTITUTIVE LAWS IN " << std::noshowpos
+              << dim << "-D..." << std::endl << std::endl;
+}
 
 
 
@@ -223,6 +231,9 @@ void CrystalData<dim>::init()
   quadrature_point_history.init(
     parameters.solver_parameters.scalar_microscopic_stress_law_parameters,
     crystals_data->get_n_slips());
+
+  interface_quadrature_point_history.init(
+    parameters.solver_parameters.cohesive_law_parameters);
 }
 
 
@@ -513,6 +524,79 @@ void CrystalData<dim>::test_constitutive_laws()
     << gCP::Utilities::get_fullmatrix_as_string(
        inter_gateaux_derivative, string_width + 3, 15, 3, true)
     << "\n\n";
+
+  const double microtraction_free_energy_density =
+    microscopic_traction_law.get_free_energy_density(
+            1,
+            0,
+            0,
+            normal_vector_values,
+            neighbour_face_slip_values,
+            face_slip_values);
+
+  std::cout
+    << std::setw(string_width) << std::left
+    << " Free energy density" << " = "
+    << microtraction_free_energy_density
+    << "\n\n";
+
+  std::cout << "Testing CohesiveLaw<dim> \n\n";
+
+  dealii::Tensor<1,dim> opening_displacement;
+  opening_displacement[0] = .01;
+  opening_displacement[1] = .00;
+
+  const double effective_opening_displacement =
+    cohesive_law.get_effective_opening_displacement(
+        opening_displacement,
+        normal_vector_values[0]);
+
+  std::cout
+    << std::setw(string_width) << std::left
+    << " Effective opening displacement" << " = "
+    << effective_opening_displacement
+    << "\n\n";
+
+  const double cohesive_law_free_energy_density =
+    cohesive_law.get_free_energy_density(
+        effective_opening_displacement);
+
+  std::cout
+    << std::setw(string_width) << std::left
+    << " Free energy density" << " = "
+    << cohesive_law_free_energy_density
+    << "\n\n";
+
+
+  std::cout << "Testing InterfaceQuadraturePointHistory<dim> \n\n";
+
+  const double thermodynamic_force =
+    - cohesive_law.get_degradation_function_derivative_value(
+        interface_quadrature_point_history.get_damage_variable(), true) *
+    (cohesive_law_free_energy_density
+      +
+     microtraction_free_energy_density);
+
+  const double old_damage_value =
+    interface_quadrature_point_history.get_damage_variable();
+
+  interface_quadrature_point_history.update_values(
+    effective_opening_displacement,
+    thermodynamic_force);
+
+  const double damage_value =
+    interface_quadrature_point_history.get_damage_variable();
+
+  std::cout
+    << std::setw(string_width) << std::left
+    << " Old damage value" << " = "
+    << old_damage_value
+    << "\n\n"
+    << std::setw(string_width) << std::left
+    << " Damage value" << " = "
+    << damage_value
+    << "\n\n";
+
 }
 
 

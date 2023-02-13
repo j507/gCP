@@ -30,8 +30,22 @@ subsection Solver parameters
       set C1212 = 28500
     end
 
+    subsection Decohesion law's parameters
+      set Couple macrotraction to damage       = true
+      set Couple microtraction to damage       = true
+      set Critical opening displacement        = 0.025
+      set Damage accumulation constant         = 1e-2
+      set Damage decay constant                = 0.0
+      set Damage decay exponent                = 1.0
+      set Degradation exponent                 = 1.0
+      set Endurance limit                      = 0.0
+      set Maximum cohesive traction            = 700
+      set Set damage to zero                   = false
+      set Tangential to normal stiffness ratio = 1.0
+    end
+
     subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 10.0
+      set Grain boundary modulus = 1e3
     end
 
     subsection Scalar microscopic stress law's parameters
