@@ -405,6 +405,14 @@ public:
     const unsigned int            q_point,
     const GrainInteractionModuli  grain_interaction_moduli) const;
 
+  double get_free_energy_density(
+    const unsigned int                      neighbor_cell_crystal_id,
+    const unsigned int                      current_cell_crystal_id,
+    const unsigned int                      quadrature_point_id,
+    std::vector<dealii::Tensor<1,dim>>      normal_vector_values,
+    const std::vector<std::vector<double>>  neighbor_cell_slip_values,
+    const std::vector<std::vector<double>>  current_cell_slip_values) const;
+
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 
@@ -465,7 +473,14 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
+  double get_free_energy_density(
+    const double effective_opening_displacement) const;
+
   double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    couple) const;
+
+  double get_degradation_function_derivative_value(
     const double  damage_variable,
     const bool    couple) const;
 
@@ -509,6 +524,21 @@ CohesiveLaw<dim>::get_degradation_function_value(
 {
   if (couple)
     return std::pow(1.0 - damage_variable, degradation_exponent);
+  else
+    return 1.0;
+}
+
+
+
+template <int dim>
+inline double
+CohesiveLaw<dim>::get_degradation_function_derivative_value(
+  const double  damage_variable,
+  const bool    couple) const
+{
+  if (couple)
+    return - degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0);
   else
     return 1.0;
 }
