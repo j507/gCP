@@ -127,6 +127,201 @@ private:
 };
 
 
+/*!
+ * @brief A class for the micro-to-macro homogenization
+ *
+ * @tparam dim Spatial dimension
+ *
+ * @todo Methods to compute macroscopic jacobian
+ */
+template <int dim>
+class Homogenization
+{
+public:
+  /*!
+   * @brief Constructor
+   *
+   * @param fe_field Shared pointer to the @ref FEField instance
+   * @param mapping Shared pointer to the @ref dealii::Mapping instance
+   * @todo Docu
+   */
+  Homogenization(
+    std::shared_ptr<FEField<dim>>         &fe_field,
+    std::shared_ptr<dealii::Mapping<dim>> &mapping);
+
+  /*!
+   * @brief Method initiatating the class instance for further use
+   *
+   * @param elastic_strain Shared pointer to the
+   * @ref Kinematics::ElasticStrain instance
+   * @param hooke_lawShared pointer to the
+   * @ref ConstitutiveLaws::HookeLaw instance
+   * @details Sets the internal shared pointers to the method's arguments
+   */
+  void init(
+    std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain,
+    std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law);
+
+  /*!
+   * @brief Updates the @ref table_handler with the macroscopic
+   * quantities
+   *
+   * @details The components of the strain and strain tensor as well as
+   * their Von-Mises equivalents are added to the @ref table_handler
+   *
+   * @param time Time associated with the updated values
+   */
+  void update_table_handler_values(const double time);
+
+  /*!
+   * @brief Prints @ref table_handler to a file
+   *
+   * @param file Output file
+   */
+  void output_table_handler_to_file(std::ostream &file);
+
+  /*!
+   * @brief Method to compute the macroscopic stress
+   *
+   * @details Computed as
+  * \f[
+  * \overbar{\bs{T}} =
+  * \frac{1}{\vol (\mathcal{B})}\int_{\mathcal{B}} \bs{T} \d v
+  * \f]
+  */
+  void compute_macroscopic_stress();
+
+  /*!
+   * @brief Method to compute the macroscopic stiffness tetrad
+   *
+   * @todo Implement an homogenization scheme. Method is currently empty
+   */
+  void compute_macroscopic_stiffness_tetrad();
+
+  /*!
+   * @brief Sets the macroscopic strain
+   *
+   * @param macroscopic_strain Macroscopic strain
+   */
+  void set_macroscopic_strain(
+    const dealii::SymmetricTensor<2,dim> macroscopic_strain);
+
+  /*!
+   * @brief Getter returning @ref macroscopic_stress
+   *
+   * @return const dealii::SymmetricTensor<2,dim>& The current value of
+   * the macroscopic stress
+   */
+  const dealii::SymmetricTensor<2,dim> &get_macroscopic_stress() const;
+
+  /*!
+   * @brief Getter returning @ref macroscopic_stiffness_tetrad
+   *
+   * @return const dealii::SymmetricTensor<4,dim>& The current value of
+   * the macroscopic stiffness tetrad
+   */
+  const dealii::SymmetricTensor<4,dim> &get_macroscopic_stiffness_tetrad() const;
+
+private:
+  /*!
+  * @brief Shared pointer to @ref FEField instance
+  */
+  std::shared_ptr<const FEField<dim>>                     fe_field;
+
+  /*!
+   * @brief The collection of mappings specifying how the reference
+   * cells are imbuded into the tessellation.
+   */
+  const dealii::hp::MappingCollection<dim>                mapping_collection;
+
+  /*!
+   * @brief Collection of quadrature formulas required for the numerical
+   * integration
+   */
+  dealii::hp::QCollection<dim>                            quadrature_collection;
+
+  /*!
+   * @brief Shared pointer to the elastic strain measure,
+   * i.e., @ref Kinematics::ElasticStrain
+   */
+  std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain;
+
+  /*!
+   * @brief Shared pointer to the constitutive law for the stress tensor,
+   * i.e., @ref ConstitutiveLaws::HookeLaw
+   */
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
+
+  /*!
+   * @brief The macroscopic stress tensor
+   * @details See @ref compute_macroscopic_stress for its definition
+   */
+  dealii::SymmetricTensor<2,dim>                          macroscopic_stress;
+
+  /*!
+   * @brief The macroscopic strain tensor
+   */
+  dealii::SymmetricTensor<2,dim>                          macroscopic_strain;
+
+  /*!
+   * @brief The microscopic strain fluctuations
+   */
+  dealii::SymmetricTensor<2,dim>                          microscopic_strain_fluctuations;
+
+  /*!
+   * @brief The macroscopic stiffness tetrad
+   * @details See @ref compute_macroscopic_stiffness_tetrad for its definition
+   */
+  dealii::SymmetricTensor<4,dim>                          macroscopic_stiffness_tetrad;
+
+  /*!
+   * @brief The deviatoric projector
+   *
+   * @details Defined as
+   *
+   * @note It is used to compute the Von-Mises stress and strain
+   */
+  dealii::SymmetricTensor<4,dim>                          deviatoric_projector;
+
+  /*!
+   * @brief The @ref dealii::TableHandler instance for data storage and
+   * output
+   */
+  dealii::TableHandler                                    table_handler;
+
+  /*!
+   * @brief Boolean indicating if the class was initialized
+   */
+  bool                                                    flag_init_was_called;
+};
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<2,dim>
+&Homogenization<dim>::get_macroscopic_stress() const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  return (macroscopic_stress);
+}
+
+
+
+template <int dim>
+inline const dealii::SymmetricTensor<4,dim>
+&Homogenization<dim>::get_macroscopic_stiffness_tetrad() const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  return (macroscopic_stiffness_tetrad);
+}
+
+
 
 }  // Postprocessing
 
