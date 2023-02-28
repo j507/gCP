@@ -316,6 +316,8 @@ private:
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
+  Postprocessing::Homogenization<dim>               homogenization;
+
   Postprocessing::Postprocessor<dim>                postprocessor;
 
   Postprocessing::SimpleShear<dim>                  simple_shear;
@@ -329,6 +331,8 @@ private:
   void setup();
 
   void setup_constraints();
+
+  void initialize_calls();
 
   void solve();
 
@@ -387,6 +391,8 @@ neumann_boundary_function(
   parameters.temporal_discretization_parameters.initial_loading_time,
   parameters.temporal_discretization_parameters.loading_type,
   discrete_time.get_start_time())),
+homogenization(fe_field,
+               mapping),
 postprocessor(fe_field,
               crystals_data),
 simple_shear(fe_field,
@@ -738,6 +744,29 @@ void SimpleShearProblem<dim>::setup_constraints()
   //  upper_boundary_id, neumann_boundary_function);
 }
 
+template<int dim>
+void SimpleShearProblem<dim>::initialize_calls()
+{
+  // Initiate the solver
+  gCP_solver.init();
+
+  const fs::path output_directory{parameters.graphical_output_directory};
+
+  fs::path path_to_ouput_file =
+    output_directory / "homogenization.txt";
+
+  std::ofstream ofstream(path_to_ouput_file.string());
+
+  // Initiate the benchmark data
+  homogenization.init(gCP_solver.get_elastic_strain_law(),
+                      gCP_solver.get_hooke_law(),
+                      ofstream);
+
+  simple_shear.init(gCP_solver.get_elastic_strain_law(),
+                    gCP_solver.get_hooke_law());
+
+  postprocessor.init(gCP_solver.get_hooke_law());
+}
 
 
 template<int dim>
@@ -778,6 +807,18 @@ template<int dim>
 void SimpleShearProblem<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
+
+  if (parameters.flag_compute_macroscopic_quantities &&
+      (discrete_time.get_step_number() %
+         parameters.homogenization_frequency == 0 ||
+        discrete_time.get_current_time() ==
+          discrete_time.get_end_time()))
+  {
+    homogenization.compute_macroscopic_quantities();
+
+    homogenization.output_macroscopic_quantities_to_file(
+      discrete_time.get_next_time());
+  }
 
   simple_shear.compute_data(discrete_time.get_current_time());
 
@@ -933,17 +974,11 @@ void SimpleShearProblem<dim>::run()
   // material id
   setup();
 
-  // Initiate the solver
-  gCP_solver.init();
-
   // Output the triangulation data (Partition, Material id, etc.)
   triangulation_output();
 
-  // Initiate the benchmark data
-  simple_shear.init(gCP_solver.get_elastic_strain_law(),
-                    gCP_solver.get_hooke_law());
-
-  postprocessor.init(gCP_solver.get_hooke_law());
+  // Call the init() methods of the class' members
+  initialize_calls();
 
   if (parameters.temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::Cyclic)
