@@ -668,6 +668,7 @@ flag_init_was_called(false)
   table_handler.declare_column("Time");
   table_handler.declare_column("VonMisesStress");
   table_handler.declare_column("VonMisesStrain");
+  table_handler.declare_column("VonMisesFluctuations");
   table_handler.declare_column("Stress_11");
   table_handler.declare_column("Stress_22");
   table_handler.declare_column("Stress_33");
@@ -680,8 +681,15 @@ flag_init_was_called(false)
   table_handler.declare_column("Strain_23");
   table_handler.declare_column("Strain_13");
   table_handler.declare_column("Strain_12");
+  table_handler.declare_column("Fluctuations_11");
+  table_handler.declare_column("Fluctuations_22");
+  table_handler.declare_column("Fluctuations_33");
+  table_handler.declare_column("Fluctuations_23");
+  table_handler.declare_column("Fluctuations_13");
+  table_handler.declare_column("Fluctuations_12");
   table_handler.set_scientific("VonMisesStress", true);
   table_handler.set_scientific("VonMisesStrain", true);
+  table_handler.set_scientific("VonMisesFluctuations", true);
   table_handler.set_scientific("Stress_11", true);
   table_handler.set_scientific("Stress_22", true);
   table_handler.set_scientific("Stress_33", true);
@@ -694,8 +702,15 @@ flag_init_was_called(false)
   table_handler.set_scientific("Strain_23", true);
   table_handler.set_scientific("Strain_13", true);
   table_handler.set_scientific("Strain_12", true);
+  table_handler.set_scientific("Fluctuations_11", true);
+  table_handler.set_scientific("Fluctuations_22", true);
+  table_handler.set_scientific("Fluctuations_33", true);
+  table_handler.set_scientific("Fluctuations_23", true);
+  table_handler.set_scientific("Fluctuations_13", true);
+  table_handler.set_scientific("Fluctuations_12", true);
   table_handler.set_precision("VonMisesStress", 18);
   table_handler.set_precision("VonMisesStrain", 18);
+  table_handler.set_precision("VonMisesFluctuations", 18);
   table_handler.set_precision("Stress_11", 18);
   table_handler.set_precision("Stress_22", 18);
   table_handler.set_precision("Stress_33", 18);
@@ -708,6 +723,12 @@ flag_init_was_called(false)
   table_handler.set_precision("Strain_23", 18);
   table_handler.set_precision("Strain_13", 18);
   table_handler.set_precision("Strain_12", 18);
+  table_handler.set_precision("Fluctuations_11", 18);
+  table_handler.set_precision("Fluctuations_22", 18);
+  table_handler.set_precision("Fluctuations_33", 18);
+  table_handler.set_precision("Fluctuations_23", 18);
+  table_handler.set_precision("Fluctuations_13", 18);
+  table_handler.set_precision("Fluctuations_12", 18);
 }
 
 
@@ -715,12 +736,40 @@ flag_init_was_called(false)
 template <int dim>
 void Homogenization<dim>::init(
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain,
-  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law)
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law,
+  std::ofstream                                           &path_to_output_file)
 {
   this->elastic_strain  = elastic_strain;
   this->hooke_law       = hooke_law;
+  this->path_to_output_file.swap(path_to_output_file);
 
   flag_init_was_called = true;
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::compute_macroscopic_quantities()
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  compute_macroscopic_stress();
+
+  compute_macroscopic_stiffness_tetrad();
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::output_macroscopic_quantities_to_file(const double time)
+{
+  update_table_handler_values(time);
+
+  table_handler.write_text(
+    path_to_output_file,
+    dealii::TableHandler::TextOutputFormat::org_mode_table);
 }
 
 
@@ -736,21 +785,32 @@ void Homogenization<2>::update_table_handler_values(const double time)
   const dealii::SymmetricTensor<2,2> deviatoric_strain =
     deviatoric_projector * macroscopic_strain;
 
+  const dealii::SymmetricTensor<2,2> deviatoric_fluctuations =
+    deviatoric_projector * microscopic_strain_fluctuations;
+
   const double von_mises_stress =
     std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
 
   const double von_mises_strain =
     std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
 
+  const double von_mises_fluctuations =
+    std::sqrt(2./3. * deviatoric_fluctuations * deviatoric_fluctuations);
+
   table_handler.add_value("Time", time);
   table_handler.add_value("VonMisesStress", von_mises_stress);
   table_handler.add_value("VonMisesStrain", von_mises_strain);
+  table_handler.add_value("VonMisesFluctuations", von_mises_fluctuations);
   table_handler.add_value("Stress_11", macroscopic_stress[0][0]);
-  table_handler.add_value("Stress_22", macroscopic_stress[0][0]);
-  table_handler.add_value("Stress_12", macroscopic_stress[0][0]);
+  table_handler.add_value("Stress_22", macroscopic_stress[1][1]);
+  table_handler.add_value("Stress_12", macroscopic_stress[0][1]);
   table_handler.add_value("Strain_11", macroscopic_strain[0][0]);
-  table_handler.add_value("Strain_22", macroscopic_strain[0][0]);
-  table_handler.add_value("Strain_12", macroscopic_strain[0][0]);
+  table_handler.add_value("Strain_22", macroscopic_strain[1][1]);
+  table_handler.add_value("Strain_12", macroscopic_strain[0][1]);
+  table_handler.add_value("Fluctuations_11", microscopic_strain_fluctuations[0][0]);
+  table_handler.add_value("Fluctuations_22", microscopic_strain_fluctuations[1][1]);
+  table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
+
 }
 
 
@@ -766,15 +826,22 @@ void Homogenization<3>::update_table_handler_values(const double time)
   const dealii::SymmetricTensor<2,3> deviatoric_strain =
     deviatoric_projector * macroscopic_strain;
 
+  const dealii::SymmetricTensor<2,3> deviatoric_fluctuations =
+    deviatoric_projector * microscopic_strain_fluctuations;
+
   const double von_mises_stress =
     std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
 
   const double von_mises_strain =
     std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
 
+  const double von_mises_fluctuations =
+    std::sqrt(2./3. * deviatoric_fluctuations * deviatoric_fluctuations);
+
   table_handler.add_value("Time", time);
   table_handler.add_value("VonMisesStress", von_mises_stress);
   table_handler.add_value("VonMisesStrain", von_mises_strain);
+  table_handler.add_value("VonMisesFluctuations", von_mises_fluctuations);
   table_handler.add_value("Stress_11", macroscopic_stress[0][0]);
   table_handler.add_value("Stress_22", macroscopic_stress[1][1]);
   table_handler.add_value("Stress_33", macroscopic_stress[2][2]);
@@ -787,17 +854,12 @@ void Homogenization<3>::update_table_handler_values(const double time)
   table_handler.add_value("Strain_23", macroscopic_strain[1][2]);
   table_handler.add_value("Strain_13", macroscopic_strain[0][2]);
   table_handler.add_value("Strain_12", macroscopic_strain[0][1]);
-}
-
-
-
-template <int dim>
-void Homogenization<dim>::output_table_handler_to_file(
-  std::ostream &file)
-{
-  table_handler.write_text(
-    file,
-    dealii::TableHandler::TextOutputFormat::org_mode_table);
+  table_handler.add_value("Fluctuations_11", microscopic_strain_fluctuations[0][0]);
+  table_handler.add_value("Fluctuations_22", microscopic_strain_fluctuations[1][1]);
+  table_handler.add_value("Fluctuations_33", microscopic_strain_fluctuations[2][2]);
+  table_handler.add_value("Fluctuations_23", microscopic_strain_fluctuations[1][2]);
+  table_handler.add_value("Fluctuations_13", microscopic_strain_fluctuations[0][2]);
+  table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
 }
 
 

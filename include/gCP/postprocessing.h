@@ -132,6 +132,8 @@ private:
  *
  * @tparam dim Spatial dimension
  *
+ * @note Only strain driven homoganization is considered in this class
+ *
  * @todo Methods to compute macroscopic jacobian
  */
 template <int dim>
@@ -154,49 +156,30 @@ public:
    *
    * @param elastic_strain Shared pointer to the
    * @ref Kinematics::ElasticStrain instance
-   * @param hooke_lawShared pointer to the
+   * @param hooke_law Shared pointer to the
    * @ref ConstitutiveLaws::HookeLaw instance
+   * @param path_to_output_file Output file stream to the file's path
+   * in which data will be written to
    * @details Sets the internal shared pointers to the method's arguments
    */
   void init(
     std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain,
-    std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law);
+    std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law,
+    std::ofstream                                           &path_to_output_file);
 
   /*!
-   * @brief Updates the @ref table_handler with the macroscopic
-   * quantities
-   *
-   * @details The components of the strain and strain tensor as well as
-   * their Von-Mises equivalents are added to the @ref table_handler
-   *
-   * @param time Time associated with the updated values
+   * @brief Method computing the macroscopic stress and stiffness tetrad
    */
-  void update_table_handler_values(const double time);
+  void compute_macroscopic_quantities();
 
   /*!
-   * @brief Prints @ref table_handler to a file
+   * @brief Prints the macroscopic quantities (stored in
+   * @ref table_handler) to the file specified by
+   * @ref path_to_output_file
    *
-   * @param file Output file
+   * @param time Time to which the macroscopic quantities are assigned to
    */
-  void output_table_handler_to_file(std::ostream &file);
-
-  /*!
-   * @brief Method to compute the macroscopic stress
-   *
-   * @details Computed as
-  * \f[
-  * \overbar{\bs{T}} =
-  * \frac{1}{\vol (\mathcal{B})}\int_{\mathcal{B}} \bs{T} \d v
-  * \f]
-  */
-  void compute_macroscopic_stress();
-
-  /*!
-   * @brief Method to compute the macroscopic stiffness tetrad
-   *
-   * @todo Implement an homogenization scheme. Method is currently empty
-   */
-  void compute_macroscopic_stiffness_tetrad();
+  void output_macroscopic_quantities_to_file(const double time);
 
   /*!
    * @brief Sets the macroscopic strain
@@ -278,8 +261,10 @@ private:
    * @brief The deviatoric projector
    *
    * @details Defined as
-   *
-   * @note It is used to compute the Von-Mises stress and strain
+   * \f[
+   * \ts{P}{4}_{\mathrm{dev}} = \ts{1}{4} - \frac{1}{3} \bs{1} \otimes \bs{1}
+   * \f]
+   *    * @note It is used to compute the Von-Mises stress and strain
    */
   dealii::SymmetricTensor<4,dim>                          deviatoric_projector;
 
@@ -290,9 +275,44 @@ private:
   dealii::TableHandler                                    table_handler;
 
   /*!
+   * @brief Path to the file where the data of @ref table_handler
+   * is written
+   */
+  std::ofstream                                           path_to_output_file;
+
+  /*!
    * @brief Boolean indicating if the class was initialized
    */
   bool                                                    flag_init_was_called;
+
+  /*!
+   * @brief Method to compute the macroscopic stress
+   *
+   * @details Computed as
+  * \f[
+  * \overbar{\bs{T}} =
+  * \frac{1}{\vol (\mathcal{B})}\int_{\mathcal{B}} \bs{T} \d v
+  * \f]
+  */
+  void compute_macroscopic_stress();
+
+  /*!
+   * @brief Method to compute the macroscopic stiffness tetrad
+   *
+   * @todo Implement an homogenization scheme. Method is currently empty
+   */
+  void compute_macroscopic_stiffness_tetrad();
+
+  /*!
+   * @brief Updates the @ref table_handler with the macroscopic
+   * quantities
+   *
+   * @details The components of the strain and strain tensor as well as
+   * their Von-Mises equivalents are added to the @ref table_handler
+   *
+   * @param time Time associated with the updated values
+   */
+  void update_table_handler_values(const double time);
 };
 
 
