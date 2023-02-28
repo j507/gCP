@@ -661,6 +661,10 @@ flag_init_was_called(false)
 
   quadrature_collection.push_back(quadrature_formula);
 
+  macroscopic_stress              = 0.;
+  macroscopic_strain              = 0.;
+  microscopic_strain_fluctuations = 0.;
+
   table_handler.declare_column("Time");
   table_handler.declare_column("VonMisesStress");
   table_handler.declare_column("VonMisesStrain");
@@ -846,11 +850,11 @@ void Homogenization<dim>::compute_macroscopic_stress()
 
   dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_stress;
 
-  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_strain;
+  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_strain_fluctuations;
 
   dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_stress;
 
-  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_strain;
+  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_strain_fluctuations;
 
   double                          domain_volume = 0.;
 
@@ -908,22 +912,25 @@ void Homogenization<dim>::compute_macroscopic_stress()
         stress_tensor_values[quadrature_point_id] =
           hooke_law->get_stress_tensor(
             crystal_id,
+            macroscopic_strain +
             elastic_strain_tensor_values[quadrature_point_id]);
 
         cell_integral_microscopic_stress +=
           stress_tensor_values[quadrature_point_id] *
           JxW_values[quadrature_point_id];
 
-        cell_integral_microscopic_strain +=
+        cell_integral_microscopic_strain_fluctuations +=
           strain_tensor_values[quadrature_point_id] *
           JxW_values[quadrature_point_id];
 
         cell_volume += JxW_values[quadrature_point_id];
       }
 
-      domain_integral_microscopic_stress += cell_integral_microscopic_stress;
+      domain_integral_microscopic_stress +=
+        cell_integral_microscopic_stress;
 
-      domain_integral_microscopic_strain += cell_integral_microscopic_strain;
+      domain_integral_microscopic_strain_fluctuations +=
+        cell_integral_microscopic_strain_fluctuations;
 
       domain_volume += cell_volume;
     }
@@ -933,14 +940,18 @@ void Homogenization<dim>::compute_macroscopic_stress()
     dealii::Utilities::MPI::sum(domain_integral_microscopic_stress,
                                 MPI_COMM_WORLD);
 
-  domain_integral_microscopic_strain =
-    dealii::Utilities::MPI::sum(domain_integral_microscopic_strain,
-                                MPI_COMM_WORLD);
+  domain_integral_microscopic_strain_fluctuations =
+    dealii::Utilities::MPI::sum(
+      domain_integral_microscopic_strain_fluctuations, MPI_COMM_WORLD);
 
   domain_volume =
     dealii::Utilities::MPI::sum(domain_volume, MPI_COMM_WORLD);
 
+  // Compute the homogenized values
   macroscopic_stress = domain_integral_microscopic_stress / domain_volume;
+
+  microscopic_strain_fluctuations =
+    domain_integral_microscopic_strain_fluctuations / domain_volume;
 }
 
 
