@@ -791,7 +791,9 @@ slips_directions_pathname("input/slip_directions"),
 euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
+homogenization_frequency(1),
 graphical_output_directory("results/default/"),
+flag_compute_macroscopic_quantities(false),
 flag_output_damage_variable(false),
 verbose(true)
 {}
@@ -937,6 +939,21 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Bool());
   }
   prm.leave_subsection();
+
+  /*!
+   * @note Temporary parameters
+   */
+  prm.enter_subsection("Postprocessing parameters");
+  {
+    prm.declare_entry("Homogenization",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Homogenization frequency",
+                      "1",
+                      dealii::Patterns::Integer(1));
+  }
+  prm.leave_subsection();
 }
 
 
@@ -994,7 +1011,6 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-
   prm.enter_subsection("Output control parameters");
   {
     graphical_output_frequency = prm.get_integer("Graphical output frequency");
@@ -1008,6 +1024,17 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     graphical_output_directory = prm.get("Graphical output directory");
 
     flag_output_damage_variable = prm.get_bool("Output damage variable field");
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Postprocessing parameters");
+  {
+    flag_compute_macroscopic_quantities =
+      prm.get_bool("Homogenization");
+
+    homogenization_frequency = prm.get_integer("Homogenization frequency");
+    Assert(homogenization_frequency > 0,
+           dealii::ExcLowerRange(homogenization_frequency, 0));
   }
   prm.leave_subsection();
 }

@@ -817,7 +817,11 @@ struct ProblemParameters
 
   unsigned int                      terminal_output_frequency;
 
+  unsigned int                      homogenization_frequency;
+
   std::string                       graphical_output_directory;
+
+  bool                              flag_compute_macroscopic_quantities;
 
   bool                              flag_output_damage_variable;
 
