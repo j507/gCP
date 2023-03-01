@@ -275,7 +275,7 @@ void Postprocessor<dim>::evaluate_vector_field(
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
-        macroscopic_strian +  strain_tensor - plastic_strain_tensor;
+        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -358,7 +358,7 @@ void Postprocessor<dim>::evaluate_vector_field(
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
-        macroscopic_strian +  strain_tensor - plastic_strain_tensor;
+        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
