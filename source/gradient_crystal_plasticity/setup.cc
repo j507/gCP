@@ -221,6 +221,16 @@ set_neumann_boundary_condition(
 
 
 template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+set_macroscopic_strain(
+  const dealii::SymmetricTensor<2,dim> macroscopic_strain)
+{
+  this->macroscopic_strain = macroscopic_strain;
+}
+
+
+
+template <int dim>
 void GradientCrystalPlasticitySolver<dim>::make_sparsity_pattern(
   dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern)
 {

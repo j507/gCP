@@ -63,6 +63,9 @@ flag_init_was_called(false)
          dealii::ExcMessage("The CrystalsData<dim>'s shared pointer "
                             "contains a nullptr."));
 
+  // Set macroscopic strain to zero
+  macroscopic_strain = 0.;
+
   // Initiating the internal Mapping instances.
   if (external_mapping.get() != nullptr)
     mapping = external_mapping;
