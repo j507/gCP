@@ -974,11 +974,11 @@ void SimpleShearProblem<dim>::run()
   // material id
   setup();
 
-  // Output the triangulation data (Partition, Material id, etc.)
-  triangulation_output();
-
   // Call the init() methods of the class' members
   initialize_calls();
+
+  // Output the triangulation data (Partition, Material id, etc.)
+  triangulation_output();
 
   if (parameters.temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::Cyclic)

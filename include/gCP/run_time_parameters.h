@@ -137,6 +137,30 @@ enum class BoundaryConditionsAtGrainBoundaries
 
 
 
+/*!
+ * @brief
+ *
+ * @todo Docu
+ */
+enum class ProblemType
+{
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  SimpleShear,
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  RVE,
+};
+
+
+
 struct NewtonRaphsonParameters
 {
   /*
@@ -795,8 +819,6 @@ struct ProblemParameters
 
   bool                              mapping_interior_cells;
 
-  unsigned int                      n_elements_in_y_direction;
-
   unsigned int                      n_global_refinements;
 
   unsigned int                      fe_degree_displacements;
@@ -859,11 +881,13 @@ struct SimpleShearParameters : public ProblemParameters
 
   double        min_shear_strain_at_upper_boundary;
 
-  unsigned int  n_equal_sized_divisions;
-
   double        height;
 
   double        width;
+
+  unsigned int  n_elements_in_y_direction;
+
+  unsigned int  n_equal_sized_divisions;
 };
 
 
