@@ -44,6 +44,9 @@ public:
   void init(
     std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law);
 
+  void set_macroscopic_strain(
+    const dealii::SymmetricTensor<2,dim> macroscopic_strain);
+
 private:
   std::shared_ptr<const FEField<dim>>                     fe_field;
 
@@ -52,6 +55,8 @@ private:
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
 
   std::vector<std::pair<unsigned int, unsigned int>>      voigt_indices;
+
+  dealii::SymmetricTensor<2,dim>                          macroscopic_strain;
 
   const dealii::SymmetricTensor<4,dim>                    deviatoric_projector;
 

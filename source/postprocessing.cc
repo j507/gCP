@@ -36,6 +36,8 @@ deviatoric_projector_3d(
     dealii::unit_symmetric_tensor<3>(),
     dealii::unit_symmetric_tensor<3>()))
 {
+  macroscopic_strain = 0.;
+
   voigt_indices[0] = std::make_pair<unsigned int, unsigned int>(0,0);
   voigt_indices[1] = std::make_pair<unsigned int, unsigned int>(1,1);
   voigt_indices[2] = std::make_pair<unsigned int, unsigned int>(2,2);
@@ -141,6 +143,15 @@ void Postprocessor<dim>::init(
 
 
 template <int dim>
+void Postprocessor<dim>::set_macroscopic_strain(
+    const dealii::SymmetricTensor<2,dim> macroscopic_strain)
+{
+  this->macroscopic_strain = macroscopic_strain;
+}
+
+
+
+template <int dim>
 void Postprocessor<dim>::evaluate_vector_field(
   const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
   std::vector<dealii::Vector<double>>                 &computed_quantities) const
@@ -200,6 +211,10 @@ void Postprocessor<dim>::evaluate_vector_field(
     equivalent_edge_dislocation_density   = 0.0;
     equivalent_screw_dislocation_density  = 0.0;
 
+    /*!
+     * @note This if-else can probably be done in a way more elegant
+     * manner
+     */
     if (fe_field->is_decohesion_allowed())
     {
       // Displacement
@@ -259,7 +274,8 @@ void Postprocessor<dim>::evaluate_vector_field(
       computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_screw_dislocation_density);
 
-      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+      elastic_strain_tensor =
+        macroscopic_strian +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -341,7 +357,8 @@ void Postprocessor<dim>::evaluate_vector_field(
       computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_screw_dislocation_density);
 
-      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+      elastic_strain_tensor =
+        macroscopic_strian +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
