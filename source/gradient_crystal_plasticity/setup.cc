@@ -475,6 +475,11 @@ template void gCP::GradientCrystalPlasticitySolver<3>::set_cyclic_step_data(
   const unsigned int,
   const unsigned int);
 
+template void gCP::GradientCrystalPlasticitySolver<2>::set_macroscopic_strain(
+  const dealii::SymmetricTensor<2,2>);
+template void gCP::GradientCrystalPlasticitySolver<3>::set_macroscopic_strain(
+  const dealii::SymmetricTensor<2,3>);
+
 template void gCP::GradientCrystalPlasticitySolver<2>::set_neumann_boundary_condition(
   const dealii::types::boundary_id,
   const std::shared_ptr<dealii::TensorFunction<1,2>>);
