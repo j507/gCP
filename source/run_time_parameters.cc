@@ -1169,6 +1169,156 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 }
 
 
+
+SemicoupledParameters::SemicoupledParameters()
+:
+ProblemParameters(),
+strain_component_11(0.01),
+strain_component_22(0.01),
+strain_component_33(0.01),
+strain_component_23(0.01),
+strain_component_13(0.01),
+strain_component_12(0.01),
+min_to_max_strain_load_ratio(.5),
+msh_file_pathname("input/mesh/periodic_polycrystal.msh")
+{}
+
+
+
+SemicoupledParameters::SemicoupledParameters(
+  const std::string &parameter_filename)
+:
+SemicoupledParameters()
+{
+  dealii::ParameterHandler prm;
+
+  declare_parameters(prm);
+
+  std::ifstream parameter_file(parameter_filename.c_str());
+
+  if (!parameter_file)
+  {
+    parameter_file.close();
+
+    std::ostringstream message;
+
+    message << "Input parameter file <"
+            << parameter_filename << "> not found. Creating a"
+            << std::endl
+            << "template file of the same name."
+            << std::endl;
+
+    std::ofstream parameter_out(parameter_filename.c_str());
+
+    prm.print_parameters(parameter_out,
+                         dealii::ParameterHandler::OutputStyle::PRM);
+
+    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+  }
+
+  prm.parse_input(parameter_file);
+
+  parse_parameters(prm);
+}
+
+
+
+void SemicoupledParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::declare_parameters(prm);
+
+  prm.enter_subsection("Semi-coupled problem");
+  {
+    prm.declare_entry("Max strain component 11",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 22",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 33",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 23",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 13",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 12",
+                      "0.01",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Minimum to maximum strain load ratio",
+                      "0.5",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Mesh file (*.msh) path name",
+                      "input/mesh/periodic_polycrystal.msh",
+                      dealii::Patterns::FileName());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void SemicoupledParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::parse_parameters(prm);
+
+  prm.enter_subsection("Semi-coupled problem");
+  {
+    strain_component_11   = prm.get_double("Max strain component 11");
+
+    strain_component_22   = prm.get_double("Max strain component 22");
+
+    strain_component_33   = prm.get_double("Max strain component 33");
+
+    strain_component_23   = prm.get_double("Max strain component 23");
+
+    strain_component_13   = prm.get_double("Max strain component 13");
+
+    strain_component_12   = prm.get_double("Max strain component 12");
+
+    msh_file_pathname     = prm.get("Mesh file (*.msh) path name");
+
+    min_to_max_strain_load_ratio =
+      prm.get_double("Minimum to maximum strain load ratio");
+
+    AssertIsFinite(strain_component_11);
+
+    AssertIsFinite(strain_component_22);
+
+    AssertIsFinite(strain_component_33);
+
+    AssertIsFinite(strain_component_23);
+
+    AssertIsFinite(strain_component_13);
+
+    AssertIsFinite(strain_component_12);
+
+    AssertIsFinite(min_to_max_strain_load_ratio);
+
+    Assert((0 <= min_to_max_strain_load_ratio) &&
+           (min_to_max_strain_load_ratio < 1.0),
+           dealii::ExcMessage("The ratio has to be inside the range "
+                              "[0,1)"));
+
+    Assert(
+      (msh_file_pathname.find_last_of(".") != std::string::npos) &&
+      (msh_file_pathname.substr(msh_file_pathname.find_last_of(".")+1)
+        == "msh"),
+      dealii::ExcMessage(
+        "The path *.msh file has no extension or the wrong one"));
+  };
+  prm.leave_subsection();
+}
+
+
 /*
 template<typename Stream>
 Stream& operator<<(Stream &stream, const Parameters &prm)

@@ -137,30 +137,6 @@ enum class BoundaryConditionsAtGrainBoundaries
 
 
 
-/*!
- * @brief
- *
- * @todo Docu
- */
-enum class ProblemType
-{
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  SimpleShear,
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  RVE,
-};
-
-
-
 struct NewtonRaphsonParameters
 {
   /*
@@ -888,6 +864,50 @@ struct SimpleShearParameters : public ProblemParameters
   unsigned int  n_elements_in_y_direction;
 
   unsigned int  n_equal_sized_divisions;
+};
+
+
+
+struct SemicoupledParameters : public ProblemParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SemicoupledParameters();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SemicoupledParameters(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  double      strain_component_11;
+
+  double      strain_component_22;
+
+  double      strain_component_33;
+
+  double      strain_component_23;
+
+  double      strain_component_13;
+
+  double      strain_component_12;
+
+  double      min_to_max_strain_load_ratio;
+
+  std::string msh_file_pathname;
 };
 
 
