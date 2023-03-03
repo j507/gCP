@@ -794,8 +794,6 @@ void Homogenization<dim>::output_macroscopic_quantities_to_file(const double tim
 template <>
 void Homogenization<2>::update_table_handler_values(const double time)
 {
-  table_handler.start_new_row();
-
   const dealii::SymmetricTensor<2,2> deviatoric_stress =
     deviatoric_projector * macroscopic_stress;
 
@@ -828,6 +826,7 @@ void Homogenization<2>::update_table_handler_values(const double time)
   table_handler.add_value("Fluctuations_22", microscopic_strain_fluctuations[1][1]);
   table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
 
+  table_handler.start_new_row();
 }
 
 
@@ -835,8 +834,6 @@ void Homogenization<2>::update_table_handler_values(const double time)
 template <>
 void Homogenization<3>::update_table_handler_values(const double time)
 {
-  table_handler.start_new_row();
-
   const dealii::SymmetricTensor<2,3> deviatoric_stress =
     deviatoric_projector * macroscopic_stress;
 
@@ -877,6 +874,8 @@ void Homogenization<3>::update_table_handler_values(const double time)
   table_handler.add_value("Fluctuations_23", microscopic_strain_fluctuations[1][2]);
   table_handler.add_value("Fluctuations_13", microscopic_strain_fluctuations[0][2]);
   table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
+
+  table_handler.start_new_row();
 }
 
 
