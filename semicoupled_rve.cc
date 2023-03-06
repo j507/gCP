@@ -835,7 +835,7 @@ void SemicoupledProblem<dim>::run()
           discrete_time.get_end_time())
       data_output();
 
-    return;
+    //return;
   }
 }
 

@@ -1,6 +1,6 @@
 # Listing of Parameters
 # ---------------------
-set Verbose = false
+set Verbose = true
 
 
 subsection Input files
@@ -52,8 +52,8 @@ subsection Solver parameters
     end
 
     subsection Decohesion law's parameters
-      set Couple macrotraction to damage       = true
-      set Couple microtraction to damage       = true
+      set Couple macrotraction to damage       = false
+      set Couple microtraction to damage       = false
       set Critical opening displacement        = 2.5e-2
       set Damage accumulation constant         = 1.0
       set Damage decay constant                = 0.0
