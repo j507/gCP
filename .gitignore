@@ -2,18 +2,13 @@
 *.d
 
 # Applications
-gCPFEM
-elasticity
-elasticity_with_solver
-step-3
-step-15
-step-77
 constitutive_laws_test
 crystal_data_test
 fe_collection_test
 line_search_test
 simple_shear
 make_periodicity_constraints
+semicoupled_rve
 
 # Compiled Object files
 *.slo
@@ -105,9 +100,6 @@ _deps
 *.pvd
 *.gpl
 /results/
-/documentation/weak_form
-/documentation/html 
-
 # Python compiled modules
 *.pyc
 *.pyo
@@ -123,5 +115,5 @@ _deps
 *.zip
 
 # Doxygen
-doc/html/*
-doc/latex/*
+documentation/html/*
+documentation/latex/*

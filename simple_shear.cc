@@ -1065,7 +1065,7 @@ int main(int argc, char *argv[])
     switch (argc)
     {
     case 1:
-      parameters_filepath = "input/simple_shear.prm";
+      parameters_filepath = "input/parameter_files/simple_shear.prm";
       break;
     case 2:
       {
