@@ -341,13 +341,6 @@ void SemicoupledProblem<dim>::make_grid()
   std::ifstream input_file(parameters.msh_file_pathname);
 
   grid_in.read_msh(input_file);
-  /*
-  // Set material ids (Physical groups in gmsh start at 1)
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (cell->is_locally_owned())
-    {
-      cell->set_material_id(cell->material_id() - 1);
-    } // */
 
   // Identify boundaries
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -596,9 +589,12 @@ void SemicoupledProblem<dim>::triangulation_output()
 
   dealii::Vector<float> active_fe_index(triangulation.n_active_cells());
 
+  dealii::Vector<float> boundary_id(triangulation.n_active_cells());
+
   locally_owned_subdomain = -1.0;
   material_id             = -1.0;
   active_fe_index         = -1.0;
+  boundary_id             = -1.0;
 
   // Fill the dealii::Vector<float> instances for visualizatino of the
   // cell properties
@@ -612,6 +608,15 @@ void SemicoupledProblem<dim>::triangulation_output()
         cell->material_id();
       active_fe_index(cell->active_cell_index()) =
         cell->active_fe_index();
+
+
+      if (cell->at_boundary())
+        for (const auto &face : cell->face_iterators())
+          if (face->at_boundary())
+      {
+        boundary_id(cell->active_cell_index()) =
+          face->boundary_id();
+      }
     }
 
   dealii::DataOut<dim> data_out;
@@ -626,6 +631,9 @@ void SemicoupledProblem<dim>::triangulation_output()
 
   data_out.add_data_vector(active_fe_index,
                            "active_fe_index");
+
+  data_out.add_data_vector(boundary_id,
+                           "boundary_id");
 
   data_out.add_data_vector(gCP_solver.get_cell_is_at_grain_boundary_vector(),
                            "cell_is_at_grain_boundary");
