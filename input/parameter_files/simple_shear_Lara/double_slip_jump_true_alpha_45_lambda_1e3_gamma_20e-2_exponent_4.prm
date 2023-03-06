@@ -1,0 +1,94 @@
+# Listing of Parameters
+# ---------------------
+set Verbose = true
+
+
+subsection Input files
+  set Euler angles path name    = input/simple_shear_Lara/euler_angles_45_0
+  set Slip directions path name = input/simple_shear_Lara/slip_directions
+  set Slip normals path name    = input/simple_shear_Lara/slip_normals
+end
+
+
+subsection Output control parameters
+  set Graphical output directory = /calculate/results/simple_shear_Lara/double_slip_jump_true_alpha_45_lambda_1E3_gamma_20Em2_exponent_4/
+  set Graphical output frequency = 1
+  set Terminal output frequency  = 1
+end
+
+
+subsection Simple shear
+  set Height of the strip                              = 1.0
+  set Number of equally sized divisions in y-direction = 2
+  set Maximum shear strain at the upper boundary               = 0.20
+  set Width of the strip                               = 0.1
+end
+
+
+subsection Solver parameters
+  set Allow decohesion at grain boundaries    = true
+  set Boundary conditions at grain boundaries = microtraction
+  set Logger output directory                 = /calculate/results/simple_shear_Lara/double_slip_jump_true_alpha_45_lambda_1E3_gamma_20Em2_exponent_4/
+  set Print sparsity pattern                  = false
+  set Verbose                                 = false
+
+
+  subsection Constitutive laws' parameters
+    subsection Decohesion law's parameters
+      set Critical opening displacement = 0.025
+      set Damage exponent               = 4.0
+      set Maximum cohesive traction     = 700
+      set Set damage to zero            = false
+    end
+
+    subsection Hooke-Law's parameters
+      set C1111 = 235467.76549434732
+      set C1122 = 147905.34667489285
+      set C1212 = 107212
+    end
+
+    subsection Microscopic traction law's parameters
+      set Grain boundary modulus = 1e3
+    end
+
+    subsection Scalar microscopic stress law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 490
+      set Linear hardening modulus = 550
+      set Regularization function  = tanh
+      set Regularization parameter = 3.0e-3
+    end
+
+    subsection Vector microscopic stress law's parameters
+      set Energetic length scale  = 0.2
+      set Initial slip resistance = 490
+    end
+
+  end
+
+  subsection Nonlinear solver's parameters
+    set Absolute tolerance of the Krylov-solver              = 1e-9
+    set Maximum number of iterations of the Krylov-solver    = 1000
+    set Maximum number of iterations of the nonlinear solver = 500
+    set Relative tolerance of the Krylov-solver              = 1e-8
+    set Tolerance of the newton update                       = 1e-15
+    set Tolerance of the residual                            = 1e-8
+  end
+
+end
+
+
+subsection Spatial discretization parameters
+  set FE's polynomial degree - Displacements = 2
+  set FE's polynomial degree - Slips         = 1
+  set Mapping - Apply to interior cells      = false
+  set Mapping - Polynomial degree            = 1
+  set Number of global refinements           = 0
+  set Spatial dimension                      = 2
+end
+
+subsection Temporal discretization parameters
+  set End time       = 1.0
+  set Start time     = 0.0
+  set Time step size = 1e-3
+end

@@ -4,14 +4,14 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/cyclic_simple_shear/euler_angles_30_0
-  set Slip directions path name = input/cyclic_simple_shear/slip_directions
-  set Slip normals path name    = input/cyclic_simple_shear/slip_normals
+  set Euler angles path name    = input/simple_shear_Lara/euler_angles_30_0
+  set Slip directions path name = input/simple_shear_Lara/slip_directions
+  set Slip normals path name    = input/simple_shear_Lara/slip_normals
 end
 
 
 subsection Output control parameters
-  set Graphical output directory = /calculate/results/default/
+  set Graphical output directory = /calculate/results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2_exponent_6/
   set Graphical output frequency = 1
   set Terminal output frequency  = 1
 end
@@ -20,8 +20,7 @@ end
 subsection Simple shear
   set Height of the strip                              = 1.0
   set Number of equally sized divisions in y-direction = 2
-  set Maximum shear strain at the upper boundary       = 0.02
-  set Minimum shear strain at the upper boundary       = 0.01
+  set Maximum shear strain at the upper boundary               = 0.20
   set Width of the strip                               = 0.1
 end
 
@@ -29,30 +28,17 @@ end
 subsection Solver parameters
   set Allow decohesion at grain boundaries    = true
   set Boundary conditions at grain boundaries = microtraction
-  set Logger output directory                 = /calculate/results/default/
-  set Skip extrapolation of start value at extrema = false
+  set Logger output directory                 = /calculate/results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2_exponent_6/
   set Print sparsity pattern                  = false
   set Verbose                                 = false
 
 
   subsection Constitutive laws' parameters
-    subsection Contact law's parameters
-      set Penalty coefficient = 1e3
-      set Stiffness           = 28e3
-    end
-
     subsection Decohesion law's parameters
-      set Couple macrotraction to damage       = true
-      set Couple microtraction to damage       = true
-      set Critical opening displacement        = 0.025
-      set Damage accumulation constant         = 1e-2
-      set Damage decay constant                = 0.0
-      set Damage decay exponent                = 1.0
-      set Degradation exponent                 = 1.0
-      set Endurance limit                      = 0.0
-      set Maximum cohesive traction            = 700
-      set Set damage to zero                   = false
-      set Tangential to normal stiffness ratio = 1.0
+      set Critical opening displacement = 0.025
+      set Damage exponent               = 6.0
+      set Maximum cohesive traction     = 700
+      set Set damage to zero            = false
     end
 
     subsection Hooke-Law's parameters
@@ -69,8 +55,8 @@ subsection Solver parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
-      set Regularization function  = erf
-      set Regularization parameter = 10e-7
+      set Regularization function  = tanh
+      set Regularization parameter = 1e-2
     end
 
     subsection Vector microscopic stress law's parameters
@@ -83,7 +69,7 @@ subsection Solver parameters
   subsection Nonlinear solver's parameters
     set Absolute tolerance of the Krylov-solver              = 1e-9
     set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 30
+    set Maximum number of iterations of the nonlinear solver = 500
     set Relative tolerance of the Krylov-solver              = 1e-8
     set Tolerance of the newton update                       = 1e-15
     set Tolerance of the residual                            = 1e-8
@@ -102,15 +88,7 @@ subsection Spatial discretization parameters
 end
 
 subsection Temporal discretization parameters
-  set Number of steps in loading phase = 50
-  set Number of steps per half cycle   = 25
-  set End time                         = 1.0
-  set Initial loading time             = 1.0
-  set Loading type                     = cyclic
-  set Number of cycles                 = 1
-  set Period                           = 1.0
-  set Start time                       = 0.0
-  set Time step size                   = 1e-3
+  set End time       = 1.0
+  set Start time     = 0.0
+  set Time step size = 5e-4
 end
-
-
