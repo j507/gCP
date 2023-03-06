@@ -491,6 +491,46 @@ void SemicoupledProblem<dim>::setup_constraints()
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
     affine_constraints.merge(fe_field->get_hanging_node_constraints());
 
+    std::vector<dealii::Point<dim>> lower_corner_points;
+
+    lower_corner_points.push_back(dealii::Point<dim>());
+
+    for (unsigned int i = 0; i < dim; ++i)
+    {
+      dealii::Point<dim> corner_point;
+
+      corner_point[i] = 1.;
+
+      lower_corner_points.push_back(corner_point);
+    }
+
+    for (const auto &cell :
+        fe_field->get_dof_handler().active_cell_iterators())
+      if (cell->is_locally_owned())
+      {
+        for (const auto vertex_index : cell->vertex_indices())
+        {
+          if (std::find(lower_corner_points.begin(),
+                        lower_corner_points.end(),
+                        cell->vertex(vertex_index))
+              != lower_corner_points.end())
+          {
+              // Get the crystal identifier for the current cell
+            const unsigned int crystal_id = cell->active_fe_index();
+
+            for (unsigned int i = 0; i < dim; i++)
+            {
+              const dealii::types::global_dof_index degree_of_freedom =
+                cell->vertex_dof_index(vertex_index,
+                                       i, // Component
+                                       crystal_id);
+
+              affine_constraints.add_line(degree_of_freedom);
+            }
+          }
+        }
+      } // */
+
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
       periodicity_vector,
       affine_constraints);
@@ -504,6 +544,46 @@ void SemicoupledProblem<dim>::setup_constraints()
   {
     newton_method_constraints.reinit(fe_field->get_locally_relevant_dofs());
     newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
+
+    std::vector<dealii::Point<dim>> lower_corner_points;
+
+    lower_corner_points.push_back(dealii::Point<dim>());
+
+    for (unsigned int i = 0; i < dim; ++i)
+    {
+      dealii::Point<dim> corner_point;
+
+      corner_point[i] = 1.;
+
+      lower_corner_points.push_back(corner_point);
+    }
+
+    for (const auto &cell :
+        fe_field->get_dof_handler().active_cell_iterators())
+      if (cell->is_locally_owned())
+      {
+        for (const auto vertex_index : cell->vertex_indices())
+        {
+          if (std::find(lower_corner_points.begin(),
+                        lower_corner_points.end(),
+                        cell->vertex(vertex_index))
+              != lower_corner_points.end())
+          {
+              // Get the crystal identifier for the current cell
+            const unsigned int crystal_id = cell->active_fe_index();
+
+            for (unsigned int i = 0; i < dim; i++)
+            {
+              const dealii::types::global_dof_index degree_of_freedom =
+                cell->vertex_dof_index(vertex_index,
+                                       i, // Component
+                                       crystal_id);
+
+              newton_method_constraints.add_line(degree_of_freedom);
+            }
+          }
+        }
+      } // */
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
       periodicity_vector,
@@ -778,6 +858,8 @@ void SemicoupledProblem<dim>::run()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
+
+    return;
   }
 }
 
