@@ -465,6 +465,7 @@ void ContactLawParameters::parse_parameters(
 
 SolverParameters::SolverParameters()
 :
+solver_type(SolverType::CG),
 residual_tolerance(1e-10),
 newton_update_tolerance(1e-8),
 n_max_nonlinear_iterations(1000),
@@ -486,6 +487,11 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
+    prm.declare_entry("Solver type",
+                    "cg",
+                    dealii::Patterns::Selection(
+                      "directsolver|cg"));
+
     prm.declare_entry("Tolerance of the residual",
                       "1e-10",
                       dealii::Patterns::Double());
@@ -556,6 +562,22 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
+    const std::string string_solver_type(
+                      prm.get("Solver type"));
+
+    if (string_solver_type == std::string("directsolver"))
+    {
+      solver_type = SolverType::DirectSolver;
+    }
+    else if (string_solver_type == std::string("cg"))
+    {
+      solver_type = SolverType::CG;
+    }
+    else
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the solver type."));
+
     residual_tolerance =
       prm.get_double("Tolerance of the residual");
     AssertThrow(residual_tolerance > 0,
@@ -627,7 +649,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       dealii::ExcMessage(
         "Unexpected identifier for the boundary conditions at grain "
         "boundaries."));
-
 
   logger_output_directory = prm.get("Logger output directory");
 

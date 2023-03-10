@@ -38,6 +38,28 @@ enum class LoadingType
 
 
 /*!
+ * @brief A enum class specifiying the type of solver
+ */
+enum class SolverType
+{
+  /*!
+   * @brief Trilinos' direct solver
+   *
+   * @note Only the default parameters are implemented
+   */
+  DirectSolver,
+
+  /*!
+   * @brief Trilinos' conjugated gradient solver.
+   *
+   * @note Only the default parameters are implemented
+   */
+  CG,
+};
+
+
+
+/*!
  * @brief Enum listing all the implemented regularizations of the sign
  * function
  *
@@ -512,6 +534,13 @@ struct SolverParameters
    * object @p prm.
    */
   void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  SolverType          solver_type;
 
   /*!
    * @brief
