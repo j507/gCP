@@ -950,7 +950,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
             if (fe_field->get_global_component(crystal_id, i) < dim)
             {
               if (fe_field->is_decohesion_allowed())
-                data.local_rhs(i) -=
+                data.local_rhs(i) +=
                   scratch.face_vector_phi[i] *
                   (cohesive_law->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
