@@ -152,14 +152,19 @@ void FEField<dim>::setup_dofs()
   // Renumbering of the degrees of freedom
   dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
 
-  std::vector<unsigned int> block_component(
-    dim * n_crystals + n_slips * n_crystals, 0);
+  if (n_slips > 0)
+  {
+    std::vector<unsigned int> block_component(
+      dim * n_crystals + n_slips * n_crystals, 0);
 
-  for (unsigned int i = dim * n_crystals;
-       i < block_component.size(); ++i)
-    block_component[i] = 1;
+    for (unsigned int i = dim * n_crystals;
+        i < block_component.size(); ++i)
+    {
+      block_component[i] = 1;
+    }
 
-  dealii::DoFRenumbering::component_wise(dof_handler,block_component);
+    dealii::DoFRenumbering::component_wise(dof_handler,block_component);
+  }
 
   // Get the locally owned and relevant degrees of freedom of
   // each processor
