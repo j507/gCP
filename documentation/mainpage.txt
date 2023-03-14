@@ -1,0 +1,6 @@
+/**
+@mainpage Documentation
+@author Jose Lara
+\tableofcontents
+
+*/

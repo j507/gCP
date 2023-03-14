@@ -144,43 +144,84 @@ unsigned int GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
     std::max(residual_norm * parameters.krylov_relative_tolerance,
              parameters.krylov_absolute_tolerance));
 
-  dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
-
-  // The preconditioner is instanciated and initialized
-  dealii::LinearAlgebraTrilinos::MPI::PreconditionAMG preconditioner;
-
-  preconditioner.initialize(jacobian);
-
-  // try-catch scope for the solve() call
-  try
+  switch (parameters.solver_type)
   {
-    solver.solve(jacobian,
-                 distributed_newton_update,
-                 residual,
-                 preconditioner);
-  }
-  catch (std::exception &exc)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Exception in the solve method: " << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::cerr << "Unknown exception in the solve method!" << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------"
-              << std::endl;
-    std::abort();
+  case RunTimeParameters::SolverType::DirectSolver:
+    {
+      dealii::TrilinosWrappers::SolverDirect solver(solver_control);
+
+      try
+      {
+        solver.solve(jacobian, distributed_newton_update, residual);
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the solve method: " << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Unknown exception in the solve method!" << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
+    break;
+  case RunTimeParameters::SolverType::CG:
+    {
+      dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+
+      dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+
+      preconditioner.initialize(jacobian);
+
+      try
+      {
+        solver.solve(jacobian,
+                      distributed_newton_update,
+                      residual,
+                      preconditioner);
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the solve method: " << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Unknown exception in the solve method!" << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
+    break;
+  default:
+    AssertThrow(false,dealii::ExcNotImplemented());
+    break;
   }
 
   // Zero out the Dirichlet boundary conditions

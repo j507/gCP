@@ -38,6 +38,28 @@ enum class LoadingType
 
 
 /*!
+ * @brief A enum class specifiying the type of solver
+ */
+enum class SolverType
+{
+  /*!
+   * @brief Trilinos' direct solver
+   *
+   * @note Only the default parameters are implemented
+   */
+  DirectSolver,
+
+  /*!
+   * @brief Trilinos' conjugated gradient solver.
+   *
+   * @note Only the default parameters are implemented
+   */
+  CG,
+};
+
+
+
+/*!
  * @brief Enum listing all the implemented regularizations of the sign
  * function
  *
@@ -518,6 +540,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  SolverType          solver_type;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   double              residual_tolerance;
 
   /*!
@@ -795,8 +824,6 @@ struct ProblemParameters
 
   bool                              mapping_interior_cells;
 
-  unsigned int                      n_elements_in_y_direction;
-
   unsigned int                      n_global_refinements;
 
   unsigned int                      fe_degree_displacements;
@@ -817,7 +844,11 @@ struct ProblemParameters
 
   unsigned int                      terminal_output_frequency;
 
+  unsigned int                      homogenization_frequency;
+
   std::string                       graphical_output_directory;
+
+  bool                              flag_compute_macroscopic_quantities;
 
   bool                              flag_output_damage_variable;
 
@@ -855,11 +886,57 @@ struct SimpleShearParameters : public ProblemParameters
 
   double        min_shear_strain_at_upper_boundary;
 
-  unsigned int  n_equal_sized_divisions;
-
   double        height;
 
   double        width;
+
+  unsigned int  n_elements_in_y_direction;
+
+  unsigned int  n_equal_sized_divisions;
+};
+
+
+
+struct SemicoupledParameters : public ProblemParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SemicoupledParameters();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SemicoupledParameters(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  double      strain_component_11;
+
+  double      strain_component_22;
+
+  double      strain_component_33;
+
+  double      strain_component_23;
+
+  double      strain_component_13;
+
+  double      strain_component_12;
+
+  double      min_to_max_strain_load_ratio;
+
+  std::string msh_file_pathname;
 };
 
 

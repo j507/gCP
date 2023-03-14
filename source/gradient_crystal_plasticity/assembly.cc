@@ -444,10 +444,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    cohesive_law->get_degradation_function_value(
+                    (cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage) *
-                    (scratch.current_cell_gateaux_derivative_values[face_q_point]
+                     scratch.current_cell_gateaux_derivative_values[face_q_point]
                      +
                      scratch.contact_traction_current_cell_gateaux_derivative_values[face_q_point]) *
                     scratch.face_vector_phi[j] *
@@ -455,10 +455,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    cohesive_law->get_degradation_function_value(
+                    (cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage) *
-                    (scratch.neighbor_cell_gateaux_derivative_values[face_q_point]
+                     scratch.neighbor_cell_gateaux_derivative_values[face_q_point]
                      +
                      scratch.contact_traction_neighbor_cell_gateaux_derivative_values[face_q_point]) *
                     scratch.neighbor_face_vector_phi[j] *
@@ -695,6 +695,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   {
     // Compute the elastic strain tensor at the quadrature point
     scratch.elastic_strain_tensor_values[q_point] =
+      macroscopic_strain +
       elastic_strain->get_elastic_strain_tensor(
         crystal_id,
         q_point,

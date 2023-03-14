@@ -62,12 +62,11 @@ ENABLE_TESTING()
 INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 ADD_SUBDIRECTORY(source)
-ADD_SUBDIRECTORY(bin)
 ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
     simple_shear.cc
-    polycrystal.cc
+    semicoupled_rve.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})

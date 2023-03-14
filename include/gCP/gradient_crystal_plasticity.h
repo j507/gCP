@@ -51,6 +51,9 @@ public:
     const dealii::types::boundary_id                      boundary_id,
     const std::shared_ptr<dealii::TensorFunction<1,dim>>  function);
 
+  void set_macroscopic_strain(
+    const dealii::SymmetricTensor<2,dim> macroscopic_strain);
+
   void solve_nonlinear_system();
 
   double get_residual_norm() const;
@@ -146,6 +149,8 @@ private:
   double                                            residual_norm;
 
   double                                            newton_update_norm;
+
+  dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
   gCP::LineSearch                                   line_search;
 

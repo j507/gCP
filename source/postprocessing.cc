@@ -36,6 +36,8 @@ deviatoric_projector_3d(
     dealii::unit_symmetric_tensor<3>(),
     dealii::unit_symmetric_tensor<3>()))
 {
+  macroscopic_strain = 0.;
+
   voigt_indices[0] = std::make_pair<unsigned int, unsigned int>(0,0);
   voigt_indices[1] = std::make_pair<unsigned int, unsigned int>(1,1);
   voigt_indices[2] = std::make_pair<unsigned int, unsigned int>(2,2);
@@ -141,6 +143,15 @@ void Postprocessor<dim>::init(
 
 
 template <int dim>
+void Postprocessor<dim>::set_macroscopic_strain(
+    const dealii::SymmetricTensor<2,dim> macroscopic_strain)
+{
+  this->macroscopic_strain = macroscopic_strain;
+}
+
+
+
+template <int dim>
 void Postprocessor<dim>::evaluate_vector_field(
   const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
   std::vector<dealii::Vector<double>>                 &computed_quantities) const
@@ -200,6 +211,10 @@ void Postprocessor<dim>::evaluate_vector_field(
     equivalent_edge_dislocation_density   = 0.0;
     equivalent_screw_dislocation_density  = 0.0;
 
+    /*!
+     * @note This if-else can probably be done in a way more elegant
+     * manner
+     */
     if (fe_field->is_decohesion_allowed())
     {
       // Displacement
@@ -259,7 +274,8 @@ void Postprocessor<dim>::evaluate_vector_field(
       computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_screw_dislocation_density);
 
-      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+      elastic_strain_tensor =
+        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -341,7 +357,8 @@ void Postprocessor<dim>::evaluate_vector_field(
       computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_screw_dislocation_density);
 
-      elastic_strain_tensor =  strain_tensor - plastic_strain_tensor;
+      elastic_strain_tensor =
+        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -642,6 +659,389 @@ void SimpleShear<dim>::output_data_to_file(
 
 
 
+template <int dim>
+Homogenization<dim>::Homogenization(
+  std::shared_ptr<FEField<dim>>         &fe_field,
+  std::shared_ptr<dealii::Mapping<dim>> &mapping)
+:
+fe_field(fe_field),
+mapping_collection(*mapping),
+deviatoric_projector(
+  dealii::identity_tensor<dim>() -
+  1.0 / 3.0 *
+  dealii::outer_product(
+    dealii::unit_symmetric_tensor<dim>(),
+    dealii::unit_symmetric_tensor<dim>())),
+flag_init_was_called(false)
+{
+  const dealii::QGauss<dim> quadrature_formula(3);
+
+  quadrature_collection.push_back(quadrature_formula);
+
+  macroscopic_stress              = 0.;
+  macroscopic_strain              = 0.;
+  microscopic_strain_fluctuations = 0.;
+
+  table_handler.declare_column("Time");
+  table_handler.declare_column("VonMisesStress");
+  table_handler.declare_column("VonMisesStrain");
+  table_handler.declare_column("VonMisesFluctuations");
+  table_handler.declare_column("Stress_11");
+  table_handler.declare_column("Stress_22");
+  table_handler.declare_column("Stress_33");
+  table_handler.declare_column("Stress_23");
+  table_handler.declare_column("Stress_13");
+  table_handler.declare_column("Stress_12");
+  table_handler.declare_column("Strain_11");
+  table_handler.declare_column("Strain_22");
+  table_handler.declare_column("Strain_33");
+  table_handler.declare_column("Strain_23");
+  table_handler.declare_column("Strain_13");
+  table_handler.declare_column("Strain_12");
+  table_handler.declare_column("Fluctuations_11");
+  table_handler.declare_column("Fluctuations_22");
+  table_handler.declare_column("Fluctuations_33");
+  table_handler.declare_column("Fluctuations_23");
+  table_handler.declare_column("Fluctuations_13");
+  table_handler.declare_column("Fluctuations_12");
+  table_handler.set_scientific("VonMisesStress", true);
+  table_handler.set_scientific("VonMisesStrain", true);
+  table_handler.set_scientific("VonMisesFluctuations", true);
+  table_handler.set_scientific("Stress_11", true);
+  table_handler.set_scientific("Stress_22", true);
+  table_handler.set_scientific("Stress_33", true);
+  table_handler.set_scientific("Stress_23", true);
+  table_handler.set_scientific("Stress_13", true);
+  table_handler.set_scientific("Stress_12", true);
+  table_handler.set_scientific("Strain_11", true);
+  table_handler.set_scientific("Strain_22", true);
+  table_handler.set_scientific("Strain_33", true);
+  table_handler.set_scientific("Strain_23", true);
+  table_handler.set_scientific("Strain_13", true);
+  table_handler.set_scientific("Strain_12", true);
+  table_handler.set_scientific("Fluctuations_11", true);
+  table_handler.set_scientific("Fluctuations_22", true);
+  table_handler.set_scientific("Fluctuations_33", true);
+  table_handler.set_scientific("Fluctuations_23", true);
+  table_handler.set_scientific("Fluctuations_13", true);
+  table_handler.set_scientific("Fluctuations_12", true);
+  table_handler.set_precision("VonMisesStress", 18);
+  table_handler.set_precision("VonMisesStrain", 18);
+  table_handler.set_precision("VonMisesFluctuations", 18);
+  table_handler.set_precision("Stress_11", 18);
+  table_handler.set_precision("Stress_22", 18);
+  table_handler.set_precision("Stress_33", 18);
+  table_handler.set_precision("Stress_23", 18);
+  table_handler.set_precision("Stress_13", 18);
+  table_handler.set_precision("Stress_12", 18);
+  table_handler.set_precision("Strain_11", 18);
+  table_handler.set_precision("Strain_22", 18);
+  table_handler.set_precision("Strain_33", 18);
+  table_handler.set_precision("Strain_23", 18);
+  table_handler.set_precision("Strain_13", 18);
+  table_handler.set_precision("Strain_12", 18);
+  table_handler.set_precision("Fluctuations_11", 18);
+  table_handler.set_precision("Fluctuations_22", 18);
+  table_handler.set_precision("Fluctuations_33", 18);
+  table_handler.set_precision("Fluctuations_23", 18);
+  table_handler.set_precision("Fluctuations_13", 18);
+  table_handler.set_precision("Fluctuations_12", 18);
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::init(
+  std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain,
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law,
+  std::ofstream                                           &path_to_output_file)
+{
+  this->elastic_strain  = elastic_strain;
+  this->hooke_law       = hooke_law;
+  this->path_to_output_file.swap(path_to_output_file);
+
+  flag_init_was_called = true;
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::compute_macroscopic_quantities()
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The HookeLaw<dim> instance has not"
+                                 " been initialized."));
+
+  compute_macroscopic_stress();
+
+  compute_macroscopic_stiffness_tetrad();
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::output_macroscopic_quantities_to_file(const double time)
+{
+  update_table_handler_values(time);
+
+  table_handler.write_text(
+    path_to_output_file,
+    dealii::TableHandler::TextOutputFormat::org_mode_table);
+}
+
+
+
+template <>
+void Homogenization<2>::update_table_handler_values(const double time)
+{
+  const dealii::SymmetricTensor<2,2> deviatoric_stress =
+    deviatoric_projector * macroscopic_stress;
+
+  const dealii::SymmetricTensor<2,2> deviatoric_strain =
+    deviatoric_projector * macroscopic_strain;
+
+  const dealii::SymmetricTensor<2,2> deviatoric_fluctuations =
+    deviatoric_projector * microscopic_strain_fluctuations;
+
+  const double von_mises_stress =
+    std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
+
+  const double von_mises_strain =
+    std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
+
+  const double von_mises_fluctuations =
+    std::sqrt(2./3. * deviatoric_fluctuations * deviatoric_fluctuations);
+
+  table_handler.add_value("Time", time);
+  table_handler.add_value("VonMisesStress", von_mises_stress);
+  table_handler.add_value("VonMisesStrain", von_mises_strain);
+  table_handler.add_value("VonMisesFluctuations", von_mises_fluctuations);
+  table_handler.add_value("Stress_11", macroscopic_stress[0][0]);
+  table_handler.add_value("Stress_22", macroscopic_stress[1][1]);
+  table_handler.add_value("Stress_12", macroscopic_stress[0][1]);
+  table_handler.add_value("Strain_11", macroscopic_strain[0][0]);
+  table_handler.add_value("Strain_22", macroscopic_strain[1][1]);
+  table_handler.add_value("Strain_12", macroscopic_strain[0][1]);
+  table_handler.add_value("Fluctuations_11", microscopic_strain_fluctuations[0][0]);
+  table_handler.add_value("Fluctuations_22", microscopic_strain_fluctuations[1][1]);
+  table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
+
+  table_handler.start_new_row();
+}
+
+
+
+template <>
+void Homogenization<3>::update_table_handler_values(const double time)
+{
+  const dealii::SymmetricTensor<2,3> deviatoric_stress =
+    deviatoric_projector * macroscopic_stress;
+
+  const dealii::SymmetricTensor<2,3> deviatoric_strain =
+    deviatoric_projector * macroscopic_strain;
+
+  const dealii::SymmetricTensor<2,3> deviatoric_fluctuations =
+    deviatoric_projector * microscopic_strain_fluctuations;
+
+  const double von_mises_stress =
+    std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
+
+  const double von_mises_strain =
+    std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
+
+  const double von_mises_fluctuations =
+    std::sqrt(2./3. * deviatoric_fluctuations * deviatoric_fluctuations);
+
+  table_handler.add_value("Time", time);
+  table_handler.add_value("VonMisesStress", von_mises_stress);
+  table_handler.add_value("VonMisesStrain", von_mises_strain);
+  table_handler.add_value("VonMisesFluctuations", von_mises_fluctuations);
+  table_handler.add_value("Stress_11", macroscopic_stress[0][0]);
+  table_handler.add_value("Stress_22", macroscopic_stress[1][1]);
+  table_handler.add_value("Stress_33", macroscopic_stress[2][2]);
+  table_handler.add_value("Stress_23", macroscopic_stress[1][2]);
+  table_handler.add_value("Stress_13", macroscopic_stress[0][2]);
+  table_handler.add_value("Stress_12", macroscopic_stress[0][1]);
+  table_handler.add_value("Strain_11", macroscopic_strain[0][0]);
+  table_handler.add_value("Strain_22", macroscopic_strain[1][1]);
+  table_handler.add_value("Strain_33", macroscopic_strain[2][2]);
+  table_handler.add_value("Strain_23", macroscopic_strain[1][2]);
+  table_handler.add_value("Strain_13", macroscopic_strain[0][2]);
+  table_handler.add_value("Strain_12", macroscopic_strain[0][1]);
+  table_handler.add_value("Fluctuations_11", microscopic_strain_fluctuations[0][0]);
+  table_handler.add_value("Fluctuations_22", microscopic_strain_fluctuations[1][1]);
+  table_handler.add_value("Fluctuations_33", microscopic_strain_fluctuations[2][2]);
+  table_handler.add_value("Fluctuations_23", microscopic_strain_fluctuations[1][2]);
+  table_handler.add_value("Fluctuations_13", microscopic_strain_fluctuations[0][2]);
+  table_handler.add_value("Fluctuations_12", microscopic_strain_fluctuations[0][1]);
+
+  table_handler.start_new_row();
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::set_macroscopic_strain(
+  const dealii::SymmetricTensor<2,dim> macroscopic_strain)
+{
+  for (unsigned int i = 0;
+        i < macroscopic_strain.n_independent_components;
+        ++i)
+    AssertIsFinite(macroscopic_strain.access_raw_entry(i));
+
+
+  this->macroscopic_strain = macroscopic_strain;
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::compute_macroscopic_stress()
+{
+  // Initiate the local integral value and at each wall.
+  macroscopic_stress = 0.0;
+
+  const dealii::UpdateFlags update_flags =
+    dealii::update_JxW_values |
+    dealii::update_values |
+    dealii::update_gradients;
+
+  // Finite element values
+  dealii::hp::FEValues<dim> hp_fe_values(
+    mapping_collection,
+    fe_field->get_fe_collection(),
+    quadrature_collection,
+    update_flags);
+
+  // Number of quadrature points
+  const unsigned int n_quadrature_points =
+    quadrature_collection.max_n_quadrature_points();
+
+  // Vectors to stores the temperature gradients and normal vectors
+  // at the quadrature points
+  std::vector<double>                           JxW_values(n_quadrature_points);
+  std::vector<dealii::SymmetricTensor<2, dim>>  strain_tensor_values(n_quadrature_points);
+  std::vector<dealii::SymmetricTensor<2, dim>>  elastic_strain_tensor_values(n_quadrature_points);
+  std::vector<dealii::SymmetricTensor<2, dim>>  stress_tensor_values(n_quadrature_points);
+  std::vector<std::vector<double>>              slip_values(fe_field->get_n_slips(),
+                                                            std::vector<double>(n_quadrature_points));
+
+  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_stress;
+
+  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_strain_fluctuations;
+
+  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_stress;
+
+  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_strain_fluctuations;
+
+  double                          domain_volume = 0.;
+
+  double                          cell_volume = 0.;
+
+  for (const auto &cell : fe_field->get_dof_handler().active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      // Reset local values
+      cell_integral_microscopic_stress  = 0.0;
+
+      cell_volume                       = 0.0;
+
+      // Get the crystal identifier for the current cell
+      const unsigned int crystal_id = cell->active_fe_index();
+
+      // Update the hp::FEFaceValues instance to the values of the current cell
+      hp_fe_values.reinit(cell);
+
+      const dealii::FEValues<dim> &fe_values =
+        hp_fe_values.get_present_fe_values();
+
+      // Get JxW values at the quadrature points
+      JxW_values = fe_values.get_JxW_values();
+
+      // Get the displacement gradients at the quadrature points
+      fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
+        fe_field->solution,
+        strain_tensor_values);
+
+      // Get the slips and their gradients values at the quadrature points
+      for (unsigned int slip_id = 0;
+          slip_id < fe_field->get_n_slips();
+          ++slip_id)
+      {
+        fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
+          fe_field->solution,
+          slip_values[slip_id]);
+      }
+
+      // Numerical integration
+      for (unsigned int quadrature_point_id = 0;
+            quadrature_point_id < n_quadrature_points;
+            ++quadrature_point_id)
+      {
+        // Compute the elastic strain tensor at the quadrature point
+        elastic_strain_tensor_values[quadrature_point_id] =
+          elastic_strain->get_elastic_strain_tensor(
+            crystal_id,
+            quadrature_point_id,
+            strain_tensor_values[quadrature_point_id],
+            slip_values);
+
+        // Compute the stress tensor at the quadrature point
+        stress_tensor_values[quadrature_point_id] =
+          hooke_law->get_stress_tensor(
+            crystal_id,
+            macroscopic_strain +
+            elastic_strain_tensor_values[quadrature_point_id]);
+
+        cell_integral_microscopic_stress +=
+          stress_tensor_values[quadrature_point_id] *
+          JxW_values[quadrature_point_id];
+
+        cell_integral_microscopic_strain_fluctuations +=
+          strain_tensor_values[quadrature_point_id] *
+          JxW_values[quadrature_point_id];
+
+        cell_volume += JxW_values[quadrature_point_id];
+      }
+
+      domain_integral_microscopic_stress +=
+        cell_integral_microscopic_stress;
+
+      domain_integral_microscopic_strain_fluctuations +=
+        cell_integral_microscopic_strain_fluctuations;
+
+      domain_volume += cell_volume;
+    }
+
+  // Gather the values of each processor
+  domain_integral_microscopic_stress =
+    dealii::Utilities::MPI::sum(domain_integral_microscopic_stress,
+                                MPI_COMM_WORLD);
+
+  domain_integral_microscopic_strain_fluctuations =
+    dealii::Utilities::MPI::sum(
+      domain_integral_microscopic_strain_fluctuations, MPI_COMM_WORLD);
+
+  domain_volume =
+    dealii::Utilities::MPI::sum(domain_volume, MPI_COMM_WORLD);
+
+  // Compute the homogenized values
+  macroscopic_stress = domain_integral_microscopic_stress / domain_volume;
+
+  microscopic_strain_fluctuations =
+    domain_integral_microscopic_strain_fluctuations / domain_volume;
+}
+
+
+
+template <int dim>
+void Homogenization<dim>::compute_macroscopic_stiffness_tetrad()
+{
+
+}
+
+
+
 } // namespace Postprocessing
 
 
@@ -655,3 +1055,6 @@ template class gCP::Postprocessing::Postprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;
+
+template class gCP::Postprocessing::Homogenization<2>;
+template class gCP::Postprocessing::Homogenization<3>;

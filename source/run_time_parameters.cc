@@ -465,6 +465,7 @@ void ContactLawParameters::parse_parameters(
 
 SolverParameters::SolverParameters()
 :
+solver_type(SolverType::CG),
 residual_tolerance(1e-10),
 newton_update_tolerance(1e-8),
 n_max_nonlinear_iterations(1000),
@@ -486,6 +487,11 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
+    prm.declare_entry("Solver type",
+                    "cg",
+                    dealii::Patterns::Selection(
+                      "directsolver|cg"));
+
     prm.declare_entry("Tolerance of the residual",
                       "1e-10",
                       dealii::Patterns::Double());
@@ -556,6 +562,22 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Nonlinear solver's parameters");
   {
+    const std::string string_solver_type(
+                      prm.get("Solver type"));
+
+    if (string_solver_type == std::string("directsolver"))
+    {
+      solver_type = SolverType::DirectSolver;
+    }
+    else if (string_solver_type == std::string("cg"))
+    {
+      solver_type = SolverType::CG;
+    }
+    else
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the solver type."));
+
     residual_tolerance =
       prm.get_double("Tolerance of the residual");
     AssertThrow(residual_tolerance > 0,
@@ -627,7 +649,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       dealii::ExcMessage(
         "Unexpected identifier for the boundary conditions at grain "
         "boundaries."));
-
 
   logger_output_directory = prm.get("Logger output directory");
 
@@ -782,7 +803,6 @@ ProblemParameters::ProblemParameters()
 dim(2),
 mapping_degree(1),
 mapping_interior_cells(false),
-n_elements_in_y_direction(100),
 n_global_refinements(0),
 fe_degree_displacements(2),
 fe_degree_slips(1),
@@ -791,7 +811,9 @@ slips_directions_pathname("input/slip_directions"),
 euler_angles_pathname("input/euler_angles"),
 graphical_output_frequency(1),
 terminal_output_frequency(1),
+homogenization_frequency(1),
 graphical_output_directory("results/default/"),
+flag_compute_macroscopic_quantities(false),
 flag_output_damage_variable(false),
 verbose(true)
 {}
@@ -851,10 +873,6 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Mapping - Apply to interior cells",
                       "false",
                       dealii::Patterns::Bool());
-
-    prm.declare_entry("Number of elements in y-direction",
-                      "100",
-                      dealii::Patterns::Integer(0));
 
     prm.declare_entry("Number of global refinements",
                       "0",
@@ -937,6 +955,21 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Bool());
   }
   prm.leave_subsection();
+
+  /*!
+   * @note Temporary parameters
+   */
+  prm.enter_subsection("Postprocessing parameters");
+  {
+    prm.declare_entry("Homogenization",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Homogenization frequency",
+                      "1",
+                      dealii::Patterns::Integer(1));
+  }
+  prm.leave_subsection();
 }
 
 
@@ -955,8 +988,6 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     AssertThrow(mapping_degree > 0, dealii::ExcLowerRange(mapping_degree, 0) );
 
     mapping_interior_cells = prm.get_bool("Mapping - Apply to interior cells");
-
-    n_elements_in_y_direction = prm.get_integer("Number of elements in y-direction");
 
     n_global_refinements = prm.get_integer("Number of global refinements");
 
@@ -994,7 +1025,6 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-
   prm.enter_subsection("Output control parameters");
   {
     graphical_output_frequency = prm.get_integer("Graphical output frequency");
@@ -1010,6 +1040,17 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     flag_output_damage_variable = prm.get_bool("Output damage variable field");
   }
   prm.leave_subsection();
+
+  prm.enter_subsection("Postprocessing parameters");
+  {
+    flag_compute_macroscopic_quantities =
+      prm.get_bool("Homogenization");
+
+    homogenization_frequency = prm.get_integer("Homogenization frequency");
+    Assert(homogenization_frequency > 0,
+           dealii::ExcLowerRange(homogenization_frequency, 0));
+  }
+  prm.leave_subsection();
 }
 
 
@@ -1019,9 +1060,10 @@ SimpleShearParameters::SimpleShearParameters()
 ProblemParameters(),
 max_shear_strain_at_upper_boundary(0.5),
 min_shear_strain_at_upper_boundary(0.1),
-n_equal_sized_divisions(1),
 height(1),
-width(0.1)
+width(0.1),
+n_elements_in_y_direction(100),
+n_equal_sized_divisions(1)
 {}
 
 
@@ -1078,6 +1120,10 @@ void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
                       "0.0218",
                       dealii::Patterns::Double());
 
+    prm.declare_entry("Number of elements in y-direction",
+                      "100",
+                      dealii::Patterns::Integer(0));
+
     prm.declare_entry("Number of equally sized divisions in y-direction",
                       "1",
                       dealii::Patterns::Integer());
@@ -1111,6 +1157,13 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     AssertIsFinite(min_shear_strain_at_upper_boundary);
 
+    n_elements_in_y_direction = prm.get_integer("Number of elements in y-direction");
+
+    Assert(n_elements_in_y_direction > 0,
+           dealii::ExcLowerRange(n_elements_in_y_direction, 0));
+
+    AssertIsFinite(n_elements_in_y_direction);
+
     n_equal_sized_divisions =
       prm.get_integer("Number of equally sized divisions in y-direction");
 
@@ -1133,6 +1186,156 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     AssertIsFinite(width);
   }
+  prm.leave_subsection();
+}
+
+
+
+SemicoupledParameters::SemicoupledParameters()
+:
+ProblemParameters(),
+strain_component_11(0.01),
+strain_component_22(0.01),
+strain_component_33(0.01),
+strain_component_23(0.01),
+strain_component_13(0.01),
+strain_component_12(0.01),
+min_to_max_strain_load_ratio(.5),
+msh_file_pathname("input/mesh/periodic_polycrystal.msh")
+{}
+
+
+
+SemicoupledParameters::SemicoupledParameters(
+  const std::string &parameter_filename)
+:
+SemicoupledParameters()
+{
+  dealii::ParameterHandler prm;
+
+  declare_parameters(prm);
+
+  std::ifstream parameter_file(parameter_filename.c_str());
+
+  if (!parameter_file)
+  {
+    parameter_file.close();
+
+    std::ostringstream message;
+
+    message << "Input parameter file <"
+            << parameter_filename << "> not found. Creating a"
+            << std::endl
+            << "template file of the same name."
+            << std::endl;
+
+    std::ofstream parameter_out(parameter_filename.c_str());
+
+    prm.print_parameters(parameter_out,
+                         dealii::ParameterHandler::OutputStyle::PRM);
+
+    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+  }
+
+  prm.parse_input(parameter_file);
+
+  parse_parameters(prm);
+}
+
+
+
+void SemicoupledParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::declare_parameters(prm);
+
+  prm.enter_subsection("Semi-coupled problem");
+  {
+    prm.declare_entry("Max strain component 11",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 22",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 33",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 23",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 13",
+                      "0.0",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Max strain component 12",
+                      "0.01",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Minimum to maximum strain load ratio",
+                      "0.5",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Mesh file (*.msh) path name",
+                      "input/mesh/periodic_polycrystal.msh",
+                      dealii::Patterns::FileName());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void SemicoupledParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  ProblemParameters::parse_parameters(prm);
+
+  prm.enter_subsection("Semi-coupled problem");
+  {
+    strain_component_11   = prm.get_double("Max strain component 11");
+
+    strain_component_22   = prm.get_double("Max strain component 22");
+
+    strain_component_33   = prm.get_double("Max strain component 33");
+
+    strain_component_23   = prm.get_double("Max strain component 23");
+
+    strain_component_13   = prm.get_double("Max strain component 13");
+
+    strain_component_12   = prm.get_double("Max strain component 12");
+
+    msh_file_pathname     = prm.get("Mesh file (*.msh) path name");
+
+    min_to_max_strain_load_ratio =
+      prm.get_double("Minimum to maximum strain load ratio");
+
+    AssertIsFinite(strain_component_11);
+
+    AssertIsFinite(strain_component_22);
+
+    AssertIsFinite(strain_component_33);
+
+    AssertIsFinite(strain_component_23);
+
+    AssertIsFinite(strain_component_13);
+
+    AssertIsFinite(strain_component_12);
+
+    AssertIsFinite(min_to_max_strain_load_ratio);
+
+    Assert((0 <= min_to_max_strain_load_ratio) &&
+           (min_to_max_strain_load_ratio < 1.0),
+           dealii::ExcMessage("The ratio has to be inside the range "
+                              "[0,1)"));
+
+    Assert(
+      (msh_file_pathname.find_last_of(".") != std::string::npos) &&
+      (msh_file_pathname.substr(msh_file_pathname.find_last_of(".")+1)
+        == "msh"),
+      dealii::ExcMessage(
+        "The path *.msh file has no extension or the wrong one"));
+  };
   prm.leave_subsection();
 }
 

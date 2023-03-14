@@ -6,8 +6,8 @@ mesh_size     = 1.0;
 deg_to_rad    = Pi / 180;
 theta         = 60 * deg_to_rad;
 
-n_pattern_columns = 3;
-n_pattern_rows    = 5;
+n_pattern_columns = 2;
+n_pattern_rows    = 2;
 
 n_points_y = 2 * n_pattern_rows + 1;
 n_points_x = 4 * n_pattern_columns + 1;
