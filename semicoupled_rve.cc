@@ -395,6 +395,8 @@ void SemicoupledProblem<dim>::make_grid()
 
   this->triangulation.add_periodicity(periodicity_vector);
 
+  this->triangulation.refine_global(parameters.n_global_refinements);
+
   // Terminal output
   *pcout << "Triangulation:"
          << std::endl
