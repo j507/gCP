@@ -155,13 +155,6 @@ Line Loop(81) = {-56, 61, -59, -9} ;
  Physical Surface(10) = {84, 95} ;
  Physical Surface(11) = {87, 94, 96, 98} ;
 Physical Line(0) = {6, 39, 47, 45, 52, 58, 54, 55, 61, 60, 15, 27, 28, 36, 20, 50, 51, 49} ;
-Mesh.Algorithm = 6;
-Mesh.RecombinationAlgorithm = 2;
-Mesh.RecombineAll = 1;
-Mesh.CharacteristicLengthFactor = 0.15;
-//Mesh.SubdivisionAlgorithm = 1;
-Mesh.Smoothing = 200;
-//Mesh.AnisoMax = 1;
 
 Periodic Line {55} = {47} Translate {1, 0, 0};
 Periodic Line {61} = {39} Translate {1, 0, 0};
@@ -173,6 +166,16 @@ Periodic Line {50} = {45} Translate {0, 1, 0};
 Periodic Line {20} = {52} Translate {0, 1, 0};
 Periodic Line {36} = {58} Translate {0, 1, 0};
 Periodic Line {28} = {54} Translate {0, 1, 0};
+
+Mesh.Algorithm = 8;
+Mesh.RecombinationAlgorithm = 2;
+Mesh.RecombineAll = 1;
+Mesh.CharacteristicLengthFactor = 0.15;
+//Mesh.SubdivisionAlgorithm = 1;
+Mesh.Smoothing = 200;
+//Mesh.AnisoMax = 1;
+
+
 
 Show "*";Translate {0.02, 0.02, 0} {
   Point{23};
