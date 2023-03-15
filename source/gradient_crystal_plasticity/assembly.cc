@@ -395,13 +395,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 old_effective_opening_displacement,
                 discrete_time.get_next_step_size());
 
-            scratch.contact_traction_current_cell_gateaux_derivative_values[face_q_point] =
-              contact_law->get_current_cell_gateaux_derivative(
-                opening_displacement,
-                scratch.normal_vector_values[face_q_point]);
-
-            scratch.contact_traction_neighbor_cell_gateaux_derivative_values[face_q_point] =
-              contact_law->get_neighbor_cell_gateaux_derivative(
+            scratch.contact_law_jacobian_values[face_q_point] =
+              contact_law->get_jacobian(
                 opening_displacement,
                 scratch.normal_vector_values[face_q_point]);
 
@@ -449,7 +444,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                       parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage) *
                      scratch.current_cell_gateaux_derivative_values[face_q_point]
                      +
-                     scratch.contact_traction_current_cell_gateaux_derivative_values[face_q_point]) *
+                     - 1.0 *
+                     scratch.contact_law_jacobian_values[face_q_point]) *
                     scratch.face_vector_phi[j] *
                     scratch.face_JxW_values[face_q_point];
 
@@ -460,7 +456,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                       parameters.cohesive_law_parameters.flag_couple_macrotraction_to_damage) *
                      scratch.neighbor_cell_gateaux_derivative_values[face_q_point]
                      +
-                     scratch.contact_traction_neighbor_cell_gateaux_derivative_values[face_q_point]) *
+                     scratch.contact_law_jacobian_values[face_q_point]) *
                     scratch.neighbor_face_vector_phi[j] *
                     scratch.face_JxW_values[face_q_point];
 

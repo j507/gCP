@@ -631,7 +631,7 @@ public:
    *
    * @details It is computed as
    *  \f[
-   *      \bs{J}_{\bs{t}_\mathrm{c}} = - \varepsilon k_0
+   *      \bs{J}_{\bs{t}_\mathrm{c}} =  \varepsilon
    *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
    *      \bs{n} \otimes \bs{n}
    *  \f]
@@ -643,40 +643,11 @@ public:
    * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
    * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
    */
-  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const dealii::Tensor<1,dim> opening_displacement,
-    const dealii::Tensor<1,dim> normal_vector) const;
-
-  /*!
-   * @brief Method returning the Gateaux derivative of the
-   * contact traction with respect to the current cell
-   *
-   * @details It is computed as
-   *  \f[
-   *      \bs{J}_{\bs{t}_\mathrm{c}} = \varepsilon k_0
-   *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
-   *      \bs{n} \otimes \bs{n}
-   *  \f]
-   *
-   * @param opening_displacement Opening displacement at the evaluation
-   * point \f$ \bs{\delta} \f$
-   * @param normal_vector Normal vector at the evaluation point
-   * \f$ \bs{n} \f$
-   * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
-   * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
-   */
-  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+  dealii::SymmetricTensor<2,dim> get_jacobian(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
 
 private:
-
-  /*!
-   * @brief The stiffness of the fictitious spring between the two
-   * bodies in contact
-   */
-  double stiffness;
-
   /*!
    * @brief The penalty coefficient multiplying the @ref stiffness value
    * leading to the effective stiffness
@@ -710,7 +681,7 @@ template <int dim>
 inline double
 ContactLaw<dim>::macaulay_brackets(const double value) const
 {
-  if (value > 0)
+  if (value > 0.)
     return value;
   else
     return 0.0;

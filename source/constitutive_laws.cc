@@ -1377,7 +1377,6 @@ template<int dim>
 ContactLaw<dim>::ContactLaw(
   const RunTimeParameters::ContactLawParameters parameters)
 :
-stiffness(parameters.stiffness),
 penalty_coefficient(parameters.penalty_coefficient)
 {}
 
@@ -1398,7 +1397,7 @@ ContactLaw<dim>::get_contact_traction(
 
   // Compute cohesive traction
   contact_traction -=
-    penalty_coefficient * stiffness *
+    penalty_coefficient *
     macaulay_brackets(-normal_opening_displacement) * normal_vector;
 
   for (unsigned int i = 0; i < dim; ++i)
@@ -1411,60 +1410,30 @@ ContactLaw<dim>::get_contact_traction(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-ContactLaw<dim>::get_current_cell_gateaux_derivative(
+ContactLaw<dim>::get_jacobian(
   const dealii::Tensor<1,dim> opening_displacement,
   const dealii::Tensor<1,dim> normal_vector) const
 {
   // Initiate Gateaux derivative
-  dealii::SymmetricTensor<2,dim> current_cell_gateaux_derivative;
-
-  // Compute normal component of the opening displacement
-  const double normal_opening_displacement =
-    opening_displacement * normal_vector;
-
-  // Compute Gateaux derivatice for the current cell
-  current_cell_gateaux_derivative =
-    -1.0 * penalty_coefficient * stiffness *
-    macaulay_brackets(-normal_opening_displacement /
-                      std::abs(normal_opening_displacement)) *
-    dealii::symmetrize(dealii::outer_product(normal_vector,
-                                             normal_vector));
-
-  for (unsigned int i = 0;
-       i < current_cell_gateaux_derivative.n_independent_components; ++i)
-    AssertIsFinite(current_cell_gateaux_derivative.access_raw_entry(i));
-
-  return (current_cell_gateaux_derivative);
-}
-
-
-
-template <int dim>
-dealii::SymmetricTensor<2,dim>
-ContactLaw<dim>::get_neighbor_cell_gateaux_derivative(
-  const dealii::Tensor<1,dim> opening_displacement,
-  const dealii::Tensor<1,dim> normal_vector) const
-{
-  // Initiate Gateaux derivative
-  dealii::SymmetricTensor<2,dim> neighbor_cell_gateaux_derivative;
+  dealii::SymmetricTensor<2,dim> jacobian;
 
   // Compute normal component of the opening displacement
   const double normal_opening_displacement =
     opening_displacement * normal_vector;
 
   // Compute Gateaux derivatice for the neighbor cell
-  neighbor_cell_gateaux_derivative =
-    penalty_coefficient * stiffness *
+  jacobian =
+    penalty_coefficient *
     macaulay_brackets(-normal_opening_displacement /
                       std::abs(normal_opening_displacement)) *
     dealii::symmetrize(dealii::outer_product(normal_vector,
                                              normal_vector));
 
   for (unsigned int i = 0;
-       i < neighbor_cell_gateaux_derivative.n_independent_components; ++i)
-    AssertIsFinite(neighbor_cell_gateaux_derivative.access_raw_entry(i));
+       i < jacobian.n_independent_components; ++i)
+    AssertIsFinite(jacobian.access_raw_entry(i));
 
-  return (neighbor_cell_gateaux_derivative);
+  return (jacobian);
 }
 
 

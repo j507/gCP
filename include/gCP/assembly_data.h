@@ -141,9 +141,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<dealii::SymmetricTensor<2,dim>>     neighbor_cell_gateaux_derivative_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     contact_traction_current_cell_gateaux_derivative_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     contact_traction_neighbor_cell_gateaux_derivative_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>     contact_law_jacobian_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     sym_grad_vector_phi;
 
