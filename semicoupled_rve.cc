@@ -286,38 +286,6 @@ string_width(
       *pcout
         << "done!\n\n";
     }
-    else
-    {
-      try
-      {
-        fs::create_directories(parameters.graphical_output_directory + "paraview/");
-      }
-      catch (std::exception &exc)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the creation of the output directory: "
-                  << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-      catch (...)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                    << std::endl;
-        std::cerr << "Unknown exception in the creation of the output directory!"
-                  << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
   }
 
   gCP_solver.set_cyclic_step_data(
@@ -864,8 +832,6 @@ void SemicoupledProblem<dim>::run()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
-
-    //return;
   }
 }
 

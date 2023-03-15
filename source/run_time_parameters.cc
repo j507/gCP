@@ -1,6 +1,8 @@
 #include <gCP/run_time_parameters.h>
 
 #include <deal.II/base/conditional_ostream.h>
+#include <deal.II/base/mpi.h>
+#include <deal.II/base/utilities.h>
 
 #include <fstream>
 
@@ -1038,6 +1040,40 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     graphical_output_directory = prm.get("Graphical output directory");
 
     flag_output_damage_variable = prm.get_bool("Output damage variable field");
+
+    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
+        !fs::exists(graphical_output_directory + "paraview/"))
+    {
+      try
+      {
+        fs::create_directories(graphical_output_directory + "paraview/");
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the creation of the output directory: "
+                  << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                    << std::endl;
+        std::cerr << "Unknown exception in the creation of the output directory!"
+                  << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
   }
   prm.leave_subsection();
 
@@ -1102,6 +1138,18 @@ SimpleShearParameters()
   prm.parse_input(parameter_file);
 
   parse_parameters(prm);
+
+  std::string output_folder_path;
+
+  prm.enter_subsection("Output control parameters");
+  {
+    output_folder_path = prm.get("Graphical output directory");
+  }
+  prm.leave_subsection();
+
+  prm.print_parameters(
+    output_folder_path + "parameter_file.prm",
+    dealii::ParameterHandler::OutputStyle::ShortPRM);
 }
 
 
@@ -1240,6 +1288,19 @@ SemicoupledParameters()
   prm.parse_input(parameter_file);
 
   parse_parameters(prm);
+
+  std::string output_folder_path;
+
+  prm.enter_subsection("Output control parameters");
+  {
+    output_folder_path = prm.get("Graphical output directory");
+  }
+  prm.leave_subsection();
+
+  if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0))
+    prm.print_parameters(
+      output_folder_path + "parameter_file.prm",
+      dealii::ParameterHandler::OutputStyle::ShortPRM);
 }
 
 
