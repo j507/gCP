@@ -459,14 +459,7 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
-  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const dealii::Tensor<1,dim> opening_displacement,
-    const dealii::Tensor<1,dim> normal_vector,
-    const double                max_effective_opening_displacement,
-    const double                old_effective_opening_displacement,
-    const double                time_step_size) const;
-
-  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+  dealii::SymmetricTensor<2,dim> get_jacobian(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector,
     const double                max_effective_opening_displacement,
@@ -537,8 +530,8 @@ CohesiveLaw<dim>::get_degradation_function_derivative_value(
   const bool    couple) const
 {
   if (couple)
-    return - degradation_exponent *
-           std::pow(1.0 - damage_variable, degradation_exponent - 1.0);
+    return (- degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
   else
     return 1.0;
 }

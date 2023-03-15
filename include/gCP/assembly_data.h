@@ -137,9 +137,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             damage_variable_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     current_cell_gateaux_derivative_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     neighbor_cell_gateaux_derivative_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>     cohesive_law_jacobian_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     contact_law_jacobian_values;
 

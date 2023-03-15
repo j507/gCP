@@ -227,8 +227,8 @@ void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
   // Compute effective opening displacements (Needed for the next
   // pseudo-time iteration)
   old_effective_opening_displacement =
-     std::sqrt(normal_opening_displacement *
-               normal_opening_displacement
+     std::sqrt(macaulay_brackets(normal_opening_displacement) *
+               macaulay_brackets(normal_opening_displacement)
                +
                tangential_to_normal_stiffness_ratio *
                tangential_to_normal_stiffness_ratio *
@@ -270,8 +270,8 @@ void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
   // Compute effective opening displacements (Needed for the next
   // pseudo-time iteration)
   old_effective_opening_displacement =
-     std::sqrt(normal_opening_displacement *
-               normal_opening_displacement
+     std::sqrt(macaulay_brackets(normal_opening_displacement) *
+               macaulay_brackets(normal_opening_displacement)
                +
                tangential_to_normal_stiffness_ratio *
                tangential_to_normal_stiffness_ratio *

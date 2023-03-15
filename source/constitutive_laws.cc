@@ -1050,6 +1050,10 @@ CohesiveLaw<dim>::get_cohesive_traction(
   const double                old_effective_opening_displacement,
   const double                time_step_size) const
 {
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
   // Initiate cohesive traction
   dealii::Tensor<1,dim> cohesive_traction;
 
@@ -1058,16 +1062,6 @@ CohesiveLaw<dim>::get_cohesive_traction(
   const EffectiveQuantities effective_quantities =
     get_effective_quantities(opening_displacement, normal_vector);
 
-  // Compute the effective opening displacement rate
-  const double effective_opening_displacement_rate =
-    (effective_quantities.opening_displacement -
-     old_effective_opening_displacement) /
-    time_step_size;
-
-  AssertIsFinite(max_effective_opening_displacement);
-  AssertIsFinite(old_effective_opening_displacement);
-  AssertIsFinite(1.0 / time_step_size);
-  AssertIsFinite(effective_quantities.opening_displacement);
   Assert(
     effective_quantities.opening_displacement <=
       max_effective_opening_displacement,
@@ -1075,6 +1069,12 @@ CohesiveLaw<dim>::get_cohesive_traction(
       "The effective opening displacement is not suppose to be "
       "bigger than the maximum. An update_values() call ought to "
       "be missing in code."));
+
+  // Compute the effective opening displacement rate
+  const double effective_opening_displacement_rate =
+    (effective_quantities.opening_displacement -
+     old_effective_opening_displacement) /
+    time_step_size;
 
   // The cohesive traction has the same direction as the
   // effective direction
@@ -1114,15 +1114,19 @@ CohesiveLaw<dim>::get_cohesive_traction(
 
 template <int dim>
 dealii::SymmetricTensor<2,dim>
-CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
+CohesiveLaw<dim>::get_jacobian(
   const dealii::Tensor<1,dim> opening_displacement,
   const dealii::Tensor<1,dim> normal_vector,
   const double                max_effective_opening_displacement,
   const double                old_effective_opening_displacement,
   const double                time_step_size) const
 {
+  AssertIsFinite(max_effective_opening_displacement);
+  AssertIsFinite(old_effective_opening_displacement);
+  AssertIsFinite(1.0 / time_step_size);
+
   // Initiate Gateaux derivative
-  dealii::SymmetricTensor<2,dim> current_cell_gateaux_derivative;
+  dealii::SymmetricTensor<2,dim> jacobian;
 
   // Get the effective opening displacement, the effective
   // direction and the effective identity tensor
@@ -1135,10 +1139,6 @@ CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
      old_effective_opening_displacement) /
     time_step_size;
 
-  AssertIsFinite(max_effective_opening_displacement);
-  AssertIsFinite(old_effective_opening_displacement);
-  AssertIsFinite(1.0 / time_step_size);
-  AssertIsFinite(effective_quantities.opening_displacement);
   Assert(
     effective_quantities.opening_displacement <=
       max_effective_opening_displacement,
@@ -1152,93 +1152,16 @@ CohesiveLaw<dim>::get_current_cell_gateaux_derivative(
         max_effective_opening_displacement &&
       effective_opening_displacement_rate >= 0.0)
   {
-    current_cell_gateaux_derivative =
-      -1.0 *
+    jacobian =
       critical_cohesive_traction /
       critical_opening_displacement *
       std::exp(1.0 - effective_quantities.opening_displacement /
                      critical_opening_displacement) *
-      (effective_quantities.identity_tensor -
+      (effective_quantities.identity_tensor
+       -
        effective_quantities.opening_displacement /
-         critical_opening_displacement *
+       critical_opening_displacement *
        dealii::symmetrize(dealii::outer_product(
-         effective_quantities.direction,
-         effective_quantities.direction)));
-  }
-  // Unloading and reloading behavior
-  else if (effective_quantities.opening_displacement <
-             max_effective_opening_displacement ||
-           (effective_quantities.opening_displacement ==
-              max_effective_opening_displacement &&
-            effective_opening_displacement_rate < 0.0))
-  {
-    current_cell_gateaux_derivative =
-      -1.0 *
-      get_effective_cohesive_traction(max_effective_opening_displacement) /
-      max_effective_opening_displacement *
-      effective_quantities.identity_tensor;
-  }
-  else
-    Assert(false, dealii::ExcInternalError());
-
-  for (unsigned int i = 0;
-       i < current_cell_gateaux_derivative.n_independent_components; ++i)
-    AssertIsFinite(current_cell_gateaux_derivative.access_raw_entry(i));
-
-  return (current_cell_gateaux_derivative);
-}
-
-
-
-template <int dim>
-dealii::SymmetricTensor<2,dim>
-CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
-  const dealii::Tensor<1,dim> opening_displacement,
-  const dealii::Tensor<1,dim> normal_vector,
-  const double                max_effective_opening_displacement,
-  const double                old_effective_opening_displacement,
-  const double                time_step_size) const
-{
-  // Initiate Gateaux derivative
-  dealii::SymmetricTensor<2,dim> neighbor_cell_gateaux_derivative;
-
-  // Get the effective opening displacement, the effective
-  // direction and the effective identity tensor
-  const EffectiveQuantities effective_quantities =
-    get_effective_quantities(opening_displacement, normal_vector);
-
-  // Compute the effective opening displacement rate
-  const double effective_opening_displacement_rate =
-    (effective_quantities.opening_displacement -
-     old_effective_opening_displacement) /
-    time_step_size;
-
-  AssertIsFinite(max_effective_opening_displacement);
-  AssertIsFinite(old_effective_opening_displacement);
-  AssertIsFinite(1.0 / time_step_size);
-  AssertIsFinite(effective_quantities.opening_displacement);
-  Assert(
-    effective_quantities.opening_displacement <=
-      max_effective_opening_displacement,
-    dealii::ExcMessage(
-      "The effective opening displacement is not suppose to be "
-      "bigger than the maximum. An update_values() call ought to "
-      "be missing in code."));
-
-  // Loading behavior
-  if (effective_quantities.opening_displacement ==
-        max_effective_opening_displacement &&
-      effective_opening_displacement_rate >= 0.0)
-  {
-    neighbor_cell_gateaux_derivative =
-      critical_cohesive_traction /
-      critical_opening_displacement *
-      std::exp(1.0 - effective_quantities.opening_displacement /
-                    critical_opening_displacement) *
-      (effective_quantities.identity_tensor -
-      effective_quantities.opening_displacement /
-        critical_opening_displacement *
-      dealii::symmetrize(dealii::outer_product(
         effective_quantities.direction,
         effective_quantities.direction)));
   }
@@ -1249,7 +1172,7 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
               max_effective_opening_displacement &&
             effective_opening_displacement_rate < 0.0))
   {
-    neighbor_cell_gateaux_derivative =
+    jacobian =
       get_effective_cohesive_traction(max_effective_opening_displacement) /
       max_effective_opening_displacement *
       effective_quantities.identity_tensor;
@@ -1258,10 +1181,10 @@ CohesiveLaw<dim>::get_neighbor_cell_gateaux_derivative(
     Assert(false, dealii::ExcInternalError());
 
   for (unsigned int i = 0;
-       i < neighbor_cell_gateaux_derivative.n_independent_components; ++i)
-    AssertIsFinite(neighbor_cell_gateaux_derivative.access_raw_entry(i));
+       i < jacobian.n_independent_components; ++i)
+    AssertIsFinite(jacobian.access_raw_entry(i));
 
-  return (neighbor_cell_gateaux_derivative);
+  return (jacobian);
 }
 
 
@@ -1292,6 +1215,7 @@ double CohesiveLaw<dim>::get_effective_opening_displacement(
   const dealii::Tensor<1,dim> opening_displacement,
   const dealii::Tensor<1,dim> normal_vector) const
 {
+  // Compute projectors
   dealii::SymmetricTensor<2,dim> normal_projector =
     dealii::symmetrize(dealii::outer_product(normal_vector,
                                               normal_vector));
@@ -1299,19 +1223,25 @@ double CohesiveLaw<dim>::get_effective_opening_displacement(
   dealii::SymmetricTensor<2,dim> tangential_projector =
     dealii::unit_symmetric_tensor<dim>() - normal_projector;
 
+  // Decompose the opening displacement
   double normal_opening_displacement =
-    macaulay_brackets(normal_vector * opening_displacement);
+    normal_vector * opening_displacement;
 
   double tangential_opening_displacement =
     (tangential_projector * opening_displacement).norm();
 
-  return std::sqrt(normal_opening_displacement *
-                   normal_opening_displacement
-                   +
-                   tangential_to_normal_stiffness_ratio *
-                   tangential_to_normal_stiffness_ratio *
-                   tangential_opening_displacement *
-                   tangential_opening_displacement);
+  const double effective_opening_displacement =
+    std::sqrt(macaulay_brackets(normal_opening_displacement) *
+              macaulay_brackets(normal_opening_displacement)
+              +
+              tangential_to_normal_stiffness_ratio *
+              tangential_to_normal_stiffness_ratio *
+              tangential_opening_displacement *
+              tangential_opening_displacement);
+
+  AssertIsFinite(effective_opening_displacement);
+
+  return (effective_opening_displacement);
 }
 
 
@@ -1322,9 +1252,7 @@ CohesiveLaw<dim>::get_effective_quantities(
   const dealii::Tensor<1,dim> opening_displacement,
   const dealii::Tensor<1,dim> normal_vector) const
 {
-  const double normal_opening_displacement =
-    macaulay_brackets(normal_vector * opening_displacement);
-
+  // Compute projectors
   const dealii::SymmetricTensor<2,dim> normal_projector =
     dealii::symmetrize(dealii::outer_product(normal_vector,
                                              normal_vector));
@@ -1332,15 +1260,20 @@ CohesiveLaw<dim>::get_effective_quantities(
   const dealii::SymmetricTensor<2,dim> tangential_projector =
     dealii::unit_symmetric_tensor<dim>() - normal_projector;
 
+  // Decompose the opening displacement
+  const double normal_opening_displacement =
+    normal_vector * opening_displacement;
+
   const dealii::Tensor<1,dim> tangential_opening_displacement =
     tangential_projector * opening_displacement;
 
   const double tangential_opening_displacement_norm =
     tangential_opening_displacement.norm();
 
+  // Compute effective quantities
   double effective_opening_displacement =
-    std::sqrt(normal_opening_displacement *
-              normal_opening_displacement
+    std::sqrt(macaulay_brackets(normal_opening_displacement) *
+              macaulay_brackets(normal_opening_displacement)
               +
               tangential_to_normal_stiffness_ratio *
               tangential_to_normal_stiffness_ratio *
@@ -1348,27 +1281,32 @@ CohesiveLaw<dim>::get_effective_quantities(
               tangential_opening_displacement_norm);
 
   dealii::Tensor<1,dim> effective_direction =
-    (normal_opening_displacement * normal_vector +
-     tangential_to_normal_stiffness_ratio *
-     tangential_to_normal_stiffness_ratio *
-     tangential_opening_displacement);
+    macaulay_brackets(normal_opening_displacement) * normal_vector
+    +
+    tangential_to_normal_stiffness_ratio *
+    tangential_to_normal_stiffness_ratio *
+    tangential_opening_displacement;
 
   if (effective_opening_displacement != 0.0)
     effective_direction /= effective_opening_displacement;
 
   const dealii::SymmetricTensor<2,dim> effective_identity_tensor =
-    macaulay_brackets(normal_opening_displacement /
-                      std::abs(normal_opening_displacement)) *
+    macaulay_brackets(
+      normal_opening_displacement /
+      std::abs(normal_opening_displacement)) *
     normal_projector
     +
     tangential_to_normal_stiffness_ratio *
     tangential_to_normal_stiffness_ratio *
     tangential_projector;
 
+  AssertIsFinite(normal_opening_displacement);
+  AssertIsFinite(effective_opening_displacement);
+
   return EffectiveQuantities(effective_opening_displacement,
                              effective_direction,
                              effective_identity_tensor,
-                             normal_vector * opening_displacement);
+                             normal_opening_displacement);
 }
 
 
