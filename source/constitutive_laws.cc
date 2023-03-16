@@ -585,6 +585,11 @@ void VectorMicroscopicStressLaw<dim>::init()
       reduced_gradient_hardening_tensors_per_crystal);
   }
 
+  Assert(
+    reduced_gradient_hardening_tensors.size() ==
+      crystals_data->get_n_crystals(),
+    dealii::ExcNotImplemented());
+
   flag_init_was_called = true;
 }
 

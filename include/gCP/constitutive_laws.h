@@ -349,6 +349,9 @@ inline const dealii::SymmetricTensor<2,dim>
     const unsigned int crystal_id,
     const unsigned int slip_id) const
 {
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
                                  "instance has not been initialized."));
@@ -364,6 +367,9 @@ inline const std::vector<dealii::SymmetricTensor<2,dim>>
   get_reduced_gradient_hardening_tensors(
     const unsigned int crystal_id) const
 {
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
                                  "instance has not been initialized."));
