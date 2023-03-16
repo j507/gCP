@@ -368,7 +368,6 @@ inline const std::vector<dealii::SymmetricTensor<2,dim>>
     const unsigned int crystal_id) const
 {
   AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
-  AssertIndexRange(slip_id, crystals_data->get_n_slips());
 
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
