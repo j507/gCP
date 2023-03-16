@@ -98,7 +98,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-gateaux_derivative_values(
+scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),
 intra_gateaux_derivative_values(
@@ -166,7 +166,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-gateaux_derivative_values(
+scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),
 intra_gateaux_derivative_values(

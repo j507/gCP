@@ -321,11 +321,17 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
                                   " instance has not been "
                                   " initialized."));
 
-  double regularization_function_value =
-    get_regularization_function_value(
-      (slip_value - old_slip_value) / time_step_size);
-
+  AssertIsFinite(slip_value);
+  AssertIsFinite(old_slip_value);
   AssertIsFinite(slip_resistance);
+  AssertIsFinite(time_step_size);
+
+  const double slip_rate =
+    (slip_value - old_slip_value) / time_step_size;
+
+  const double regularization_function_value =
+    get_regularization_function_value(slip_rate);
+
   AssertIsFinite(regularization_function_value);
 
   return ((initial_slip_resistance + slip_resistance) *
@@ -336,7 +342,7 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
 
 template<int dim>
 dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
-  get_gateaux_derivative_matrix(
+  get_jacobian(
     const unsigned int                      q_point,
     const std::vector<std::vector<double>>  slip_values,
     const std::vector<std::vector<double>>  old_slip_values,
@@ -348,7 +354,7 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
                                   " instance has not been "
                                   " initialized."));
 
-  dealii::FullMatrix<double> matrix(crystals_data->get_n_slips());
+  dealii::FullMatrix<double> jacobian(crystals_data->get_n_slips());
 
   auto compute_slip_rate =
     [&slip_values, &old_slip_values, &time_step_size](
@@ -359,6 +365,7 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
             old_slip_values[slip_id][q_point]) / time_step_size;
 
     AssertIsFinite(slip_rate);
+
     return slip_rate;
   };
 
@@ -369,22 +376,22 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
         slip_id_beta < crystals_data->get_n_slips();
         ++slip_id_beta)
     {
-      matrix[slip_id_alpha][slip_id_beta] =
+      jacobian[slip_id_alpha][slip_id_beta] =
         (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
           get_regularization_function_value(compute_slip_rate(q_point, slip_id_alpha)) *
           get_regularization_function_value(compute_slip_rate(q_point, slip_id_beta)));
 
       if (slip_id_alpha == slip_id_beta)
-        matrix[slip_id_alpha][slip_id_beta] +=
+        jacobian[slip_id_alpha][slip_id_beta] +=
           ((initial_slip_resistance +
             slip_resistances[slip_id_alpha]) / time_step_size *
             get_regularization_function_derivative_value(
               compute_slip_rate(q_point, slip_id_alpha)));
 
-      AssertIsFinite(matrix[slip_id_alpha][slip_id_beta]);
+      AssertIsFinite(jacobian[slip_id_alpha][slip_id_beta]);
     }
 
-  return matrix;
+  return jacobian;
 }
 
 
@@ -393,6 +400,8 @@ template <int dim>
 double ScalarMicroscopicStressLaw<dim>::
 get_regularization_function_value(const double slip_rate) const
 {
+  AssertIsFinite(slip_rate);
+
   double regularization_function_value = 0.0;
 
   switch (regularization_function)
@@ -451,6 +460,8 @@ template <int dim>
 double ScalarMicroscopicStressLaw<dim>::
 get_regularization_function_derivative_value(const double slip_rate) const
 {
+  AssertIsFinite(slip_rate);
+
   double regularization_function_derivative_value = 0.0;
 
   switch (regularization_function)

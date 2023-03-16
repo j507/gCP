@@ -376,7 +376,7 @@ void CrystalData<dim>::test_constitutive_laws()
 
 
   const dealii::FullMatrix<double> gateaux_derivative_matrix =
-    scalar_microscopic_stress_law.get_gateaux_derivative_matrix(
+    scalar_microscopic_stress_law.get_jacobian(
       0, // q_point
       slip_values,
       old_slip_values,

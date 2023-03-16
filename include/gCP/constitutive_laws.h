@@ -249,7 +249,7 @@ public:
     const double slip_resistance,
     const double time_step_size);
 
-  dealii::FullMatrix<double> get_gateaux_derivative_matrix(
+  dealii::FullMatrix<double> get_jacobian(
     const unsigned int                      q_point,
     const std::vector<std::vector<double>>  slip_values,
     const std::vector<std::vector<double>>  old_slip_values,

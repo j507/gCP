@@ -148,10 +148,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   // Loop over quadrature points
   for (unsigned int q_point = 0; q_point < scratch.n_q_points; ++q_point)
   {
-    // Compute the Gateaux derivative values of the scalar microscopic
-    // stress w.r.t. slip
-    scratch.gateaux_derivative_values[q_point] =
-      scalar_microscopic_stress_law->get_gateaux_derivative_matrix(
+    // Compute the jacobian of the scalar microscopic
+    // stress w.r.t. slip at the current quadrature point
+    scratch.scalar_microstress_law_jacobian_values[q_point] =
+      scalar_microscopic_stress_law->get_jacobian(
         q_point,
         scratch.slip_values,
         scratch.old_slip_values,
@@ -248,7 +248,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                scratch.stiffness_tetrad *
                scratch.symmetrized_schmid_tensors[slip_id_beta]
                -
-               scratch.gateaux_derivative_values[q_point][slip_id_alpha][slip_id_beta]) *
+               scratch.scalar_microstress_law_jacobian_values[q_point][slip_id_alpha][slip_id_beta]) *
               scratch.scalar_phi[slip_id_beta][j]*
               scratch.JxW_values[q_point];
 
@@ -388,7 +388,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 opening_displacement,
                 scratch.normal_vector_values[face_q_point]);
 
-            // Extract test function values at the quadrature points (Slips)
+            // Extract test function values at the quadrature points (Displacement)
             for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             {
               scratch.face_vector_phi[i] =
