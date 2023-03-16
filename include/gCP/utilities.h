@@ -50,6 +50,8 @@ private:
   std::ofstream                                   output_filepath;
 
   std::map<std::string, std::pair<double, bool>>  data_map;
+
+  std::vector<std::string>                        keys_order;
 };
 
 
