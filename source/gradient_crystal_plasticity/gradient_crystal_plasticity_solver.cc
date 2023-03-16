@@ -102,13 +102,14 @@ flag_init_was_called(false)
   face_quadrature_collection.push_back(face_quadrature_formula);
 
   // Initialize logger
-  nonlinear_solver_logger.declare_column("Iteration");
-  nonlinear_solver_logger.declare_column("Krylov-Iterations");
-  nonlinear_solver_logger.declare_column("Line-Search-Loops");
-  nonlinear_solver_logger.declare_column("L2-Norm(Newton update)");
-  nonlinear_solver_logger.declare_column("L2-Norm(Residual)");
-  nonlinear_solver_logger.set_scientific("L2-Norm(Newton update)", true);
-  nonlinear_solver_logger.set_scientific("L2-Norm(Residual)", true);
+  nonlinear_solver_logger.declare_column("Newton-Iter");
+  nonlinear_solver_logger.declare_column("Krylov-Iter");
+  nonlinear_solver_logger.declare_column("Line-Search-Iter");
+  nonlinear_solver_logger.declare_column("(Newton-Step)_L2");
+  nonlinear_solver_logger.declare_column("(Residual)_L2");
+  nonlinear_solver_logger.declare_column("Convergence-Rate");
+  nonlinear_solver_logger.set_scientific("(Newton-Step)_L2", true);
+  nonlinear_solver_logger.set_scientific("(Residual)_L2", true);
 
   decohesion_logger.declare_column("time");
   decohesion_logger.declare_column("max_effective_opening_displacement");

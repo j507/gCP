@@ -28,7 +28,9 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
   nonlinear_solver_logger.add_break(
-    "Solving for t = " +
+    "Step " +
+    std::to_string(discrete_time.get_step_number() + 1) +
+    ": Solving for t = " +
     std::to_string(discrete_time.get_next_time())+
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
@@ -40,6 +42,8 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   prepare_quadrature_point_history();
 
   unsigned int nonlinear_iteration = 1;
+
+  double previous_residual_norm = 0.0;
 
   for (;nonlinear_iteration <= parameters.n_max_nonlinear_iterations;
        ++nonlinear_iteration)
@@ -79,16 +83,25 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
       trial_value_scalar_function = assemble_residual();
     }
 
-    nonlinear_solver_logger.update_value("Iteration",
+    const double order_of_convergence =
+      (nonlinear_iteration != 1) ?
+        std::log(residual_norm) / std::log(previous_residual_norm) :
+        0.0;
+
+    previous_residual_norm  = residual_norm;
+
+    nonlinear_solver_logger.update_value("Newton-Iter",
                                          nonlinear_iteration);
-    nonlinear_solver_logger.update_value("Krylov-Iterations",
+    nonlinear_solver_logger.update_value("Krylov-Iter",
                                          n_krylov_iterations);
-    nonlinear_solver_logger.update_value("Line-Search-Loops",
+    nonlinear_solver_logger.update_value("Line-Search-Iter",
                                          line_search.get_n_iterations());
-    nonlinear_solver_logger.update_value("L2-Norm(Newton update)",
+    nonlinear_solver_logger.update_value("(Newton-Step)_L2",
                                          newton_update_norm);
-    nonlinear_solver_logger.update_value("L2-Norm(Residual)",
+    nonlinear_solver_logger.update_value("(Residual)_L2",
                                          residual_norm);
+    nonlinear_solver_logger.update_value("Convergence-Rate",
+                                         order_of_convergence);
 
     nonlinear_solver_logger.log_to_file();
     nonlinear_solver_logger.log_values_to_terminal();

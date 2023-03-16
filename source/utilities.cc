@@ -29,6 +29,8 @@ void Logger::declare_column(const std::string column_name)
                   dealii::ExcMessage("This column was already defined!"))
 
   data_map[column_name] = std::make_pair(0.0, false);
+
+  keys_order.push_back(column_name);
 }
 
 
@@ -55,16 +57,16 @@ void Logger::log_to_file()
 {
   output_filepath << std::string(2, ' ');
 
-  for (const auto& pair : data_map)
+  for (const auto& key : keys_order)
   {
-    if (pair.second.second)
+    if (data_map[key].second)
       output_filepath << std::fixed << std::scientific;
     else
       output_filepath << std::defaultfloat;
 
-    output_filepath << std::setw(pair.first.length()) << std::right
+    output_filepath << std::setw(key.length()) << std::right
                     << std::setprecision(6)
-                    << pair.second.first << std::string(5, ' ');
+                    << data_map[key].first << std::string(4, ' ');
   }
 
   output_filepath << std::endl;
@@ -76,16 +78,16 @@ void Logger::log_headers_to_terminal()
 {
   pcout << std::string(2, ' ');
 
-  for (const auto& pair : data_map)
+  for (const auto& key : keys_order)
   {
-    if (pair.second.second)
+    if (data_map[key].second)
       pcout << std::fixed << std::scientific;
     else
       pcout << std::defaultfloat;
 
-    pcout << std::setw(pair.first.length()) << std::right
+    pcout << std::setw(key.length()) << std::right
           << std::setprecision(6)
-          << pair.first << std::string(5, ' ');
+          << key << std::string(4, ' ');
   }
 
   pcout << std::endl;
@@ -97,16 +99,16 @@ void Logger::log_values_to_terminal()
 {
   pcout << std::string(2, ' ');
 
-  for (const auto& pair : data_map)
+  for (const auto& key : keys_order)
   {
-    if (pair.second.second)
+    if (data_map[key].second)
       pcout << std::fixed << std::scientific;
     else
       pcout << std::defaultfloat;
 
-    pcout << std::setw(pair.first.length()) << std::right
+    pcout << std::setw(key.length()) << std::right
           << std::setprecision(6)
-          << pair.second.first << std::string(5, ' ');
+          << data_map[key].first << std::string(4, ' ');
   }
 
   pcout << std::endl;
@@ -121,8 +123,8 @@ void Logger::add_break(const std::string message)
                   << std::endl << std::endl
                   << std::string(2, ' ');
 
-  for (const auto& pair : data_map)
-    output_filepath << pair.first << std::string(5, ' ');
+  for (const auto& key : keys_order)
+    output_filepath << key << std::string(4, ' ');
 
   output_filepath << std::endl;
 }
