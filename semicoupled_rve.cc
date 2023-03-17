@@ -461,6 +461,40 @@ void SemicoupledProblem<dim>::setup_constraints()
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
     affine_constraints.merge(fe_field->get_hanging_node_constraints());
 
+    if (parameters.solver_parameters.boundary_conditions_at_grain_boundaries ==
+          RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microhard)
+    {
+      std::vector<dealii::types::global_dof_index> local_face_dof_indices(
+        fe_field->get_fe_collection().max_dofs_per_face());
+
+      for (const auto &cell :
+           fe_field->get_dof_handler().active_cell_iterators())
+        if (cell->is_locally_owned())
+          for (const auto &face_index : cell->face_indices())
+            if (!cell->face(face_index)->at_boundary() &&
+                cell->active_fe_index() !=
+                  cell->neighbor(face_index)->active_fe_index())
+            {
+              AssertThrow(
+                cell->neighbor(face_index)->active_fe_index() ==
+                  cell->neighbor(face_index)->material_id(),
+                dealii::ExcMessage(
+                  "The active finite element index and the material "
+                  " identifier of the cell have to coincide!"));
+
+              const unsigned int crystal_id = cell->active_fe_index();
+
+              cell->face(face_index)->get_dof_indices(
+                local_face_dof_indices,
+                crystal_id);
+
+              for (unsigned int i = 0;
+                   i < local_face_dof_indices.size(); ++i)
+                if (fe_field->get_global_component(crystal_id, i) >= dim)
+                  affine_constraints.add_line(local_face_dof_indices[i]);
+            }
+    }
+
     std::vector<dealii::Point<dim>> lower_corner_points;
 
     lower_corner_points.push_back(dealii::Point<dim>());
@@ -516,6 +550,40 @@ void SemicoupledProblem<dim>::setup_constraints()
   {
     newton_method_constraints.reinit(fe_field->get_locally_relevant_dofs());
     newton_method_constraints.merge(fe_field->get_hanging_node_constraints());
+
+    if (parameters.solver_parameters.boundary_conditions_at_grain_boundaries ==
+          RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microhard)
+    {
+      std::vector<dealii::types::global_dof_index> local_face_dof_indices(
+        fe_field->get_fe_collection().max_dofs_per_face());
+
+      for (const auto &cell :
+           fe_field->get_dof_handler().active_cell_iterators())
+        if (cell->is_locally_owned())
+          for (const auto &face_index : cell->face_indices())
+            if (!cell->face(face_index)->at_boundary() &&
+                cell->active_fe_index() !=
+                  cell->neighbor(face_index)->active_fe_index())
+            {
+              AssertThrow(
+                cell->neighbor(face_index)->active_fe_index() ==
+                  cell->neighbor(face_index)->material_id(),
+                dealii::ExcMessage(
+                  "The active finite element index and the material "
+                  " identifier of the cell have to coincide!"));
+
+              const unsigned int crystal_id = cell->active_fe_index();
+
+              cell->face(face_index)->get_dof_indices(
+                local_face_dof_indices,
+                crystal_id);
+
+              for (unsigned int i = 0;
+                   i < local_face_dof_indices.size(); ++i)
+                if (fe_field->get_global_component(crystal_id, i) >= dim)
+                  newton_method_constraints.add_line(local_face_dof_indices[i]);
+            }
+    }
 
     std::vector<dealii::Point<dim>> lower_corner_points;
 
