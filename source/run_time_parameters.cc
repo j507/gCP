@@ -632,9 +632,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   if (string_boundary_conditions_at_grain_boundaries ==
         std::string("microhard"))
   {
-    AssertThrow(false,
-      dealii::ExcMessage(
-        "Microhard boundary conditions have yet to be implemented."));
     boundary_conditions_at_grain_boundaries =
       BoundaryConditionsAtGrainBoundaries::Microhard;
   }
