@@ -12,4 +12,3 @@ Yet to be implemented:
 - Dimensionless formulation
 - Cohesive element (?)
 - Node-to-segment contact discretization
-- Microhard boundary conditions
