@@ -154,10 +154,13 @@ void FEField<dim>::setup_dofs()
 
   if (n_slips > 0)
   {
-    std::vector<unsigned int> block_component(
-      dim * n_crystals + n_slips * n_crystals, 0);
+    int n_displacement_components =
+      dim * ((flag_allow_decohesion) ? n_crystals : 1);
 
-    for (unsigned int i = dim * n_crystals;
+    std::vector<unsigned int> block_component(
+      n_displacement_components + n_slips * n_crystals, 0);
+
+    for (unsigned int i = n_displacement_components;
         i < block_component.size(); ++i)
     {
       block_component[i] = 1;
