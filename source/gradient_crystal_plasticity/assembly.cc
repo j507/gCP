@@ -260,8 +260,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
   // Grain boundary integral
   if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
-      parameters.boundary_conditions_at_grain_boundaries ==
-        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+      (fe_field->is_decohesion_allowed() ||
+       parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
   {
     data.cell_is_at_grain_boundary = true;
 
@@ -303,15 +304,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         // Get normal vector values values at the face quadrature points
         scratch.normal_vector_values = fe_face_values.get_normal_vectors();
 
-        // Get grain interactino moduli
-        scratch.grain_interaction_moduli =
-          microscopic_traction_law->get_grain_interaction_moduli(
-            crystal_id,
-            neighbour_crystal_id,
-            scratch.normal_vector_values);
-
         std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
           local_interface_quadrature_point_history;
+
+        // Get grain interactino moduli
+        if (parameters.boundary_conditions_at_grain_boundaries ==
+          RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+        {
+          scratch.grain_interaction_moduli =
+            microscopic_traction_law->get_grain_interaction_moduli(
+              crystal_id,
+              neighbour_crystal_id,
+              scratch.normal_vector_values);
+        }
 
         if (fe_field->is_decohesion_allowed())
         {
@@ -351,16 +356,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
              face_q_point < scratch.n_face_q_points;
              ++face_q_point)
         {
-          scratch.intra_gateaux_derivative_values[face_q_point] =
-            microscopic_traction_law->get_intra_gateaux_derivative(
-              face_q_point,
-              scratch.grain_interaction_moduli);
-
-          scratch.inter_gateaux_derivative_values[face_q_point] =
-            microscopic_traction_law->get_inter_gateaux_derivative(
-              face_q_point,
-              scratch.grain_interaction_moduli);
-
           scratch.damage_variable_values[face_q_point] = 0.0;
 
           if (fe_field->is_decohesion_allowed())
@@ -418,21 +413,34 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             }
           }
 
-          // Extract test function values at the quadrature points (Slips)
-          for (unsigned int slip_id = 0;
-              slip_id < crystals_data->get_n_slips();
-              ++slip_id)
-            for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-            {
-              scratch.face_scalar_phi[slip_id][i] =
-                fe_face_values[fe_field->get_slip_extractor(
-                  crystal_id, slip_id)].value(i,face_q_point);
+          if (parameters.boundary_conditions_at_grain_boundaries ==
+            RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+          {
+            scratch.intra_gateaux_derivative_values[face_q_point] =
+              microscopic_traction_law->get_intra_gateaux_derivative(
+                face_q_point,
+                scratch.grain_interaction_moduli);
 
-              scratch.neighbour_face_scalar_phi[slip_id][i] =
-                neighbour_fe_face_values[fe_field->get_slip_extractor(
-                  neighbour_crystal_id, slip_id)].value(i,face_q_point);
-            }
+            scratch.inter_gateaux_derivative_values[face_q_point] =
+              microscopic_traction_law->get_inter_gateaux_derivative(
+                face_q_point,
+                scratch.grain_interaction_moduli);
 
+            // Extract test function values at the quadrature points (Slips)
+            for (unsigned int slip_id = 0;
+                slip_id < crystals_data->get_n_slips();
+                ++slip_id)
+              for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+              {
+                scratch.face_scalar_phi[slip_id][i] =
+                  fe_face_values[fe_field->get_slip_extractor(
+                    crystal_id, slip_id)].value(i,face_q_point);
+
+                scratch.neighbour_face_scalar_phi[slip_id][i] =
+                  neighbour_fe_face_values[fe_field->get_slip_extractor(
+                    neighbour_crystal_id, slip_id)].value(i,face_q_point);
+              }
+          }
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
@@ -472,36 +480,40 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 fe_field->get_global_component(crystal_id, i) >= dim &&
                 fe_field->get_global_component(crystal_id, j) >= dim)
               {
-                const unsigned int slip_id_alpha =
-                  fe_field->get_global_component(crystal_id, i) - dim;
+                if (parameters.boundary_conditions_at_grain_boundaries ==
+                    RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+                {
+                  const unsigned int slip_id_alpha =
+                    fe_field->get_global_component(crystal_id, i) - dim;
 
-                const unsigned int slip_id_beta =
-                  fe_field->get_global_component(crystal_id, j) - dim;
+                  const unsigned int slip_id_beta =
+                    fe_field->get_global_component(crystal_id, j) - dim;
 
-                const unsigned int neighbour_slip_id_beta =
-                  fe_field->get_global_component(neighbour_crystal_id, j)
-                  - dim;
+                  const unsigned int neighbour_slip_id_beta =
+                    fe_field->get_global_component(neighbour_crystal_id, j)
+                    - dim;
 
-                data.local_matrix(i,j) -=
-                  scratch.face_scalar_phi[slip_id_alpha][i] *
-                  cohesive_law->get_degradation_function_value(
-                    scratch.damage_variable_values[face_q_point],
-                    parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
-                  scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
-                  scratch.face_scalar_phi[slip_id_beta][j] *
-                  scratch.face_JxW_values[face_q_point];
+                  data.local_matrix(i,j) -=
+                    scratch.face_scalar_phi[slip_id_alpha][i] *
+                    cohesive_law->get_degradation_function_value(
+                      scratch.damage_variable_values[face_q_point],
+                      parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
+                    scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
+                    scratch.face_scalar_phi[slip_id_beta][j] *
+                    scratch.face_JxW_values[face_q_point];
 
-                data.local_coupling_matrix(i,j) -=
-                  scratch.face_scalar_phi[slip_id_alpha][i] *
-                  cohesive_law->get_degradation_function_value(
-                    scratch.damage_variable_values[face_q_point],
-                    parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
-                  scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
-                  scratch.neighbour_face_scalar_phi[neighbour_slip_id_beta][j] *
-                  scratch.face_JxW_values[face_q_point];
+                  data.local_coupling_matrix(i,j) -=
+                    scratch.face_scalar_phi[slip_id_alpha][i] *
+                    cohesive_law->get_degradation_function_value(
+                      scratch.damage_variable_values[face_q_point],
+                      parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
+                    scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
+                    scratch.neighbour_face_scalar_phi[neighbour_slip_id_beta][j] *
+                    scratch.face_JxW_values[face_q_point];
 
-                AssertIsFinite(data.local_matrix(i,j));
-                AssertIsFinite(data.local_coupling_matrix(i,j));
+                  AssertIsFinite(data.local_matrix(i,j));
+                  AssertIsFinite(data.local_coupling_matrix(i,j));
+                }
               } // Loop over degrees of freedom
         } // Loop over face quadrature points
 
@@ -792,8 +804,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Grain boundary integral
   if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
-      parameters.boundary_conditions_at_grain_boundaries ==
-        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+      (fe_field->is_decohesion_allowed() ||
+       parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&
           cell->active_fe_index() !=
@@ -825,27 +838,31 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         // Get normal vector values values at the quadrature points
         scratch.normal_vector_values = fe_face_values.get_normal_vectors();
 
-        // Get grain interactino moduli
-        scratch.grain_interaction_moduli =
-          microscopic_traction_law->get_grain_interaction_moduli(
-            crystal_id,
-            neighbour_crystal_id,
-            scratch.normal_vector_values);
-
-        // Get the values of the slips of the current and the neighbour
-        // cell at the face quadrature points
-        for (unsigned int slip_id = 0;
-             slip_id < crystals_data->get_n_slips(); ++slip_id)
+        if (parameters.boundary_conditions_at_grain_boundaries ==
+          RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
         {
-          fe_face_values[fe_field->get_slip_extractor(
-              crystal_id, slip_id)].get_function_values(
-                trial_solution,
-                scratch.face_slip_values[slip_id]);
+           // Get grain interactino moduli
+          scratch.grain_interaction_moduli =
+            microscopic_traction_law->get_grain_interaction_moduli(
+              crystal_id,
+              neighbour_crystal_id,
+              scratch.normal_vector_values);
 
-          neighbour_fe_face_values[fe_field->get_slip_extractor(
-              neighbour_crystal_id, slip_id)].get_function_values(
-                trial_solution,
-                scratch.neighbour_face_slip_values[slip_id]);
+          // Get the values of the slips of the current and the neighbour
+          // cell at the face quadrature points
+          for (unsigned int slip_id = 0;
+              slip_id < crystals_data->get_n_slips(); ++slip_id)
+          {
+            fe_face_values[fe_field->get_slip_extractor(
+                crystal_id, slip_id)].get_function_values(
+                  trial_solution,
+                  scratch.face_slip_values[slip_id]);
+
+            neighbour_fe_face_values[fe_field->get_slip_extractor(
+                neighbour_crystal_id, slip_id)].get_function_values(
+                  trial_solution,
+                  scratch.neighbour_face_slip_values[slip_id]);
+          }
         }
 
         std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
@@ -888,25 +905,27 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
-          for (unsigned int slip_id = 0;
-               slip_id < crystals_data->get_n_slips(); ++slip_id)
-          {
-            // Compute the microscopic traction values at the
-            // quadrature point
-            scratch.microscopic_traction_values[slip_id][face_q_point] =
-              microscopic_traction_law->get_microscopic_traction(
-                face_q_point,
-                slip_id,
-                scratch.grain_interaction_moduli,
-                scratch.face_slip_values,
-                scratch.neighbour_face_slip_values);
+          if (parameters.boundary_conditions_at_grain_boundaries ==
+            RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+            for (unsigned int slip_id = 0;
+                slip_id < crystals_data->get_n_slips(); ++slip_id)
+            {
+              // Compute the microscopic traction values at the
+              // quadrature point
+              scratch.microscopic_traction_values[slip_id][face_q_point] =
+                microscopic_traction_law->get_microscopic_traction(
+                  face_q_point,
+                  slip_id,
+                  scratch.grain_interaction_moduli,
+                  scratch.face_slip_values,
+                  scratch.neighbour_face_slip_values);
 
-            // Extract test function values at the quadrature points (Slips)
-            for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
-              scratch.face_scalar_phi[slip_id][i] =
-                fe_face_values[fe_field->get_slip_extractor(
-                  crystal_id, slip_id)].value(i,face_q_point);
-          }
+              // Extract test function values at the quadrature points (Slips)
+              for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+                scratch.face_scalar_phi[slip_id][i] =
+                  fe_face_values[fe_field->get_slip_extractor(
+                    crystal_id, slip_id)].value(i,face_q_point);
+            }
 
           scratch.damage_variable_values[face_q_point] = 0.0;
 
@@ -964,16 +983,20 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
             }
             else
             {
-              const unsigned int slip_id =
-                fe_field->get_global_component(crystal_id, i) - dim;
+              if (parameters.boundary_conditions_at_grain_boundaries ==
+                  RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+              {
+                const unsigned int slip_id =
+                  fe_field->get_global_component(crystal_id, i) - dim;
 
-              data.local_rhs(i) +=
-                scratch.face_scalar_phi[slip_id][i] *
-                cohesive_law->get_degradation_function_value(
-                  scratch.damage_variable_values[face_q_point],
-                  parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
-                scratch.microscopic_traction_values[slip_id][face_q_point] *
-                scratch.face_JxW_values[face_q_point];
+                data.local_rhs(i) +=
+                  scratch.face_scalar_phi[slip_id][i] *
+                  cohesive_law->get_degradation_function_value(
+                    scratch.damage_variable_values[face_q_point],
+                    parameters.cohesive_law_parameters.flag_couple_microtraction_to_damage) *
+                  scratch.microscopic_traction_values[slip_id][face_q_point] *
+                  scratch.face_JxW_values[face_q_point];
+              }
 
               AssertIsFinite(data.local_rhs(i));
             } // Loop over degrees of freedom
@@ -1579,8 +1602,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_matrix(
 
   // Grain boundary integral
   if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
-      parameters.boundary_conditions_at_grain_boundaries ==
-        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+      (fe_field->is_decohesion_allowed() ||
+       parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
   {
     // Indicate the Copy struct that its a cell at the grain boundary
     data.cell_is_at_grain_boundary = true;
@@ -1715,8 +1739,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_rhs(
 
   // Grain boundary integral
   if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
-      parameters.boundary_conditions_at_grain_boundaries ==
-        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
+      (fe_field->is_decohesion_allowed() ||
+       parameters.boundary_conditions_at_grain_boundaries ==
+        RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
   {
     // Indicate the Copy struct that its a cell at the grain boundary
     data.cell_is_at_grain_boundary = true;
