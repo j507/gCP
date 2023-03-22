@@ -12,6 +12,7 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 
+#include <gCP/utilities.h>
 namespace gCP
 {
 
@@ -71,6 +72,13 @@ public:
    */
   void setup_extractors(const unsigned n_crystals,
                         const unsigned n_slips);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  void update_ghost_material_ids();
 
   /*!
    * @brief Set ups the degress of freedom of the vector-valued
