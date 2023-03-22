@@ -587,7 +587,7 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
           local_stress_12 = 0.0;
 
           // Get the crystal identifier for the current cell
-          const unsigned int crystal_id = cell->active_fe_index();
+          const unsigned int crystal_id = cell->material_id();
 
           // Update the hp::FEFaceValues instance to the values of the current cell
           hp_fe_face_values.reinit(cell, face);
@@ -947,7 +947,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
       cell_volume                       = 0.0;
 
       // Get the crystal identifier for the current cell
-      const unsigned int crystal_id = cell->active_fe_index();
+      const unsigned int crystal_id = cell->material_id();
 
       // Update the hp::FEFaceValues instance to the values of the current cell
       hp_fe_values.reinit(cell);

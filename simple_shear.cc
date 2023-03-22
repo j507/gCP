@@ -522,6 +522,9 @@ void SimpleShearProblem<dim>::setup()
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
 
+  // Update the material ids of ghost cells
+  fe_field->update_ghost_material_ids();
+
   // Set the active finite elemente index of each cell
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
@@ -656,8 +659,8 @@ void SimpleShearProblem<dim>::setup_constraints()
         if (cell->is_locally_owned())
           for (const auto &face_index : cell->face_indices())
             if (!cell->face(face_index)->at_boundary() &&
-                cell->active_fe_index() !=
-                  cell->neighbor(face_index)->active_fe_index())
+                cell->material_id() !=
+                  cell->neighbor(face_index)->material_id())
             {
               AssertThrow(
                 cell->neighbor(face_index)->active_fe_index() ==
@@ -666,7 +669,7 @@ void SimpleShearProblem<dim>::setup_constraints()
                   "The active finite element index and the material "
                   " identifier of the cell have to coincide!"));
 
-              const unsigned int crystal_id = cell->active_fe_index();
+              const unsigned int crystal_id = cell->material_id();
 
               cell->face(face_index)->get_dof_indices(
                 local_face_dof_indices,
@@ -742,8 +745,8 @@ void SimpleShearProblem<dim>::setup_constraints()
         if (cell->is_locally_owned())
           for (const auto &face_index : cell->face_indices())
             if (!cell->face(face_index)->at_boundary() &&
-                cell->active_fe_index() !=
-                  cell->neighbor(face_index)->active_fe_index())
+                cell->material_id() !=
+                  cell->neighbor(face_index)->material_id())
             {
               AssertThrow(
                 cell->neighbor(face_index)->active_fe_index() ==
@@ -752,7 +755,7 @@ void SimpleShearProblem<dim>::setup_constraints()
                   "The active finite element index and the material "
                   " identifier of the cell have to coincide!"));
 
-              const unsigned int crystal_id = cell->active_fe_index();
+              const unsigned int crystal_id = cell->material_id();
 
               cell->face(face_index)->get_dof_indices(
                 local_face_dof_indices,

@@ -6,6 +6,10 @@
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/mpi.h>
 
+#include <deal.II/dofs/dof_handler.h>
+
+#include <deal.II/grid/grid_tools.h>
+
 #include <deal.II/lac/full_matrix.h>
 
 #include <fstream>
@@ -20,6 +24,36 @@ namespace gCP
 
 namespace Utilities
 {
+
+
+
+template<int dim>
+void update_ghost_material_ids(dealii::DoFHandler<dim> &dof_handler)
+{
+  const unsigned int spacedim = dim;
+
+  auto pack = [](
+    const typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator &cell)->
+      typename dealii::DoFHandler<dim,dim>::active_fe_index_type
+      {
+        return cell->material_id();
+      };
+
+  auto unpack = [&dof_handler](
+    const typename dealii::DoFHandler<dim,spacedim>::active_cell_iterator &cell,
+    const typename dealii::DoFHandler<dim,dim>::active_fe_index_type      active_fe_index)->
+      void
+      {
+        cell->set_material_id(active_fe_index);
+      };
+
+  dealii::GridTools::exchange_cell_data_to_ghosts<
+    typename dealii::DoFHandler< dim, dim >::active_fe_index_type,
+    dealii::DoFHandler<dim, spacedim>>(
+      dof_handler,
+      pack,
+      unpack);
+}
 
 
 

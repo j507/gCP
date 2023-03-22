@@ -50,8 +50,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
     if (cell->is_locally_owned())
       for (const auto &face_index : cell->face_indices())
         if (!cell->face(face_index)->at_boundary() &&
-            cell->active_fe_index() !=
-              cell->neighbor(face_index)->active_fe_index())
+            cell->material_id() !=
+              cell->neighbor(face_index)->material_id())
         {
           cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
           break;
@@ -294,8 +294,8 @@ void GradientCrystalPlasticitySolver<dim>::make_sparsity_pattern(
                 RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
           for (const auto &face_index : cell->face_indices())
             if (!cell->face(face_index)->at_boundary() &&
-                cell->active_fe_index() !=
-                  cell->neighbor(face_index)->active_fe_index())
+                cell->material_id() !=
+                  cell->neighbor(face_index)->material_id())
             {
               AssertThrow(
                 cell->neighbor(face_index)->active_fe_index() ==

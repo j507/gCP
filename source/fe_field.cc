@@ -93,6 +93,14 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
 
 
 template<int dim>
+void FEField<dim>::update_ghost_material_ids()
+{
+  Utilities::update_ghost_material_ids(dof_handler);
+}
+
+
+
+template<int dim>
 void FEField<dim>::setup_dofs()
 {
   AssertThrow(flag_setup_extractors_was_called,
