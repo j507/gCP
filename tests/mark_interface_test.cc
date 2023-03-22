@@ -1,4 +1,5 @@
 #include <deal.II/base/conditional_ostream.h>
+#include <deal.II/base/types.h>
 
 #include <deal.II/distributed/tria.h>
 
@@ -7,6 +8,7 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
+#include <deal.II/grid/grid_tools.h>
 
 #include <deal.II/numerics/data_out.h>
 
@@ -41,25 +43,15 @@ private:
 
   dealii::Vector<float>                         active_fe_index;
 
-  dealii::Vector<float>                         cell_is_at_grain_boundary;
+  dealii::Vector<float>                         cell_is_at_interface;
 
-  //dealii::LinearAlgebraTrilinos::MPI::Vector    cell_is_at_grain_boundary;
-
-  const double                                  length;
-
-  const double                                  height;
-
-  const double                                  width;
-
-  std::vector<unsigned int>                     repetitions;
-
-
+  const double                                  edge_length;
 
   void make_grid();
 
-  void mark_grid();
+  void update_ghost_cells_data(dealii::DoFHandler<dim> &dof_handler);
 
-  void setup();
+  void mark_grid();
 
   void output();
 };
@@ -69,14 +61,12 @@ private:
 template<int dim>
 MarkInterface<dim>::MarkInterface()
 :
-pcout(std::cout,
-      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
+pcout(
+  std::cout,
+  dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
 triangulation(MPI_COMM_WORLD),
 dof_handler(triangulation),
-length(1.0),
-height(1.0),
-width(1.0),
-repetitions(dim, 10)
+edge_length(1.0)
 {}
 
 
@@ -85,6 +75,8 @@ template<int dim>
 void MarkInterface<dim>::run()
 {
   make_grid();
+
+  update_ghost_cells_data(dof_handler);
 
   mark_grid();
 
@@ -96,35 +88,59 @@ void MarkInterface<dim>::run()
 template<int dim>
 void MarkInterface<dim>::make_grid()
 {
-  switch (dim)
-  {
-  case 2:
-    dealii::GridGenerator::subdivided_hyper_rectangle(
-      triangulation,
-      repetitions,
-      dealii::Point<dim>(0,0),
-      dealii::Point<dim>(length,height),
-      true);
-    break;
-  case 3:
-    dealii::GridGenerator::subdivided_hyper_rectangle(
-      triangulation,
-      repetitions,
-      dealii::Point<dim>(0,0,0),
-      dealii::Point<dim>(length,height,width),
-      true);
-    break;
-  default:
-    Assert(false,
-           dealii::ExcMessage("This test only runs in 2-D and 3-D"))
-    break;
-  }
+  // Grid
+  dealii::GridGenerator::hyper_cube(
+    triangulation,
+    0,
+    edge_length,
+    false);
 
-  this->pcout << "Triangulation:"
-              << std::endl
-              << " Number of active cells       = "
-              << triangulation.n_global_active_cells()
-              << std::endl << std::endl;
+  triangulation.refine_global(5);
+
+  // Subdomains
+  for (const auto &active_cell : triangulation.active_cell_iterators())
+    if (active_cell->is_locally_owned())
+    {
+      if (std::fabs(active_cell->center()[0]) < edge_length/2.0)
+        active_cell->set_material_id(1);
+      else
+        active_cell->set_material_id(2);
+    }
+
+  // Match active FE index to material index
+  for (const auto &active_cell : dof_handler.active_cell_iterators())
+    if (active_cell->is_locally_owned())
+      active_cell->set_active_fe_index(active_cell->material_id());
+}
+
+
+
+template <int dim>
+void MarkInterface<dim>::update_ghost_cells_data(dealii::DoFHandler<dim> &dof_handler)
+{
+  const unsigned int spacedim = dim;
+
+  auto pack = [](
+    const typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator &cell)->
+      typename dealii::DoFHandler<dim,dim>::active_fe_index_type
+      {
+        return cell->material_id();
+      };
+
+  auto unpack = [&dof_handler](
+    const typename dealii::DoFHandler<dim,spacedim>::active_cell_iterator &cell,
+    const typename dealii::DoFHandler<dim,dim>::active_fe_index_type      active_fe_index)->
+      void
+      {
+        cell->set_material_id(active_fe_index);
+      };
+
+  dealii::GridTools::exchange_cell_data_to_ghosts<
+    typename dealii::DoFHandler< dim, dim >::active_fe_index_type,
+    dealii::DoFHandler<dim, spacedim>>(
+      dof_handler,
+      pack,
+      unpack);
 }
 
 
@@ -132,52 +148,40 @@ void MarkInterface<dim>::make_grid()
 template <int dim>
 void MarkInterface<dim>::mark_grid()
 {
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (cell->is_locally_owned())
-    {
-      if (std::fabs(cell->center()[0]) < length/2.0)
-        cell->set_material_id(0);
-      else
-        cell->set_material_id(1);
-    }
-
-  for (const auto &cell : dof_handler.active_cell_iterators())
-    if (cell->is_locally_owned())
-      cell->set_active_fe_index(cell->material_id());
-
-  cell_is_at_grain_boundary.reinit(triangulation.n_active_cells());
-
-
+  cell_is_at_interface.reinit(triangulation.n_active_cells());
   locally_owned_subdomain.reinit(triangulation.n_active_cells());
   material_id.reinit(triangulation.n_active_cells());
   active_fe_index.reinit(triangulation.n_active_cells());
 
-  cell_is_at_grain_boundary = 0.0;
-  locally_owned_subdomain   = 0.0;
-  material_id               = 0.0;
-  active_fe_index           = 0.0;
+  cell_is_at_interface    = -1.0;
+  locally_owned_subdomain = -1.0;
+  material_id             = -1.0;
+  active_fe_index         = -1.0;
 
-  for (const auto &cell :
+  for (const auto &active_cell :
        dof_handler.active_cell_iterators())
-    if (cell->is_locally_owned())
+  {
+    if (active_cell->is_locally_owned())
     {
-      for (const auto &face_id : cell->face_indices())
-        if (!cell->face(face_id)->at_boundary() &&
-            cell->neighbor(face_id)->is_locally_owned() &&
-            cell->material_id() !=
-              cell->neighbor(face_id)->material_id())
+      locally_owned_subdomain(active_cell->active_cell_index()) =
+        triangulation.locally_owned_subdomain();
+      material_id(active_cell->active_cell_index()) =
+        active_cell->material_id();
+      active_fe_index(active_cell->active_cell_index()) =
+        active_cell->active_fe_index();
+
+      for (const auto &face_index : active_cell->face_indices())
+      {
+        if (!active_cell->face(face_index)->at_boundary() &&
+            active_cell->material_id() !=
+              active_cell->neighbor(face_index)->material_id())
         {
-          cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
+          cell_is_at_interface(active_cell->active_cell_index()) = 1.0;
           break;
         }
-
-      locally_owned_subdomain(cell->active_cell_index()) =
-        triangulation.locally_owned_subdomain();
-      material_id(cell->active_cell_index()) =
-        cell->material_id();
-      active_fe_index(cell->active_cell_index()) =
-        cell->active_fe_index();
+      }
     }
+  }
 }
 
 
@@ -198,13 +202,14 @@ void MarkInterface<dim>::output()
   data_out.add_data_vector(active_fe_index,
                            "active_fe_index");
 
-  data_out.add_data_vector(cell_is_at_grain_boundary,
-                           "cell_is_at_grain_boundary");
+  data_out.add_data_vector(cell_is_at_interface,
+                           "cell_is_at_interface");
 
   data_out.build_patches();
 
-  data_out.write_vtu_in_parallel("triangulation.vtu",
-                                 MPI_COMM_WORLD);
+  data_out.write_vtu_in_parallel(
+    "triangulation_" + std::to_string(dim) + ".vtu",
+    MPI_COMM_WORLD);
 }
 
 
@@ -220,8 +225,15 @@ int main(int argc, char *argv[])
     dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
-    Tests::MarkInterface<2> test;
-    test.run();
+    {
+      Tests::MarkInterface<2> test;
+      test.run();
+    }
+
+    {
+      Tests::MarkInterface<3> test;
+      test.run();
+    }
 
   }
   catch (std::exception &exc)
