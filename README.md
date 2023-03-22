@@ -6,9 +6,6 @@ Solver for crystal plasticity problems based on the gradient-enhanced formulatio
 
 Known problems:
 - Problems considering polycrystals can only be run in serial (See issue #2)
-- Method of marking cells at grain boundaries does not work properly in parallel (See issue #3)
 
 Yet to be implemented:
 - Dimensionless formulation
-- Cohesive element (?)
-- Node-to-segment contact discretization
