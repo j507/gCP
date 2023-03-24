@@ -150,6 +150,10 @@ private:
 
   double                                            newton_update_norm;
 
+  std::tuple<double,double,double>                  residual_norms;
+
+  std::tuple<double,double,double>                  newton_update_norms;
+
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
   gCP::LineSearch                                   line_search;
