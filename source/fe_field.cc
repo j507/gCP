@@ -239,6 +239,54 @@ void FEField<dim>::setup_dofs()
     }
   }
 
+  // Store the local degrees of freedom indices related to the
+  // displacement and the slips in two separate std::set
+  {
+    std::vector<dealii::types::global_dof_index> local_dof_indices(
+      fe_collection.max_dofs_per_cell());
+
+    dealii::Utilities::MPI::Partitioner partitioner(locally_owned_dofs,
+                                                    locally_relevant_dofs,
+                                                    MPI_COMM_WORLD);
+
+    for (const auto &active_cell : dof_handler.active_cell_iterators())
+    {
+      if (active_cell->is_locally_owned())
+      {
+        active_cell->get_dof_indices(local_dof_indices);
+
+        for (unsigned int i = 0;
+            i < local_dof_indices.size();
+            ++i)
+        {
+          if (partitioner.is_ghost_entry(local_dof_indices[i]))
+          {
+            continue;
+          }
+
+          if (get_global_component(active_cell->material_id(), i) < dim)
+          {
+            vector_dof_indices.insert(local_dof_indices[i]);
+          }
+          else
+          {
+            scalar_dof_indices.insert(local_dof_indices[i]);
+          }
+        }
+      }
+    }
+  }
+
+  const unsigned int total_vector_dof_indices =
+    dealii::Utilities::MPI::sum(vector_dof_indices.size(), MPI_COMM_WORLD);
+
+  const unsigned int total_scalar_dof_indices =
+    dealii::Utilities::MPI::sum(scalar_dof_indices.size(), MPI_COMM_WORLD);
+
+  Assert(this->n_dofs() ==
+          (total_vector_dof_indices + total_scalar_dof_indices),
+         dealii::ExcMessage("Number of degrees of freedom do not match!"))
+
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;
 }
@@ -312,6 +360,56 @@ void FEField<dim>::update_solution_vectors()
   old_solution = solution;
 }
 
+
+
+template<int dim>
+std::tuple<double, double, double> FEField<dim>::get_l2_norms(
+  dealii::LinearAlgebraTrilinos::MPI::Vector &vector)
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_vektor;
+
+  distributed_vektor.reinit(distributed_vector);
+
+  distributed_vektor = vector;
+
+  const double l2_norm = distributed_vektor.l2_norm();
+
+  double vector_squared_entries = 0.0;
+
+  double scalar_squared_entries = 0.0;
+
+  for (const unsigned int dof_index : vector_dof_indices)
+  {
+    vector_squared_entries += distributed_vektor[dof_index] *
+                              distributed_vektor[dof_index];
+  }
+
+  for (const unsigned int dof_index : scalar_dof_indices)
+  {
+    scalar_squared_entries += distributed_vektor[dof_index] *
+                              distributed_vektor[dof_index];
+  }
+
+  vector_squared_entries =
+    dealii::Utilities::MPI::sum(vector_squared_entries, MPI_COMM_WORLD);
+
+  scalar_squared_entries =
+    dealii::Utilities::MPI::sum(scalar_squared_entries, MPI_COMM_WORLD);
+
+  const double control_l2_norm =
+    std::sqrt(vector_squared_entries + scalar_squared_entries);
+
+  Assert(
+    std::fabs(l2_norm - control_l2_norm) <
+      std::numeric_limits<double>::epsilon(),
+    dealii::ExcMessage("The norms do not match ("
+                       + std::to_string(l2_norm) + ", "
+                       + std::to_string(control_l2_norm) + ")"));
+
+  return std::make_tuple(l2_norm,
+                         std::sqrt(vector_squared_entries),
+                         std::sqrt(scalar_squared_entries));
+}
 
 
 
