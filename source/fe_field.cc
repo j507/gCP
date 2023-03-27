@@ -399,12 +399,22 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
   const double control_l2_norm =
     std::sqrt(vector_squared_entries + scalar_squared_entries);
 
+  auto to_string =
+    [](const double number)
+    {
+      std::ostringstream out;
+      out.precision(10);
+      out << std::scientific << number;
+      return std::move(out).str();
+
+    };
+
   Assert(
     std::fabs(l2_norm - control_l2_norm) <
       std::numeric_limits<double>::epsilon(),
     dealii::ExcMessage("The norms do not match ("
-                       + std::to_string(l2_norm) + ", "
-                       + std::to_string(control_l2_norm) + ")"));
+                       + to_string(l2_norm) + ", "
+                       + to_string(control_l2_norm) + ")"));
 
   return std::make_tuple(l2_norm,
                          std::sqrt(vector_squared_entries),
