@@ -60,6 +60,7 @@ Postprocessor<dim>::get_names() const
     solution_names.emplace_back("Slip_" + std::to_string(slip_id));
 
   solution_names.emplace_back("EquivalentPlasticStrain");
+  solution_names.emplace_back("EquivalentAbsolutePlasticStrain");
   solution_names.emplace_back("EquivalentEdgeDislocationDensity");
   solution_names.emplace_back("EquivalentScrewDislocationDensity");
   solution_names.emplace_back("VonMisesStress");
@@ -98,6 +99,7 @@ Postprocessor<dim>::get_data_component_interpretation()
     interpretation.push_back(
       dealii::DataComponentInterpretation::component_is_scalar);
 
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
@@ -248,6 +250,11 @@ void Postprocessor<dim>::evaluate_vector_field(
             inputs.solution_values[q_point](
               dim * n_crystals + slip_id + n_slips * crystal_id);
 
+          // Equivalent absolute plastic strain
+          computed_quantities[q_point](dim + n_slips + 1) +=
+            std::abs(inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id));
+
           // Equivalent edge dislocation density
           equivalent_edge_dislocation_density +=
             std::pow(inputs.solution_gradients[q_point][
@@ -268,10 +275,10 @@ void Postprocessor<dim>::evaluate_vector_field(
               crystal_id, slip_id);
         }
 
-      computed_quantities[q_point](dim + n_slips + 1) =
+      computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_edge_dislocation_density);
 
-      computed_quantities[q_point](dim + n_slips + 2) =
+      computed_quantities[q_point](dim + n_slips + 3) =
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
@@ -282,21 +289,21 @@ void Postprocessor<dim>::evaluate_vector_field(
         convert_2d_to_3d(elastic_strain_tensor);
 
       // Von-Mises stress
-      computed_quantities[q_point](dim + n_slips + 3) =
+      computed_quantities[q_point](dim + n_slips + 4) =
         get_von_mises_stress(stress_tensor);
 
       // Von-Mises plastic strain
-      computed_quantities[q_point](dim + n_slips + 4) =
+      computed_quantities[q_point](dim + n_slips + 5) =
         get_von_mises_plastic_strain(plastic_strain_tensor);
 
       // Stress components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 5 + i) =
+        computed_quantities[q_point](dim + n_slips + 6 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
 
       // Strain components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 11 + i) =
+        computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
@@ -331,6 +338,11 @@ void Postprocessor<dim>::evaluate_vector_field(
               inputs.solution_values[q_point](
                 dim + slip_id + n_slips * crystal_id);
 
+          // Equivalent absolute plastic strain
+          computed_quantities[q_point](dim + n_slips + 1) +=
+              std::abs(inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id));
+
           // Equivalent edge dislocation density
           equivalent_edge_dislocation_density +=
             std::pow(inputs.solution_gradients[q_point][
@@ -351,10 +363,10 @@ void Postprocessor<dim>::evaluate_vector_field(
               crystal_id, slip_id);
         }
 
-      computed_quantities[q_point](dim + n_slips + 1) =
+      computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_edge_dislocation_density);
 
-      computed_quantities[q_point](dim + n_slips + 2) =
+      computed_quantities[q_point](dim + n_slips + 3) =
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
@@ -365,21 +377,21 @@ void Postprocessor<dim>::evaluate_vector_field(
         convert_2d_to_3d(elastic_strain_tensor);
 
       // Von-Mises stress
-      computed_quantities[q_point](dim + n_slips + 3) =
+      computed_quantities[q_point](dim + n_slips + 4) =
         get_von_mises_stress(stress_tensor);
 
       // Von-Mises plastic strain
-      computed_quantities[q_point](dim + n_slips + 4) =
+      computed_quantities[q_point](dim + n_slips + 5) =
         get_von_mises_plastic_strain(plastic_strain_tensor);
 
       // Stress components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 5 + i) =
+        computed_quantities[q_point](dim + n_slips + 6 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
 
       // Strain components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 11 + i) =
+        computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
