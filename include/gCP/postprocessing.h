@@ -77,6 +77,35 @@ private:
 
 
 template <int dim>
+class ResidualPostprocessor : public dealii::DataPostprocessor<dim>
+{
+public:
+  ResidualPostprocessor(
+    std::shared_ptr<FEField<dim>>       &fe_field,
+    std::shared_ptr<CrystalsData<dim>>  &crystals_data);
+
+  virtual void evaluate_vector_field(
+    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+    std::vector<dealii::Vector<double>>                 &computed_quantities)
+    const override;
+
+  virtual std::vector<std::string> get_names() const override;
+
+  virtual std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      get_data_component_interpretation() const override;
+
+  virtual dealii::UpdateFlags get_needed_update_flags() const override;
+
+private:
+  std::shared_ptr<const FEField<dim>>                     fe_field;
+
+  std::shared_ptr<const CrystalsData<dim>>                crystals_data;
+};
+
+
+
+template <int dim>
 class SimpleShear
 {
 public:
