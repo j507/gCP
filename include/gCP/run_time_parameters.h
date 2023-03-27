@@ -852,6 +852,8 @@ struct ProblemParameters
 
   bool                              flag_output_damage_variable;
 
+  bool                              flag_output_residual;
+
   bool                              verbose;
 };
 
