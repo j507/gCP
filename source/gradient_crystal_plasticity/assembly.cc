@@ -635,6 +635,8 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   residual_norm = residual.l2_norm();
 
+  ghost_residual = residual;
+
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
 

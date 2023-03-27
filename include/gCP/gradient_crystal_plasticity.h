@@ -56,8 +56,6 @@ public:
 
   void solve_nonlinear_system();
 
-  double get_residual_norm() const;
-
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
     get_elastic_strain_law() const;
 
@@ -80,6 +78,8 @@ public:
   const dealii::LinearAlgebraTrilinos::MPI::Vector &get_damage_at_grain_boundaries();
 
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
+
+  const dealii::LinearAlgebraTrilinos::MPI::Vector &get_residual() const;
 
 private:
   const RunTimeParameters::SolverParameters         &parameters;
@@ -145,6 +145,8 @@ private:
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector        ghost_residual;
 
   double                                            residual_norm;
 
@@ -321,6 +323,15 @@ inline const dealii::Vector<float> &
 GradientCrystalPlasticitySolver<dim>::get_cell_is_at_grain_boundary_vector() const
 {
   return (cell_is_at_grain_boundary);
+}
+
+
+
+template <int dim>
+inline const dealii::LinearAlgebraTrilinos::MPI::Vector &
+GradientCrystalPlasticitySolver<dim>::get_residual() const
+{
+  return (ghost_residual);
 }
 
 
