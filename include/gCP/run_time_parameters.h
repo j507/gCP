@@ -589,6 +589,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  double              convergence_rate_threshold;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   HookeLawParameters  hooke_law_parameters;
 
   /*!

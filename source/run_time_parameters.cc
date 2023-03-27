@@ -474,6 +474,7 @@ n_max_nonlinear_iterations(1000),
 krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
+convergence_rate_threshold(1.05),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -517,6 +518,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Maximum number of iterations of the Krylov-solver",
                       "1000",
                       dealii::Patterns::Integer(1));
+
+    prm.declare_entry("Minimum acceptable convergence rate (Regularization loop)",
+                      "1.05",
+                      dealii::Patterns::Double(1));
   }
   prm.leave_subsection();
 
@@ -610,6 +615,12 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       prm.get_integer("Maximum number of iterations of the Krylov-solver");
     AssertThrow(n_max_krylov_iterations > 0,
                 dealii::ExcLowerRange(n_max_krylov_iterations, 0));
+
+    convergence_rate_threshold =
+      prm.get_double("Minimum acceptable convergence rate (Regularization loop)");
+    AssertThrow(convergence_rate_threshold > 0,
+                dealii::ExcLowerRangeType<double>(
+                  convergence_rate_threshold , 0));
   }
   prm.leave_subsection();
 
