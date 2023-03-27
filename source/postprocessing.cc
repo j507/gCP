@@ -60,6 +60,7 @@ Postprocessor<dim>::get_names() const
     solution_names.emplace_back("Slip_" + std::to_string(slip_id));
 
   solution_names.emplace_back("EquivalentPlasticStrain");
+  solution_names.emplace_back("EquivalentAbsolutePlasticStrain");
   solution_names.emplace_back("EquivalentEdgeDislocationDensity");
   solution_names.emplace_back("EquivalentScrewDislocationDensity");
   solution_names.emplace_back("VonMisesStress");
@@ -98,6 +99,7 @@ Postprocessor<dim>::get_data_component_interpretation()
     interpretation.push_back(
       dealii::DataComponentInterpretation::component_is_scalar);
 
+  interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
@@ -248,6 +250,11 @@ void Postprocessor<dim>::evaluate_vector_field(
             inputs.solution_values[q_point](
               dim * n_crystals + slip_id + n_slips * crystal_id);
 
+          // Equivalent absolute plastic strain
+          computed_quantities[q_point](dim + n_slips + 1) +=
+            std::abs(inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id));
+
           // Equivalent edge dislocation density
           equivalent_edge_dislocation_density +=
             std::pow(inputs.solution_gradients[q_point][
@@ -268,10 +275,10 @@ void Postprocessor<dim>::evaluate_vector_field(
               crystal_id, slip_id);
         }
 
-      computed_quantities[q_point](dim + n_slips + 1) =
+      computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_edge_dislocation_density);
 
-      computed_quantities[q_point](dim + n_slips + 2) =
+      computed_quantities[q_point](dim + n_slips + 3) =
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
@@ -282,21 +289,21 @@ void Postprocessor<dim>::evaluate_vector_field(
         convert_2d_to_3d(elastic_strain_tensor);
 
       // Von-Mises stress
-      computed_quantities[q_point](dim + n_slips + 3) =
+      computed_quantities[q_point](dim + n_slips + 4) =
         get_von_mises_stress(stress_tensor);
 
       // Von-Mises plastic strain
-      computed_quantities[q_point](dim + n_slips + 4) =
+      computed_quantities[q_point](dim + n_slips + 5) =
         get_von_mises_plastic_strain(plastic_strain_tensor);
 
       // Stress components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 5 + i) =
+        computed_quantities[q_point](dim + n_slips + 6 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
 
       // Strain components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 11 + i) =
+        computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
@@ -331,6 +338,11 @@ void Postprocessor<dim>::evaluate_vector_field(
               inputs.solution_values[q_point](
                 dim + slip_id + n_slips * crystal_id);
 
+          // Equivalent absolute plastic strain
+          computed_quantities[q_point](dim + n_slips + 1) +=
+              std::abs(inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id));
+
           // Equivalent edge dislocation density
           equivalent_edge_dislocation_density +=
             std::pow(inputs.solution_gradients[q_point][
@@ -351,10 +363,10 @@ void Postprocessor<dim>::evaluate_vector_field(
               crystal_id, slip_id);
         }
 
-      computed_quantities[q_point](dim + n_slips + 1) =
+      computed_quantities[q_point](dim + n_slips + 2) =
         std::sqrt(equivalent_edge_dislocation_density);
 
-      computed_quantities[q_point](dim + n_slips + 2) =
+      computed_quantities[q_point](dim + n_slips + 3) =
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
@@ -365,21 +377,21 @@ void Postprocessor<dim>::evaluate_vector_field(
         convert_2d_to_3d(elastic_strain_tensor);
 
       // Von-Mises stress
-      computed_quantities[q_point](dim + n_slips + 3) =
+      computed_quantities[q_point](dim + n_slips + 4) =
         get_von_mises_stress(stress_tensor);
 
       // Von-Mises plastic strain
-      computed_quantities[q_point](dim + n_slips + 4) =
+      computed_quantities[q_point](dim + n_slips + 5) =
         get_von_mises_plastic_strain(plastic_strain_tensor);
 
       // Stress components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 5 + i) =
+        computed_quantities[q_point](dim + n_slips + 6 + i) =
           stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
 
       // Strain components
       for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-        computed_quantities[q_point](dim + n_slips + 11 + i) =
+        computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
     }
@@ -437,6 +449,147 @@ double Postprocessor<dim>::get_von_mises_plastic_strain(
     deviatoric_strain_tensor * deviatoric_strain_tensor;
 
   return (std::sqrt(2.0 / 3.0 * von_mises_strain));
+}
+
+
+
+template <int dim>
+ResidualPostprocessor<dim>::ResidualPostprocessor(
+  std::shared_ptr<FEField<dim>>       &fe_field,
+  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
+:
+fe_field(fe_field),
+crystals_data(crystals_data)
+{}
+
+
+
+template <int dim>
+std::vector<std::string>
+ResidualPostprocessor<dim>::get_names() const
+{
+  std::vector<std::string> solution_names(dim, "ResidualDisplacement");
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    solution_names.emplace_back(
+      "ResidualSlip_" + std::to_string(slip_id));
+
+  return solution_names;
+}
+
+
+template <int dim>
+std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+ResidualPostprocessor<dim>::get_data_component_interpretation()
+  const
+{
+  std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      interpretation(
+        dim,
+        dealii::DataComponentInterpretation::component_is_part_of_vector);
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+
+  return interpretation;
+}
+
+
+template <int dim>
+dealii::UpdateFlags
+ResidualPostprocessor<dim>::get_needed_update_flags() const
+{
+  return dealii::update_values |
+         dealii::update_quadrature_points;
+}
+
+
+
+template <int dim>
+void ResidualPostprocessor<dim>::evaluate_vector_field(
+  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+  std::vector<dealii::Vector<double>>                 &computed_quantities) const
+{
+  const unsigned int n_q_points   = inputs.solution_values.size();
+
+  const unsigned int n_components = fe_field->get_n_components();
+
+  const unsigned int n_slips      = crystals_data->get_n_slips();
+
+  const unsigned int n_crystals   = crystals_data->get_n_crystals();
+
+  (void)n_components;
+
+  Assert(inputs.solution_gradients.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(computed_quantities.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(inputs.solution_values[0].size() == n_components,
+         dealii::ExcInternalError());
+
+  // Reset
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
+      computed_quantities[q_point](d) = 0.0;
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+
+    /*!
+     * @note This if-else can probably be done in a way more elegant
+     * manner
+     */
+    if (fe_field->is_decohesion_allowed())
+    {
+      // Displacement
+      for (unsigned int d = 0; d < dim; ++d)
+        for (unsigned int crystal_id = 0;
+              crystal_id < n_crystals; ++crystal_id)
+      {
+        computed_quantities[q_point](d) +=
+            inputs.solution_values[q_point](d + dim * crystal_id);
+      }
+
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](dim + slip_id) +=
+            inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id);
+        }
+    }
+    else
+    {
+      // Displacement
+      for (unsigned int d = 0; d < dim; ++d)
+      {
+        computed_quantities[q_point](d) =
+          inputs.solution_values[q_point](d);
+      }
+
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](dim + slip_id) +=
+              inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id);
+        }
+    }
+  }
 }
 
 
@@ -587,7 +740,7 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
           local_stress_12 = 0.0;
 
           // Get the crystal identifier for the current cell
-          const unsigned int crystal_id = cell->active_fe_index();
+          const unsigned int crystal_id = cell->material_id();
 
           // Update the hp::FEFaceValues instance to the values of the current cell
           hp_fe_face_values.reinit(cell, face);
@@ -947,7 +1100,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
       cell_volume                       = 0.0;
 
       // Get the crystal identifier for the current cell
-      const unsigned int crystal_id = cell->active_fe_index();
+      const unsigned int crystal_id = cell->material_id();
 
       // Update the hp::FEFaceValues instance to the values of the current cell
       hp_fe_values.reinit(cell);
@@ -1052,6 +1205,9 @@ void Homogenization<dim>::compute_macroscopic_stiffness_tetrad()
 
 template class gCP::Postprocessing::Postprocessor<2>;
 template class gCP::Postprocessing::Postprocessor<3>;
+
+template class gCP::Postprocessing::ResidualPostprocessor<2>;
+template class gCP::Postprocessing::ResidualPostprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;

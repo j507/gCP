@@ -185,6 +185,8 @@ private:
 
   Postprocessing::Postprocessor<dim>                postprocessor;
 
+  Postprocessing::ResidualPostprocessor<dim>        residual_postprocessor;
+
   const double                                      string_width;
 
   const unsigned int                                x_lower_boundary_id = 0;
@@ -263,6 +265,9 @@ homogenization(fe_field,
                mapping),
 postprocessor(fe_field,
               crystals_data),
+residual_postprocessor(
+  fe_field,
+  crystals_data),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.temporal_discretization_parameters.end_time -
@@ -390,6 +395,9 @@ void SemicoupledProblem<dim>::setup()
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
                              crystals_data->get_n_slips());
 
+  // Update the material ids of ghost cells
+  fe_field->update_ghost_material_ids();
+
   // Set the active finite elemente index of each cell
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
@@ -472,8 +480,8 @@ void SemicoupledProblem<dim>::setup_constraints()
         if (cell->is_locally_owned())
           for (const auto &face_index : cell->face_indices())
             if (!cell->face(face_index)->at_boundary() &&
-                cell->active_fe_index() !=
-                  cell->neighbor(face_index)->active_fe_index())
+                cell->material_id() !=
+                  cell->neighbor(face_index)->material_id())
             {
               AssertThrow(
                 cell->neighbor(face_index)->active_fe_index() ==
@@ -482,7 +490,7 @@ void SemicoupledProblem<dim>::setup_constraints()
                   "The active finite element index and the material "
                   " identifier of the cell have to coincide!"));
 
-              const unsigned int crystal_id = cell->active_fe_index();
+              const unsigned int crystal_id = cell->material_id();
 
               cell->face(face_index)->get_dof_indices(
                 local_face_dof_indices,
@@ -521,7 +529,7 @@ void SemicoupledProblem<dim>::setup_constraints()
               != lower_corner_points.end())
           {
               // Get the crystal identifier for the current cell
-            const unsigned int crystal_id = cell->active_fe_index();
+            const unsigned int crystal_id = cell->material_id();
 
             for (unsigned int i = 0; i < dim; i++)
             {
@@ -562,8 +570,8 @@ void SemicoupledProblem<dim>::setup_constraints()
         if (cell->is_locally_owned())
           for (const auto &face_index : cell->face_indices())
             if (!cell->face(face_index)->at_boundary() &&
-                cell->active_fe_index() !=
-                  cell->neighbor(face_index)->active_fe_index())
+                cell->material_id() !=
+                  cell->neighbor(face_index)->material_id())
             {
               AssertThrow(
                 cell->neighbor(face_index)->active_fe_index() ==
@@ -572,7 +580,7 @@ void SemicoupledProblem<dim>::setup_constraints()
                   "The active finite element index and the material "
                   " identifier of the cell have to coincide!"));
 
-              const unsigned int crystal_id = cell->active_fe_index();
+              const unsigned int crystal_id = cell->material_id();
 
               cell->face(face_index)->get_dof_indices(
                 local_face_dof_indices,
@@ -611,7 +619,7 @@ void SemicoupledProblem<dim>::setup_constraints()
               != lower_corner_points.end())
           {
               // Get the crystal identifier for the current cell
-            const unsigned int crystal_id = cell->active_fe_index();
+            const unsigned int crystal_id = cell->material_id();
 
             for (unsigned int i = 0; i < dim; i++)
             {
@@ -777,6 +785,12 @@ void SemicoupledProblem<dim>::data_output()
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
   data_out.add_data_vector(fe_field->solution, postprocessor);
+
+  if (parameters.flag_output_residual)
+  {
+    data_out.add_data_vector(gCP_solver.get_residual(),
+                             residual_postprocessor);
+  }
 
   data_out.build_patches(*mapping,
                          fe_field->get_displacement_fe_degree(),

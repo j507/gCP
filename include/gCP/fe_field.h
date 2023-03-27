@@ -12,6 +12,7 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 
+#include <gCP/utilities.h>
 namespace gCP
 {
 
@@ -71,6 +72,13 @@ public:
    */
   void setup_extractors(const unsigned n_crystals,
                         const unsigned n_slips);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  void update_ghost_material_ids();
 
   /*!
    * @brief Set ups the degress of freedom of the vector-valued
@@ -245,6 +253,10 @@ public:
    */
   unsigned int get_n_components() const;
 
+
+  std::tuple<double, double, double> get_l2_norms(
+    dealii::LinearAlgebraTrilinos::MPI::Vector &vector);
+
   /*!
    * @brief
    *
@@ -343,6 +355,20 @@ private:
    * @todo Docu
    */
   std::vector<unsigned int>         global_component_mapping;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  std::set<unsigned int>            vector_dof_indices;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  std::set<unsigned int>            scalar_dof_indices;
 
   /**
    * @brief

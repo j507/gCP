@@ -64,8 +64,10 @@ void Logger::log_to_file()
     else
       output_filepath << std::defaultfloat;
 
+    const unsigned int precision = 6;
+
     output_filepath << std::setw(key.length()) << std::right
-                    << std::setprecision(6)
+                    << std::setprecision(precision)
                     << data_map[key].first << std::string(4, ' ');
   }
 
@@ -85,9 +87,14 @@ void Logger::log_headers_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    pcout << std::setw(key.length()) << std::right
-          << std::setprecision(6)
-          << key << std::string(4, ' ');
+    const unsigned int precision = 3;
+
+    pcout
+      << std::setw( (data_map[key].second) ? (precision + 6) : key.length())
+      << std::right
+      << std::setprecision(precision)
+      << key
+      << std::string(4, ' ');
   }
 
   pcout << std::endl;
@@ -106,8 +113,10 @@ void Logger::log_values_to_terminal()
     else
       pcout << std::defaultfloat;
 
+    const unsigned int precision = 3;
+
     pcout << std::setw(key.length()) << std::right
-          << std::setprecision(6)
+          << std::setprecision(precision)
           << data_map[key].first << std::string(4, ' ');
   }
 

@@ -83,6 +83,12 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
       trial_value_scalar_function = assemble_residual();
     }
 
+    const auto residual_l2_norms =
+      fe_field->get_l2_norms(residual);
+
+    const auto newton_update_l2_norms =
+      fe_field->get_l2_norms(newton_update);
+
     const double order_of_convergence =
       (nonlinear_iteration != 1) ?
         std::log(residual_norm) / std::log(previous_residual_norm) :
@@ -90,17 +96,25 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     previous_residual_norm  = residual_norm;
 
-    nonlinear_solver_logger.update_value("Newton-Iter",
+    nonlinear_solver_logger.update_value("N-Itr",
                                          nonlinear_iteration);
-    nonlinear_solver_logger.update_value("Krylov-Iter",
+    nonlinear_solver_logger.update_value("K-Itr",
                                          n_krylov_iterations);
-    nonlinear_solver_logger.update_value("Line-Search-Iter",
+    nonlinear_solver_logger.update_value("L-Itr",
                                          line_search.get_n_iterations());
-    nonlinear_solver_logger.update_value("(Newton-Step)_L2",
-                                         newton_update_norm);
-    nonlinear_solver_logger.update_value("(Residual)_L2",
-                                         residual_norm);
-    nonlinear_solver_logger.update_value("Convergence-Rate",
+    nonlinear_solver_logger.update_value("(NS)_L2",
+                                         std::get<0>(newton_update_l2_norms));
+    nonlinear_solver_logger.update_value("(NS_U)_L2",
+                                         std::get<1>(newton_update_l2_norms));
+    nonlinear_solver_logger.update_value("(NS_G)_L2",
+                                         std::get<2>(newton_update_l2_norms));
+    nonlinear_solver_logger.update_value("(R)_L2",
+                                         std::get<0>(residual_l2_norms));
+    nonlinear_solver_logger.update_value("(R_U)_L2",
+                                         std::get<1>(residual_l2_norms));
+    nonlinear_solver_logger.update_value("(R_G)_L2",
+                                         std::get<2>(residual_l2_norms));
+    nonlinear_solver_logger.update_value("C-Rate",
                                          order_of_convergence);
 
     nonlinear_solver_logger.log_to_file();
@@ -245,7 +259,7 @@ unsigned int GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
   newton_update = distributed_newton_update;
 
   // Compute the L2-Norm of the Newton update
-  newton_update_norm = distributed_newton_update.l2_norm();
+  newton_update_norm  = distributed_newton_update.l2_norm();
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;

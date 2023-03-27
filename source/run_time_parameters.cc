@@ -814,6 +814,7 @@ homogenization_frequency(1),
 graphical_output_directory("results/default/"),
 flag_compute_macroscopic_quantities(false),
 flag_output_damage_variable(false),
+flag_output_residual(false),
 verbose(true)
 {}
 
@@ -952,6 +953,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Output damage variable field",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Output residual field",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 
@@ -1037,6 +1042,8 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
     graphical_output_directory = prm.get("Graphical output directory");
 
     flag_output_damage_variable = prm.get_bool("Output damage variable field");
+
+    flag_output_residual = prm.get_bool("Output residual field");
 
     if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
         !fs::exists(graphical_output_directory + "paraview/"))

@@ -102,7 +102,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   cell->get_dof_indices(data.local_dof_indices);
 
   // Get the crystal identifier for the current cell
-  const unsigned int crystal_id = cell->active_fe_index();
+  const unsigned int crystal_id = cell->material_id();
 
   // Get the stiffness tetrad of the current crystal
   scratch.stiffness_tetrad =
@@ -268,8 +268,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&
-          cell->active_fe_index() !=
-            cell->neighbor(face_index)->active_fe_index())
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
       {
         // Reset local data
         data.local_coupling_matrix = 0.0;
@@ -619,6 +619,8 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   residual_norm = residual.l2_norm();
 
+  ghost_residual = residual;
+
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
 
@@ -641,7 +643,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
   cell->get_dof_indices(data.local_dof_indices);
 
   // Get the crystal identifier for the current cell
-  const unsigned int crystal_id = cell->active_fe_index();
+  const unsigned int crystal_id = cell->material_id();
 
   // Update the hp::FEValues instance to the values of the current cell
   scratch.hp_fe_values.reinit(cell);
@@ -793,8 +795,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
     for (const auto &face_index : cell->face_indices())
       if (!cell->face(face_index)->at_boundary() &&
-          cell->active_fe_index() !=
-            cell->neighbor(face_index)->active_fe_index())
+          cell->material_id() !=
+            cell->neighbor(face_index)->material_id())
       {
         // Get the crystal identifier for the neighbour cell
         const unsigned int neighbour_crystal_id =
@@ -1163,7 +1165,7 @@ update_local_quadrature_point_history(
   gCP::AssemblyData::QuadraturePointHistory::Copy               &)
 {
   // Get the crystal identifier for the current cell
-  const unsigned int crystal_id = cell->active_fe_index();
+  const unsigned int crystal_id = cell->material_id();
 
   // Get the local quadrature point history instance
   const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
@@ -1218,7 +1220,7 @@ update_local_quadrature_point_history(
       {
         // Get the crystal identifier for the neighbor cell
         const unsigned int neighbor_crystal_id =
-          cell->neighbor(face_index)->active_fe_index();
+          cell->neighbor(face_index)->material_id();
 
         // Get the local quadrature point history instance
         const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
@@ -1416,7 +1418,7 @@ store_local_effective_opening_displacement(
   gCP::AssemblyData::QuadraturePointHistory::Copy               &)
 {
   // Get the crystal identifier for the current cell
-  const unsigned int crystal_id = cell->active_fe_index();
+  const unsigned int crystal_id = cell->material_id();
 
   // Reset local data
   scratch.reset();
@@ -1430,7 +1432,7 @@ store_local_effective_opening_displacement(
       {
         // Get the crystal identifier for the neighbor cell
         const unsigned int neighbor_crystal_id =
-          cell->neighbor(face_index)->active_fe_index();
+          cell->neighbor(face_index)->material_id();
 
         // Get the local quadrature point history instance
         const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
