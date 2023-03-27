@@ -119,7 +119,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                old_slip_values;
 
-  std::vector<dealii::FullMatrix<double>>         gateaux_derivative_values;
+  std::vector<dealii::FullMatrix<double>>         scalar_microstress_law_jacobian_values;
 
   GrainInteractionModuli                          grain_interaction_moduli;
 
@@ -137,13 +137,9 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<double>                             damage_variable_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     current_cell_gateaux_derivative_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>     cohesive_law_jacobian_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     neighbor_cell_gateaux_derivative_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     contact_traction_current_cell_gateaux_derivative_values;
-
-  std::vector<dealii::SymmetricTensor<2,dim>>     contact_traction_neighbor_cell_gateaux_derivative_values;
+  std::vector<dealii::SymmetricTensor<2,dim>>     contact_law_jacobian_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     sym_grad_vector_phi;
 

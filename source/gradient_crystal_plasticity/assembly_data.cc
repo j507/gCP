@@ -98,7 +98,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-gateaux_derivative_values(
+scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),
 intra_gateaux_derivative_values(
@@ -112,10 +112,8 @@ neighbor_cell_displacement_values(this->n_face_q_points),
 current_cell_old_displacement_values(this->n_face_q_points),
 neighbor_cell_old_displacement_values(this->n_face_q_points),
 damage_variable_values(this->n_face_q_points),
-current_cell_gateaux_derivative_values(this->n_face_q_points),
-neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
-contact_traction_current_cell_gateaux_derivative_values(this->n_face_q_points),
-contact_traction_neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
+cohesive_law_jacobian_values(this->n_face_q_points),
+contact_law_jacobian_values(this->n_face_q_points),
 sym_grad_vector_phi(this->dofs_per_cell),
 scalar_phi(
   n_slips,
@@ -168,7 +166,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-gateaux_derivative_values(
+scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),
 intra_gateaux_derivative_values(
@@ -182,10 +180,8 @@ neighbor_cell_displacement_values(this->n_face_q_points),
 current_cell_old_displacement_values(this->n_face_q_points),
 neighbor_cell_old_displacement_values(this->n_face_q_points),
 damage_variable_values(this->n_face_q_points),
-current_cell_gateaux_derivative_values(this->n_face_q_points),
-neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
-contact_traction_current_cell_gateaux_derivative_values(this->n_face_q_points),
-contact_traction_neighbor_cell_gateaux_derivative_values(this->n_face_q_points),
+cohesive_law_jacobian_values(this->n_face_q_points),
+contact_law_jacobian_values(this->n_face_q_points),
 sym_grad_vector_phi(this->dofs_per_cell),
 scalar_phi(
   n_slips,

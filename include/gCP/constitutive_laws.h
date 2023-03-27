@@ -249,7 +249,7 @@ public:
     const double slip_resistance,
     const double time_step_size);
 
-  dealii::FullMatrix<double> get_gateaux_derivative_matrix(
+  dealii::FullMatrix<double> get_jacobian(
     const unsigned int                      q_point,
     const std::vector<std::vector<double>>  slip_values,
     const std::vector<std::vector<double>>  old_slip_values,
@@ -349,6 +349,9 @@ inline const dealii::SymmetricTensor<2,dim>
     const unsigned int crystal_id,
     const unsigned int slip_id) const
 {
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
                                  "instance has not been initialized."));
@@ -364,6 +367,8 @@ inline const std::vector<dealii::SymmetricTensor<2,dim>>
   get_reduced_gradient_hardening_tensors(
     const unsigned int crystal_id) const
 {
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
                                  "instance has not been initialized."));
@@ -459,14 +464,7 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
-  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const dealii::Tensor<1,dim> opening_displacement,
-    const dealii::Tensor<1,dim> normal_vector,
-    const double                max_effective_opening_displacement,
-    const double                old_effective_opening_displacement,
-    const double                time_step_size) const;
-
-  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+  dealii::SymmetricTensor<2,dim> get_jacobian(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector,
     const double                max_effective_opening_displacement,
@@ -537,8 +535,8 @@ CohesiveLaw<dim>::get_degradation_function_derivative_value(
   const bool    couple) const
 {
   if (couple)
-    return - degradation_exponent *
-           std::pow(1.0 - damage_variable, degradation_exponent - 1.0);
+    return (- degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
   else
     return 1.0;
 }
@@ -631,7 +629,7 @@ public:
    *
    * @details It is computed as
    *  \f[
-   *      \bs{J}_{\bs{t}_\mathrm{c}} = - \varepsilon k_0
+   *      \bs{J}_{\bs{t}_\mathrm{c}} =  \varepsilon
    *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
    *      \bs{n} \otimes \bs{n}
    *  \f]
@@ -643,40 +641,11 @@ public:
    * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
    * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
    */
-  dealii::SymmetricTensor<2,dim> get_current_cell_gateaux_derivative(
-    const dealii::Tensor<1,dim> opening_displacement,
-    const dealii::Tensor<1,dim> normal_vector) const;
-
-  /*!
-   * @brief Method returning the Gateaux derivative of the
-   * contact traction with respect to the current cell
-   *
-   * @details It is computed as
-   *  \f[
-   *      \bs{J}_{\bs{t}_\mathrm{c}} = \varepsilon k_0
-   *      \macaulay{-\frac{\delta_{\mathrm{n}}}{\abs{\delta_{\mathrm{n}}}}}
-   *      \bs{n} \otimes \bs{n}
-   *  \f]
-   *
-   * @param opening_displacement Opening displacement at the evaluation
-   * point \f$ \bs{\delta} \f$
-   * @param normal_vector Normal vector at the evaluation point
-   * \f$ \bs{n} \f$
-   * @return dealii::SymmetricTensor<2,dim>  Contact traction at the evaluation
-   * point \f$ \bs{J}_{\bs{t}_\mathrm{c}} \f$
-   */
-  dealii::SymmetricTensor<2,dim> get_neighbor_cell_gateaux_derivative(
+  dealii::SymmetricTensor<2,dim> get_jacobian(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
 
 private:
-
-  /*!
-   * @brief The stiffness of the fictitious spring between the two
-   * bodies in contact
-   */
-  double stiffness;
-
   /*!
    * @brief The penalty coefficient multiplying the @ref stiffness value
    * leading to the effective stiffness
@@ -710,7 +679,7 @@ template <int dim>
 inline double
 ContactLaw<dim>::macaulay_brackets(const double value) const
 {
-  if (value > 0)
+  if (value > 0.)
     return value;
   else
     return 0.0;
