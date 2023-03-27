@@ -185,6 +185,8 @@ private:
 
   Postprocessing::Postprocessor<dim>                postprocessor;
 
+  Postprocessing::ResidualPostprocessor<dim>        residual_postprocessor;
+
   const double                                      string_width;
 
   const unsigned int                                x_lower_boundary_id = 0;
@@ -263,6 +265,9 @@ homogenization(fe_field,
                mapping),
 postprocessor(fe_field,
               crystals_data),
+residual_postprocessor(
+  fe_field,
+  crystals_data),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.temporal_discretization_parameters.end_time -
@@ -780,6 +785,12 @@ void SemicoupledProblem<dim>::data_output()
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
   data_out.add_data_vector(fe_field->solution, postprocessor);
+
+  if (parameters.flag_output_residual)
+  {
+    data_out.add_data_vector(gCP_solver.get_residual(),
+                             residual_postprocessor);
+  }
 
   data_out.build_patches(*mapping,
                          fe_field->get_displacement_fe_degree(),

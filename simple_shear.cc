@@ -320,6 +320,8 @@ private:
 
   Postprocessing::Postprocessor<dim>                postprocessor;
 
+  Postprocessing::ResidualPostprocessor<dim>        residual_postprocessor;
+
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
@@ -395,6 +397,9 @@ homogenization(fe_field,
                mapping),
 postprocessor(fe_field,
               crystals_data),
+residual_postprocessor(
+  fe_field,
+  crystals_data),
 simple_shear(fe_field,
              mapping,
              parameters.max_shear_strain_at_upper_boundary,
@@ -959,6 +964,15 @@ void SimpleShearProblem<dim>::data_output()
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
   data_out.add_data_vector(fe_field->solution, postprocessor);
+
+  data_out.add_data_vector(gCP_solver.get_residual(),
+                           residual_postprocessor);
+
+  if (parameters.flag_output_residual)
+  {
+    data_out.add_data_vector(gCP_solver.get_residual(),
+                             residual_postprocessor);
+  }
 
   data_out.build_patches(*mapping,
                          fe_field->get_displacement_fe_degree(),
