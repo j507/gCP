@@ -475,6 +475,8 @@ krylov_relative_tolerance(1e-6),
 krylov_absolute_tolerance(1e-8),
 n_max_krylov_iterations(1000),
 convergence_rate_threshold(1.05),
+regularization_factor(1e1),
+n_max_regularization_iterations(3),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -522,6 +524,14 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Minimum acceptable convergence rate (Regularization loop)",
                       "1.05",
                       dealii::Patterns::Double(1));
+
+    prm.declare_entry("Factor for regularization multiplier control",
+                      "1e1",
+                      dealii::Patterns::Double(1));
+
+    prm.declare_entry("Maximum number of iterations of the regularization loop",
+                      "3",
+                      dealii::Patterns::Integer(1));
   }
   prm.leave_subsection();
 
@@ -621,6 +631,17 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     AssertThrow(convergence_rate_threshold > 0,
                 dealii::ExcLowerRangeType<double>(
                   convergence_rate_threshold , 0));
+
+    regularization_factor =
+      prm.get_double("Factor for regularization multiplier control");
+    AssertThrow(regularization_factor > 1.0,
+                dealii::ExcLowerRangeType<double>(
+                  regularization_factor , 1.0));
+
+    n_max_regularization_iterations =
+      prm.get_integer("Maximum number of iterations of the regularization loop");
+    AssertThrow(n_max_regularization_iterations > 0,
+                dealii::ExcLowerRange(n_max_regularization_iterations, 0));
   }
   prm.leave_subsection();
 

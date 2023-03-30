@@ -596,6 +596,20 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  double              regularization_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_max_regularization_iterations;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   HookeLawParameters  hooke_law_parameters;
 
   /*!
