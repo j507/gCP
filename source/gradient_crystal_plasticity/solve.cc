@@ -28,12 +28,9 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 {
   nonlinear_solver_logger.add_break(
-    "Step " +
-    std::to_string(discrete_time.get_step_number() + 1) +
-    ": Solving for t = " +
-    std::to_string(discrete_time.get_next_time())+
-    " with dt = " +
-    std::to_string(discrete_time.get_next_step_size()));
+    "Step " + std::to_string(discrete_time.get_step_number() + 1) +
+    ": Solving for t = " + std::to_string(discrete_time.get_next_time())+
+    " with dt = " + std::to_string(discrete_time.get_next_step_size()));
 
   nonlinear_solver_logger.log_headers_to_terminal();
 
@@ -41,13 +38,28 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
   prepare_quadrature_point_history();
 
-  unsigned int nonlinear_iteration = 1;
+  bool flag_successful_convergence      = false;
 
-  double previous_residual_norm = 0.0;
+  unsigned int nonlinear_iteration      = 0;
 
-  for (;nonlinear_iteration <= parameters.n_max_nonlinear_iterations;
-       ++nonlinear_iteration)
+  unsigned int regularization_iteration = 0;
+
+  double previous_residual_norm         = 0.0;
+
+  double regularization_multiplier      = 1.0;
+
+  // Newton-Raphson loop
+  do
   {
+    nonlinear_iteration++;
+
+    AssertThrow(
+      nonlinear_iteration <= parameters.n_max_nonlinear_iterations,
+      dealii::ExcMessage("The nonlinear solver has reach the given "
+        "maximum number of iterations ("
+        + std::to_string(parameters.n_max_nonlinear_iterations) + ")."));
+
+    // The current trial solution has to be stored in case
     store_trial_solution();
 
     reset_and_update_quadrature_point_history();
@@ -64,23 +76,26 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
 
     reset_and_update_quadrature_point_history();
 
-    double trial_value_scalar_function = assemble_residual();
-
-    line_search.reinit(initial_value_scalar_function);
-
-    while (!line_search.suficient_descent_condition(
-        trial_value_scalar_function,relaxation_parameter))
+    // Line search algorithm
     {
-      relaxation_parameter =
-        line_search.get_lambda(trial_value_scalar_function, relaxation_parameter);
+      double trial_value_scalar_function = assemble_residual();
 
-      reset_trial_solution();
+      line_search.reinit(initial_value_scalar_function);
 
-      update_trial_solution(relaxation_parameter);
+      while (!line_search.suficient_descent_condition(
+          trial_value_scalar_function,relaxation_parameter))
+      {
+        relaxation_parameter =
+          line_search.get_lambda(trial_value_scalar_function, relaxation_parameter);
 
-      reset_and_update_quadrature_point_history();
+        reset_trial_solution();
 
-      trial_value_scalar_function = assemble_residual();
+        update_trial_solution(relaxation_parameter);
+
+        reset_and_update_quadrature_point_history();
+
+        trial_value_scalar_function = assemble_residual();
+      }
     }
 
     const auto residual_l2_norms =
@@ -120,18 +135,11 @@ void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
     nonlinear_solver_logger.log_to_file();
     nonlinear_solver_logger.log_values_to_terminal();
 
-    if (residual_norm < parameters.residual_tolerance ||
-        newton_update_norm < parameters.newton_update_tolerance)
-      break;
-  }
+    flag_successful_convergence =
+        residual_norm < parameters.residual_tolerance ||
+        newton_update_norm < parameters.newton_update_tolerance;
 
-  AssertThrow(nonlinear_iteration <
-                parameters.n_max_nonlinear_iterations,
-              dealii::ExcMessage(
-                "The nonlinear solver has reach the given maximum "
-                "number of iterations ("
-                + std::to_string(parameters.n_max_nonlinear_iterations)
-                + ")."));
+  } while (!flag_successful_convergence);
 
   store_effective_opening_displacement_in_quadrature_history();
 
