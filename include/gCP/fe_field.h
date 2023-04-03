@@ -55,6 +55,14 @@ public:
   dealii::LinearAlgebraTrilinos::MPI::Vector  old_solution;
 
   /*!
+   * @brief The solution vector of two load steps ago
+   *
+   * @details It contains the nodal values of the displacements and slips
+   * fields.
+   */
+  dealii::LinearAlgebraTrilinos::MPI::Vector  old_old_solution;
+
+  /*!
    * @brief The vector-valued finite element field's corresponding
    * distributed vector.
    *
