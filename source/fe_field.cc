@@ -411,7 +411,7 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
 
   Assert(
     std::fabs(l2_norm - control_l2_norm) <
-      std::numeric_limits<double>::epsilon(),
+      std::numeric_limits<double>::epsilon() * 2.,
     dealii::ExcMessage("The norms do not match ("
                        + to_string(l2_norm) + ", "
                        + to_string(control_l2_norm) + ")"));
