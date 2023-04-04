@@ -140,6 +140,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
+  dealii::LinearAlgebraTrilinos::MPI::Vector        initial_trial_solution;
+
   dealii::LinearAlgebraTrilinos::MPI::Vector        tmp_trial_solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
