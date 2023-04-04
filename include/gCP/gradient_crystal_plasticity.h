@@ -236,11 +236,15 @@ private:
 
   unsigned int solve_linearized_system();
 
+  //bool compute_initial_guess();
+
   void update_trial_solution(const double relaxation_parameter);
 
-  void store_trial_solution();
+  void store_trial_solution(
+    const bool flag_store_initial_trial_solution = false);
 
-  void reset_trial_solution();
+  void reset_trial_solution(
+    const bool flag_reset_to_initial_trial_solution = false);
 
   void extrapolate_initial_trial_solution();
 
