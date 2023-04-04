@@ -340,13 +340,19 @@ void FEField<dim>::setup_vectors()
 
   old_solution.reinit(solution);
 
+  old_old_solution.reinit(solution);
+
   distributed_vector.reinit(locally_owned_dofs,
                             locally_relevant_dofs,
                             MPI_COMM_WORLD,
                             true);
 
   solution            = 0.;
+
   old_solution        = 0.;
+
+  old_old_solution    = 0.;
+
   distributed_vector  = 0.;
 
   flag_setup_vectors_was_called = true;
@@ -357,7 +363,9 @@ void FEField<dim>::setup_vectors()
 template<int dim>
 void FEField<dim>::update_solution_vectors()
 {
-  old_solution = solution;
+  old_old_solution  = old_solution;
+
+  old_solution      = solution;
 }
 
 
