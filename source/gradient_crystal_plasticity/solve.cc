@@ -428,7 +428,7 @@ namespace gCP
   }
 
 
-
+  /*
   template <int dim>
   bool GradientCrystalPlasticitySolver<dim>::compute_initial_guess()
   {
@@ -443,12 +443,12 @@ namespace gCP
     {
       nonlinear_iteration++;
 
-      /*AssertThrow(
+      AssertThrow(
           nonlinear_iteration <= parameters.n_max_nonlinear_iterations,
           dealii::ExcMessage("The nonlinear solver has reach the given "
                              "maximum number of iterations (" +
                              std::to_string(parameters.n_max_nonlinear_iterations) + ")."));
-      */
+
 
       // Check if the start value of the Newton-Raphson was inside the
       // desired convergence rate locus. If not, compute a new start
@@ -457,11 +457,11 @@ namespace gCP
       {
         std::stringstream message;
 
-        /*message << "\n  Order of convergence is beneath the threshold"
+        message << "\n  Order of convergence is beneath the threshold"
                    ", i.e. ("
                 << order_of_convergence << " < "
                 << parameters.convergence_rate_threshold << "). "
-                << "Computing a new initial guess with";*/
+                << "Computing a new initial guess with";
 
         message << "\n  Maximum amount of nonlinear iterations reached. "
                 << "Computing a new initial solution with";
