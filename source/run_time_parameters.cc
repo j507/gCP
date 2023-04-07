@@ -457,6 +457,7 @@ KrylovParameters::KrylovParameters()
 solver_type(SolverType::CG),
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
+tolerance_relaxation_factor(1.0),
 n_max_iterations(1000)
 {}
 
@@ -477,6 +478,10 @@ void KrylovParameters::declare_parameters(
 
     prm.declare_entry("Absolute tolerance",
                       "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Relaxation factor of the tolerances",
+                      "1.0",
                       dealii::Patterns::Double());
 
     prm.declare_entry("Maximum number of iterations",
@@ -517,19 +522,28 @@ void KrylovParameters::parse_parameters(
 
     absolute_tolerance  = prm.get_double("Absolute tolerance");
 
+    tolerance_relaxation_factor =
+      prm.get_double("Relaxation factor of the tolerances");
+
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
     AssertThrow(relative_tolerance > 0,
                 dealii::ExcLowerRange(relative_tolerance, 0));
 
+    AssertThrow(absolute_tolerance > 0,
+                dealii::ExcLowerRange(absolute_tolerance, 0));
+
     AssertThrow(relative_tolerance > absolute_tolerance,
                 dealii::ExcLowerRangeType<double>(
                   relative_tolerance , absolute_tolerance));
 
+    AssertThrow(tolerance_relaxation_factor > 0,
+                dealii::ExcLowerRangeType<double>(
+                  tolerance_relaxation_factor, 0));
+
     AssertThrow(n_max_iterations > 0,
                 dealii::ExcLowerRange(n_max_iterations, 0));
-
   }
   prm.leave_subsection();
 }
@@ -694,6 +708,7 @@ void ConvergenceControlParameters::parse_parameters(
 
 SolverParameters::SolverParameters()
 :
+microforce_balance_scaling_factor(1.0),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -721,6 +736,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     ContactLawParameters::declare_parameters(prm);
   }
   prm.leave_subsection();
+
+  prm.declare_entry("Scaling factor of the microforce balance",
+                    "1",
+                    dealii::Patterns::Double());
 
   prm.declare_entry("Allow decohesion at grain boundaries",
                     "false",
@@ -769,6 +788,14 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     contact_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+
+  microforce_balance_scaling_factor =
+    prm.get_double("Scaling factor of the microforce balance");
+
+    AssertThrow(microforce_balance_scaling_factor > 0,
+                dealii::ExcLowerRangeType<double>(
+                  microforce_balance_scaling_factor, 0));
+
 
   allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 

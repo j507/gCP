@@ -511,6 +511,13 @@ struct KrylovParameters
    *
    * @todo Docu
    */
+  double        tolerance_relaxation_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   unsigned int  n_max_iterations;
 };
 
@@ -708,6 +715,13 @@ struct SolverParameters
    * @todo Docu
    */
   ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              microforce_balance_scaling_factor;
 
   /*!
    * @brief
