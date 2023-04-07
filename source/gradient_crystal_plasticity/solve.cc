@@ -109,6 +109,8 @@ namespace gCP
 
     //unsigned int regularization_iteration = 0;
 
+    //double initial_residual_norm          = 0.0;
+
     double previous_residual_norm         = 0.0;
 
     //double regularization_multiplier      = 1.0;
@@ -125,13 +127,13 @@ namespace gCP
     {
       nonlinear_iteration++;
 
-      AssertThrow(
+      /*AssertThrow(
         nonlinear_iteration <= newton_parameters.n_max_iterations,
         dealii::ExcMessage(
           "The nonlinear solver has reach the given maximum number of "
           "iterations (" +
           std::to_string(newton_parameters.n_max_iterations) + ")."));
-
+      */
       if (nonlinear_iteration > newton_parameters.n_max_iterations)
       {
         reset_quadrature_point_history();
@@ -226,7 +228,12 @@ namespace gCP
       reset_and_update_quadrature_point_history();
 
       const double initial_value_scalar_function = assemble_residual();
-
+      /*
+      if (nonlinear_iteration == 1)
+      {
+        initial_residual_norm = residual_norm;
+      }
+      */
       assemble_jacobian();
 
       const unsigned int n_krylov_iterations = solve_linearized_system();
@@ -247,7 +254,8 @@ namespace gCP
             trial_value_scalar_function, relaxation_parameter))
         {
           relaxation_parameter =
-              line_search.get_lambda(trial_value_scalar_function, relaxation_parameter);
+              line_search.get_lambda(trial_value_scalar_function,
+                                     relaxation_parameter);
 
           reset_trial_solution();
 
@@ -266,7 +274,8 @@ namespace gCP
           fe_field->get_l2_norms(newton_update);
 
       const double order_of_convergence =
-          (nonlinear_iteration != 1) ? std::log(residual_norm) / std::log(previous_residual_norm) : 0.0;
+          (nonlinear_iteration != 1) ? std::log(residual_norm) /
+            std::log(previous_residual_norm) : 0.0;
 
       previous_residual_norm = residual_norm;
 
@@ -277,10 +286,13 @@ namespace gCP
       nonlinear_solver_logger.update_value("L-Itr",
                                            line_search.get_n_iterations());
       nonlinear_solver_logger.update_value("(NS)_L2",
+                                           relaxation_parameter *
                                            std::get<0>(newton_update_l2_norms));
       nonlinear_solver_logger.update_value("(NS_U)_L2",
+                                           relaxation_parameter *
                                            std::get<1>(newton_update_l2_norms));
       nonlinear_solver_logger.update_value("(NS_G)_L2",
+                                           relaxation_parameter *
                                            std::get<2>(newton_update_l2_norms));
       nonlinear_solver_logger.update_value("(R)_L2",
                                            std::get<0>(residual_l2_norms));
@@ -296,7 +308,8 @@ namespace gCP
 
       flag_successful_convergence =
           residual_norm < newton_parameters.absolute_tolerance ||
-          newton_update_norm < newton_parameters.step_tolerance;
+          (relaxation_parameter * newton_update_norm) <
+            newton_parameters.step_tolerance;
 
     } while (!flag_successful_convergence);
 
@@ -345,83 +358,128 @@ namespace gCP
 
     switch (krylov_parameters.solver_type)
     {
-    case RunTimeParameters::SolverType::DirectSolver:
-    {
-      dealii::TrilinosWrappers::SolverDirect solver(solver_control);
+      case RunTimeParameters::SolverType::DirectSolver:
+      {
+        dealii::TrilinosWrappers::SolverDirect solver(solver_control);
 
-      try
-      {
-        solver.solve(jacobian, distributed_newton_update, residual);
+        try
+        {
+          solver.solve(jacobian, distributed_newton_update, residual);
+        }
+        catch (std::exception &exc)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Exception in the solve method: " << std::endl
+                    << exc.what() << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
+        catch (...)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Unknown exception in the solve method!" << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
       }
-      catch (std::exception &exc)
-      {
-        std::cerr << std::endl
-                  << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the solve method: " << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-      catch (...)
-      {
-        std::cerr << std::endl
-                  << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Unknown exception in the solve method!" << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
-    break;
+      break;
+
     case RunTimeParameters::SolverType::CG:
-    {
-      dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
-
-      dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
-
-      preconditioner.initialize(jacobian);
-
-      try
       {
-        solver.solve(jacobian,
-                     distributed_newton_update,
-                     residual,
-                     preconditioner);
+        dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
+
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+
+        preconditioner.initialize(jacobian);
+
+        try
+        {
+          solver.solve(jacobian,
+                      distributed_newton_update,
+                      residual,
+                      preconditioner);
+        }
+        catch (std::exception &exc)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Exception in the solve method: " << std::endl
+                    << exc.what() << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
+        catch (...)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Unknown exception in the solve method!" << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
       }
-      catch (std::exception &exc)
+      break;
+
+    case RunTimeParameters::SolverType::GMRES:
       {
-        std::cerr << std::endl
-                  << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the solve method: " << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
+        dealii::LinearAlgebraTrilinos::SolverGMRES solver(solver_control);
+
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+
+        preconditioner.initialize(jacobian);
+
+        try
+        {
+          solver.solve(jacobian,
+                      distributed_newton_update,
+                      residual,
+                      preconditioner);
+        }
+        catch (std::exception &exc)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Exception in the solve method: " << std::endl
+                    << exc.what() << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
+        catch (...)
+        {
+          std::cerr << std::endl
+                    << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::cerr << "Unknown exception in the solve method!" << std::endl
+                    << "Aborting!" << std::endl
+                    << "----------------------------------------------------"
+                    << std::endl;
+          std::abort();
+        }
       }
-      catch (...)
-      {
-        std::cerr << std::endl
-                  << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Unknown exception in the solve method!" << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
-    break;
+      break;
+
     default:
       AssertThrow(false, dealii::ExcNotImplemented());
       break;

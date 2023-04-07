@@ -469,7 +469,7 @@ void KrylovParameters::declare_parameters(
   {
     prm.declare_entry("Solver type",
                       "cg",
-                      dealii::Patterns::Selection("directsolver|cg"));
+                      dealii::Patterns::Selection("directsolver|cg|gmres"));
 
     prm.declare_entry("Relative tolerance",
                       "1e-6",
@@ -502,6 +502,10 @@ void KrylovParameters::parse_parameters(
     else if (string_solver_type == std::string("cg"))
     {
       solver_type = SolverType::CG;
+    }
+    else if (string_solver_type == std::string("gmres"))
+    {
+      solver_type = SolverType::GMRES;
     }
     else
     {

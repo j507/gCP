@@ -55,6 +55,13 @@ enum class SolverType
    * @note Only the default parameters are implemented
    */
   CG,
+
+  /*!
+   * @brief Trilinos' generalized minimal residual method solver.
+   *
+   * @note Only the default parameters are implemented
+   */
+  GMRES,
 };
 
 
@@ -598,13 +605,13 @@ struct ConvergenceControlParameters
    *
    * @todo Docu
    */
-  unsigned int  upper_threshold;
+  double        upper_threshold;
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int  lower_threshold;
+  double        lower_threshold;
 
   /*!
    * @brief
