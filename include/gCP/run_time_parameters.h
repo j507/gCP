@@ -159,63 +159,6 @@ enum class BoundaryConditionsAtGrainBoundaries
 
 
 
-struct NewtonRaphsonParameters
-{
-  /*
-   * @brief Constructor which sets up the parameters with default values.
-   */
-  NewtonRaphsonParameters();
-
-  /*!
-   * @brief Static method which declares the associated parameter to the
-   * ParameterHandler object @p prm.
-   */
-  static void declare_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief Method which parses the parameters from the ParameterHandler
-   * object @p prm.
-   */
-  void parse_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        nonlinear_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int  n_max_nonlinear_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        krylov_relative_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        krylov_absolute_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int  n_max_krylov_iterations;
-};
-
-
-
 struct HookeLawParameters
 {
   /*
@@ -512,6 +455,156 @@ struct ContactLawParameters
    * @brief See @ref ConstitutiveLaws::ContactLaw
    */
   double  penalty_coefficient;
+};
+
+
+
+struct KrylovParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  KrylovParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_max_iterations;
+};
+
+
+
+struct NewtonRaphsonParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  NewtonRaphsonParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              step_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_max_iterations;
+};
+
+
+
+
+struct ConvergenceControl
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ConvergenceControl();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              upscaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              downscaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        upper_threshold;
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        lower_threshold;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int        n_max_iterations;
 };
 
 

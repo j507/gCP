@@ -465,6 +465,137 @@ void ContactLawParameters::parse_parameters(
 
 
 
+KrylovParameters::KrylovParameters()
+:
+relative_tolerance(1e-6),
+absolute_tolerance(1e-8),
+n_max_iterations(1000)
+{}
+
+
+
+void KrylovParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Krylov parameters");
+  {
+    prm.declare_entry("Relative tolerance",
+                      "1e-6",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Absolute tolerance",
+                      "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "1000.0",
+                      dealii::Patterns::Integer());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void KrylovParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Krylov parameters");
+  {
+    relative_tolerance  = prm.get_double("Relative tolerance");
+
+    absolute_tolerance  = prm.get_double("Absolute tolerance");
+
+    n_max_iterations =
+      prm.get_integer("Maximum number of iterations");
+
+    AssertThrow(relative_tolerance > 0,
+                dealii::ExcLowerRange(relative_tolerance, 0));
+
+    AssertThrow(relative_tolerance > absolute_tolerance,
+                dealii::ExcLowerRangeType<double>(
+                  relative_tolerance , absolute_tolerance));
+
+    AssertThrow(n_max_iterations > 0,
+                dealii::ExcLowerRange(n_max_iterations, 0));
+
+  }
+  prm.leave_subsection();
+}
+
+
+
+NewtonRaphsonParameters::NewtonRaphsonParameters()
+:
+relative_tolerance(1e-6),
+absolute_tolerance(1e-8),
+step_tolerance(1e-8),
+n_max_iterations(15)
+{}
+
+
+
+void NewtonRaphsonParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Newton-Raphson parameters");
+  {
+    prm.declare_entry("Relative tolerance of the residual",
+                      "1e-6",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Absolute tolerance of the residual",
+                      "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Absolute tolerance of the step",
+                      "1e-8",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "15",
+                      dealii::Patterns::Integer());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void NewtonRaphsonParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Newton-Raphson parameters");
+  {
+    relative_tolerance =
+      prm.get_double("Relative tolerance of the residual");
+
+    absolute_tolerance =
+      prm.get_double("Absolute tolerance of the residual");
+
+    step_tolerance =
+      prm.get_double("Absolute tolerance of the step");
+
+    n_max_iterations =
+      prm.get_integer("Maximum number of iterations");
+
+    AssertThrow(step_tolerance > 0,
+                dealii::ExcLowerRange(step_tolerance, 0));
+
+    AssertThrow(relative_tolerance > 0,
+                dealii::ExcLowerRange(relative_tolerance, 0));
+
+    AssertThrow(relative_tolerance > absolute_tolerance,
+                dealii::ExcLowerRangeType<double>(
+                  relative_tolerance , absolute_tolerance));
+
+    AssertThrow(n_max_iterations > 0,
+                dealii::ExcLowerRange(n_max_iterations, 0));
+
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 solver_type(SolverType::CG),
