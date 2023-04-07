@@ -77,6 +77,8 @@ public:
 
   void store_current_values();
 
+  void reset_values();
+
   void update_values(
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
     const dealii::Tensor<1,dim> current_cell_displacement);
@@ -325,6 +327,12 @@ public:
    * @ref slip_resistances in @ref update_values
    */
   void store_current_values();
+
+  /*!
+   * @brief Resets the values of @ref slip_resistances back to the value
+   * stored in @ref tmp_slip_resistances
+   */
+  void reset_values();
 
   /*!
    * @brief Updates the slip resistance values at the quadratue point

@@ -1100,6 +1100,72 @@ void GradientCrystalPlasticitySolver<dim>::prepare_quadrature_point_history()
 
 
 template <int dim>
+void GradientCrystalPlasticitySolver<dim>::reset_quadrature_point_history()
+{
+  const unsigned int n_quadrature_points =
+    quadrature_collection.max_n_quadrature_points();
+
+  const unsigned int n_face_quadrature_points =
+    face_quadrature_collection.max_n_quadrature_points();
+
+  for (const auto &active_cell :
+       fe_field->get_triangulation().active_cell_iterators())
+  {
+    if (active_cell->is_locally_owned())
+    {
+      const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
+        local_quadrature_point_history =
+          quadrature_point_history.get_data(active_cell);
+
+      Assert(local_quadrature_point_history.size() ==
+              n_quadrature_points,
+             dealii::ExcInternalError());
+
+      for (unsigned int quadrature_point = 0;
+           quadrature_point < n_quadrature_points;
+           ++quadrature_point)
+      {
+        local_quadrature_point_history[quadrature_point]->
+          reset_values();
+      }
+
+      if (cell_is_at_grain_boundary(active_cell->active_cell_index()) &&
+          fe_field->is_decohesion_allowed())
+      {
+        for (const auto &face_index : active_cell->face_indices())
+        {
+          if (!active_cell->face(face_index)->at_boundary() &&
+              active_cell->material_id() !=
+                active_cell->neighbor(face_index)->material_id())
+          {
+            const std::vector<std::shared_ptr<
+              InterfaceQuadraturePointHistory<dim>>>
+                local_interface_quadrature_point_history =
+                  interface_quadrature_point_history.get_data(
+                    active_cell->id(),
+                    active_cell->neighbor(face_index)->id());
+
+            Assert(local_interface_quadrature_point_history.size() ==
+                     n_face_quadrature_points,
+                   dealii::ExcInternalError());
+
+            for (unsigned int face_quadrature_point = 0;
+                 face_quadrature_point < n_face_quadrature_points;
+                 ++face_quadrature_point)
+            {
+              local_interface_quadrature_point_history[face_quadrature_point]->
+                reset_values();
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+template <int dim>
 void GradientCrystalPlasticitySolver<dim>::reset_and_update_quadrature_point_history()
 {
   dealii::TimerOutput::Scope  t(*timer_output,
@@ -1841,6 +1907,9 @@ template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_resi
 
 template void gCP::GradientCrystalPlasticitySolver<2>::prepare_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::prepare_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::reset_quadrature_point_history();
+template void gCP::GradientCrystalPlasticitySolver<3>::reset_quadrature_point_history();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::reset_and_update_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::reset_and_update_quadrature_point_history();

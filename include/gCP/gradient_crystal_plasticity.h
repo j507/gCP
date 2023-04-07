@@ -217,6 +217,8 @@ private:
 
   void prepare_quadrature_point_history();
 
+  void reset_quadrature_point_history();
+
   void reset_and_update_quadrature_point_history();
 
   void update_local_quadrature_point_history(
