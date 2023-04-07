@@ -287,6 +287,9 @@ void FEField<dim>::setup_dofs()
           (total_vector_dof_indices + total_scalar_dof_indices),
          dealii::ExcMessage("Number of degrees of freedom do not match!"))
 
+  (void)total_vector_dof_indices;
+  (void)total_scalar_dof_indices;
+
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;
 }
@@ -423,6 +426,9 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
     dealii::ExcMessage("The norms do not match ("
                        + to_string(l2_norm) + ", "
                        + to_string(control_l2_norm) + ")"));
+
+  (void)control_l2_norm;
+  (void)to_string;
 
   return std::make_tuple(l2_norm,
                          std::sqrt(vector_squared_entries),
