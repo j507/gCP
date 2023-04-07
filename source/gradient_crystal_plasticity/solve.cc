@@ -555,56 +555,7 @@ namespace gCP
 
     return (true);
   }
-
-
-
-  template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
-  {
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
-
-    distributed_trial_solution.reinit(fe_field->distributed_vector);
-    distributed_old_solution.reinit(fe_field->distributed_vector);
-    distributed_newton_update.reinit(fe_field->distributed_vector);
-
-    distributed_trial_solution = fe_field->solution;
-    distributed_old_solution = fe_field->old_solution;
-    distributed_newton_update = fe_field->solution;
-
-    bool flag_extrapolate_old_solutions = true;
-
-    if (cyclic_step_data.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic)
-    {
-      const bool last_step_of_loading_phase =
-          (discrete_time.get_step_number() + 1) == cyclic_step_data.n_steps_in_loading_phase;
-
-      const bool extrema_step_of_cyclic_phase =
-          (discrete_time.get_step_number() + 1) > cyclic_step_data.n_steps_in_loading_phase &&
-          ((discrete_time.get_step_number() + 1) - cyclic_step_data.n_steps_in_loading_phase) %
-                  cyclic_step_data.n_steps_per_half_cycle ==
-              0;
-
-      if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase) &&
-          parameters.flag_skip_extrapolation_at_extrema)
-        flag_extrapolate_old_solutions = false;
-    }
-
-    if (flag_extrapolate_old_solutions)
-    {
-      distributed_trial_solution.sadd(2.0, -1.0, distributed_old_solution);
-      distributed_newton_update.sadd(2.0, -2.0, distributed_old_solution);
-    }
-
-    fe_field->get_affine_constraints().distribute(distributed_trial_solution);
-    fe_field->get_newton_method_constraints().distribute(distributed_newton_update);
-
-    trial_solution = distributed_trial_solution;
-    newton_update = distributed_newton_update;
-  }
-
+  */
 
 
 } // namespace gCP
