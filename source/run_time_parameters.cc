@@ -672,7 +672,8 @@ void ConvergenceControlParameters::parse_parameters(
                 dealii::ExcLowerRange(downscaling_factor, 0));
 
     AssertThrow(lower_threshold > 0,
-                dealii::ExcLowerRange(upper_threshold, 0));
+                dealii::ExcLowerRangeType<double>(
+                  lower_threshold, 0));
 
     AssertThrow(upper_threshold > lower_threshold,
                 dealii::ExcLowerRangeType<double>(
