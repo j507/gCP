@@ -8,23 +8,87 @@ namespace gCP
 
 
   template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::distribute_constraints_to_initial_trial_solution()
+  void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
   {
     dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
 
+    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+
+    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+
     distributed_trial_solution.reinit(fe_field->distributed_vector);
 
-    distributed_trial_solution = trial_solution;
+    distributed_old_solution.reinit(fe_field->distributed_vector);
 
-    fe_field->get_affine_constraints().distribute(distributed_trial_solution);
+    distributed_newton_update.reinit(fe_field->distributed_vector);
 
-    trial_solution = distributed_trial_solution;
+    distributed_trial_solution  = fe_field->old_solution;
+
+    distributed_old_solution    = fe_field->old_old_solution;
+
+    distributed_newton_update   = fe_field->old_solution;
+
+    bool flag_extrapolate_old_solutions = true;
+
+    if (cyclic_step_data.loading_type ==
+        RunTimeParameters::LoadingType::Cyclic)
+    {
+      const bool last_step_of_loading_phase =
+          (discrete_time.get_step_number() + 1) ==
+            cyclic_step_data.n_steps_in_loading_phase;
+
+      const bool extrema_step_of_cyclic_phase =
+          (discrete_time.get_step_number() + 1) >
+            cyclic_step_data.n_steps_in_loading_phase
+           &&
+          ((discrete_time.get_step_number() + 1) -
+              cyclic_step_data.n_steps_in_loading_phase) %
+                cyclic_step_data.n_steps_per_half_cycle == 0;
+
+      if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase) &&
+          parameters.flag_skip_extrapolation_at_extrema)
+        flag_extrapolate_old_solutions = false;
+    }
+
+    double step_size_ratio = 1.0;
+
+    if (discrete_time.get_step_number() > 0)
+    {
+      step_size_ratio =
+        discrete_time.get_next_step_size() /
+        discrete_time.get_previous_step_size();
+    }
+
+    //flag_extrapolate_old_solutions = false;
+
+    if (flag_extrapolate_old_solutions)
+    {
+      distributed_trial_solution.sadd(
+        1.0 + step_size_ratio,
+        -step_size_ratio,
+        distributed_old_solution);
+
+      distributed_newton_update.sadd(
+        -1.0,
+        1.0,
+        distributed_trial_solution);
+    }
+
+    fe_field->get_affine_constraints().distribute(
+      distributed_trial_solution);
+
+    fe_field->get_newton_method_constraints().distribute(
+      distributed_newton_update);
+
+    trial_solution  = distributed_trial_solution;
+
+    newton_update   = distributed_newton_update;
   }
 
 
 
   template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
+  std::tuple<bool, unsigned int> GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
   {
     nonlinear_solver_logger.add_break(
       "Step " + std::to_string(discrete_time.get_step_number() + 1) +
@@ -33,11 +97,11 @@ namespace gCP
 
     nonlinear_solver_logger.log_headers_to_terminal();
 
-    distribute_constraints_to_initial_trial_solution();
-
-    prepare_quadrature_point_history();
+    extrapolate_initial_trial_solution();
 
     store_trial_solution(true);
+
+    prepare_quadrature_point_history();
 
     bool flag_successful_convergence      = false;
 
@@ -59,6 +123,15 @@ namespace gCP
           dealii::ExcMessage("The nonlinear solver has reach the given "
                              "maximum number of iterations (" +
                              std::to_string(parameters.n_max_nonlinear_iterations) + ")."));
+
+      if (nonlinear_iteration > parameters.n_max_nonlinear_iterations)
+      {
+        reset_quadrature_point_history();
+
+        return (std::make_tuple(flag_successful_convergence,
+                                nonlinear_iteration));
+      }
+
       // */
 
       /*
@@ -228,6 +301,8 @@ namespace gCP
     print_decohesion_data();
 
     *pcout << std::endl;
+
+    return (std::make_tuple(flag_successful_convergence, nonlinear_iteration));
   }
 
 
@@ -369,8 +444,8 @@ namespace gCP
     distributed_trial_solution.reinit(fe_field->distributed_vector);
     distributed_newton_update.reinit(fe_field->distributed_vector);
 
-    distributed_trial_solution = trial_solution;
-    distributed_newton_update = newton_update;
+    distributed_trial_solution  = trial_solution;
+    distributed_newton_update   = newton_update;
 
     distributed_trial_solution.add(relaxation_parameter, distributed_newton_update);
 
@@ -562,17 +637,14 @@ namespace gCP
 
 
 
-template void gCP::GradientCrystalPlasticitySolver<2>::distribute_constraints_to_initial_trial_solution();
-template void gCP::GradientCrystalPlasticitySolver<3>::distribute_constraints_to_initial_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution();
 
-template void gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
-template void gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();
+template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
+template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();
 
 template unsigned int gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
 template unsigned int gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::update_trial_solution(const double);
 template void gCP::GradientCrystalPlasticitySolver<3>::update_trial_solution(const double);
-
-template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution();
-template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution();

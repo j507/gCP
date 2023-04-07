@@ -54,7 +54,7 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  void solve_nonlinear_system();
+  std::tuple<bool,unsigned int> solve_nonlinear_system();
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
     get_elastic_strain_law() const;
