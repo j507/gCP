@@ -4,9 +4,9 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/simple_shear_Lara/euler_angles_30_0
-  set Slip directions path name = input/simple_shear_Lara/slip_directions
-  set Slip normals path name    = input/simple_shear_Lara/slip_normals
+  set Euler angles path name    = input/parameter_files/simple_shear_Lara/euler_angles_30_0
+  set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
+  set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
 end
 
 
@@ -20,7 +20,7 @@ end
 subsection Simple shear
   set Height of the strip                              = 1.0
   set Number of equally sized divisions in y-direction = 2
-  set Maximum shear strain at the upper boundary               = 0.20
+  set Maximum shear strain at the upper boundary       = 0.20
   set Width of the strip                               = 0.1
 end
 
@@ -64,13 +64,18 @@ subsection Solver parameters
 
   end
 
-  subsection Nonlinear solver's parameters
-    set Absolute tolerance of the Krylov-solver              = 1e-9
-    set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 500
-    set Relative tolerance of the Krylov-solver              = 1e-8
-    set Tolerance of the newton update                       = 1e-15
-    set Tolerance of the residual                            = 1e-8
+  subsection Krylov parameters
+    set Absolute tolerance           = 1e-9
+    set Maximum number of iterations = 1000
+    set Relative tolerance           = 1e-8
+    set Solver type                  = directsolver
+  end
+
+  subsection Newton-Raphson parameters
+    set Absolute tolerance of the residual = 1e-8
+    set Absolute tolerance of the step     = 1e-15
+    set Maximum number of iterations       = 500
+    set Relative tolerance of the residual = 1e-7
   end
 
 end

@@ -483,21 +483,28 @@ struct KrylovParameters
    *
    * @todo Docu
    */
-  double              relative_tolerance;
+  SolverType    solver_type;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              absolute_tolerance;
+  double        relative_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_max_iterations;
+  double        absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_iterations;
 };
 
 
@@ -526,39 +533,39 @@ struct NewtonRaphsonParameters
    *
    * @todo Docu
    */
-  double              relative_tolerance;
+  double        relative_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              absolute_tolerance;
+  double        absolute_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              step_tolerance;
+  double        step_tolerance;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_max_iterations;
+  unsigned int  n_max_iterations;
 };
 
 
 
 
-struct ConvergenceControl
+struct ConvergenceControlParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  ConvergenceControl();
+  ConvergenceControlParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -577,34 +584,34 @@ struct ConvergenceControl
    *
    * @todo Docu
    */
-  double              upscaling_factor;
+  double        upscaling_factor;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              downscaling_factor;
+  double        downscaling_factor;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        upper_threshold;
+  unsigned int  upper_threshold;
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        lower_threshold;
+  unsigned int  lower_threshold;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_max_iterations;
+  unsigned int  n_max_iterations;
 };
 
 
@@ -633,77 +640,29 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  SolverType          solver_type;
+  KrylovParameters              krylov_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              residual_tolerance;
+  NewtonRaphsonParameters       newton_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              newton_update_tolerance;
+  ConvergenceControlParameters
+                      convergence_control_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_max_nonlinear_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              krylov_relative_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              krylov_absolute_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int        n_max_krylov_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              convergence_rate_threshold;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              regularization_factor;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int        n_max_regularization_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  HookeLawParameters  hooke_law_parameters;
+  HookeLawParameters            hooke_law_parameters;
 
   /*!
    * @brief
@@ -734,16 +693,14 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  CohesiveLawParameters
-                      cohesive_law_parameters;
+  CohesiveLawParameters cohesive_law_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  ContactLawParameters
-                      contact_law_parameters;
+  ContactLawParameters  contact_law_parameters;
 
   /*!
    * @brief

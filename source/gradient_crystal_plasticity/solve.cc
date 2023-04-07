@@ -113,18 +113,26 @@ namespace gCP
 
     //double regularization_multiplier      = 1.0;
 
+    const RunTimeParameters::NewtonRaphsonParameters
+      &newton_parameters = parameters.newton_parameters;
+
+    /*const RunTimeParameters::ConvergenceControlParameters
+      &convergence_control_parameters =
+        parameters.convergence_control_parameters;*/
+
     // Newton-Raphson loop
     do
     {
       nonlinear_iteration++;
 
       AssertThrow(
-          nonlinear_iteration <= parameters.n_max_nonlinear_iterations,
-          dealii::ExcMessage("The nonlinear solver has reach the given "
-                             "maximum number of iterations (" +
-                             std::to_string(parameters.n_max_nonlinear_iterations) + ")."));
+        nonlinear_iteration <= newton_parameters.n_max_iterations,
+        dealii::ExcMessage(
+          "The nonlinear solver has reach the given maximum number of "
+          "iterations (" +
+          std::to_string(newton_parameters.n_max_iterations) + ")."));
 
-      if (nonlinear_iteration > parameters.n_max_nonlinear_iterations)
+      if (nonlinear_iteration > newton_parameters.n_max_iterations)
       {
         reset_quadrature_point_history();
 
@@ -287,8 +295,8 @@ namespace gCP
       nonlinear_solver_logger.log_values_to_terminal();
 
       flag_successful_convergence =
-          residual_norm < parameters.residual_tolerance ||
-          newton_update_norm < parameters.newton_update_tolerance;
+          residual_norm < newton_parameters.absolute_tolerance ||
+          newton_update_norm < newton_parameters.step_tolerance;
 
     } while (!flag_successful_convergence);
 
@@ -325,14 +333,17 @@ namespace gCP
 
     distributed_newton_update = newton_update;
 
+    const RunTimeParameters::KrylovParameters &krylov_parameters =
+      parameters.krylov_parameters;
+
     // The solver's tolerances are passed to the SolverControl instance
     // used to initialize the solver
     dealii::SolverControl solver_control(
-        parameters.n_max_krylov_iterations,
-        std::max(residual_norm * parameters.krylov_relative_tolerance,
-                 parameters.krylov_absolute_tolerance));
+        krylov_parameters.n_max_iterations,
+        std::max(residual_norm * krylov_parameters.relative_tolerance,
+                 krylov_parameters.absolute_tolerance));
 
-    switch (parameters.solver_type)
+    switch (krylov_parameters.solver_type)
     {
     case RunTimeParameters::SolverType::DirectSolver:
     {

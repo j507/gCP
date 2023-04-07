@@ -414,7 +414,6 @@ void CohesiveLawParameters::parse_parameters(
 
 ContactLawParameters::ContactLawParameters()
 :
-stiffness(1.0),
 penalty_coefficient(100.0)
 {}
 
@@ -425,10 +424,6 @@ void ContactLawParameters::declare_parameters(
 {
   prm.enter_subsection("Contact law's parameters");
   {
-    prm.declare_entry("Stiffness",
-                      "1.0",
-                      dealii::Patterns::Double());
-
     prm.declare_entry("Penalty coefficient",
                       "100.0",
                       dealii::Patterns::Double());
@@ -444,14 +439,6 @@ void ContactLawParameters::parse_parameters(
 {
   prm.enter_subsection("Contact law's parameters");
   {
-    stiffness = prm.get_double("Stiffness");
-
-    AssertThrow(stiffness >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  stiffness, 0.0));
-
-    AssertIsFinite(stiffness);
-
     penalty_coefficient = prm.get_double("Penalty coefficient");
 
     AssertThrow(penalty_coefficient >= 0.0,
@@ -467,6 +454,7 @@ void ContactLawParameters::parse_parameters(
 
 KrylovParameters::KrylovParameters()
 :
+solver_type(SolverType::CG),
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
 n_max_iterations(1000)
@@ -479,6 +467,10 @@ void KrylovParameters::declare_parameters(
 {
   prm.enter_subsection("Krylov parameters");
   {
+    prm.declare_entry("Solver type",
+                      "cg",
+                      dealii::Patterns::Selection("directsolver|cg"));
+
     prm.declare_entry("Relative tolerance",
                       "1e-6",
                       dealii::Patterns::Double());
@@ -488,7 +480,7 @@ void KrylovParameters::declare_parameters(
                       dealii::Patterns::Double());
 
     prm.declare_entry("Maximum number of iterations",
-                      "1000.0",
+                      "1000",
                       dealii::Patterns::Integer());
   }
   prm.leave_subsection();
@@ -501,6 +493,22 @@ void KrylovParameters::parse_parameters(
 {
   prm.enter_subsection("Krylov parameters");
   {
+    const std::string string_solver_type(prm.get("Solver type"));
+
+    if (string_solver_type == std::string("directsolver"))
+    {
+      solver_type = SolverType::DirectSolver;
+    }
+    else if (string_solver_type == std::string("cg"))
+    {
+      solver_type = SolverType::CG;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage("Unexpected identifier for the solver type."));
+    }
+
     relative_tolerance  = prm.get_double("Relative tolerance");
 
     absolute_tolerance  = prm.get_double("Absolute tolerance");
@@ -596,18 +604,91 @@ void NewtonRaphsonParameters::parse_parameters(
 
 
 
+ConvergenceControlParameters::ConvergenceControlParameters()
+:
+upscaling_factor(1),
+downscaling_factor(1),
+upper_threshold(2),
+lower_threshold(1),
+n_max_iterations(5)
+{}
+
+
+
+void ConvergenceControlParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Convergence control parameters");
+  {
+    prm.declare_entry("Upscaling factor",
+                      "1",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Downscaling factor",
+                      "1",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Upper threshold",
+                      "2",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Lower threshold",
+                      "1",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "5",
+                      dealii::Patterns::Integer());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void ConvergenceControlParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Convergence control parameters");
+  {
+    upscaling_factor =
+      prm.get_double("Upscaling factor");
+
+    downscaling_factor =
+      prm.get_double("Downscaling factor");
+
+    upper_threshold =
+      prm.get_double("Upper threshold");
+
+    lower_threshold =
+      prm.get_double("Lower threshold");
+
+    n_max_iterations =
+      prm.get_integer("Maximum number of iterations");
+
+    AssertThrow(upscaling_factor > 0,
+                dealii::ExcLowerRange(upscaling_factor, 0));
+
+    AssertThrow(downscaling_factor > 0,
+                dealii::ExcLowerRange(downscaling_factor, 0));
+
+    AssertThrow(lower_threshold > 0,
+                dealii::ExcLowerRange(upper_threshold, 0));
+
+    AssertThrow(upper_threshold > lower_threshold,
+                dealii::ExcLowerRangeType<double>(
+                  upper_threshold, lower_threshold));
+
+    AssertThrow(n_max_iterations > 0,
+                dealii::ExcLowerRange(n_max_iterations, 0));
+
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
-solver_type(SolverType::CG),
-residual_tolerance(1e-10),
-newton_update_tolerance(1e-8),
-n_max_nonlinear_iterations(1000),
-krylov_relative_tolerance(1e-6),
-krylov_absolute_tolerance(1e-8),
-n_max_krylov_iterations(1000),
-convergence_rate_threshold(1.05),
-regularization_factor(1e1),
-n_max_regularization_iterations(3),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -621,50 +702,9 @@ verbose(false)
 
 void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Nonlinear solver's parameters");
-  {
-    prm.declare_entry("Solver type",
-                    "cg",
-                    dealii::Patterns::Selection(
-                      "directsolver|cg"));
-
-    prm.declare_entry("Tolerance of the residual",
-                      "1e-10",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Tolerance of the newton update",
-                      "1e-8",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Maximum number of iterations of the nonlinear solver",
-                      "1000",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Relative tolerance of the Krylov-solver",
-                      "1e-6",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Absolute tolerance of the Krylov-solver",
-                      "1e-8",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Maximum number of iterations of the Krylov-solver",
-                      "1000",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Minimum acceptable convergence rate (Regularization loop)",
-                      "1.05",
-                      dealii::Patterns::Double(1));
-
-    prm.declare_entry("Factor for regularization multiplier control",
-                      "1e1",
-                      dealii::Patterns::Double(1));
-
-    prm.declare_entry("Maximum number of iterations of the regularization loop",
-                      "3",
-                      dealii::Patterns::Integer(1));
-  }
-  prm.leave_subsection();
+  KrylovParameters::declare_parameters(prm);
+  NewtonRaphsonParameters::declare_parameters(prm);
+  ConvergenceControlParameters::declare_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
   {
@@ -708,73 +748,11 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
 void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Nonlinear solver's parameters");
-  {
-    const std::string string_solver_type(
-                      prm.get("Solver type"));
+  krylov_parameters.parse_parameters(prm);
 
-    if (string_solver_type == std::string("directsolver"))
-    {
-      solver_type = SolverType::DirectSolver;
-    }
-    else if (string_solver_type == std::string("cg"))
-    {
-      solver_type = SolverType::CG;
-    }
-    else
-      AssertThrow(false,
-        dealii::ExcMessage(
-          "Unexpected identifier for the solver type."));
+  newton_parameters.parse_parameters(prm);
 
-    residual_tolerance =
-      prm.get_double("Tolerance of the residual");
-    AssertThrow(residual_tolerance > 0,
-                dealii::ExcLowerRange(residual_tolerance, 0));
-
-    newton_update_tolerance =
-      prm.get_double("Tolerance of the newton update");
-    AssertThrow(newton_update_tolerance > 0,
-                dealii::ExcLowerRange(newton_update_tolerance, 0));
-
-    n_max_nonlinear_iterations =
-      prm.get_integer("Maximum number of iterations of the nonlinear solver");
-    AssertThrow(n_max_nonlinear_iterations > 0,
-                dealii::ExcLowerRange(n_max_nonlinear_iterations, 0));
-
-    krylov_relative_tolerance =
-      prm.get_double("Relative tolerance of the Krylov-solver");
-    AssertThrow(krylov_relative_tolerance > 0,
-                dealii::ExcLowerRange(krylov_relative_tolerance, 0));
-
-    krylov_absolute_tolerance =
-      prm.get_double("Absolute tolerance of the Krylov-solver");
-    AssertThrow(krylov_relative_tolerance > krylov_absolute_tolerance,
-                dealii::ExcLowerRangeType<double>(
-                  krylov_relative_tolerance , krylov_absolute_tolerance));
-
-    n_max_krylov_iterations =
-      prm.get_integer("Maximum number of iterations of the Krylov-solver");
-    AssertThrow(n_max_krylov_iterations > 0,
-                dealii::ExcLowerRange(n_max_krylov_iterations, 0));
-
-    convergence_rate_threshold =
-      prm.get_double("Minimum acceptable convergence rate (Regularization loop)");
-    AssertThrow(convergence_rate_threshold > 0,
-                dealii::ExcLowerRangeType<double>(
-                  convergence_rate_threshold , 0));
-
-    regularization_factor =
-      prm.get_double("Factor for regularization multiplier control");
-    AssertThrow(regularization_factor > 1.0,
-                dealii::ExcLowerRangeType<double>(
-                  regularization_factor , 1.0));
-
-    n_max_regularization_iterations =
-      prm.get_integer("Maximum number of iterations of the regularization loop");
-    AssertThrow(n_max_regularization_iterations > 0,
-                dealii::ExcLowerRange(n_max_regularization_iterations, 0));
-  }
-  prm.leave_subsection();
+  convergence_control_parameters.parse_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
   {
