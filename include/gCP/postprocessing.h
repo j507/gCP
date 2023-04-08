@@ -1,12 +1,18 @@
 #ifndef INCLUDE_POSTPROCESSING_H_
 #define INCLUDE_POSTPROCESSING_H_
 
-#include <gCP/gradient_crystal_plasticity.h>
+#include <gCP/constitutive_laws.h>
+#include <gCP/fe_field.h>
 
 #include <deal.II/base/table_handler.h>
 #include <deal.II/base/utilities.h>
 
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/mapping_q.h>
+
+#include <deal.II/hp/fe_collection.h>
+#include <deal.II/hp/fe_values.h>
 
 #include <deal.II/numerics/data_postprocessor.h>
 
