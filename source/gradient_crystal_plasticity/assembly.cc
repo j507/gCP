@@ -189,6 +189,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
             data.local_matrix(i,j) +=
+              parameters.linear_momentum_balance_scaling_factor *
               scratch.sym_grad_vector_phi[i] *
               scratch.stiffness_tetrad *
               scratch.sym_grad_vector_phi[j] *
@@ -202,6 +203,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               fe_field->get_global_component(crystal_id, j) - dim;
 
             data.local_matrix(i,j) -=
+              parameters.linear_momentum_balance_scaling_factor *
               scratch.sym_grad_vector_phi[i] *
               scratch.stiffness_tetrad *
               scratch.symmetrized_schmid_tensors[slip_id_beta] *
@@ -219,6 +221,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
             data.local_matrix(i,j) -=
+              parameters.microforce_balance_scaling_factor *
               scratch.scalar_phi[slip_id_alpha][i] *
               scratch.symmetrized_schmid_tensors[slip_id_alpha] *
               scratch.stiffness_tetrad *
@@ -234,6 +237,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
             if (slip_id_alpha == slip_id_beta)
               data.local_matrix(i,j) +=
+                parameters.microforce_balance_scaling_factor *
                 scratch.grad_scalar_phi[slip_id_alpha][i] *
                 scratch.reduced_gradient_hardening_tensors[slip_id_alpha] *
                 scratch.grad_scalar_phi[slip_id_beta][j] *
@@ -242,6 +246,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             AssertIsFinite(data.local_matrix(i,j));
 
             data.local_matrix(i,j) -=
+              parameters.microforce_balance_scaling_factor *
               scratch.scalar_phi[slip_id_alpha][i] *
               (-1.0 *
                scratch.symmetrized_schmid_tensors[slip_id_alpha] *
@@ -434,6 +439,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 if (fe_field->is_decohesion_allowed())
                 {
                   data.local_matrix(i,j) -=
+                    parameters.linear_momentum_balance_scaling_factor *
                     scratch.face_vector_phi[i] *
                     (cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -446,6 +452,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     scratch.face_JxW_values[face_q_point];
 
                   data.local_coupling_matrix(i,j) -=
+                    parameters.linear_momentum_balance_scaling_factor *
                     scratch.face_vector_phi[i] *
                     (cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -478,6 +485,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     - dim;
 
                   data.local_matrix(i,j) -=
+                    parameters.microforce_balance_scaling_factor *
                     scratch.face_scalar_phi[slip_id_alpha][i] *
                     cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -487,6 +495,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     scratch.face_JxW_values[face_q_point];
 
                   data.local_coupling_matrix(i,j) -=
+                    parameters.microforce_balance_scaling_factor *
                     scratch.face_scalar_phi[slip_id_alpha][i] *
                     cohesive_law->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -763,6 +772,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       if (fe_field->get_global_component(crystal_id, i) < dim)
       {
         data.local_rhs(i) -=
+          parameters.linear_momentum_balance_scaling_factor *
           (scratch.sym_grad_vector_phi[i] *
            scratch.stress_tensor_values[q_point]
            -
@@ -776,6 +786,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                 fe_field->get_global_component(crystal_id, i) - dim;
 
         data.local_rhs(i) -=
+          parameters.microforce_balance_scaling_factor *
           (scratch.grad_scalar_phi[slip_id][i] *
            scratch.vector_microscopic_stress_values[slip_id][q_point]
            -
@@ -953,6 +964,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
             {
               if (fe_field->is_decohesion_allowed())
                 data.local_rhs(i) +=
+                  parameters.linear_momentum_balance_scaling_factor *
                   scratch.face_vector_phi[i] *
                   (cohesive_law->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
@@ -973,6 +985,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                   fe_field->get_global_component(crystal_id, i) - dim;
 
                 data.local_rhs(i) +=
+                  parameters.microforce_balance_scaling_factor *
                   scratch.face_scalar_phi[slip_id][i] *
                   cohesive_law->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
@@ -1026,6 +1039,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
             data.local_rhs(i) +=
+              parameters.linear_momentum_balance_scaling_factor *
               scratch.face_vector_phi[i] *
               scratch.neumann_boundary_values[face_q_point] *
               scratch.face_JxW_values[face_q_point];

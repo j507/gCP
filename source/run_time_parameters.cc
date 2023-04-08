@@ -709,6 +709,7 @@ void ConvergenceControlParameters::parse_parameters(
 SolverParameters::SolverParameters()
 :
 microforce_balance_scaling_factor(1.0),
+linear_momentum_balance_scaling_factor(1.0),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -738,6 +739,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   prm.leave_subsection();
 
   prm.declare_entry("Scaling factor of the microforce balance",
+                    "1",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Scaling factor of the linear momentum balance",
                     "1",
                     dealii::Patterns::Double());
 
@@ -796,6 +801,12 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
                 dealii::ExcLowerRangeType<double>(
                   microforce_balance_scaling_factor, 0));
 
+  linear_momentum_balance_scaling_factor =
+    prm.get_double("Scaling factor of the linear momentum balance");
+
+    AssertThrow(linear_momentum_balance_scaling_factor > 0,
+                dealii::ExcLowerRangeType<double>(
+                  linear_momentum_balance_scaling_factor, 0));
 
   allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 

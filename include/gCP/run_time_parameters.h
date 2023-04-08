@@ -728,6 +728,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  double              linear_momentum_balance_scaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                allow_decohesion;
 
   /*!
