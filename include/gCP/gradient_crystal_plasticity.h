@@ -5,6 +5,7 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/line_search.h>
+#include <gCP/postprocessing.h>
 #include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 #include <gCP/utilities.h>
@@ -54,7 +55,7 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  void solve_nonlinear_system();
+  std::tuple<bool,unsigned int> solve_nonlinear_system();
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
     get_elastic_strain_law() const;
@@ -140,6 +141,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
+  dealii::LinearAlgebraTrilinos::MPI::Vector        initial_trial_solution;
+
   dealii::LinearAlgebraTrilinos::MPI::Vector        tmp_trial_solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
@@ -167,6 +170,11 @@ private:
   Utilities::Logger                                 nonlinear_solver_logger;
 
   dealii::TableHandler                              decohesion_logger;
+
+  /*!
+   * @note Only for debugging purposes
+   */
+  gCP::Postprocessing::RatePostprocessor<dim>       postprocessor;
 
   /*!
    * @todo Temporary member
@@ -215,6 +223,8 @@ private:
 
   void prepare_quadrature_point_history();
 
+  void reset_quadrature_point_history();
+
   void reset_and_update_quadrature_point_history();
 
   void update_local_quadrature_point_history(
@@ -234,15 +244,24 @@ private:
 
   unsigned int solve_linearized_system();
 
+  bool compute_initial_guess();
+
   void update_trial_solution(const double relaxation_parameter);
 
-  void store_trial_solution();
+  void store_trial_solution(
+    const bool flag_store_initial_trial_solution = false);
 
-  void reset_trial_solution();
+  void reset_trial_solution(
+    const bool flag_reset_to_initial_trial_solution = false);
 
   void extrapolate_initial_trial_solution();
 
   void print_decohesion_data();
+
+  /*!
+   * @note Only for debugging purposes
+   */
+  void slip_rate_output(const bool flag_stepwise);
 
   // Members and methods related to the L2 projection of the damage
   // variable

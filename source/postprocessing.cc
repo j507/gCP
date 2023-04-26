@@ -595,6 +595,131 @@ void ResidualPostprocessor<dim>::evaluate_vector_field(
 
 
 template <int dim>
+RatePostprocessor<dim>::RatePostprocessor(
+  const dealii::DiscreteTime          &discrete_time,
+  std::shared_ptr<FEField<dim>>       &fe_field,
+  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
+:
+discrete_time(discrete_time),
+fe_field(fe_field),
+crystals_data(crystals_data)
+{}
+
+
+
+template <int dim>
+std::vector<std::string>
+RatePostprocessor<dim>::get_names() const
+{
+  std::vector<std::string> solution_names;
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    solution_names.emplace_back(
+      "SlipRate" + std::to_string(slip_id));
+
+  return solution_names;
+}
+
+
+template <int dim>
+std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+RatePostprocessor<dim>::get_data_component_interpretation()
+  const
+{
+  std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      interpretation;
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+
+  return interpretation;
+}
+
+
+template <int dim>
+dealii::UpdateFlags
+RatePostprocessor<dim>::get_needed_update_flags() const
+{
+  return dealii::update_values |
+         dealii::update_quadrature_points;
+}
+
+
+
+template <int dim>
+void RatePostprocessor<dim>::evaluate_vector_field(
+  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+  std::vector<dealii::Vector<double>>                 &computed_quantities) const
+{
+  const unsigned int n_q_points   = inputs.solution_values.size();
+
+  const unsigned int n_components = fe_field->get_n_components();
+
+  const unsigned int n_slips      = crystals_data->get_n_slips();
+
+  const unsigned int n_crystals   = crystals_data->get_n_crystals();
+
+  (void)n_components;
+
+  Assert(inputs.solution_gradients.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(computed_quantities.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(inputs.solution_values[0].size() == n_components,
+         dealii::ExcInternalError());
+
+  // Reset
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
+      computed_quantities[q_point](d) = 0.0;
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+
+    /*!
+     * @note This if-else can probably be done in a way more elegant
+     * manner
+     */
+    if (fe_field->is_decohesion_allowed())
+    {
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](slip_id) +=
+            inputs.solution_values[q_point](
+              dim * n_crystals + slip_id + n_slips * crystal_id);
+        }
+    }
+    else
+    {
+      for (unsigned int slip_id = 0;
+          slip_id < n_slips; ++slip_id)
+        for (unsigned int crystal_id = 0;
+            crystal_id < n_crystals; ++crystal_id)
+        {
+          // Slips
+          computed_quantities[q_point](slip_id) +=
+              inputs.solution_values[q_point](
+                dim + slip_id + n_slips * crystal_id);
+        }
+    }
+  }
+}
+
+
+
+template <int dim>
 SimpleShear<dim>::SimpleShear(
   std::shared_ptr<FEField<dim>>         &fe_field,
   std::shared_ptr<dealii::Mapping<dim>> &mapping,
@@ -1208,6 +1333,9 @@ template class gCP::Postprocessing::Postprocessor<3>;
 
 template class gCP::Postprocessing::ResidualPostprocessor<2>;
 template class gCP::Postprocessing::ResidualPostprocessor<3>;
+
+template class gCP::Postprocessing::RatePostprocessor<2>;
+template class gCP::Postprocessing::RatePostprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;

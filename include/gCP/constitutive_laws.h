@@ -256,11 +256,14 @@ public:
     const std::vector<double>               slip_resistances,
     const double                            time_step_size);
 
+  void set_regularization_multiplier(const double regularization_multiplier);
 
 private:
   std::shared_ptr<const CrystalsData<dim>>  crystals_data;
 
   RunTimeParameters::RegularizationFunction regularization_function;
+
+  double                                    regularization_multiplier;
 
   const double                              regularization_parameter;
 
@@ -278,6 +281,24 @@ private:
 
   double get_regularization_function_derivative_value(const double slip_rate) const;
 };
+
+
+
+
+
+
+template <int dim>
+inline void
+ScalarMicroscopicStressLaw<dim>::set_regularization_multiplier(
+  const double regularization_multiplier)
+{
+  AssertIsFinite(regularization_multiplier);
+    AssertThrow(
+      regularization_multiplier >= 1.0,
+      dealii::ExcLowerRangeType<double>(regularization_multiplier, 1.0));
+
+  this->regularization_multiplier = regularization_multiplier;
+}
 
 
 

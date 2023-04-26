@@ -55,6 +55,13 @@ enum class SolverType
    * @note Only the default parameters are implemented
    */
   CG,
+
+  /*!
+   * @brief Trilinos' generalized minimal residual method solver.
+   *
+   * @note Only the default parameters are implemented
+   */
+  GMRES,
 };
 
 
@@ -155,63 +162,6 @@ enum class BoundaryConditionsAtGrainBoundaries
    * @todo Docu
    */
   Microtraction,
-};
-
-
-
-struct NewtonRaphsonParameters
-{
-  /*
-   * @brief Constructor which sets up the parameters with default values.
-   */
-  NewtonRaphsonParameters();
-
-  /*!
-   * @brief Static method which declares the associated parameter to the
-   * ParameterHandler object @p prm.
-   */
-  static void declare_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief Method which parses the parameters from the ParameterHandler
-   * object @p prm.
-   */
-  void parse_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        nonlinear_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int  n_max_nonlinear_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        krylov_relative_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        krylov_absolute_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int  n_max_krylov_iterations;
 };
 
 
@@ -516,6 +466,170 @@ struct ContactLawParameters
 
 
 
+struct KrylovParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  KrylovParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  SolverType    solver_type;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        tolerance_relaxation_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_iterations;
+};
+
+
+
+struct NewtonRaphsonParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  NewtonRaphsonParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        relative_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        absolute_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        step_tolerance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_iterations;
+};
+
+
+
+
+struct ConvergenceControlParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ConvergenceControlParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        upscaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        downscaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        upper_threshold;
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        lower_threshold;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_iterations;
+};
+
+
+
 struct SolverParameters
 {
   /*
@@ -540,56 +654,29 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  SolverType          solver_type;
+  KrylovParameters              krylov_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              residual_tolerance;
+  NewtonRaphsonParameters       newton_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  double              newton_update_tolerance;
+  ConvergenceControlParameters
+                      convergence_control_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  unsigned int        n_max_nonlinear_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              krylov_relative_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double              krylov_absolute_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int        n_max_krylov_iterations;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  HookeLawParameters  hooke_law_parameters;
+  HookeLawParameters            hooke_law_parameters;
 
   /*!
    * @brief
@@ -620,16 +707,28 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  CohesiveLawParameters
-                      cohesive_law_parameters;
+  CohesiveLawParameters cohesive_law_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  ContactLawParameters
-                      contact_law_parameters;
+  ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              microforce_balance_scaling_factor;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double              linear_momentum_balance_scaling_factor;
 
   /*!
    * @brief
