@@ -108,7 +108,7 @@ namespace gCP
 
     unsigned int nonlinear_iteration      = 0;
 
-    //unsigned int regularization_iteration = 0;
+    unsigned int regularization_iteration = 0;
 
     double previous_residual_norm         = 0.0;
 
