@@ -97,6 +97,7 @@ namespace gCP
 
     nonlinear_solver_logger.log_headers_to_terminal();
 
+
     extrapolate_initial_trial_solution();
 
     store_trial_solution(true);
