@@ -109,31 +109,31 @@ namespace gCP
 
     //unsigned int regularization_iteration = 0;
 
-    //double initial_residual_norm          = 0.0;
-
     double previous_residual_norm         = 0.0;
 
-    //double regularization_multiplier      = 1.0;
+    double regularization_multiplier      = 1.0;
 
     const RunTimeParameters::NewtonRaphsonParameters
       &newton_parameters = parameters.newton_parameters;
 
-    /*const RunTimeParameters::ConvergenceControlParameters
+    const RunTimeParameters::ConvergenceControlParameters
       &convergence_control_parameters =
-        parameters.convergence_control_parameters;*/
+        parameters.convergence_control_parameters;
 
     // Newton-Raphson loop
     do
     {
       nonlinear_iteration++;
 
-      /*AssertThrow(
+      AssertThrow(
         nonlinear_iteration <= newton_parameters.n_max_iterations,
         dealii::ExcMessage(
           "The nonlinear solver has reach the given maximum number of "
           "iterations (" +
           std::to_string(newton_parameters.n_max_iterations) + ")."));
-      */
+
+
+      /*
       if (nonlinear_iteration > newton_parameters.n_max_iterations)
       {
         reset_quadrature_point_history();
@@ -141,29 +141,14 @@ namespace gCP
         return (std::make_tuple(flag_successful_convergence,
                                 nonlinear_iteration));
       }
+      */
 
-      // */
-
-      /*
-      // Check if the start value of the Newton-Raphson was inside the
-      // desired convergence rate locus. If not, compute a new start
-      // value using a lower regularization parameter.
-      // An exception is made during the first load step, as the
-      // displacement jumps seem to be the main cause of slow convergence
-      // at this stage
-      if (nonlinear_iteration > parameters.n_max_nonlinear_iterations)
+      if (nonlinear_iteration >
+          newton_parameters.n_max_iterations)
       {
         bool flag_initial_guess_was_computed = false;
 
         std::stringstream message;
-
-
-        message << "\n  Order of convergence is beneath the threshold"
-                   ", i.e. ("
-                << order_of_convergence << " < "
-                << parameters.convergence_rate_threshold << "). "
-                << "Computing a new initial guess with";
-        //
 
         message << "\n  Maximum amount of nonlinear iterations reached. "
                 << "Computing a new initial solution with";
@@ -178,13 +163,15 @@ namespace gCP
 
           AssertThrow(
             regularization_iteration <=
-                parameters.n_max_regularization_iterations,
+                convergence_control_parameters.n_max_iterations,
             dealii::ExcMessage(
               "The maximum number of regularization loops (" +
-              std::to_string(parameters.n_max_regularization_iterations) +
+              std::to_string(
+                convergence_control_parameters.n_max_iterations) +
               ") have been reached"));
 
-          regularization_multiplier *= parameters.regularization_factor;
+          regularization_multiplier *=
+            convergence_control_parameters.upscaling_factor;
 
           std::stringstream().swap(message);
 
@@ -200,9 +187,45 @@ namespace gCP
 
           reset_trial_solution(true);
 
+          reset_quadrature_point_history();
+
           flag_initial_guess_was_computed = compute_initial_guess();
 
         } while (!flag_initial_guess_was_computed);
+
+        do
+        {
+          regularization_multiplier /=
+            convergence_control_parameters.downscaling_factor;
+
+          if (regularization_multiplier < 1.0)
+          {
+            regularization_multiplier = 1.0;
+          }
+
+          std::stringstream().swap(message);
+
+          message << "\n Upscaling. Computing initial solution with a "
+                  << "regularization parameter of "
+                  << (regularization_multiplier*
+                      parameters.scalar_microscopic_stress_law_parameters.regularization_parameter)
+                  << "...\n";
+
+          *pcout << message.rdbuf();
+
+          scalar_microscopic_stress_law->set_regularization_multiplier(
+            regularization_multiplier);
+
+          reset_quadrature_point_history();
+
+          flag_initial_guess_was_computed = compute_initial_guess();
+
+          AssertThrow(
+            flag_initial_guess_was_computed,
+            dealii::ExcMessage(
+              "Regularization loop failed while upscaling"));
+
+        } while (regularization_multiplier > 1.0);
 
         std::stringstream().swap(message);
 
@@ -214,26 +237,48 @@ namespace gCP
 
         nonlinear_iteration = 0;
 
-        regularization_multiplier = 1.0;
-
-        scalar_microscopic_stress_law->set_regularization_multiplier(
-          regularization_multiplier);
-
         continue;
       }
-      */
+
       // The current trial solution has to be stored in case
       store_trial_solution();
 
       reset_and_update_quadrature_point_history();
 
       const double initial_value_scalar_function = assemble_residual();
-      /*
+
       if (nonlinear_iteration == 1)
       {
-        initial_residual_norm = residual_norm;
+        const auto residual_l2_norms =
+            fe_field->get_l2_norms(residual);
+
+        previous_residual_norm = residual_norm;
+
+        nonlinear_solver_logger.update_value("N-Itr",
+                                             0);
+        nonlinear_solver_logger.update_value("K-Itr",
+                                             0.0);
+        nonlinear_solver_logger.update_value("L-Itr",
+                                             0.0);
+        nonlinear_solver_logger.update_value("(NS)_L2",
+                                             0.0);
+        nonlinear_solver_logger.update_value("(NS_U)_L2",
+                                             0.0);
+        nonlinear_solver_logger.update_value("(NS_G)_L2",
+                                             0.0);
+        nonlinear_solver_logger.update_value("(R)_L2",
+                                             std::get<0>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_U)_L2",
+                                             std::get<1>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_G)_L2",
+                                             std::get<2>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("C-Rate",
+                                             0.);
+
+        nonlinear_solver_logger.log_to_file();
+        nonlinear_solver_logger.log_values_to_terminal();
       }
-      */
+
       assemble_jacobian();
 
       const unsigned int n_krylov_iterations = solve_linearized_system();
@@ -267,42 +312,47 @@ namespace gCP
         }
       }
 
-      const auto residual_l2_norms =
-          fe_field->get_l2_norms(residual);
+      // Terminal and log output
+      {
+        const auto residual_l2_norms =
+            fe_field->get_l2_norms(residual);
 
-      const auto newton_update_l2_norms =
-          fe_field->get_l2_norms(newton_update);
+        const auto newton_update_l2_norms =
+            fe_field->get_l2_norms(newton_update);
 
-      const double order_of_convergence =
-          (nonlinear_iteration != 1) ? std::log(residual_norm) /
-            std::log(previous_residual_norm) : 0.0;
+        const double order_of_convergence =
+            (nonlinear_iteration > 1) ? std::log(residual_norm) /
+              std::log(previous_residual_norm) : 0.0;
 
-      previous_residual_norm = residual_norm;
+        previous_residual_norm = residual_norm;
 
-      nonlinear_solver_logger.update_value("N-Itr",
-                                           nonlinear_iteration);
-      nonlinear_solver_logger.update_value("K-Itr",
-                                           n_krylov_iterations);
-      nonlinear_solver_logger.update_value("L-Itr",
-                                           line_search.get_n_iterations());
-      nonlinear_solver_logger.update_value("(NS)_L2",
-                                           relaxation_parameter *
-                                           std::get<0>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(NS_U)_L2",
-                                           relaxation_parameter *
-                                           std::get<1>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(NS_G)_L2",
-                                           relaxation_parameter *
-                                           std::get<2>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(R)_L2",
-                                           std::get<0>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("(R_U)_L2",
-                                           std::get<1>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("(R_G)_L2",
-                                           std::get<2>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("C-Rate",
-                                           order_of_convergence);
+        nonlinear_solver_logger.update_value("N-Itr",
+                                            nonlinear_iteration);
+        nonlinear_solver_logger.update_value("K-Itr",
+                                            n_krylov_iterations);
+        nonlinear_solver_logger.update_value("L-Itr",
+                                            line_search.get_n_iterations());
+        nonlinear_solver_logger.update_value("(NS)_L2",
+                                            relaxation_parameter *
+                                            std::get<0>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(NS_U)_L2",
+                                            relaxation_parameter *
+                                            std::get<1>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(NS_G)_L2",
+                                            relaxation_parameter *
+                                            std::get<2>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(R)_L2",
+                                            std::get<0>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_U)_L2",
+                                            std::get<1>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_G)_L2",
+                                            std::get<2>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("C-Rate",
+                                            order_of_convergence);
 
+        nonlinear_solver_logger.log_to_file();
+        nonlinear_solver_logger.log_values_to_terminal();
+      }
 
       //slip_rate_output(true);
 
@@ -318,8 +368,6 @@ namespace gCP
     store_effective_opening_displacement_in_quadrature_history();
 
     fe_field->solution = trial_solution;
-
-    extrapolate_initial_trial_solution();
 
     print_decohesion_data();
 
@@ -400,9 +448,12 @@ namespace gCP
       {
         dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
+          additional_data;
+
         dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
 
-        preconditioner.initialize(jacobian);
+        preconditioner.initialize(jacobian, additional_data);
 
         try
         {
@@ -561,7 +612,7 @@ namespace gCP
 
     if (flag_reset_to_initial_trial_solution)
     {
-      distributed_trial_solution = initial_trial_solution;
+      distributed_trial_solution = fe_field->old_solution; // initial_trial_solution
     }
     else
     {
@@ -574,7 +625,7 @@ namespace gCP
   }
 
 
-  /*
+
   template <int dim>
   bool GradientCrystalPlasticitySolver<dim>::compute_initial_guess()
   {
@@ -584,30 +635,24 @@ namespace gCP
 
     double previous_residual_norm = 0.0;
 
+    const RunTimeParameters::NewtonRaphsonParameters
+      &newton_parameters = parameters.newton_parameters;
+
     // Newton-Raphson loop
     do
     {
       nonlinear_iteration++;
 
-      AssertThrow(
-          nonlinear_iteration <= parameters.n_max_nonlinear_iterations,
+      /*AssertThrow(
+          nonlinear_iteration <= newton_parameters.n_max_iterations,
           dealii::ExcMessage("The nonlinear solver has reach the given "
                              "maximum number of iterations (" +
-                             std::to_string(parameters.n_max_nonlinear_iterations) + ")."));
+                             std::to_string(newton_parameters.n_max_iterations) + ")."));
+      */
 
-
-      // Check if the start value of the Newton-Raphson was inside the
-      // desired convergence rate locus. If not, compute a new start
-      // value using a lower regularization parameter.
-      if (nonlinear_iteration>parameters.n_max_nonlinear_iterations)
+      if (nonlinear_iteration > newton_parameters.n_max_iterations)
       {
         std::stringstream message;
-
-        message << "\n  Order of convergence is beneath the threshold"
-                   ", i.e. ("
-                << order_of_convergence << " < "
-                << parameters.convergence_rate_threshold << "). "
-                << "Computing a new initial guess with";
 
         message << "\n  Maximum amount of nonlinear iterations reached. "
                 << "Computing a new initial solution with";
@@ -619,7 +664,6 @@ namespace gCP
         return (false);
       }
 
-      // The current trial solution has to be stored in case
       store_trial_solution();
 
       reset_and_update_quadrature_point_history();
@@ -658,50 +702,52 @@ namespace gCP
         }
       }
 
-      const auto residual_l2_norms =
-          fe_field->get_l2_norms(residual);
+      // Terminal and log output
+      {
+        const auto residual_l2_norms =
+            fe_field->get_l2_norms(residual);
 
-      const auto newton_update_l2_norms =
-          fe_field->get_l2_norms(newton_update);
+        const auto newton_update_l2_norms =
+            fe_field->get_l2_norms(newton_update);
 
-      const double order_of_convergence =
-          (nonlinear_iteration != 1) ? std::log(residual_norm) / std::log(previous_residual_norm) : 0.0;
+        const double order_of_convergence =
+            (nonlinear_iteration > 1) ? std::log(residual_norm) / std::log(previous_residual_norm) : 0.0;
 
-      previous_residual_norm = residual_norm;
+        previous_residual_norm = residual_norm;
 
-      nonlinear_solver_logger.update_value("N-Itr",
-                                           nonlinear_iteration);
-      nonlinear_solver_logger.update_value("K-Itr",
-                                           n_krylov_iterations);
-      nonlinear_solver_logger.update_value("L-Itr",
-                                           line_search.get_n_iterations());
-      nonlinear_solver_logger.update_value("(NS)_L2",
-                                           std::get<0>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(NS_U)_L2",
-                                           std::get<1>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(NS_G)_L2",
-                                           std::get<2>(newton_update_l2_norms));
-      nonlinear_solver_logger.update_value("(R)_L2",
-                                           std::get<0>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("(R_U)_L2",
-                                           std::get<1>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("(R_G)_L2",
-                                           std::get<2>(residual_l2_norms));
-      nonlinear_solver_logger.update_value("C-Rate",
-                                           order_of_convergence);
+        nonlinear_solver_logger.update_value("N-Itr",
+                                            nonlinear_iteration);
+        nonlinear_solver_logger.update_value("K-Itr",
+                                            n_krylov_iterations);
+        nonlinear_solver_logger.update_value("L-Itr",
+                                            line_search.get_n_iterations());
+        nonlinear_solver_logger.update_value("(NS)_L2",
+                                            std::get<0>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(NS_U)_L2",
+                                            std::get<1>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(NS_G)_L2",
+                                            std::get<2>(newton_update_l2_norms));
+        nonlinear_solver_logger.update_value("(R)_L2",
+                                            std::get<0>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_U)_L2",
+                                            std::get<1>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("(R_G)_L2",
+                                            std::get<2>(residual_l2_norms));
+        nonlinear_solver_logger.update_value("C-Rate",
+                                            order_of_convergence);
 
-      nonlinear_solver_logger.log_to_file();
-      nonlinear_solver_logger.log_values_to_terminal();
+        nonlinear_solver_logger.log_to_file();
+        nonlinear_solver_logger.log_values_to_terminal();
+      }
 
       flag_successful_convergence =
-          residual_norm < parameters.residual_tolerance ||
-          newton_update_norm < parameters.newton_update_tolerance;
+          residual_norm < newton_parameters.absolute_tolerance ||
+          newton_update_norm < newton_parameters.step_tolerance;
 
     } while (!flag_successful_convergence);
 
     return (true);
   }
-  */
 
 
 } // namespace gCP

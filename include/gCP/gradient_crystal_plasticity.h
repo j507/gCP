@@ -244,7 +244,7 @@ private:
 
   unsigned int solve_linearized_system();
 
-  //bool compute_initial_guess();
+  bool compute_initial_guess();
 
   void update_trial_solution(const double relaxation_parameter);
 
