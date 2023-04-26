@@ -303,8 +303,8 @@ namespace gCP
       nonlinear_solver_logger.update_value("C-Rate",
                                            order_of_convergence);
 
-      nonlinear_solver_logger.log_to_file();
-      nonlinear_solver_logger.log_values_to_terminal();
+
+      //slip_rate_output(true);
 
       flag_successful_convergence =
           residual_norm < newton_parameters.absolute_tolerance ||
@@ -312,6 +312,8 @@ namespace gCP
             newton_parameters.step_tolerance;
 
     } while (!flag_successful_convergence);
+
+    //slip_rate_output(false);
 
     store_effective_opening_displacement_in_quadrature_history();
 

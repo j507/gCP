@@ -5,6 +5,7 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/line_search.h>
+#include <gCP/postprocessing.h>
 #include <gCP/quadrature_point_history.h>
 #include <gCP/run_time_parameters.h>
 #include <gCP/utilities.h>
@@ -171,6 +172,11 @@ private:
   dealii::TableHandler                              decohesion_logger;
 
   /*!
+   * @note Only for debugging purposes
+   */
+  gCP::Postprocessing::RatePostprocessor<dim>       postprocessor;
+
+  /*!
    * @todo Temporary member
    */
   RunTimeParameters::LoadingType                    loading_type;
@@ -251,6 +257,11 @@ private:
   void extrapolate_initial_trial_solution();
 
   void print_decohesion_data();
+
+  /*!
+   * @note Only for debugging purposes
+   */
+  void slip_rate_output(const bool flag_stepwise);
 
   // Members and methods related to the L2 projection of the damage
   // variable

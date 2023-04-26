@@ -7,6 +7,8 @@
 
 #include <deal.II/grid/filtered_iterator.h>
 
+#include <deal.II/numerics/data_out.h>
+
 namespace gCP
 {
 
@@ -451,7 +453,71 @@ void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
 
             return;
           }
+}
 
+
+
+template<int dim>
+void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
+  const bool flag_stepwise)
+{
+  dealii::LinearAlgebraTrilinos::MPI::Vector slip_rate;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_slip_rate;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+
+  slip_rate.reinit(fe_field->solution);
+
+  distributed_slip_rate.reinit(fe_field->distributed_vector);
+
+  distributed_old_solution.reinit(fe_field->distributed_vector);
+
+  distributed_slip_rate = trial_solution;
+
+  distributed_old_solution = fe_field->old_solution;
+
+  distributed_slip_rate.add(-1.0, distributed_old_solution);
+
+  distributed_slip_rate /= discrete_time.get_next_step_size();
+
+  fe_field->get_hanging_node_constraints().distribute(
+    distributed_slip_rate);
+
+  slip_rate = distributed_slip_rate;
+
+
+  dealii::DataOut<dim> data_out;
+
+  data_out.attach_dof_handler(fe_field->get_dof_handler());
+
+  data_out.add_data_vector(slip_rate, postprocessor);
+
+  data_out.build_patches(*mapping,
+                         fe_field->get_slips_fe_degree());
+
+  static int out_index = 0;
+
+  std::string file_name;
+
+  if (flag_stepwise)
+  {
+    file_name = "slip_rate_step_" +
+    std::to_string(discrete_time.get_step_number());
+  }
+  else
+  {
+    file_name = "slip_rate";
+  }
+
+  data_out.write_vtu_with_pvtu_record(
+    parameters.logger_output_directory + "paraview/",
+    file_name,
+    out_index,
+    MPI_COMM_WORLD,
+    5);
+
+  out_index++;
 }
 
 
@@ -502,3 +568,6 @@ template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_his
 
 template void gCP::GradientCrystalPlasticitySolver<2>::print_decohesion_data();
 template void gCP::GradientCrystalPlasticitySolver<3>::print_decohesion_data();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
+template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);

@@ -4,6 +4,7 @@
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 
+#include <deal.II/base/discrete_time.h>
 #include <deal.II/base/table_handler.h>
 #include <deal.II/base/utilities.h>
 
@@ -104,6 +105,40 @@ public:
   virtual dealii::UpdateFlags get_needed_update_flags() const override;
 
 private:
+  std::shared_ptr<const FEField<dim>>                     fe_field;
+
+  std::shared_ptr<const CrystalsData<dim>>                crystals_data;
+};
+
+
+/*!
+  * @note Only for debugging purposes
+  */
+template <int dim>
+class RatePostprocessor : public dealii::DataPostprocessor<dim>
+{
+public:
+  RatePostprocessor(
+    const dealii::DiscreteTime          &discrete_time,
+    std::shared_ptr<FEField<dim>>       &fe_field,
+    std::shared_ptr<CrystalsData<dim>>  &crystals_data);
+
+  virtual void evaluate_vector_field(
+    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+    std::vector<dealii::Vector<double>>                 &computed_quantities)
+    const override;
+
+  virtual std::vector<std::string> get_names() const override;
+
+  virtual std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      get_data_component_interpretation() const override;
+
+  virtual dealii::UpdateFlags get_needed_update_flags() const override;
+
+private:
+  const dealii::DiscreteTime                              &discrete_time;
+
   std::shared_ptr<const FEField<dim>>                     fe_field;
 
   std::shared_ptr<const CrystalsData<dim>>                crystals_data;
