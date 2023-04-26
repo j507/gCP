@@ -30,6 +30,7 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries = microtraction
   set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2/
   set Print sparsity pattern                  = false
+  set Scaling factor of the microforce balance     = 1
   set Verbose                                 = false
 
 
@@ -68,7 +69,7 @@ subsection Solver parameters
     set Absolute tolerance           = 1e-9
     set Maximum number of iterations = 1000
     set Relative tolerance           = 1e-8
-    set Solver type                  = directsolver
+    set Solver type                  = cg
   end
 
   subsection Newton-Raphson parameters

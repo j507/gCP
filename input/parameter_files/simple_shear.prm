@@ -40,6 +40,7 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries      = microtraction
   set Logger output directory                      = results/default_simple_shear/
   set Print sparsity pattern                       = false
+  set Scaling factor of the microforce balance     = 1
   set Skip extrapolation of start value at extrema = false
   set Verbose                                      = false
 
@@ -97,10 +98,11 @@ subsection Solver parameters
   end
 
   subsection Krylov parameters
-    set Absolute tolerance           = 1e-8
-    set Maximum number of iterations = 1000
-    set Relative tolerance           = 1e-6
-    set Solver type                  = cg
+    set Absolute tolerance                  = 1e-8
+    set Maximum number of iterations        = 1000
+    set Relative tolerance                  = 1e-6
+    set Relaxation factor of the tolerances = 1e2
+    set Solver type                         = cg
   end
 
   subsection Newton-Raphson parameters

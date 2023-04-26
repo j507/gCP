@@ -2,13 +2,20 @@
 *.d
 
 # Applications
+
+simple_shear
+semicoupled_rve
+SPP2013
+
+# Tests
+mark_interface_test
 constitutive_laws_test
 crystal_data_test
 fe_collection_test
-line_search_test
-simple_shear
 make_periodicity_constraints
-semicoupled_rve
+line_search_test
+tests/line_search_test.debug/*
+
 
 # Compiled Object files
 *.slo
@@ -99,7 +106,9 @@ _deps
 *.visit
 *.pvd
 *.gpl
+*.csv
 /results/
+
 # Python compiled modules
 *.pyc
 *.pyo
@@ -117,3 +126,7 @@ _deps
 # Doxygen
 documentation/html/*
 documentation/latex/*
+
+# Parameter files
+input/parameter_files/cyclic_simple_shear/*
+input/parameter_files/rate_dependence/convergence_tests/*

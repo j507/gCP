@@ -775,6 +775,8 @@ void SemicoupledProblem<dim>::triangulation_output()
     MPI_COMM_WORLD);
 }
 
+
+
 template<int dim>
 void SemicoupledProblem<dim>::data_output()
 {
@@ -856,6 +858,13 @@ void SemicoupledProblem<dim>::run()
     discrete_time.set_desired_next_step_size(
       parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
 
+
+  const RunTimeParameters::ConvergenceControlParameters
+    &convergence_control_parameters =
+      parameters.solver_parameters.convergence_control_parameters;
+
+  (void)convergence_control_parameters;
+
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
@@ -898,42 +907,52 @@ void SemicoupledProblem<dim>::run()
     // corresponds to the solution at t^n
     std::tuple<bool, unsigned int> results =
       gCP_solver.solve_nonlinear_system();
+
+    (void)results;
     /*
     if (std::get<0>(results) == false)
     {
       const double desired_next_step_size =
-        discrete_time.get_next_step_size() * 1e-1;
+        discrete_time.get_next_step_size() /
+        convergence_control_parameters.downscaling_factor;
 
-      Assert(desired_next_step_size > 1e-9,
-             dealii::ExcMessage("Way to small"));
+      AssertThrow(
+        desired_next_step_size >
+          convergence_control_parameters.lower_threshold,
+        dealii::ExcMessage("Way to small"));
 
       discrete_time.set_desired_next_step_size(desired_next_step_size);
 
       continue;
     }
     */
+
     // Update the solution vectors, i.e.,
     // fe_field->old_solution = fe_field->solution
     fe_field->update_solution_vectors();
 
     // Advance the DiscreteTime instance to t^{n}
     discrete_time.advance_time();
+
     /*
-    if (std::get<0>(results) == true && std::get<1>(results) < 5)
+    if (std::get<0>(results) == true &&
+        std::get<1>(results) < convergence_control_parameters.n_max_iterations)
     {
       double desired_next_step_size =
-        discrete_time.get_next_step_size() * 2.;
+        discrete_time.get_next_step_size() *
+        convergence_control_parameters.upscaling_factor;
 
       if (desired_next_step_size >
-          parameters.temporal_discretization_parameters.time_step_size)
+          convergence_control_parameters.upper_threshold)
       {
         desired_next_step_size =
-          parameters.temporal_discretization_parameters.time_step_size;
+          convergence_control_parameters.upper_threshold;
       }
 
       discrete_time.set_desired_next_step_size(desired_next_step_size);
     }
     */
+
     // Call to the postprocessing method
     postprocessing();
 

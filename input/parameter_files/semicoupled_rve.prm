@@ -42,6 +42,8 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries      = microtraction
   set Logger output directory                      = results/default_semicoupled_rve/
   set Print sparsity pattern                       = false
+  set Scaling factor of the microforce balance     = 1.0
+  set Scaling factor of the linear momentum balance = 1.0
   set Skip extrapolation of start value at extrema = true
   set Verbose                                      = false
 
@@ -79,8 +81,8 @@ subsection Solver parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 130.
       set Linear hardening modulus = 100.
-      set Regularization function  = tanh
-      set Regularization parameter = 1e-6
+      set Regularization function  = erf
+      set Regularization parameter = 1e-8
     end
 
     subsection Vector microscopic stress law's parameters
@@ -91,16 +93,16 @@ subsection Solver parameters
   end
 
   subsection Convergence control parameters
-    set Downscaling factor           = 1
-    set Lower threshold              = 1
+    set Downscaling factor           = 2
+    set Lower threshold              = 1e-6
     set Maximum number of iterations = 5
-    set Upper threshold              = 2
-    set Upscaling factor             = 1
+    set Upper threshold              = 2.5e-3
+    set Upscaling factor             = 10
   end
 
   subsection Krylov parameters
     set Absolute tolerance           = 1e-10
-    set Maximum number of iterations = 2000
+    set Maximum number of iterations = 5000
     set Relative tolerance           = 1e-9
     set Solver type                  = cg
   end
@@ -108,7 +110,7 @@ subsection Solver parameters
   subsection Newton-Raphson parameters
     set Absolute tolerance of the residual = 1e-8
     set Absolute tolerance of the step     = 1e-13
-    set Maximum number of iterations       = 15
+    set Maximum number of iterations       = 500
     set Relative tolerance of the residual = 1e-7
   end
 
