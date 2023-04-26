@@ -11,32 +11,56 @@ end
 
 
 subsection Output control parameters
-  set Graphical output directory = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2/
+  set Graphical output directory = results/default_simple_shear/
   set Graphical output frequency = 1
+  set Output damage variable field = false
+  set Output residual field        = false
   set Terminal output frequency  = 1
+end
+
+
+subsection Postprocessing parameters
+  set Homogenization           = false
+  set Homogenization frequency = 1
 end
 
 
 subsection Simple shear
   set Height of the strip                              = 1.0
-  set Number of equally sized divisions in y-direction = 2
   set Maximum shear strain at the upper boundary       = 0.20
+  set Minimum shear strain at the upper boundary       = 0.01
+  set Number of elements in y-direction                = 100
+  set Number of equally sized divisions in y-direction = 2
   set Width of the strip                               = 0.1
 end
 
 
 subsection Solver parameters
-  set Allow decohesion at grain boundaries    = true
-  set Boundary conditions at grain boundaries = microtraction
-  set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2/
-  set Print sparsity pattern                  = false
-  set Verbose                                 = false
+  set Allow decohesion at grain boundaries         = false
+  set Boundary conditions at grain boundaries      = microtraction
+  set Logger output directory                      = results/default_simple_shear/
+  set Print sparsity pattern                       = false
+  set Skip extrapolation of start value at extrema = false
+  set Verbose                                      = false
 
 
   subsection Constitutive laws' parameters
+    subsection Contact law's parameters
+      set Penalty coefficient = 100.0
+    end
+
     subsection Decohesion law's parameters
-      set Critical opening displacement = 0.025
-      set Maximum cohesive traction     = 700
+      set Couple macrotraction to damage       = false
+      set Couple microtraction to damage       = true
+      set Critical opening displacement        = 2.5e-2
+      set Damage accumulation constant         = 1.0
+      set Damage decay constant                = 0.0
+      set Damage decay exponent                = 1.0
+      set Degradation exponent                 = 1.0
+      set Endurance limit                      = 0.0
+      set Maximum cohesive traction            = 700.
+      set Set damage to zero                   = false
+      set Tangential to normal stiffness ratio = 1.0
     end
 
     subsection Hooke-Law's parameters
@@ -54,7 +78,7 @@ subsection Solver parameters
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
       set Regularization function  = tanh
-      set Regularization parameter = 7.5e-4
+      set Regularization parameter = 1e-4
     end
 
     subsection Vector microscopic stress law's parameters
@@ -64,13 +88,26 @@ subsection Solver parameters
 
   end
 
-  subsection Nonlinear solver's parameters
-    set Absolute tolerance of the Krylov-solver              = 1e-9
-    set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 500
-    set Relative tolerance of the Krylov-solver              = 1e-8
-    set Tolerance of the newton update                       = 1e-15
-    set Tolerance of the residual                            = 1e-8
+  subsection Convergence control parameters
+    set Downscaling factor           = 1
+    set Lower threshold              = 1
+    set Maximum number of iterations = 15
+    set Upper threshold              = 2
+    set Upscaling factor             = 1
+  end
+
+  subsection Krylov parameters
+    set Absolute tolerance           = 1e-8
+    set Maximum number of iterations = 1000
+    set Relative tolerance           = 1e-6
+    set Solver type                  = cg
+  end
+
+  subsection Newton-Raphson parameters
+    set Absolute tolerance of the residual = 1e-8
+    set Absolute tolerance of the step     = 1e-8
+    set Maximum number of iterations       = 15
+    set Relative tolerance of the residual = 1e-6
   end
 
 end
@@ -89,4 +126,17 @@ subsection Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
   set Time step size = 5e-4
+end
+
+
+subsection Temporal discretization parameters
+  set End time                         = 1.0
+  set Initial loading time             = 0.5
+  set Loading type                     = monotonic
+  set Number of cycles                 = 1
+  set Number of steps in loading phase = 2
+  set Number of steps per half cycle   = 2
+  set Period                           = 1.0
+  set Start time                       = 0.0
+  set Time step size                   = 5e-4
 end

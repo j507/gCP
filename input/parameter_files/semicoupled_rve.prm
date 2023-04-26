@@ -11,15 +11,16 @@ end
 
 
 subsection Output control parameters
-  set Graphical output directory   = results/default/
+  set Graphical output directory   = results/default_semicoupled_rve/
   set Graphical output frequency   = 1
-  set Output damage variable field = true
+  set Output damage variable field = false
+  set Output residual field        = false
   set Terminal output frequency    = 1
 end
 
 
 subsection Postprocessing parameters
-  set Homogenization           = true
+  set Homogenization           = false
   set Homogenization frequency = 1
 end
 
@@ -39,7 +40,7 @@ end
 subsection Solver parameters
   set Allow decohesion at grain boundaries         = false
   set Boundary conditions at grain boundaries      = microtraction
-  set Logger output directory                      = results/default/
+  set Logger output directory                      = results/default_semicoupled_rve/
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = true
   set Verbose                                      = false
@@ -47,20 +48,19 @@ subsection Solver parameters
 
   subsection Constitutive laws' parameters
     subsection Contact law's parameters
-      set Penalty coefficient = 100.0
-      set Stiffness           = 1.0
+      set Penalty coefficient = 1e7
     end
 
     subsection Decohesion law's parameters
-      set Couple macrotraction to damage       = false
-      set Couple microtraction to damage       = false
+      set Couple macrotraction to damage       = true
+      set Couple microtraction to damage       = true
       set Critical opening displacement        = 2.5e-2
       set Damage accumulation constant         = 1.0
       set Damage decay constant                = 0.0
       set Damage decay exponent                = 1.0
       set Degradation exponent                 = 1.0
       set Endurance limit                      = 0.0
-      set Maximum cohesive traction            = 700.
+      set Maximum cohesive traction            = 1400.
       set Set damage to zero                   = false
       set Tangential to normal stiffness ratio = 1.0
     end
@@ -79,8 +79,8 @@ subsection Solver parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 130.
       set Linear hardening modulus = 100.
-      set Regularization function  = erf
-      set Regularization parameter = 1e-2
+      set Regularization function  = tanh
+      set Regularization parameter = 1e-6
     end
 
     subsection Vector microscopic stress law's parameters
@@ -90,13 +90,26 @@ subsection Solver parameters
 
   end
 
-  subsection Nonlinear solver's parameters
-    set Absolute tolerance of the Krylov-solver              = 1e-9
-    set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 500
-    set Relative tolerance of the Krylov-solver              = 1e-8
-    set Tolerance of the newton update                       = 1e-15
-    set Tolerance of the residual                            = 1e-8
+  subsection Convergence control parameters
+    set Downscaling factor           = 1
+    set Lower threshold              = 1
+    set Maximum number of iterations = 5
+    set Upper threshold              = 2
+    set Upscaling factor             = 1
+  end
+
+  subsection Krylov parameters
+    set Absolute tolerance           = 1e-10
+    set Maximum number of iterations = 2000
+    set Relative tolerance           = 1e-9
+    set Solver type                  = cg
+  end
+
+  subsection Newton-Raphson parameters
+    set Absolute tolerance of the residual = 1e-8
+    set Absolute tolerance of the step     = 1e-13
+    set Maximum number of iterations       = 15
+    set Relative tolerance of the residual = 1e-7
   end
 
 end
@@ -117,8 +130,8 @@ subsection Temporal discretization parameters
   set Initial loading time             = 1.0
   set Loading type                     = cyclic
   set Number of cycles                 = 1
-  set Number of steps in loading phase = 100
-  set Number of steps per half cycle   = 50
+  set Number of steps in loading phase = 400
+  set Number of steps per half cycle   = 200
   set Period                           = 1.0
   set Start time                       = 0.0
   set Time step size                   = 1e-1

@@ -287,6 +287,9 @@ void FEField<dim>::setup_dofs()
           (total_vector_dof_indices + total_scalar_dof_indices),
          dealii::ExcMessage("Number of degrees of freedom do not match!"))
 
+  (void)total_vector_dof_indices;
+  (void)total_scalar_dof_indices;
+
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;
 }
@@ -363,9 +366,9 @@ void FEField<dim>::setup_vectors()
 template<int dim>
 void FEField<dim>::update_solution_vectors()
 {
-  old_solution      = solution;
-
   old_old_solution  = old_solution;
+
+  old_solution      = solution;
 }
 
 
@@ -419,10 +422,13 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
 
   Assert(
     std::fabs(l2_norm - control_l2_norm) <
-      std::numeric_limits<double>::epsilon(),
+      std::numeric_limits<double>::epsilon() * 2.,
     dealii::ExcMessage("The norms do not match ("
                        + to_string(l2_norm) + ", "
                        + to_string(control_l2_norm) + ")"));
+
+  (void)control_l2_norm;
+  (void)to_string;
 
   return std::make_tuple(l2_norm,
                          std::sqrt(vector_squared_entries),

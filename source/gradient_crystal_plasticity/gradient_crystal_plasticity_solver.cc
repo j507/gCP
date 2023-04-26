@@ -51,8 +51,12 @@ contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
     parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
-nonlinear_solver_logger(parameters.logger_output_directory +
-                        "nonlinear_solver_log.txt"),
+nonlinear_solver_logger(
+  parameters.logger_output_directory + "nonlinear_solver_log.txt"),
+postprocessor(
+  discrete_time,
+  fe_field,
+  crystals_data),
 loading_type(loading_type),
 flag_init_was_called(false)
 {

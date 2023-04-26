@@ -106,6 +106,16 @@ void InterfaceQuadraturePointHistory<dim>::store_current_values()
 
 
 template <int dim>
+void InterfaceQuadraturePointHistory<dim>::reset_values()
+{
+  damage_variable                     = tmp_scalar_values[0];
+
+  max_effective_opening_displacement  = tmp_scalar_values[1];
+}
+
+
+
+template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
   const dealii::Tensor<1,dim> neighbor_cell_displacement,
   const dealii::Tensor<1,dim> current_cell_displacement)
@@ -331,6 +341,14 @@ void QuadraturePointHistory<dim>::store_current_values()
 
 
 template <int dim>
+void QuadraturePointHistory<dim>::reset_values()
+{
+  slip_resistances = tmp_slip_resistances;
+}
+
+
+
+template <int dim>
 void QuadraturePointHistory<dim>::update_values(
   const unsigned int                      q_point,
   const std::vector<std::vector<double>>  &slips,
@@ -429,27 +447,11 @@ gCP::InterfaceQuadraturePointHistory<2>;
 template class
 gCP::InterfaceQuadraturePointHistory<3>;
 
-template gCP::QuadraturePointHistory<2>::QuadraturePointHistory();
-template gCP::QuadraturePointHistory<3>::QuadraturePointHistory();
+template class
+gCP::QuadraturePointHistory<2>;
+template class
+gCP::QuadraturePointHistory<3>;
 
-template void gCP::QuadraturePointHistory<2>::store_current_values();
-template void gCP::QuadraturePointHistory<3>::store_current_values();
-
-template void gCP::QuadraturePointHistory<2>::init(
-  const RunTimeParameters::ScalarMicroscopicStressLawParameters &,
-  const unsigned int                                            );
-template void gCP::QuadraturePointHistory<3>::init(
-  const RunTimeParameters::ScalarMicroscopicStressLawParameters &,
-  const unsigned int                                            );
-
-template void gCP::QuadraturePointHistory<2>::update_values(
-  const unsigned int,
-  const std::vector<std::vector<double>>  &,
-  const std::vector<std::vector<double>>  &);
-template void gCP::QuadraturePointHistory<3>::update_values(
-  const unsigned int,
-  const std::vector<std::vector<double>>  &,
-  const std::vector<std::vector<double>>  &);
 
 template class
 gCP::InterfaceDataStorage<
