@@ -841,7 +841,7 @@ struct TemporalDiscretizationParameters
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int         n_cycles;
+  unsigned int         n_cycles;
 
   /*!
    * @brief The time in which the initial loading takes place
@@ -859,7 +859,7 @@ struct TemporalDiscretizationParameters
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int         n_steps_in_loading_phase;
+  unsigned int         n_steps_in_loading_phase;
 
   /*!
    * @brief The number of discrete points per half cycle at which
@@ -868,9 +868,9 @@ struct TemporalDiscretizationParameters
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
-  int         n_steps_per_half_cycle;
+  unsigned int         n_steps_per_half_cycle;
 
-  int         n_steps_in_unloading_phase;
+  unsigned int         n_steps_in_unloading_phase;
 
   /*!
    * @brief The time step used during the loading phase

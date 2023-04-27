@@ -314,13 +314,13 @@ fe_field(std::make_shared<FEField<dim>>(
   parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
+           parameters.temporal_discretization_parameters,
            discrete_time,
            fe_field,
            crystals_data,
            mapping,
            pcout,
-           timer_output,
-           parameters.temporal_discretization_parameters.loading_type),
+           timer_output),
 macroscopic_strain(parameters),
 homogenization(fe_field,
                mapping),
@@ -353,11 +353,6 @@ string_width(
         << "done!\n\n";
     }
   }
-
-  gCP_solver.set_cyclic_step_data(
-    parameters.temporal_discretization_parameters.loading_type,
-    parameters.temporal_discretization_parameters.n_steps_in_loading_phase,
-    parameters.temporal_discretization_parameters.n_steps_per_half_cycle);
 }
 
 
@@ -1001,8 +996,6 @@ void SemicoupledProblem<dim>::run()
     // Update the internal time variable of all time-dependant functions
     // to t^{n}
     macroscopic_strain.set_time(discrete_time.get_next_time());
-
-    std::cout << macroscopic_strain.get_value() << std::endl;
 
     // Update the Dirichlet boundary conditions values to t^{n}
     //update_dirichlet_boundary_conditions();

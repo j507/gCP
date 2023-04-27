@@ -1362,7 +1362,7 @@ update_local_quadrature_point_history(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
-          switch (loading_type)
+          switch (temporal_discretization_parameters.loading_type)
           {
             case RunTimeParameters::LoadingType::Monotonic:
               {
@@ -1415,9 +1415,17 @@ update_local_quadrature_point_history(
                     scratch.neighbor_face_slip_values,
                     scratch.face_slip_values));
 
-                local_interface_quadrature_point_history[face_q_point]->update_values(
-                  scratch.effective_opening_displacement[face_q_point],
-                  scratch.thermodynamic_force_values[face_q_point]);
+                //if (parameters.te)
+                //{
+                  local_interface_quadrature_point_history[face_q_point]->update_values(
+                    scratch.effective_opening_displacement[face_q_point],
+                    scratch.thermodynamic_force_values[face_q_point]);
+                /*}
+                else
+                {
+                  local_interface_quadrature_point_history[face_q_point]->update_values(
+                    scratch.effective_opening_displacement[face_q_point]);
+                }*/
               }
               break;
 

@@ -10,15 +10,16 @@ namespace gCP
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
   const RunTimeParameters::SolverParameters         &parameters,
+  const RunTimeParameters::TemporalDiscretizationParameters &temporal_discretization_parameters,
   dealii::DiscreteTime                              &discrete_time,
   std::shared_ptr<FEField<dim>>                     &fe_field,
   std::shared_ptr<CrystalsData<dim>>                &crystals_data,
   const std::shared_ptr<dealii::Mapping<dim>>       external_mapping,
   const std::shared_ptr<dealii::ConditionalOStream> external_pcout,
-  const std::shared_ptr<dealii::TimerOutput>        external_timer,
-  const RunTimeParameters::LoadingType              loading_type)
+  const std::shared_ptr<dealii::TimerOutput>        external_timer)
 :
 parameters(parameters),
+temporal_discretization_parameters(temporal_discretization_parameters),
 discrete_time(discrete_time),
 fe_field(fe_field),
 crystals_data(crystals_data),
@@ -57,7 +58,6 @@ postprocessor(
   discrete_time,
   fe_field,
   crystals_data),
-loading_type(loading_type),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,

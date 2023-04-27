@@ -195,19 +195,6 @@ void GradientCrystalPlasticitySolver<dim>::set_supply_term(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::set_cyclic_step_data(
-  const RunTimeParameters::LoadingType  loading_type,
-  const unsigned int                    n_steps_in_loading_phase,
-  const unsigned int                    n_steps_per_half_cycle)
-{
-  cyclic_step_data.loading_type             = loading_type;
-  cyclic_step_data.n_steps_in_loading_phase = n_steps_in_loading_phase;
-  cyclic_step_data.n_steps_per_half_cycle   = n_steps_per_half_cycle;
-}
-
-
-
-template <int dim>
 void GradientCrystalPlasticitySolver<dim>::
 set_neumann_boundary_condition(
   const dealii::types::boundary_id                      boundary_id,
@@ -534,15 +521,6 @@ template void gCP::GradientCrystalPlasticitySolver<2>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,2>>);
 template void gCP::GradientCrystalPlasticitySolver<3>::set_supply_term(
   std::shared_ptr<dealii::TensorFunction<1,3>>);
-
-template void gCP::GradientCrystalPlasticitySolver<2>::set_cyclic_step_data(
-  const RunTimeParameters::LoadingType,
-  const unsigned int,
-  const unsigned int);
-template void gCP::GradientCrystalPlasticitySolver<3>::set_cyclic_step_data(
-  const RunTimeParameters::LoadingType,
-  const unsigned int,
-  const unsigned int);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::set_macroscopic_strain(
   const dealii::SymmetricTensor<2,2>);

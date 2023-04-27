@@ -31,6 +31,7 @@ class GradientCrystalPlasticitySolver
 public:
   GradientCrystalPlasticitySolver(
     const RunTimeParameters::SolverParameters         &parameters,
+    const RunTimeParameters::TemporalDiscretizationParameters &temporal_discretization_parameters,
     dealii::DiscreteTime                              &discrete_time,
     std::shared_ptr<FEField<dim>>                     &fe_field,
     std::shared_ptr<CrystalsData<dim>>                &crystals_data,
@@ -39,9 +40,7 @@ public:
     const std::shared_ptr<dealii::ConditionalOStream> external_pcout =
         std::shared_ptr<dealii::ConditionalOStream>(),
     const std::shared_ptr<dealii::TimerOutput>        external_timer =
-      std::shared_ptr<dealii::TimerOutput>(),
-    const RunTimeParameters::LoadingType              loading_type =
-      RunTimeParameters::LoadingType::Monotonic);
+      std::shared_ptr<dealii::TimerOutput>());
 
   void init();
 
@@ -66,11 +65,6 @@ public:
   std::shared_ptr<const ConstitutiveLaws::CohesiveLaw<dim>>
     get_cohesive_law() const;
 
-  void set_cyclic_step_data(
-    const RunTimeParameters::LoadingType  loading_type,
-    const unsigned int                    n_steps_in_loading_phase,
-    const unsigned int                    n_steps_per_half_cycle);
-
   /*!
    * @brief Returns a const reference to the @ref dof_handler
    */
@@ -84,6 +78,9 @@ public:
 
 private:
   const RunTimeParameters::SolverParameters         &parameters;
+
+  const RunTimeParameters::TemporalDiscretizationParameters
+                                                    &temporal_discretization_parameters;
 
   const dealii::DiscreteTime                        &discrete_time;
 
@@ -175,22 +172,6 @@ private:
    * @note Only for debugging purposes
    */
   gCP::Postprocessing::RatePostprocessor<dim>       postprocessor;
-
-  /*!
-   * @todo Temporary member
-   */
-  RunTimeParameters::LoadingType                    loading_type;
-
-  struct CyclicStepData
-  {
-    RunTimeParameters::LoadingType  loading_type;
-
-    unsigned int                    n_steps_in_loading_phase;
-
-    unsigned int                    n_steps_per_half_cycle;
-  };
-
-  CyclicStepData                                    cyclic_step_data;
 
   bool                                              flag_init_was_called;
 

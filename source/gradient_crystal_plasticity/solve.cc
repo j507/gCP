@@ -30,24 +30,26 @@ namespace gCP
 
     bool flag_extrapolate_old_solutions = true;
 
-    if (cyclic_step_data.loading_type ==
+    if (temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::Cyclic)
     {
       const bool last_step_of_loading_phase =
-          (discrete_time.get_step_number() + 1) ==
-            cyclic_step_data.n_steps_in_loading_phase;
+          discrete_time.get_step_number() ==
+            temporal_discretization_parameters.n_steps_in_loading_phase;
 
       const bool extrema_step_of_cyclic_phase =
-          (discrete_time.get_step_number() + 1) >
-            cyclic_step_data.n_steps_in_loading_phase
+          discrete_time.get_step_number() >
+            temporal_discretization_parameters.n_steps_in_loading_phase
            &&
-          ((discrete_time.get_step_number() + 1) -
-              cyclic_step_data.n_steps_in_loading_phase) %
-                cyclic_step_data.n_steps_per_half_cycle == 0;
+          (discrete_time.get_step_number() -
+              temporal_discretization_parameters.n_steps_in_loading_phase) %
+                temporal_discretization_parameters.n_steps_per_half_cycle == 0;
 
       if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase) &&
           parameters.flag_skip_extrapolation_at_extrema)
+      {
         flag_extrapolate_old_solutions = false;
+      }
     }
 
     double step_size_ratio = 1.0;

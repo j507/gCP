@@ -378,13 +378,13 @@ fe_field(std::make_shared<FEField<dim>>(
   parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
+           parameters.temporal_discretization_parameters,
            discrete_time,
            fe_field,
            crystals_data,
            mapping,
            pcout,
-           timer_output,
-           parameters.temporal_discretization_parameters.loading_type),
+           timer_output),
 neumann_boundary_function(
   std::make_shared<NeumannBoundaryFunction<dim>>(
   parameters.max_shear_strain_at_upper_boundary * 10000.0,
@@ -433,11 +433,6 @@ string_width(
         << "done!\n\n";
     }
   }
-
-  gCP_solver.set_cyclic_step_data(
-    parameters.temporal_discretization_parameters.loading_type,
-    parameters.temporal_discretization_parameters.n_steps_in_loading_phase,
-    parameters.temporal_discretization_parameters.n_steps_per_half_cycle);
 }
 
 
