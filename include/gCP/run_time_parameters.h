@@ -33,6 +33,8 @@ enum class LoadingType
    * cyclic loading phase
    */
   Cyclic,
+
+  CyclicWithUnloading,
 };
 
 
@@ -842,21 +844,14 @@ struct TemporalDiscretizationParameters
   int         n_cycles;
 
   /*!
-   * @brief The number of discrete points per half cycle at which
-   * the quasi static problem will be solved
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  int         n_steps_per_half_cycle;
-
-  /*!
    * @brief The time in which the initial loading takes place
    *
    * @note This member is only relevant if @ref loading_type
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
   double      initial_loading_time;
+
+  double      start_of_unloading_phase;
 
   /*!
    * @brief The time step used during the initial loading phase
@@ -865,6 +860,17 @@ struct TemporalDiscretizationParameters
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
   int         n_steps_in_loading_phase;
+
+  /*!
+   * @brief The number of discrete points per half cycle at which
+   * the quasi static problem will be solved
+   *
+   * @note This member is only relevant if @ref loading_type
+   * corresponds to @ref SimulationTimeControl::Cyclic
+   */
+  int         n_steps_per_half_cycle;
+
+  int         n_steps_in_unloading_phase;
 
   /*!
    * @brief The time step used during the loading phase
@@ -876,6 +882,8 @@ struct TemporalDiscretizationParameters
    * corresponds to @ref SimulationTimeControl::Cyclic
    */
   double      time_step_size_in_loading_phase;
+
+  double      time_step_size_in_unloading_phase;
 
   /*!
    * @brief The simulation time control to be used. See @ref

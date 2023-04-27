@@ -72,9 +72,13 @@ private:
 
   std::pair<double,double>        component_23;
 
-  const double                    threshold_time;
+  const double                    n_cycles;
 
-  const double                    min_to_max_load_ratio;
+  const double                    start_of_cyclic_phase;
+
+  const double                    start_of_unloading_phase;
+
+  const double                    duration_of_unloading_phase;
 };
 
 
@@ -85,8 +89,10 @@ MacroscopicStrain<dim>::MacroscopicStrain(
 :
 time(parameters.temporal_discretization_parameters.start_time),
 period(parameters.temporal_discretization_parameters.period),
-threshold_time(parameters.temporal_discretization_parameters.initial_loading_time),
-min_to_max_load_ratio(parameters.min_to_max_strain_load_ratio)
+n_cycles(parameters.temporal_discretization_parameters.n_cycles),
+start_of_cyclic_phase(parameters.temporal_discretization_parameters.initial_loading_time),
+start_of_unloading_phase(parameters.temporal_discretization_parameters.start_of_unloading_phase),
+duration_of_unloading_phase(1.0)
 {
   component_11.first  = -0.020221;
   component_11.second = -0.019779;
@@ -107,43 +113,70 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
 
   macroscopic_strain = 0.0;
 
-  if (time < threshold_time)
+  if (time < start_of_cyclic_phase)
   {
     macroscopic_strain[0][0] =
-      time / threshold_time *
+      time / start_of_cyclic_phase *
       (component_11.first + component_11.second) / 2.0 ;
     macroscopic_strain[1][1] =
-      time / threshold_time *
+      time / start_of_cyclic_phase *
       (component_22.first + component_22.second) / 2.0 ;
     macroscopic_strain[2][2] =
-      time / threshold_time *
+      time / start_of_cyclic_phase *
       (component_33.first + component_33.second) / 2.0 ;
     macroscopic_strain[1][2] =
-      time / threshold_time *
+      time / start_of_cyclic_phase *
       (component_23.first + component_23.second) / 2.0 ;
   }
-  else
+  else if (time <= start_of_unloading_phase)
   {
     macroscopic_strain[0][0] =
       (component_11.first + component_11.second) / 2.0
       +
       abs(component_11.first - component_11.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - threshold_time));
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
     macroscopic_strain[1][1] =
       (component_22.first + component_22.second) / 2.0
       +
       abs(component_22.first - component_22.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - threshold_time));
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
     macroscopic_strain[2][2] =
       (component_33.first + component_33.second) / 2.0
       +
       abs(component_33.first - component_33.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - threshold_time));
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
     macroscopic_strain[1][2] =
       (component_23.first + component_23.second) / 2.0
       -
       abs(component_23.first - component_23.second) / 2.0 *
-      std::sin(2.0 * M_PI / period * (time - threshold_time));
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+  }
+  else
+  {
+    macroscopic_strain[0][0] =
+      (component_11.first + component_11.second) / 2.0
+      -
+      (component_11.first + component_11.second) / 2.0 /
+      duration_of_unloading_phase *
+      (time - start_of_unloading_phase);
+    macroscopic_strain[1][1] =
+      (component_22.first + component_22.second) / 2.0
+      -
+      (component_22.first + component_22.second) / 2.0 /
+      duration_of_unloading_phase *
+      (time - start_of_unloading_phase);
+    macroscopic_strain[2][2] =
+      (component_33.first + component_33.second) / 2.0
+      -
+      (component_33.first + component_33.second) / 2.0 /
+      duration_of_unloading_phase *
+      (time - start_of_unloading_phase);
+    macroscopic_strain[1][2] =
+      (component_23.first + component_23.second) / 2.0
+      -
+      (component_23.first + component_23.second) / 2.0 /
+      duration_of_unloading_phase *
+      (time - start_of_unloading_phase);
   }
 
   return (macroscopic_strain);
@@ -953,6 +986,8 @@ void SemicoupledProblem<dim>::run()
     // Update the internal time variable of all time-dependant functions
     // to t^{n}
     macroscopic_strain.set_time(discrete_time.get_next_time());
+
+    std::cout << macroscopic_strain.get_value() << std::endl;
 
     // Update the Dirichlet boundary conditions values to t^{n}
     //update_dirichlet_boundary_conditions();

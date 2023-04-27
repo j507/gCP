@@ -853,10 +853,13 @@ end_time(1.0),
 time_step_size(0.25),
 period(1.0),
 n_cycles(1.0),
-n_steps_per_half_cycle(2),
 initial_loading_time(1.0),
+start_of_unloading_phase(2.0),
 n_steps_in_loading_phase(2),
+n_steps_per_half_cycle(2),
+n_steps_in_unloading_phase(2),
 time_step_size_in_loading_phase(time_step_size),
+time_step_size_in_unloading_phase(time_step_size),
 loading_type(LoadingType::Monotonic)
 {}
 
@@ -889,6 +892,10 @@ declare_parameters(dealii::ParameterHandler &prm)
                     "2",
                     dealii::Patterns::Integer());
 
+  prm.declare_entry("Number of steps in unloading phase",
+                    "2",
+                    dealii::Patterns::Integer());
+
   prm.declare_entry("Initial loading time",
                     "0.5",
                     dealii::Patterns::Double());
@@ -900,7 +907,7 @@ declare_parameters(dealii::ParameterHandler &prm)
   prm.declare_entry("Loading type",
                     "monotonic",
                     dealii::Patterns::Selection(
-                      "monotonic|cyclic"));
+                      "monotonic|cyclic|cyclic_unloading"));
 }
 
 
@@ -908,6 +915,21 @@ declare_parameters(dealii::ParameterHandler &prm)
 void TemporalDiscretizationParameters::
 parse_parameters(dealii::ParameterHandler &prm)
 {
+  const std::string string_loading_type(
+                    prm.get("Loading type"));
+
+  if (string_loading_type == std::string("monotonic"))
+    loading_type = LoadingType::Monotonic;
+  else if (string_loading_type == std::string("cyclic"))
+    loading_type = LoadingType::Cyclic;
+  else if (string_loading_type == std::string("cyclic_unloading"))
+    loading_type = LoadingType::CyclicWithUnloading;
+  else
+    AssertThrow(
+      false,
+      dealii::ExcMessage("Unexpected identifier for the simulation"
+                          " time control"));
+
   start_time            = prm.get_double("Start time");
 
   end_time              = prm.get_double("End time");
@@ -920,24 +942,16 @@ parse_parameters(dealii::ParameterHandler &prm)
 
   initial_loading_time  = prm.get_double("Initial loading time");
 
+  start_of_unloading_phase  = prm.get_double("End time");
+
   n_steps_per_half_cycle
     = prm.get_integer("Number of steps per half cycle");
 
   n_steps_in_loading_phase
     = prm.get_integer("Number of steps in loading phase");
 
-  const std::string string_loading_type(
-                    prm.get("Loading type"));
-
-  if (string_loading_type == std::string("monotonic"))
-    loading_type = LoadingType::Monotonic;
-  else if (string_loading_type == std::string("cyclic"))
-    loading_type = LoadingType::Cyclic;
-  else
-    AssertThrow(
-      false,
-      dealii::ExcMessage("Unexpected identifier for the simulation"
-                          " time control"));
+  n_steps_in_unloading_phase
+    = prm.get_integer("Number of steps in unloading phase");
 
   if (loading_type == LoadingType::Cyclic)
   {
@@ -947,6 +961,19 @@ parse_parameters(dealii::ParameterHandler &prm)
 
     time_step_size_in_loading_phase =
       initial_loading_time / n_steps_in_loading_phase;
+  }
+  else if (loading_type == LoadingType::CyclicWithUnloading)
+  {
+    end_time = start_time + initial_loading_time + n_cycles * period +
+                1.0;
+
+    time_step_size = 0.5 * period / n_steps_per_half_cycle;
+
+    time_step_size_in_loading_phase =
+      initial_loading_time / n_steps_in_loading_phase;
+
+    time_step_size_in_unloading_phase =
+      1.0 / n_steps_in_unloading_phase;
   }
   else
     time_step_size_in_loading_phase = time_step_size;

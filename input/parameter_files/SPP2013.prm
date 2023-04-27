@@ -130,9 +130,10 @@ end
 subsection Temporal discretization parameters
   set End time                         = 2.0
   set Initial loading time             = 1.0
-  set Loading type                     = cyclic
+  set Loading type                     = cyclic_unloading
   set Number of cycles                 = 1
   set Number of steps in loading phase = 20
+  set Number of steps in unloading phase = 20
   set Number of steps per half cycle   = 30
   set Period                           = 1.0
   set Start time                       = 0.0
