@@ -132,12 +132,12 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
   {
     macroscopic_strain[0][0] =
       (component_11.first + component_11.second) / 2.0
-      +
+      -
       abs(component_11.first - component_11.second) / 2.0*
       std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
     macroscopic_strain[1][1] =
       (component_22.first + component_22.second) / 2.0
-      +
+      -
       abs(component_22.first - component_22.second) / 2.0*
       std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
     macroscopic_strain[2][2] =
@@ -855,7 +855,7 @@ void SemicoupledProblem<dim>::triangulation_output()
   data_out.add_data_vector(gCP_solver.get_cell_is_at_grain_boundary_vector(),
                            "cell_is_at_grain_boundary");
 
-  data_out.build_patches(2);
+  data_out.build_patches();
 
   data_out.write_vtu_in_parallel(
     parameters.graphical_output_directory + "triangulation.vtu",
@@ -882,7 +882,7 @@ void SemicoupledProblem<dim>::data_output()
   }
 
   data_out.build_patches(*mapping,
-                         fe_field->get_slips_fe_degree(),
+                         fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
@@ -910,6 +910,7 @@ void SemicoupledProblem<dim>::data_output()
       face_component_type);
 
     data_out_face.build_patches(2);
+
     data_out_face.write_vtu_with_pvtu_record(
       parameters.graphical_output_directory + "paraview/",
       "damage",
@@ -943,7 +944,9 @@ void SemicoupledProblem<dim>::run()
   //return;
 
   if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic)
+        RunTimeParameters::LoadingType::Cyclic ||
+      parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::CyclicWithUnloading)
     discrete_time.set_desired_next_step_size(
       parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
 
@@ -961,14 +964,26 @@ void SemicoupledProblem<dim>::run()
     /*
      * @todo Check the boolean
      */
-    if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic &&
+    if ((parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::Cyclic ||
+         parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
         std::abs(discrete_time.get_current_time() -
         parameters.temporal_discretization_parameters.initial_loading_time)
-        < (parameters.temporal_discretization_parameters.time_step_size_in_loading_phase*0.1))
+        < std::numeric_limits<double>::epsilon() * 10)
     {
       discrete_time.set_desired_next_step_size(
         parameters.temporal_discretization_parameters.time_step_size);
+    }
+
+    if (parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading &&
+        std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_unloading_phase)
+        < std::numeric_limits<double>::epsilon() * 10)
+    {
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
     }
 
     if (parameters.verbose)
