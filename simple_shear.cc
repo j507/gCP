@@ -180,6 +180,7 @@ public:
     const double                          min_shear_strain_at_upper_boundary,
     const double                          period,
     const double                          initial_loading_time,
+    const double                          start_of_unloading_phase,
     const RunTimeParameters::LoadingType  loading_type,
     const bool                            flag_is_decohesion_allowed,
     const unsigned int                    n_components,
@@ -202,6 +203,8 @@ private:
 
   const double                          initial_loading_time;
 
+  const double                          start_of_unloading_phase;
+
   const RunTimeParameters::LoadingType  loading_type;
 
   const bool                            flag_is_decohesion_allowed;
@@ -217,6 +220,7 @@ DisplacementControl<dim>::DisplacementControl(
   const double                          min_shear_strain_at_upper_boundary,
   const double                          period,
   const double                          initial_loading_time,
+  const double                          start_of_unloading_phase,
   const RunTimeParameters::LoadingType  loading_type,
   const bool                            flag_is_decohesion_allowed,
   const unsigned int                    n_components,
@@ -229,6 +233,7 @@ max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
 min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
 period(period),
 initial_loading_time(initial_loading_time + start_time),
+start_of_unloading_phase(start_of_unloading_phase),
 loading_type(loading_type),
 flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {}
@@ -267,6 +272,33 @@ void DisplacementControl<dim>::vector_value(
           displacement_load =
             max_shear_strain_at_upper_boundary *
             std::sin(M_PI / 2.0 / initial_loading_time * t);
+      }
+      break;
+    case RunTimeParameters::LoadingType::CyclicWithUnloading:
+      {
+        if (t >= initial_loading_time &&
+            t <= start_of_unloading_phase)
+          displacement_load =
+            (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+        else if (t <= initial_loading_time)
+          displacement_load =
+            max_shear_strain_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * t);
+        else
+        {
+          const double max = (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (start_of_unloading_phase -
+              initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+
+          displacement_load = max - max * (t - start_of_unloading_phase);
+        }
       }
       break;
     default:
@@ -544,6 +576,7 @@ void SimpleShearProblem<dim>::setup()
       parameters.min_shear_strain_at_upper_boundary,
       parameters.temporal_discretization_parameters.period,
       parameters.temporal_discretization_parameters.initial_loading_time,
+      parameters.temporal_discretization_parameters.start_of_unloading_phase,
       parameters.temporal_discretization_parameters.loading_type,
       fe_field->is_decohesion_allowed(),
       fe_field->get_n_components(),
@@ -1029,7 +1062,9 @@ void SimpleShearProblem<dim>::run()
   triangulation_output();
 
   if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic)
+        RunTimeParameters::LoadingType::Cyclic ||
+      parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::CyclicWithUnloading)
     discrete_time.set_desired_next_step_size(
       parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
 
@@ -1037,17 +1072,26 @@ void SimpleShearProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    /*
-     * @todo Check the boolean
-     */
-    if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic &&
+    if ((parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::Cyclic ||
+         parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
         std::abs(discrete_time.get_current_time() -
         parameters.temporal_discretization_parameters.initial_loading_time)
-        < (parameters.temporal_discretization_parameters.time_step_size_in_loading_phase*0.1))
+        < std::numeric_limits<double>::epsilon() * 10)
     {
       discrete_time.set_desired_next_step_size(
         parameters.temporal_discretization_parameters.time_step_size);
+    }
+
+    if (parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading &&
+        std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_unloading_phase)
+        < std::numeric_limits<double>::epsilon() * 10)
+    {
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
     }
 
     if (parameters.verbose)

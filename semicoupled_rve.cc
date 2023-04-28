@@ -60,13 +60,17 @@ private:
 
   dealii::SymmetricTensor<2,dim>  maximum_macroscopic_strain;
 
-  double                          time;
+  const RunTimeParameters::LoadingType  loading_type;
 
-  const double                    period;
+  double                                time;
 
-  const double                    threshold_time;
+  const double                          period;
 
-  const double                    min_to_max_load_ratio;
+  const double                          threshold_time;
+
+  const double                          start_of_unloading_phase;
+
+  const double                          min_to_max_load_ratio;
 };
 
 
@@ -75,9 +79,11 @@ template <int dim>
 MacroscopicStrain<dim>::MacroscopicStrain(
     const gCP::RunTimeParameters::SemicoupledParameters parameters)
 :
+loading_type(parameters.temporal_discretization_parameters.loading_type),
 time(parameters.temporal_discretization_parameters.start_time),
 period(parameters.temporal_discretization_parameters.period),
 threshold_time(parameters.temporal_discretization_parameters.initial_loading_time),
+start_of_unloading_phase(parameters.temporal_discretization_parameters.start_of_unloading_phase),
 min_to_max_load_ratio(parameters.min_to_max_strain_load_ratio)
 {
   maximum_macroscopic_strain = 0.;
@@ -105,18 +111,58 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
 
   double scaling_factor;
 
-  if (time < threshold_time)
+  switch (loading_type)
   {
-    scaling_factor = std::sin(M_PI / 2.0 / threshold_time * time);
+  case RunTimeParameters::LoadingType::Monotonic:
+    {
+      scaling_factor = time;
+    }
+    break;
+
+  case RunTimeParameters::LoadingType::Cyclic:
+    {
+      if (time < threshold_time)
+      {
+        scaling_factor = std::sin(M_PI / 2.0 / threshold_time * time);
+      }
+      else
+      {
+        scaling_factor = ((1.0 - min_to_max_load_ratio) *
+                          std::cos(2.0 * M_PI / period *
+                                  (time - threshold_time))
+                          +
+                          (1.0 + min_to_max_load_ratio)) / 2.0;
+      }
+    }
+    break;
+
+  case RunTimeParameters::LoadingType::CyclicWithUnloading:
+    {
+      if (time < threshold_time)
+      {
+        scaling_factor = std::sin(M_PI / 2.0 / threshold_time * time);
+      }
+      else if (time < start_of_unloading_phase)
+      {
+        scaling_factor = ((1.0 - min_to_max_load_ratio) *
+                          std::cos(2.0 * M_PI / period *
+                                  (time - threshold_time))
+                          +
+                          (1.0 + min_to_max_load_ratio)) / 2.0;
+      }
+      else
+      {
+        scaling_factor = 1.0 - (time - start_of_unloading_phase);
+      }
+    }
+    break;
+
+  default:
+    Assert(false, dealii::ExcNotImplemented());
+    break;
   }
-  else
-  {
-    scaling_factor = ((1.0 - min_to_max_load_ratio) *
-                      std::cos(2.0 * M_PI / period *
-                               (time - threshold_time))
-                      +
-                      (1.0 + min_to_max_load_ratio)) / 2.0;
-  }
+
+
 
   macroscopic_strain *= scaling_factor;
 
@@ -849,10 +895,11 @@ void SemicoupledProblem<dim>::run()
   triangulation_output();
 
   if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic)
+        RunTimeParameters::LoadingType::Cyclic ||
+      parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::CyclicWithUnloading)
     discrete_time.set_desired_next_step_size(
       parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
-
 
   const RunTimeParameters::ConvergenceControlParameters
     &convergence_control_parameters =
@@ -864,17 +911,26 @@ void SemicoupledProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    /*
-     * @todo Check the boolean
-     */
-    if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic &&
+    if ((parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::Cyclic ||
+         parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
         std::abs(discrete_time.get_current_time() -
         parameters.temporal_discretization_parameters.initial_loading_time)
-        < (parameters.temporal_discretization_parameters.time_step_size_in_loading_phase*0.1))
+        < std::numeric_limits<double>::epsilon() * 10)
     {
       discrete_time.set_desired_next_step_size(
         parameters.temporal_discretization_parameters.time_step_size);
+    }
+
+    if (parameters.temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading &&
+        std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_unloading_phase)
+        < std::numeric_limits<double>::epsilon() * 10)
+    {
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
     }
 
     if (parameters.verbose)

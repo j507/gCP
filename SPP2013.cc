@@ -956,9 +956,6 @@ void SemicoupledProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    /*
-     * @todo Check the boolean
-     */
     if ((parameters.temporal_discretization_parameters.loading_type ==
           RunTimeParameters::LoadingType::Cyclic ||
          parameters.temporal_discretization_parameters.loading_type ==
