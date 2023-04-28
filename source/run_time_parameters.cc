@@ -715,6 +715,7 @@ boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
 flag_skip_extrapolation_at_extrema(false),
+flag_zero_damage_during_loading_and_unloading(false),
 print_sparsity_pattern(false),
 verbose(false)
 {}
@@ -761,6 +762,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                     dealii::Patterns::DirectoryName());
 
   prm.declare_entry("Skip extrapolation of start value at extrema",
+                    "false",
+                    dealii::Patterns::Bool());
+
+  prm.declare_entry("Zero damage evolution during un- and loading",
                     "false",
                     dealii::Patterns::Bool());
 
@@ -838,10 +843,12 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   flag_skip_extrapolation_at_extrema =
     prm.get_bool("Skip extrapolation of start value at extrema");
 
+  flag_zero_damage_during_loading_and_unloading =
+    prm.get_bool("Zero damage evolution during un- and loading");
+
   print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
 
   verbose = prm.get_bool("Verbose");
-
 }
 
 
@@ -964,8 +971,10 @@ parse_parameters(dealii::ParameterHandler &prm)
   }
   else if (loading_type == LoadingType::CyclicWithUnloading)
   {
-    end_time = start_time + initial_loading_time + n_cycles * period +
-                1.0;
+    start_of_unloading_phase =
+      start_time + initial_loading_time + n_cycles * period;
+
+    end_time = start_of_unloading_phase + 1.0;
 
     time_step_size = 0.5 * period / n_steps_per_half_cycle;
 

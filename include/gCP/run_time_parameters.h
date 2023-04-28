@@ -766,6 +766,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                flag_zero_damage_during_loading_and_unloading;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                print_sparsity_pattern;
 
   /*!
