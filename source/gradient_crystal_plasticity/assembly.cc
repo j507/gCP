@@ -1685,6 +1685,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_projection_matrix()
 }
 
 
+
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_local_projection_matrix(
   const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
@@ -1914,6 +1915,114 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_projection_rhs(
 }
 
 
+
+template <int dim>
+double GradientCrystalPlasticitySolver<dim>::get_macroscopic_damage()
+{
+  // Initiate the local integral value and at each wall.
+  double macroscopic_damage_variable = 0.0;
+
+  const dealii::UpdateFlags update_flags =
+    dealii::update_JxW_values;
+
+  // Finite element values
+  dealii::hp::FEFaceValues<dim> hp_fe_face_values(
+    mapping_collection,
+    projection_fe_collection,
+    face_quadrature_collection,
+    update_flags);
+
+  // Scalar extractor for the damage variable
+  const dealii::FEValuesExtractors::Scalar extractor(0);
+
+  // Number of quadrature points
+  const unsigned int n_face_quadrature_points =
+    face_quadrature_collection.max_n_quadrature_points();
+
+  // Vectors to stores the temperature gradients and normal vectors
+  // at the quadrature points
+  std::vector<double> JxW_values(n_face_quadrature_points);
+
+  double              domain_integral_damage_variable;
+
+  double              cell_integral_damage_variable;
+
+  double              domain_volume = 0.;
+
+  double              cell_volume = 0.;
+
+  // Instance of the interface quadrature point history
+  std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
+    local_interface_quadrature_point_history;
+
+  for (const auto &cell : projection_dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned() &&
+        cell_is_at_grain_boundary(cell->active_cell_index()) &&
+        (fe_field->is_decohesion_allowed() ||
+          parameters.boundary_conditions_at_grain_boundaries ==
+          RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction))
+      for (const auto &face_index : cell->face_indices())
+        if (!cell->face(face_index)->at_boundary() &&
+            cell->material_id() !=
+              cell->neighbor(face_index)->material_id())
+        {
+          // Reset local values
+          cell_integral_damage_variable = 0.0;
+
+          cell_volume                   = 0.0;
+
+          // Update the hp::FEFaceValues instance to the values of the current cell
+          hp_fe_face_values.reinit(cell, face_index);
+
+          const dealii::FEFaceValues<dim> &fe_face_values =
+            hp_fe_face_values.get_present_fe_values();
+
+          // Get JxW values at the quadrature points
+          JxW_values = fe_face_values.get_JxW_values();
+
+          // Get the internal variable values at the quadrature points
+          local_interface_quadrature_point_history =
+              interface_quadrature_point_history.get_data(
+                cell->id(),
+                cell->neighbor(face_index)->id());
+
+          // Numerical integration
+          for (unsigned int quadrature_point_id = 0;
+                quadrature_point_id < n_face_quadrature_points;
+                ++quadrature_point_id)
+          {
+
+            cell_integral_damage_variable +=
+              local_interface_quadrature_point_history[quadrature_point_id]->
+                get_damage_variable() *
+                JxW_values[quadrature_point_id];
+
+            cell_volume += JxW_values[quadrature_point_id];
+          }
+
+          domain_integral_damage_variable +=
+            cell_integral_damage_variable;
+
+          domain_volume += cell_volume;
+        }
+
+  // Gather the values of each processor
+  domain_integral_damage_variable =
+    dealii::Utilities::MPI::sum(domain_integral_damage_variable,
+                                MPI_COMM_WORLD);
+
+  domain_volume =
+    dealii::Utilities::MPI::sum(domain_volume, MPI_COMM_WORLD);
+
+  // Compute the homogenized values
+  macroscopic_damage_variable =
+    domain_integral_damage_variable / domain_volume;
+
+  return macroscopic_damage_variable;
+}
+
+
+
 } // namespace gCP
 
 
@@ -2019,3 +2128,6 @@ template void gCP::GradientCrystalPlasticitySolver<2>::copy_local_to_global_proj
   const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &);
 template void gCP::GradientCrystalPlasticitySolver<3>::copy_local_to_global_projection_rhs(
   const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &);
+
+template double gCP::GradientCrystalPlasticitySolver<2>::get_macroscopic_damage();
+template double gCP::GradientCrystalPlasticitySolver<3>::get_macroscopic_damage();

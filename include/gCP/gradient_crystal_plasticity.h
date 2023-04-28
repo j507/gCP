@@ -76,6 +76,8 @@ public:
 
   const dealii::LinearAlgebraTrilinos::MPI::Vector &get_residual() const;
 
+  double get_macroscopic_damage();
+
 private:
   const RunTimeParameters::SolverParameters         &parameters;
 
