@@ -92,6 +92,9 @@ public:
     const double  effective_opening_displacement,
     const double  thermodynamic_force);
 
+  void update_values(
+    const double  effective_opening_displacement);
+
   /*!
    * @brief Computes the effective opening displacement and stores it
    * in @ref old_effective_opening_displacement.

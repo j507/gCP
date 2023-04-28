@@ -177,6 +177,22 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
+  const double  effective_opening_displacement)
+{
+  damage_variable                     = tmp_scalar_values[0];
+  max_effective_opening_displacement  = tmp_scalar_values[1];
+
+  max_effective_opening_displacement =
+    std::max(max_effective_opening_displacement,
+             effective_opening_displacement);
+
+  flag_values_were_updated = true;
+}
+
+
+
+template <int dim>
+void InterfaceQuadraturePointHistory<dim>::update_values(
   const double  effective_opening_displacement,
   const double  thermodynamic_force)
 {

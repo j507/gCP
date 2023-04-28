@@ -1362,6 +1362,7 @@ update_local_quadrature_point_history(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
+          //std::cout << "temporal_discretization_parameters.loading_type" << std::endl;
           switch (temporal_discretization_parameters.loading_type)
           {
             case RunTimeParameters::LoadingType::Monotonic:
@@ -1374,27 +1375,6 @@ update_local_quadrature_point_history(
 
             case RunTimeParameters::LoadingType::Cyclic:
               {
-                /* // Old evolution equation
-                local_interface_quadrature_point_history[face_q_point]->update_values(
-                  cohesive_law->get_effective_opening_displacement(
-                    scratch.neighbor_cell_displacement_values[face_q_point] -
-                    scratch.current_cell_displacement_values[face_q_point],
-                    scratch.normal_vector_values[face_q_point]),
-                  cohesive_law->get_cohesive_traction(
-                    scratch.neighbor_cell_displacement_values[face_q_point] -
-                    scratch.current_cell_displacement_values[face_q_point],
-                    scratch.normal_vector_values[face_q_point],
-                    std::max(
-                      cohesive_law->get_effective_opening_displacement(
-                        scratch.neighbor_cell_displacement_values[face_q_point] -
-                        scratch.current_cell_displacement_values[face_q_point],
-                        scratch.normal_vector_values[face_q_point]),
-                      local_interface_quadrature_point_history[face_q_point]->
-                        get_max_effective_opening_displacement()),
-                    local_interface_quadrature_point_history[face_q_point]->
-                      get_old_effective_opening_displacement(),
-                    discrete_time.get_next_step_size()).norm());*/
-
                 scratch.effective_opening_displacement[face_q_point] =
                   cohesive_law->get_effective_opening_displacement(
                     scratch.neighbor_cell_displacement_values[face_q_point] -
@@ -1415,17 +1395,77 @@ update_local_quadrature_point_history(
                     scratch.neighbor_face_slip_values,
                     scratch.face_slip_values));
 
-                //if (parameters.te)
-                //{
+                const bool flag_currentyl_in_the_loading_phase =
+                  discrete_time.get_next_time() <=
+                    temporal_discretization_parameters.initial_loading_time;
+
+                const bool flag_no_damage_evolution =
+                  parameters.flag_zero_damage_during_loading_and_unloading &&
+                    flag_currentyl_in_the_loading_phase;
+
+                if (!flag_no_damage_evolution)
+                {
                   local_interface_quadrature_point_history[face_q_point]->update_values(
                     scratch.effective_opening_displacement[face_q_point],
                     scratch.thermodynamic_force_values[face_q_point]);
-                /*}
+                }
                 else
                 {
                   local_interface_quadrature_point_history[face_q_point]->update_values(
                     scratch.effective_opening_displacement[face_q_point]);
-                }*/
+                }
+              }
+              break;
+
+            case RunTimeParameters::LoadingType::CyclicWithUnloading:
+              {
+                scratch.effective_opening_displacement[face_q_point] =
+                  cohesive_law->get_effective_opening_displacement(
+                    scratch.neighbor_cell_displacement_values[face_q_point] -
+                    scratch.current_cell_displacement_values[face_q_point],
+                    scratch.normal_vector_values[face_q_point]);
+
+                scratch.thermodynamic_force_values[face_q_point] =
+                  - cohesive_law->get_degradation_function_derivative_value(
+                      local_interface_quadrature_point_history[face_q_point]->get_damage_variable(), true) *
+                  (cohesive_law->get_free_energy_density(
+                    scratch.effective_opening_displacement[face_q_point])
+                   +
+                   microscopic_traction_law->get_free_energy_density(
+                    neighbor_crystal_id,
+                    crystal_id,
+                    face_q_point,
+                    scratch.normal_vector_values,
+                    scratch.neighbor_face_slip_values,
+                    scratch.face_slip_values));
+
+                const bool flag_currently_in_the_loading_phase =
+                  discrete_time.get_next_time() <=
+                    temporal_discretization_parameters.initial_loading_time;
+
+                const bool flag_currently_in_the_unloading_phase =
+                  discrete_time.get_next_time() >
+                    temporal_discretization_parameters.start_of_unloading_phase;
+
+                const bool contidion_A =
+                  parameters.flag_zero_damage_during_loading_and_unloading &&
+                  flag_currently_in_the_loading_phase;
+
+                const bool condition_B =
+                  parameters.flag_zero_damage_during_loading_and_unloading &&
+                  flag_currently_in_the_unloading_phase;
+
+                if (contidion_A || condition_B)
+                {
+                  local_interface_quadrature_point_history[face_q_point]->update_values(
+                    scratch.effective_opening_displacement[face_q_point]);
+                }
+                else
+                {
+                  local_interface_quadrature_point_history[face_q_point]->update_values(
+                    scratch.effective_opening_displacement[face_q_point],
+                    scratch.thermodynamic_force_values[face_q_point]);
+                }
               }
               break;
 

@@ -31,11 +31,20 @@ namespace gCP
     bool flag_extrapolate_old_solutions = true;
 
     if (temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic)
+          RunTimeParameters::LoadingType::Cyclic ||
+        temporal_discretization_parameters.loading_type ==
+          RunTimeParameters::LoadingType::CyclicWithUnloading)
     {
       const bool last_step_of_loading_phase =
           discrete_time.get_step_number() ==
             temporal_discretization_parameters.n_steps_in_loading_phase;
+
+      const bool last_step_of_cyclic_phase =
+          discrete_time.get_step_number() ==
+            (temporal_discretization_parameters.n_steps_in_loading_phase
+             +
+             temporal_discretization_parameters.n_steps_per_half_cycle * 2.0 *
+             temporal_discretization_parameters.n_cycles);
 
       const bool extrema_step_of_cyclic_phase =
           discrete_time.get_step_number() >
@@ -45,7 +54,8 @@ namespace gCP
               temporal_discretization_parameters.n_steps_in_loading_phase) %
                 temporal_discretization_parameters.n_steps_per_half_cycle == 0;
 
-      if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase) &&
+      if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase ||
+           last_step_of_cyclic_phase) &&
           parameters.flag_skip_extrapolation_at_extrema)
       {
         flag_extrapolate_old_solutions = false;
