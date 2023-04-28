@@ -1362,7 +1362,6 @@ update_local_quadrature_point_history(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
-          //std::cout << "temporal_discretization_parameters.loading_type" << std::endl;
           switch (temporal_discretization_parameters.loading_type)
           {
             case RunTimeParameters::LoadingType::Monotonic:
