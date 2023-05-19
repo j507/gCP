@@ -168,8 +168,6 @@ private:
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
-  dealii::TableHandler                              decohesion_logger;
-
   /*!
    * @note Only for debugging purposes
    */
@@ -238,8 +236,6 @@ private:
     const bool flag_reset_to_initial_trial_solution = false);
 
   void extrapolate_initial_trial_solution();
-
-  void print_decohesion_data();
 
   /*!
    * @note Only for debugging purposes

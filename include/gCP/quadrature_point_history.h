@@ -125,13 +125,7 @@ public:
     const double                effective_cohesive_traction);
 
   // The methods
-  double get_effective_opening_displacement() const;
-
   double get_old_effective_opening_displacement() const;
-
-  double get_normal_opening_displacement() const;
-
-  double get_tangential_opening_displacement() const;
 
   double get_effective_cohesive_traction() const;
 
@@ -205,36 +199,9 @@ get_max_effective_opening_displacement() const
 
 template <int dim>
 inline double InterfaceQuadraturePointHistory<dim>::
-get_effective_opening_displacement() const
-{
-  return (effective_opening_displacement);
-}
-
-
-
-template <int dim>
-inline double InterfaceQuadraturePointHistory<dim>::
 get_old_effective_opening_displacement() const
 {
   return (old_effective_opening_displacement);
-}
-
-
-
-template <int dim>
-inline double InterfaceQuadraturePointHistory<dim>::
-get_normal_opening_displacement() const
-{
-  return (normal_opening_displacement);
-}
-
-
-
-template <int dim>
-inline double InterfaceQuadraturePointHistory<dim>::
-get_tangential_opening_displacement() const
-{
-  return (tangential_opening_displacement);
 }
 
 

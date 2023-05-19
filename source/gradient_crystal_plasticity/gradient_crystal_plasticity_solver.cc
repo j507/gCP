@@ -123,21 +123,6 @@ flag_init_was_called(false)
   nonlinear_solver_logger.set_scientific("(R_U)_L2", true);
   nonlinear_solver_logger.set_scientific("(R_G)_L2", true);
 
-  decohesion_logger.declare_column("time");
-  decohesion_logger.declare_column("max_effective_opening_displacement");
-  decohesion_logger.declare_column("effective_opening_displacement");
-  decohesion_logger.declare_column("normal_opening_displacement");
-  decohesion_logger.declare_column("tangential_opening_displacement");
-  decohesion_logger.declare_column("effective_cohesive_traction");
-  decohesion_logger.declare_column("damage_variable");
-  decohesion_logger.set_scientific("time", true);
-  decohesion_logger.set_scientific("max_effective_opening_displacement", true);
-  decohesion_logger.set_scientific("effective_opening_displacement", true);
-  decohesion_logger.set_scientific("normal_opening_displacement", true);
-  decohesion_logger.set_scientific("tangential_opening_displacement", true);
-  decohesion_logger.set_scientific("effective_cohesive_traction", true);
-  decohesion_logger.set_scientific("damage_variable", true);
-
   // Initialize supply term shared pointer
   supply_term = nullptr;
 }

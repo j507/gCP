@@ -385,65 +385,6 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 
 
 
-template <int dim>
-void GradientCrystalPlasticitySolver<dim>::print_decohesion_data()
-{
-  for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
-    if (cell->is_locally_owned())
-      if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
-          fe_field->is_decohesion_allowed())
-        for (const auto &face_index : cell->face_indices())
-          if (!cell->face(face_index)->at_boundary() &&
-              cell->material_id() !=
-                cell->neighbor(face_index)->material_id())
-          {
-            const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
-              local_interface_quadrature_point_history =
-                interface_quadrature_point_history.get_data(
-                  cell->id(),
-                  cell->neighbor(face_index)->id());
-
-            decohesion_logger.add_value(
-              "time",
-              discrete_time.get_next_time());
-            decohesion_logger.add_value(
-              "max_effective_opening_displacement",
-              local_interface_quadrature_point_history[0]->
-                get_max_effective_opening_displacement());
-            decohesion_logger.add_value(
-              "effective_opening_displacement",
-              local_interface_quadrature_point_history[0]->
-                get_effective_opening_displacement());
-            decohesion_logger.add_value(
-              "normal_opening_displacement",
-              local_interface_quadrature_point_history[0]->
-                get_normal_opening_displacement());
-            decohesion_logger.add_value(
-              "tangential_opening_displacement",
-              local_interface_quadrature_point_history[0]->
-                get_tangential_opening_displacement());
-            decohesion_logger.add_value(
-              "effective_cohesive_traction",
-              local_interface_quadrature_point_history[0]->
-                get_effective_cohesive_traction());
-            decohesion_logger.add_value(
-              "damage_variable",
-              local_interface_quadrature_point_history[0]->
-                get_damage_variable());
-
-            std::ofstream fstream(
-              parameters.logger_output_directory + "decohesion_log.txt");
-
-            decohesion_logger.write_text(
-              fstream,
-              dealii::TableHandler::TextOutputFormat::org_mode_table);
-
-            return;
-          }
-}
-
-
-
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
   const bool flag_stepwise)
@@ -543,9 +484,6 @@ gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
 
 template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();
-
-template void gCP::GradientCrystalPlasticitySolver<2>::print_decohesion_data();
-template void gCP::GradientCrystalPlasticitySolver<3>::print_decohesion_data();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
 template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);

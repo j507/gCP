@@ -382,8 +382,6 @@ namespace gCP
 
     fe_field->solution = trial_solution;
 
-    print_decohesion_data();
-
     *pcout << std::endl;
 
     return (std::make_tuple(flag_successful_convergence, nonlinear_iteration));
