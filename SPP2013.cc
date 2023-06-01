@@ -864,6 +864,8 @@ void SemicoupledProblem<dim>::data_output()
 
   dealii::DataOut<dim> data_out;
 
+  postprocessor.set_macroscopic_strain(macroscopic_strain.get_value());
+
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
   data_out.add_data_vector(fe_field->solution, postprocessor);
