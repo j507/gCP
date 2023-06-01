@@ -886,10 +886,8 @@ void SimpleShearProblem<dim>::postprocessing()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time()))
   {
-    homogenization.compute_macroscopic_quantities();
-
-    homogenization.output_macroscopic_quantities_to_file(
-      discrete_time.get_next_time());
+    homogenization.compute_macroscopic_quantities(
+      discrete_time.get_current_time());
   }
 
   simple_shear.compute_data(discrete_time.get_current_time());
@@ -1134,6 +1132,8 @@ void SimpleShearProblem<dim>::run()
           discrete_time.get_end_time())
       data_output();
   }
+
+  homogenization.output_macroscopic_quantities_to_file();
 }
 
 
