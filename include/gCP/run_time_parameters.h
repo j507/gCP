@@ -954,6 +954,8 @@ struct ProblemParameters
 
   bool                              flag_output_residual;
 
+  bool                              flag_output_fluctuations;
+
   bool                              verbose;
 };
 

@@ -975,8 +975,8 @@ parse_parameters(dealii::ParameterHandler &prm)
   Assert(period > 0,
           dealii::ExcLowerRangeType<double>(period, 0));
 
-  Assert(n_cycles > 0,
-          dealii::ExcLowerRangeType<int>(n_cycles, 0));
+  //Assert(n_cycles > 0,
+  //        dealii::ExcLowerRangeType<int>(n_cycles, 0));
 
   Assert(n_steps_per_half_cycle > 1,
           dealii::ExcLowerRangeType<int>(
@@ -1011,6 +1011,7 @@ graphical_output_directory("results/default/"),
 flag_compute_macroscopic_quantities(false),
 flag_output_damage_variable(false),
 flag_output_residual(false),
+flag_output_fluctuations(false),
 verbose(true)
 {}
 
@@ -1153,6 +1154,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Output residual field",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Output fluctuation fields",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 
@@ -1239,7 +1244,9 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     flag_output_damage_variable = prm.get_bool("Output damage variable field");
 
-    flag_output_residual = prm.get_bool("Output residual field");
+    flag_output_residual        = prm.get_bool("Output residual field");
+
+    flag_output_fluctuations    = prm.get_bool("Output fluctuations fields");
 
     if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
         !fs::exists(graphical_output_directory + "paraview/"))
