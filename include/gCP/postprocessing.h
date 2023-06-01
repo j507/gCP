@@ -320,6 +320,12 @@ private:
   dealii::SymmetricTensor<2,dim>                          macroscopic_stress;
 
   /*!
+   * @brief The macroscopic stress tensor
+   * @details See @ref compute_macroscopic_stress for its definition
+   */
+  dealii::SymmetricTensor<2,dim>                          macroscopic_stress_fluctuations;
+
+  /*!
    * @brief The macroscopic strain tensor
    */
   dealii::SymmetricTensor<2,dim>                          macroscopic_strain;
