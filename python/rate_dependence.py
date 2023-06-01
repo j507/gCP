@@ -246,11 +246,11 @@ for i in range(6):
 
 for i in range(10):
   for j in range(6):
-    erf_decay[i,j] = (1.0 - erf[j][399 + i*200, 18] / erf[j][199,18])
-    tanh_decay[i,j] = (1.0 - tanh[j][399 + i*200, 18] / tanh[j][199,18])
-    gd_decay[i,j] = (1.0 - gd[j][399 + i*200, 18] / gd[j][199,18])
-    sqrt_decay[i,j] = (1.0 - sqrt[j][399 + i*200, 18] / sqrt[j][199,18])
-    atan_decay[i,j] = (1.0 - atan[j][399 + i*200, 18] / atan[j][199,18])
+    erf_decay[i,j] = (1.0 - erf[j][399 + i*200, 18] / erf_max[j][18])
+    tanh_decay[i,j] = (1.0 - tanh[j][399 + i*200, 18] / tanh_max[j][18])
+    gd_decay[i,j] = (1.0 - gd[j][399 + i*200, 18] / gd_max[j][18])
+    sqrt_decay[i,j] = (1.0 - sqrt[j][399 + i*200, 18] / sqrt_max[j][18])
+    atan_decay[i,j] = (1.0 - atan[j][399 + i*200, 18] / atan_max[j][18])
 
 for i in range(10):
     erf_rate_dependence[i,0] = (1.0 - erf_1Em7_1[399 + i*200, 18] / erf_max[4][18])
@@ -270,9 +270,6 @@ sqrt_decay  = np.c_[np.arange(1,11), sqrt_decay]
 atan_decay  = np.c_[np.arange(1,11), atan_decay]
 erf_rate_dependence = np.c_[np.arange(1,11), erf_rate_dependence]
 erf_decay_long = np.c_[np.arange(1,101), erf_decay_long]
-
-
-
 
 np.savetxt('erf_decay.csv', erf_decay, delimiter=',')
 np.savetxt('tanh_decay.csv', tanh_decay, delimiter=',')
