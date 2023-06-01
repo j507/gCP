@@ -33,7 +33,8 @@ class Postprocessor : public dealii::DataPostprocessor<dim>
 public:
   Postprocessor(
     std::shared_ptr<FEField<dim>>       &fe_field,
-    std::shared_ptr<CrystalsData<dim>>  &crystals_data);
+    std::shared_ptr<CrystalsData<dim>>  &crystals_data,
+    const bool                          flag_output_fluctuations = false);
 
   virtual void evaluate_vector_field(
     const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
@@ -68,6 +69,8 @@ private:
   const dealii::SymmetricTensor<4,dim>                    deviatoric_projector;
 
   const dealii::SymmetricTensor<4,3>                      deviatoric_projector_3d;
+
+  bool                                                    flag_output_fluctuations;
 
   bool                                                    flag_init_was_called;
 
@@ -245,7 +248,7 @@ public:
   /*!
    * @brief Method computing the macroscopic stress and stiffness tetrad
    */
-  void compute_macroscopic_quantities();
+  void compute_macroscopic_quantities(const double time);
 
   /*!
    * @brief Prints the macroscopic quantities (stored in
@@ -254,7 +257,7 @@ public:
    *
    * @param time Time to which the macroscopic quantities are assigned to
    */
-  void output_macroscopic_quantities_to_file(const double time);
+  void output_macroscopic_quantities_to_file();
 
   /*!
    * @brief Sets the macroscopic strain

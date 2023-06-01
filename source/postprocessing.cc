@@ -18,7 +18,8 @@ namespace Postprocessing
 template <int dim>
 Postprocessor<dim>::Postprocessor(
   std::shared_ptr<FEField<dim>>       &fe_field,
-  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
+  std::shared_ptr<CrystalsData<dim>>  &crystals_data,
+  const bool                          flag_output_fluctuations)
 :
 fe_field(fe_field),
 crystals_data(crystals_data),
@@ -34,7 +35,8 @@ deviatoric_projector_3d(
   1.0 / 3.0 *
   dealii::outer_product(
     dealii::unit_symmetric_tensor<3>(),
-    dealii::unit_symmetric_tensor<3>()))
+    dealii::unit_symmetric_tensor<3>())),
+flag_output_fluctuations(flag_output_fluctuations)
 {
   macroscopic_strain = 0.;
 
@@ -57,7 +59,13 @@ Postprocessor<dim>::get_names() const
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
       ++slip_id)
-    solution_names.emplace_back("Slip_" + std::to_string(slip_id));
+  {
+    std::ostringstream osss;
+
+    osss << std::setw(2) << std::setfill('0') << slip_id;
+
+    solution_names.emplace_back("Slip_" + osss.str());
+  }
 
   solution_names.emplace_back("EquivalentPlasticStrain");
   solution_names.emplace_back("EquivalentAbsolutePlasticStrain");
@@ -77,6 +85,23 @@ Postprocessor<dim>::get_names() const
   solution_names.emplace_back("Strain_23x2");
   solution_names.emplace_back("Strain_13x2");
   solution_names.emplace_back("Strain_12x2");
+
+  if (flag_output_fluctuations)
+  {
+    solution_names.emplace_back("VonMisesStressFluctuations");
+    solution_names.emplace_back("StressFluctuations_11");
+    solution_names.emplace_back("StressFluctuations_22");
+    solution_names.emplace_back("StressFluctuations_33");
+    solution_names.emplace_back("StressFluctuations_23");
+    solution_names.emplace_back("StressFluctuations_13");
+    solution_names.emplace_back("StressFluctuations_12");
+    solution_names.emplace_back("StrainFluctuations_11");
+    solution_names.emplace_back("StrainFluctuations_22");
+    solution_names.emplace_back("StrainFluctuations_33");
+    solution_names.emplace_back("StrainFluctuations_23x2");
+    solution_names.emplace_back("StrainFluctuations_13x2");
+    solution_names.emplace_back("StrainFluctuations_12x2");
+  }
 
   return solution_names;
 }
@@ -117,6 +142,24 @@ Postprocessor<dim>::get_data_component_interpretation()
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
   interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+
+  if (flag_output_fluctuations)
+  {
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+  }
+
 
   return interpretation;
 }
@@ -231,7 +274,8 @@ void Postprocessor<dim>::evaluate_vector_field(
           inputs.solution_gradients[q_point][d + dim * crystal_id];
       }
 
-      strain_tensor     = dealii::symmetrize(displacement_gradient);
+      strain_tensor     = dealii::symmetrize(displacement_gradient) +
+                          macroscopic_strain;
 
       strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
 
@@ -282,7 +326,7 @@ void Postprocessor<dim>::evaluate_vector_field(
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
-        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
+        strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -306,6 +350,35 @@ void Postprocessor<dim>::evaluate_vector_field(
         computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+
+      if (flag_output_fluctuations)
+      {
+        strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+        strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
+
+        elastic_strain_tensor =
+          strain_tensor - plastic_strain_tensor;
+
+        stress_tensor =
+          hooke_law->get_stiffness_tetrad_3d(material_id) *
+          convert_2d_to_3d(elastic_strain_tensor);
+
+        // Von-Mises stress
+        computed_quantities[q_point](dim + n_slips + 18) =
+          get_von_mises_stress(stress_tensor);
+
+        // Stress components
+        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+          computed_quantities[q_point](dim + n_slips + 19 + i) =
+            stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+        // Strain components
+        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+          computed_quantities[q_point](dim + n_slips + 25 + i) =
+            (i < 3 ? 1.0 : 2.0) *
+            strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+      }
     }
     else
     {
@@ -319,7 +392,8 @@ void Postprocessor<dim>::evaluate_vector_field(
           inputs.solution_gradients[q_point][d];
       }
 
-      strain_tensor     = dealii::symmetrize(displacement_gradient);
+      strain_tensor     = dealii::symmetrize(displacement_gradient) +
+                          macroscopic_strain;
 
       strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
 
@@ -370,7 +444,7 @@ void Postprocessor<dim>::evaluate_vector_field(
         std::sqrt(equivalent_screw_dislocation_density);
 
       elastic_strain_tensor =
-        macroscopic_strain +  strain_tensor - plastic_strain_tensor;
+        strain_tensor - plastic_strain_tensor;
 
       stress_tensor =
         hooke_law->get_stiffness_tetrad_3d(material_id) *
@@ -394,6 +468,35 @@ void Postprocessor<dim>::evaluate_vector_field(
         computed_quantities[q_point](dim + n_slips + 12 + i) =
           (i < 3 ? 1.0 : 2.0) *
           strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+
+      if (flag_output_fluctuations)
+      {
+        strain_tensor     = dealii::symmetrize(displacement_gradient);
+
+        strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
+
+        elastic_strain_tensor =
+          strain_tensor - plastic_strain_tensor;
+
+        stress_tensor =
+          hooke_law->get_stiffness_tetrad_3d(material_id) *
+          convert_2d_to_3d(elastic_strain_tensor);
+
+        // Von-Mises stress
+        computed_quantities[q_point](dim + n_slips + 18) =
+          get_von_mises_stress(stress_tensor);
+
+        // Stress components
+        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+          computed_quantities[q_point](dim + n_slips + 19 + i) =
+            stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+        // Strain components
+        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+          computed_quantities[q_point](dim + n_slips + 25 + i) =
+            (i < 3 ? 1.0 : 2.0) *
+            strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+      }
     }
   }
 }
@@ -805,6 +908,21 @@ void SimpleShear<dim>::compute_data(const double time)
             std::sin(M_PI / 2.0 / initial_loading_time * time);
       }
       break;
+    case RunTimeParameters::LoadingType::CyclicWithUnloading:
+      {
+        if (time >= initial_loading_time)
+          displacement_load =
+            (max_shear_strain_at_upper_boundary -
+             min_shear_strain_at_upper_boundary) / 2.0 *
+            std::cos(2.0 * M_PI / period * (time - initial_loading_time)) +
+            (max_shear_strain_at_upper_boundary +
+             min_shear_strain_at_upper_boundary) / 2.0;
+        else
+          displacement_load =
+            max_shear_strain_at_upper_boundary *
+            std::sin(M_PI / 2.0 / initial_loading_time * time);
+      }
+      break;
     default:
       Assert(false, dealii::ExcNotImplemented());
   }
@@ -1044,7 +1162,7 @@ void Homogenization<dim>::init(
 
 
 template <int dim>
-void Homogenization<dim>::compute_macroscopic_quantities()
+void Homogenization<dim>::compute_macroscopic_quantities(const double time)
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The HookeLaw<dim> instance has not"
@@ -1053,15 +1171,15 @@ void Homogenization<dim>::compute_macroscopic_quantities()
   compute_macroscopic_stress();
 
   compute_macroscopic_stiffness_tetrad();
+
+  update_table_handler_values(time);
 }
 
 
 
 template <int dim>
-void Homogenization<dim>::output_macroscopic_quantities_to_file(const double time)
+void Homogenization<dim>::output_macroscopic_quantities_to_file()
 {
-  update_table_handler_values(time);
-
   table_handler.write_text(
     path_to_output_file,
     dealii::TableHandler::TextOutputFormat::org_mode_table);
@@ -1177,7 +1295,9 @@ template <int dim>
 void Homogenization<dim>::compute_macroscopic_stress()
 {
   // Initiate the local integral value and at each wall.
-  macroscopic_stress = 0.0;
+  macroscopic_stress              = 0.0;
+
+  microscopic_strain_fluctuations = 0.0;
 
   const dealii::UpdateFlags update_flags =
     dealii::update_JxW_values |
@@ -1216,13 +1336,20 @@ void Homogenization<dim>::compute_macroscopic_stress()
 
   double                          cell_volume = 0.;
 
+  domain_integral_microscopic_stress              = 0.;
+
+  domain_integral_microscopic_strain_fluctuations = 0.;
+
   for (const auto &cell : fe_field->get_dof_handler().active_cell_iterators())
+  {
     if (cell->is_locally_owned())
     {
       // Reset local values
-      cell_integral_microscopic_stress  = 0.0;
+      cell_integral_microscopic_stress              = 0.0;
 
-      cell_volume                       = 0.0;
+      cell_integral_microscopic_strain_fluctuations = 0.0;
+
+      cell_volume                                   = 0.0;
 
       // Get the crystal identifier for the current cell
       const unsigned int crystal_id = cell->material_id();
@@ -1241,7 +1368,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
         fe_field->solution,
         strain_tensor_values);
 
-      // Get the slips and their gradients values at the quadrature points
+      // Get the slips values at the quadrature points
       for (unsigned int slip_id = 0;
           slip_id < fe_field->get_n_slips();
           ++slip_id)
@@ -1258,6 +1385,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
       {
         // Compute the elastic strain tensor at the quadrature point
         elastic_strain_tensor_values[quadrature_point_id] =
+          macroscopic_strain +
           elastic_strain->get_elastic_strain_tensor(
             crystal_id,
             quadrature_point_id,
@@ -1268,7 +1396,6 @@ void Homogenization<dim>::compute_macroscopic_stress()
         stress_tensor_values[quadrature_point_id] =
           hooke_law->get_stress_tensor(
             crystal_id,
-            macroscopic_strain +
             elastic_strain_tensor_values[quadrature_point_id]);
 
         cell_integral_microscopic_stress +=
@@ -1290,6 +1417,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
 
       domain_volume += cell_volume;
     }
+  }
 
   // Gather the values of each processor
   domain_integral_microscopic_stress =
