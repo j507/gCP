@@ -1155,7 +1155,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       "false",
                       dealii::Patterns::Bool());
 
-    prm.declare_entry("Output fluctuation fields",
+    prm.declare_entry("Output fluctuations fields",
                       "false",
                       dealii::Patterns::Bool());
   }
