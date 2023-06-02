@@ -364,6 +364,19 @@ void FEField<dim>::setup_vectors()
 
 
 template<int dim>
+void FEField<dim>::prepare_for_serialization_of_active_fe_indices()
+{
+  AssertThrow(flag_setup_dofs_was_called,
+              dealii::ExcMessage("The setup_dofs() method has to be "
+                                 "called before the setup_vectors() "
+                                 " method."))
+
+  dof_handler.prepare_for_serialization_of_active_fe_indices();
+}
+
+
+
+template<int dim>
 void FEField<dim>::update_solution_vectors()
 {
   old_old_solution  = old_solution;

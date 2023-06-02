@@ -251,6 +251,13 @@ public:
       get_extractors() const;
 
   /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  void prepare_for_serialization_of_active_fe_indices();
+
+  /*!
    * @brief Returns the number of degrees of freedom.
    */
   dealii::types::global_dof_index n_dofs() const;

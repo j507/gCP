@@ -5,6 +5,8 @@
 #include <gCP/postprocessing.h>
 #include <gCP/run_time_parameters.h>
 
+#include <deal.II/distributed/solution_transfer.h>
+
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/mapping_q.h>
@@ -276,6 +278,8 @@ private:
 
   void postprocessing();
 
+  void checkpoint();
+
   void triangulation_output();
 
   void data_output();
@@ -325,7 +329,8 @@ macroscopic_strain(parameters),
 homogenization(fe_field,
                mapping),
 postprocessor(fe_field,
-              crystals_data),
+              crystals_data,
+              parameters.flag_output_fluctuations),
 residual_postprocessor(
   fe_field,
   crystals_data),
@@ -348,6 +353,19 @@ string_width(
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
           fs::remove(entry.path());
+
+      *pcout
+        << "done!\n\n";
+    }
+
+    if (fs::exists(parameters.graphical_output_directory + "checkpoints/"))
+    {
+      *pcout
+        << "Deleting checkpoints files inside the checkpoints folder... "
+        << std::flush;
+
+      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "checkpoints/"))
+        fs::remove(entry.path());
 
       *pcout
         << "done!\n\n";
@@ -773,7 +791,57 @@ void SemicoupledProblem<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void SemicoupledProblem<dim>::postprocessing()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
+  const RunTimeParameters::TemporalDiscretizationParameters &prm =
+    parameters.temporal_discretization_parameters;
+
+  bool flag_store_checkpoint = false;
+
+  if (prm.loading_type == RunTimeParameters::LoadingType::Cyclic ||
+      prm.loading_type == RunTimeParameters::LoadingType::CyclicWithUnloading)
+  {
+    const bool last_step_of_loading_phase =
+        discrete_time.get_step_number() == prm.n_steps_in_loading_phase;
+
+    const unsigned int n_steps_until_unloading =
+      prm.n_steps_in_loading_phase +
+      prm.n_steps_per_half_cycle * 2.0 * prm.n_cycles;
+
+    const bool last_step_of_cyclic_phase =
+        discrete_time.get_step_number() == n_steps_until_unloading;
+
+    const bool extrema_step_of_cyclic_phase =
+        discrete_time.get_step_number() > prm.n_steps_in_loading_phase
+          &&
+        discrete_time.get_step_number() < n_steps_until_unloading
+          &&
+        (discrete_time.get_step_number() - prm.n_steps_in_loading_phase) %
+        (2 * prm.n_steps_per_half_cycle) == 0;
+
+      if ((last_step_of_loading_phase || extrema_step_of_cyclic_phase ||
+           last_step_of_cyclic_phase) &&
+          parameters.flag_store_checkpoint)
+      {
+        flag_store_checkpoint = true;
+      }
+  }
+
+  if (flag_store_checkpoint)
+  {
+    dealii::TimerOutput::Scope  t(*timer_output, "Problem - Checkpoint storage");
+
+    dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
+        solution_transfer(fe_field->get_dof_handler());
+
+    fe_field->prepare_for_serialization_of_active_fe_indices();
+
+    solution_transfer.prepare_for_serialization(fe_field->solution);
+
+    triangulation.save(parameters.graphical_output_directory + "checkpoints/SolutionTransfer_"
+    + std::to_string(discrete_time.get_current_time()));
+  }
+
+
 
   if (parameters.flag_compute_macroscopic_quantities &&
       (discrete_time.get_step_number() %
@@ -781,11 +849,28 @@ void SemicoupledProblem<dim>::postprocessing()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time()))
   {
+    dealii::TimerOutput::Scope  t(*timer_output, "Problem - Homogenization");
+
     homogenization.set_macroscopic_strain(macroscopic_strain.get_value());
 
     homogenization.compute_macroscopic_quantities(
       discrete_time.get_current_time());
   }
+}
+
+
+
+template<int dim>
+void SemicoupledProblem<dim>::checkpoint()
+{
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Checkpoint");
+  /*
+  dealii::parallel::distributed::SolutionTransfer<dim, dealii::Vector<double>>
+    solution_transfer(dg_dof_handler);
+
+  solution_transfer.prepare_for_serialization(solution);
+
+  triangulation.save("file"); */
 }
 
 
@@ -889,7 +974,9 @@ void SemicoupledProblem<dim>::data_output()
     MPI_COMM_WORLD,
     5);
 
-  if (parameters.flag_output_damage_variable)
+  if (parameters.flag_output_damage_variable ||
+      discrete_time.get_current_time() ==
+          discrete_time.get_end_time())
   {
     dealii::DataOutFaces<dim> data_out_face(false);
 
