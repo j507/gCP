@@ -1012,6 +1012,7 @@ flag_compute_macroscopic_quantities(false),
 flag_output_damage_variable(false),
 flag_output_residual(false),
 flag_output_fluctuations(false),
+flag_store_checkpoint(false),
 verbose(true)
 {}
 
@@ -1158,6 +1159,10 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Output fluctuations fields",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Store checkpoints",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 
@@ -1248,12 +1253,49 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     flag_output_fluctuations    = prm.get_bool("Output fluctuations fields");
 
+    flag_store_checkpoint       = prm.get_bool("Store checkpoints");
+
     if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
         !fs::exists(graphical_output_directory + "paraview/"))
     {
       try
       {
         fs::create_directories(graphical_output_directory + "paraview/");
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the creation of the output directory: "
+                  << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                    << std::endl;
+        std::cerr << "Unknown exception in the creation of the output directory!"
+                  << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
+
+    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
+        !fs::exists(graphical_output_directory + "checkpoints/") &&
+        flag_store_checkpoint)
+    {
+      try
+      {
+        fs::create_directories(graphical_output_directory + "checkpoints/");
       }
       catch (std::exception &exc)
       {

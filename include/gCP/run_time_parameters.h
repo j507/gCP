@@ -956,6 +956,8 @@ struct ProblemParameters
 
   bool                              flag_output_fluctuations;
 
+  bool                              flag_store_checkpoint;
+
   bool                              verbose;
 };
 
