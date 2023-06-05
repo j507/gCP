@@ -60,8 +60,6 @@ public:
 
 private:
 
-  dealii::SymmetricTensor<2,dim>  maximum_macroscopic_strain;
-
   double                          time;
 
   const double                    period;
@@ -378,7 +376,7 @@ string_width(
 template<int dim>
 void SemicoupledProblem<dim>::make_grid()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Triangulation");
 
   dealii::parallel::distributed::Triangulation<dim-1>
     tmp_triangulation(
@@ -472,7 +470,7 @@ void SemicoupledProblem<dim>::make_grid()
 template<int dim>
 void SemicoupledProblem<dim>::setup()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Setup");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Setup");
 
   // Initiates the crystals' data (Slip directions, normals, orthogonals,
   // Schmid-Tensor and symmetrized Schmid-Tensors)
@@ -749,6 +747,8 @@ void SemicoupledProblem<dim>::setup_constraints()
 template<int dim>
 void SemicoupledProblem<dim>::initialize_calls()
 {
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Initialize calls");
+
   // Initiate the solver
   gCP_solver.init();
 
@@ -771,7 +771,7 @@ void SemicoupledProblem<dim>::initialize_calls()
 template<int dim>
 void SemicoupledProblem<dim>::update_dirichlet_boundary_conditions()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Update boundary conditions");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Update boundary conditions");
 
   // Instantiate the temporary AffineConstraint instance
   dealii::AffineConstraints<double> affine_constraints;
@@ -827,7 +827,12 @@ void SemicoupledProblem<dim>::postprocessing()
 
   if (flag_store_checkpoint)
   {
-    dealii::TimerOutput::Scope  t(*timer_output, "Problem - Checkpoint storage");
+    dealii::TimerOutput::Scope  t(*timer_output, "Problem: Checkpoint storage");
+
+    std::string checkpoint_file_name =
+      parameters.graphical_output_directory +
+      "checkpoints/SolutionTransfer_" +
+      std::to_string(discrete_time.get_step_number());
 
     dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LinearAlgebraTrilinos::MPI::Vector>
@@ -835,13 +840,36 @@ void SemicoupledProblem<dim>::postprocessing()
 
     fe_field->prepare_for_serialization_of_active_fe_indices();
 
-    solution_transfer.prepare_for_serialization(fe_field->solution);
+    std::vector<const dealii::LinearAlgebraTrilinos::MPI::Vector*>
+      solution_vectors(3);
 
-    triangulation.save(parameters.graphical_output_directory + "checkpoints/SolutionTransfer_"
-    + std::to_string(discrete_time.get_current_time()));
+    solution_vectors[0] = &fe_field->solution;
+    solution_vectors[1] = &fe_field->old_solution;
+    solution_vectors[2] = &fe_field->old_old_solution;
+
+    solution_transfer.prepare_for_serialization(solution_vectors);
+
+    triangulation.save(checkpoint_file_name);
+
+    std::ofstream output_file_stream(checkpoint_file_name + ".txt");
+
+    dealii::SymmetricTensor<2,dim> macroscopic_strain_value =
+      macroscopic_strain.get_value();
+
+    if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+    {
+      for (unsigned int i = 0;
+          i < macroscopic_strain_value.n_independent_components; ++i)
+      {
+        output_file_stream << macroscopic_strain_value.access_raw_entry(i);
+
+        if (i < (macroscopic_strain_value.n_independent_components - 1))
+        {
+          output_file_stream << ",";
+        }
+      }
+    }
   }
-
-
 
   if (parameters.flag_compute_macroscopic_quantities &&
       (discrete_time.get_step_number() %
@@ -849,7 +877,7 @@ void SemicoupledProblem<dim>::postprocessing()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time()))
   {
-    dealii::TimerOutput::Scope  t(*timer_output, "Problem - Homogenization");
+    dealii::TimerOutput::Scope  t(*timer_output, "Problem: Homogenization");
 
     homogenization.set_macroscopic_strain(macroscopic_strain.get_value());
 
@@ -863,7 +891,7 @@ void SemicoupledProblem<dim>::postprocessing()
 template<int dim>
 void SemicoupledProblem<dim>::checkpoint()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Checkpoint");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Checkpoint");
   /*
   dealii::parallel::distributed::SolutionTransfer<dim, dealii::Vector<double>>
     solution_transfer(dg_dof_handler);
@@ -945,7 +973,7 @@ void SemicoupledProblem<dim>::triangulation_output()
 template<int dim>
 void SemicoupledProblem<dim>::data_output()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Data output");
 
   dealii::DataOut<dim> data_out;
 
@@ -1088,10 +1116,10 @@ void SemicoupledProblem<dim>::run()
 
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n
-    std::tuple<bool, unsigned int> results =
-      gCP_solver.solve_nonlinear_system();
+    //std::tuple<bool, unsigned int> results =
+    //  gCP_solver.solve_nonlinear_system();
 
-    (void)results;
+    //(void)results;
     /*
     if (std::get<0>(results) == false)
     {
