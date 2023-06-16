@@ -1116,10 +1116,10 @@ void SemicoupledProblem<dim>::run()
 
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n
-    //std::tuple<bool, unsigned int> results =
-    //  gCP_solver.solve_nonlinear_system();
+    std::tuple<bool, unsigned int> results =
+      gCP_solver.solve_nonlinear_system();
 
-    //(void)results;
+    (void)results;
     /*
     if (std::get<0>(results) == false)
     {
