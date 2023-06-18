@@ -1229,7 +1229,8 @@ void Homogenization<2>::update_table_handler_values(const double time)
     std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
 
   const double von_mises_stress_fluctuations =
-    std::sqrt(3./2. * deviatoric_stress * deviatoric_stress_fluctuations);
+    std::sqrt(3./2. * deviatoric_stress_fluctuations *
+              deviatoric_stress_fluctuations);
 
   const double von_mises_strain =
     std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
@@ -1281,7 +1282,8 @@ void Homogenization<3>::update_table_handler_values(const double time)
     std::sqrt(3./2. * deviatoric_stress * deviatoric_stress);
 
   const double von_mises_stress_fluctuations =
-    std::sqrt(3./2. * deviatoric_stress * deviatoric_stress_fluctuations);
+    std::sqrt(3./2. * deviatoric_stress_fluctuations *
+              deviatoric_stress_fluctuations);
 
   const double von_mises_strain =
     std::sqrt(2./3. * deviatoric_strain * deviatoric_strain);
@@ -1307,12 +1309,12 @@ void Homogenization<3>::update_table_handler_values(const double time)
   table_handler.add_value("Strain_23", macroscopic_strain[1][2] + microscopic_strain_fluctuations[1][2]);
   table_handler.add_value("Strain_13", macroscopic_strain[0][2] + microscopic_strain_fluctuations[0][2]);
   table_handler.add_value("Strain_12", macroscopic_strain[0][1] + microscopic_strain_fluctuations[0][1]);
-  table_handler.add_value("StressFluctuations_11", microscopic_strain_fluctuations[0][0]);
-  table_handler.add_value("StressFluctuations_22", microscopic_strain_fluctuations[1][1]);
-  table_handler.add_value("StressFluctuations_33", microscopic_strain_fluctuations[2][2]);
-  table_handler.add_value("StressFluctuations_23", microscopic_strain_fluctuations[1][2]);
-  table_handler.add_value("StressFluctuations_13", microscopic_strain_fluctuations[0][2]);
-  table_handler.add_value("StressFluctuations_12", microscopic_strain_fluctuations[0][1]);
+  table_handler.add_value("StressFluctuations_11", macroscopic_stress_fluctuations[0][0]);
+  table_handler.add_value("StressFluctuations_22", macroscopic_stress_fluctuations[1][1]);
+  table_handler.add_value("StressFluctuations_33", macroscopic_stress_fluctuations[2][2]);
+  table_handler.add_value("StressFluctuations_23", macroscopic_stress_fluctuations[1][2]);
+  table_handler.add_value("StressFluctuations_13", macroscopic_stress_fluctuations[0][2]);
+  table_handler.add_value("StressFluctuations_12", macroscopic_stress_fluctuations[0][1]);
   table_handler.add_value("StrainFluctuations_11", microscopic_strain_fluctuations[0][0]);
   table_handler.add_value("StrainFluctuations_22", microscopic_strain_fluctuations[1][1]);
   table_handler.add_value("StrainFluctuations_33", microscopic_strain_fluctuations[2][2]);
