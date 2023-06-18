@@ -4,7 +4,7 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/crystal_orientation/euler_angles_3D
+  set Euler angles path name    = input/crystal_orientation/euler_angles_3D_Andreas
   set Slip directions path name = input/crystal_structure/face_centered_cubic/slip_directions
   set Slip normals path name    = input/crystal_structure/face_centered_cubic/slip_normals
 end
