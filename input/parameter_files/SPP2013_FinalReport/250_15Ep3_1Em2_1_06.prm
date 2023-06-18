@@ -1,0 +1,143 @@
+# Listing of Parameters
+# ---------------------
+set Verbose = true
+
+
+subsection Input files
+  set Euler angles path name    = input/crystal_orientation/euler_angles_3D
+  set Slip directions path name = input/crystal_structure/face_centered_cubic/slip_directions
+  set Slip normals path name    = input/crystal_structure/face_centered_cubic/slip_normals
+end
+
+
+subsection Output control parameters
+  set Graphical output directory   = results/SPP2013_FinalReport/250_15Ep3_1Em2_1_06/
+  set Graphical output frequency   = 1
+  set Output damage variable field = true
+  set Output fluctuations fields   = true
+  set Output residual field        = false
+  set Terminal output frequency    = 1
+end
+
+
+subsection Postprocessing parameters
+  set Homogenization           = true
+  set Homogenization frequency = 1
+end
+
+
+subsection Semi-coupled problem
+  set Minimum to maximum strain load ratio = 0.50
+  set Max strain component 11              = -0.020221
+  set Max strain component 12              = 0.0
+  set Max strain component 13              = 0.0
+  set Max strain component 22              = -0.020328
+  set Max strain component 23              = 0.019537
+  set Max strain component 33              = 0.041000
+  set Mesh file (*.msh) path name          = input/mesh/gmsh/periodic_polycrystal_250.msh
+end
+
+
+subsection Solver parameters
+  set Allow decohesion at grain boundaries         = true
+  set Boundary conditions at grain boundaries      = microtraction
+  set Logger output directory                      = results/SPP2013_FinalReport/250_15Ep3_1Em2_1_06/
+  set Print sparsity pattern                       = false
+  set Skip extrapolation of start value at extrema = true
+  set Verbose                                      = false
+  set Zero damage evolution during un- and loading = true
+
+
+  subsection Constitutive laws' parameters
+    subsection Contact law's parameters
+      set Penalty coefficient = 1e7
+    end
+
+    subsection Decohesion law's parameters
+      set Couple macrotraction to damage       = true
+      set Couple microtraction to damage       = true
+      set Critical opening displacement        = 2.5e-2
+      set Damage accumulation constant         = 15e3
+      set Damage decay constant                = 0.0
+      set Damage decay exponent                = 1.0
+      set Degradation exponent                 = 1.0
+      set Endurance limit                      = 0.0
+      set Maximum cohesive traction            = 1400.
+      set Set damage to zero                   = false
+      set Tangential to normal stiffness ratio = 1.0
+    end
+
+    subsection Hooke-Law's parameters
+      set C1111 = 230161.11944418112
+      set C1122 = 134595.0127969934
+      set C1212 = 116600
+    end
+
+    subsection Microscopic traction law's parameters
+      set Grain boundary modulus = 1e4
+    end
+
+    subsection Scalar microscopic stress law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 130.
+      set Linear hardening modulus = 100.
+      set Regularization function  = erf
+      set Regularization parameter = 1e-2
+    end
+
+    subsection Vector microscopic stress law's parameters
+      set Energetic length scale  = 0.5
+      set Initial slip resistance = 130.
+    end
+
+  end
+
+  subsection Convergence control parameters
+    set Downscaling factor           = 2
+    set Lower threshold              = 1e-6
+    set Maximum number of iterations = 25
+    set Upper threshold              = 2.5e-3
+    set Upscaling factor             = 10
+  end
+
+  subsection Krylov parameters
+    set Absolute tolerance           = 1e-10
+    set Maximum number of iterations = 5000
+    set Relative tolerance           = 1e-9
+    set Solver type                  = cg
+  end
+
+  subsection Newton-Raphson parameters
+    set Absolute tolerance of the residual = 1e-8
+    set Absolute tolerance of the step     = 1e-13
+    set Maximum number of iterations       = 500
+    set Relative tolerance of the residual = 1e-7
+  end
+
+end
+
+
+subsection Spatial discretization parameters
+  set FE's polynomial degree - Displacements = 2
+  set FE's polynomial degree - Slips         = 1
+  set Mapping - Apply to interior cells      = false
+  set Mapping - Polynomial degree            = 1
+  set Number of global refinements           = 0
+  set Spatial dimension                      = 2
+end
+
+
+subsection Temporal discretization parameters
+  set End time                         = 2.0
+  set Initial loading time             = 1.0
+  set Loading type                     = cyclic_unloading
+  set Number of cycles                 = 6
+  set Number of steps in loading phase   = 40
+  set Number of steps in unloading phase = 40
+  set Number of steps per half cycle   = 20
+  set Period                           = 1.0
+  set Start time                       = 0.0
+  set Time step size                   = 1e-1
+end
+
+
