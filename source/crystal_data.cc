@@ -287,14 +287,22 @@ void CrystalsData<dim>::compute_rotation_matrices()
       break;
     case 3:
       {
+        /*
         const double alpha  = euler_angles[crystal_id][0] * deg_to_rad;
         const double beta   = euler_angles[crystal_id][1] * deg_to_rad;
         const double gamma  = euler_angles[crystal_id][2] * deg_to_rad;
+        */
+
+        const double alpha  = euler_angles[crystal_id][0] * deg_to_rad;
+        const double beta   = euler_angles[crystal_id][1] * deg_to_rad;
+        const double gamma  = (euler_angles[crystal_id][2] - 180.) *
+                                deg_to_rad;
 
         dealii::Tensor<2,dim> rotation_tensor_alpha;
         dealii::Tensor<2,dim> rotation_tensor_beta;
         dealii::Tensor<2,dim> rotation_tensor_gamma;
 
+        /*
         rotation_tensor_alpha[0][0] = 1.0;
         rotation_tensor_alpha[1][1] = std::cos(alpha);
         rotation_tensor_alpha[1][2] = -std::sin(alpha);
@@ -312,12 +320,36 @@ void CrystalsData<dim>::compute_rotation_matrices()
         rotation_tensor_gamma[1][0] = std::sin(gamma);
         rotation_tensor_gamma[1][1] = std::cos(gamma);
         rotation_tensor_gamma[2][2] = 1.0;
+        */
 
+        rotation_tensor_alpha[0][0] = std::cos(alpha);
+        rotation_tensor_alpha[0][1] = -std::sin(alpha);
+        rotation_tensor_alpha[1][0] = std::sin(alpha);
+        rotation_tensor_alpha[1][1] = std::cos(alpha);
+        rotation_tensor_alpha[2][2] = 1.0;
+
+        rotation_tensor_beta[0][0] = 1.0;
+        rotation_tensor_beta[1][1] = std::cos(beta);
+        rotation_tensor_beta[1][2] = -std::sin(beta);
+        rotation_tensor_beta[2][1] = std::sin(beta);
+        rotation_tensor_beta[2][2] = std::cos(beta);
+
+        rotation_tensor_gamma[0][0] = std::cos(gamma);
+        rotation_tensor_gamma[0][1] = -std::sin(gamma);
+        rotation_tensor_gamma[1][0] = std::sin(gamma);
+        rotation_tensor_gamma[1][1] = std::cos(gamma);
+        rotation_tensor_gamma[2][2] = 1.0;
+        /*
         rotation_tensor = dealii::contract<1,0>(
                             rotation_tensor_gamma,
                             dealii::contract<1,0>(
                               rotation_tensor_beta,
                               rotation_tensor_alpha));
+        */
+
+        rotation_tensor = rotation_tensor_alpha *
+                          rotation_tensor_beta *
+                          rotation_tensor_gamma;
       }
       break;
     default:
