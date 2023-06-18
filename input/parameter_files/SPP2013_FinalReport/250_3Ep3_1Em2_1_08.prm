@@ -14,6 +14,7 @@ subsection Output control parameters
   set Graphical output directory   = results/SPP2013_FinalReport/250_3Ep3_1Em2_1_08/
   set Graphical output frequency   = 1
   set Output damage variable field = true
+  set Output fluctuations fields   = true
   set Output residual field        = false
   set Terminal output frequency    = 1
 end
