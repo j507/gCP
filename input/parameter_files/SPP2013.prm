@@ -4,7 +4,7 @@ set Verbose = true
 
 
 subsection Input files
-  set Euler angles path name    = input/crystal_orientation/euler_angles_3D
+  set Euler angles path name    = input/crystal_orientation/euler_angles_3D_Zeros
   set Slip directions path name = input/crystal_structure/face_centered_cubic/slip_directions
   set Slip normals path name    = input/crystal_structure/face_centered_cubic/slip_normals
 end
@@ -14,13 +14,15 @@ subsection Output control parameters
   set Graphical output directory   = results/SPP2013/
   set Graphical output frequency   = 1
   set Output damage variable field = false
+  set Output fluctuations fields   = true
   set Output residual field        = false
+  set Store checkpoints            = false
   set Terminal output frequency    = 1
 end
 
 
 subsection Postprocessing parameters
-  set Homogenization           = false
+  set Homogenization           = true
   set Homogenization frequency = 1
 end
 
@@ -33,7 +35,7 @@ subsection Semi-coupled problem
   set Max strain component 22              = -0.020328
   set Max strain component 23              = 0.019537
   set Max strain component 33              = 0.041000
-  set Mesh file (*.msh) path name          = input/mesh/periodic_polycrystal.msh
+  set Mesh file (*.msh) path name          = input/mesh/gmsh/periodic_polycrystal_250.msh
 end
 
 
@@ -42,10 +44,9 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries      = microtraction
   set Logger output directory                      = results/SPP2013/
   set Print sparsity pattern                       = false
-  set Scaling factor of the microforce balance     = 1.0
-  set Scaling factor of the linear momentum balance = 1.0
   set Skip extrapolation of start value at extrema = true
   set Verbose                                      = false
+  set Zero damage evolution during un- and loading = true
 
 
   subsection Constitutive laws' parameters
@@ -134,7 +135,7 @@ subsection Temporal discretization parameters
   set Number of cycles                 = 1
   set Number of steps in loading phase = 20
   set Number of steps in unloading phase = 20
-  set Number of steps per half cycle   = 30
+  set Number of steps per half cycle   = 20
   set Period                           = 1.0
   set Start time                       = 0.0
   set Time step size                   = 1e-1
