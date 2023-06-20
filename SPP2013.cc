@@ -1067,6 +1067,31 @@ void SemicoupledProblem<dim>::run()
 
   (void)convergence_control_parameters;
 
+  std::ofstream macroscopic_damage_file;
+
+  { // Clear file's contents
+    macroscopic_damage_file.open(
+      parameters.graphical_output_directory + "macroscopic_damage.txt",
+      std::ofstream::out | std::ofstream::trunc);
+
+    macroscopic_damage_file.close();
+  }
+
+  macroscopic_damage_file.open(
+    parameters.graphical_output_directory + "macroscopic_damage.txt",
+    std::ios::out | std::ios::app);
+
+  if (macroscopic_damage_file.fail())
+  {
+    throw std::ios_base::failure(std::strerror(errno));
+  }
+
+  //make sure write fails with exception if something is wrong
+  macroscopic_damage_file.exceptions(
+    macroscopic_damage_file.exceptions() |
+    std::ios::failbit |
+    std::ifstream::badbit);
+
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
@@ -1173,6 +1198,18 @@ void SemicoupledProblem<dim>::run()
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();
+
+    // Print macroscopic damage to file
+    if (parameters.flag_output_damage_variable ||
+        discrete_time.get_current_time() ==
+          discrete_time.get_end_time())
+    {
+      macroscopic_damage_file
+        << discrete_time.get_current_time()
+        << ", "
+        << gCP_solver.get_macroscopic_damage()
+        << std::endl;
+    }
   }
 
   homogenization.output_macroscopic_quantities_to_file();
