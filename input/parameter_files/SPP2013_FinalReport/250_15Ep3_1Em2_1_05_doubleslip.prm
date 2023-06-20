@@ -5,8 +5,8 @@ set Verbose = true
 
 subsection Input files
   set Euler angles path name    = input/crystal_orientation/euler_angles_3D_Andreas
-  set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
-  set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
+  set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions_3D
+  set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals_3D
 end
 
 subsection Output control parameters
