@@ -20,7 +20,7 @@ Wonderful synopsis
 
 ### File name
 
-File names follow the format XX_XX_XX_XX_XX, where XX stands for a variable's value
+File names follow the format XX_XX_XX_XX_XX_XX, where XX stands for a variable's value
 
 In this folder the variables are from left to right
 
@@ -29,6 +29,7 @@ In this folder the variables are from left to right
 3. Regularization parameter (double)
 4. Degradation exponent (integer)
 5. Number of cycles (integer)
+6. Number of steps pro load stage, i.e., loading, half cycle and unloading (integer)
 
 **Note:** Not all file names will necessary contain all variables. Due to redundancy or forgetfulness (Most likely the latter)
 
