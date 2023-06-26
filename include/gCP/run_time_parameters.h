@@ -836,47 +836,27 @@ struct TemporalDiscretizationParameters
    */
   unsigned int         n_cycles;
 
-  /*!
-   * @brief The time in which the initial loading takes place
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  double      initial_loading_time;
+  double preloading_phase_duration;
 
-  double      start_of_unloading_phase;
+  double unloading_and_unloading_phase_duration;
 
-  /*!
-   * @brief The time step used during the initial loading phase
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  unsigned int         n_steps_in_loading_phase;
+  unsigned int n_steps_in_preloading_phase;
 
-  /*!
-   * @brief The number of discrete points per half cycle at which
-   * the quasi static problem will be solved
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  unsigned int         n_steps_per_half_cycle;
+  unsigned int n_steps_in_loading_and_unloading_phases;
 
-  unsigned int         n_steps_in_unloading_phase;
+  unsigned int n_steps_per_half_cycle;
 
-  /*!
-   * @brief The time step used during the loading phase
-   *
-   * @details It is internally computed using @ref initial_loading_time
-   * and @ref n_steps_in_loading_phase
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  double      time_step_size_in_loading_phase;
+  double time_step_size_in_preloading_phase;
 
-  double      time_step_size_in_unloading_phase;
+  double time_step_size_in_cyclic_phase;
+
+  double time_step_size_in_loading_and_unloading_phase;
+
+  double start_of_loading_phase;
+
+  double start_of_cyclic_phase;
+
+  double start_of_unloading_phase;
 
   /*!
    * @brief The simulation time control to be used. See @ref
