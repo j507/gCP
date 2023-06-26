@@ -295,7 +295,7 @@ void CrystalsData<dim>::compute_rotation_matrices()
 
         const double alpha  = euler_angles[crystal_id][0] * deg_to_rad;
         const double beta   = euler_angles[crystal_id][1] * deg_to_rad;
-        const double gamma  = (euler_angles[crystal_id][2] - 180.) *
+        const double gamma  = (euler_angles[crystal_id][2]) *
                                 deg_to_rad;
 
         dealii::Tensor<2,dim> rotation_tensor_alpha;
