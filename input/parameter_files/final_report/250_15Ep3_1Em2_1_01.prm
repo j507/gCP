@@ -44,7 +44,7 @@ subsection Solver parameters
   set Logger output directory                      = results/final_report/250_15Ep3_1Em2_1_01/
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = true
-  set Verbose                                      = true
+  set Verbose                                      = false
   set Zero damage evolution during un- and loading = true
 
 

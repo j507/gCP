@@ -141,10 +141,7 @@ namespace gCP
       ": Solving for t = " + std::to_string(discrete_time.get_next_time()) +
       " with dt = " + std::to_string(discrete_time.get_next_step_size()));
 
-    if (parameters.verbose)
-    {
-      nonlinear_solver_logger.log_headers_to_terminal();
-    }
+    nonlinear_solver_logger.log_headers_to_terminal();
 
     extrapolate_initial_trial_solution();
 
@@ -328,10 +325,7 @@ namespace gCP
 
         nonlinear_solver_logger.log_to_file();
 
-        if (parameters.verbose)
-        {
-          nonlinear_solver_logger.log_values_to_terminal();
-        }
+        nonlinear_solver_logger.log_values_to_terminal();
       }
 
       assemble_jacobian();
@@ -407,10 +401,7 @@ namespace gCP
 
         nonlinear_solver_logger.log_to_file();
 
-        if (parameters.verbose)
-        {
-          nonlinear_solver_logger.log_values_to_terminal();
-        }
+        nonlinear_solver_logger.log_values_to_terminal();
       }
 
       //slip_rate_output(true);
@@ -795,10 +786,7 @@ namespace gCP
 
         nonlinear_solver_logger.log_to_file();
 
-        if (parameters.verbose)
-        {
-          nonlinear_solver_logger.log_values_to_terminal();
-        }
+        nonlinear_solver_logger.log_values_to_terminal();
       }
 
       flag_successful_convergence =
