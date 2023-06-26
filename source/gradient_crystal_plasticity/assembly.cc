@@ -55,7 +55,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
   const dealii::UpdateFlags face_update_flags =
     dealii::update_JxW_values |
     dealii::update_normal_vectors |
-    dealii::update_values;
+    dealii::update_values |
+    dealii::update_quadrature_points;
 
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
@@ -1380,13 +1381,13 @@ update_local_quadrature_point_history(
                     scratch.neighbor_face_slip_values,
                     scratch.face_slip_values));
 
-                const bool flag_currentyl_in_the_loading_phase =
+                const bool flag_currently_in_the_preloading_phase =
                   discrete_time.get_next_time() <=
-                    temporal_discretization_parameters.initial_loading_time;
+                    temporal_discretization_parameters.start_of_loading_phase;
 
                 const bool flag_no_damage_evolution =
                   parameters.flag_zero_damage_during_loading_and_unloading &&
-                    flag_currentyl_in_the_loading_phase;
+                    flag_currently_in_the_preloading_phase;
 
                 if (!flag_no_damage_evolution)
                 {
@@ -1424,9 +1425,9 @@ update_local_quadrature_point_history(
                     scratch.neighbor_face_slip_values,
                     scratch.face_slip_values));
 
-                const bool flag_currently_in_the_loading_phase =
+                const bool flag_currently_in_the_preloading_phase =
                   discrete_time.get_next_time() <=
-                    temporal_discretization_parameters.initial_loading_time;
+                    temporal_discretization_parameters.start_of_loading_phase;
 
                 const bool flag_currently_in_the_unloading_phase =
                   discrete_time.get_next_time() >
@@ -1434,7 +1435,7 @@ update_local_quadrature_point_history(
 
                 const bool contidion_A =
                   parameters.flag_zero_damage_during_loading_and_unloading &&
-                  flag_currently_in_the_loading_phase;
+                  flag_currently_in_the_preloading_phase;
 
                 const bool condition_B =
                   parameters.flag_zero_damage_during_loading_and_unloading &&
@@ -1991,7 +1992,6 @@ double GradientCrystalPlasticitySolver<dim>::get_macroscopic_damage()
                 quadrature_point_id < n_face_quadrature_points;
                 ++quadrature_point_id)
           {
-
             cell_integral_damage_variable +=
               local_interface_quadrature_point_history[quadrature_point_id]->
                 get_damage_variable() *
