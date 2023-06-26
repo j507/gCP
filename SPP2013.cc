@@ -64,21 +64,35 @@ private:
 
   const double                    period;
 
-  std::pair<double,double>        component_11;
+  double                          componenet_11_mean_value;
 
-  std::pair<double,double>        component_22;
+  double                          componenet_22_mean_value;
 
-  std::pair<double,double>        component_33;
+  double                          componenet_33_mean_value;
 
-  std::pair<double,double>        component_23;
+  double                          componenet_23_mean_value;
+
+  double                          componenet_11_amplitude;
+
+  double                          componenet_22_amplitude;
+
+  double                          componenet_33_amplitude;
+
+  double                          componenet_23_amplitude;
+
+  const double                    reduction_factor;
 
   const double                    n_cycles;
+
+  const double                    start_of_loading_phase;
 
   const double                    start_of_cyclic_phase;
 
   const double                    start_of_unloading_phase;
 
-  const double                    duration_of_unloading_phase;
+  const double                    preloading_phase_duration;
+
+  const double                    unloading_and_unloading_phase_duration;
 };
 
 
@@ -89,19 +103,22 @@ MacroscopicStrain<dim>::MacroscopicStrain(
 :
 time(parameters.temporal_discretization_parameters.start_time),
 period(parameters.temporal_discretization_parameters.period),
+reduction_factor(0.10),
 n_cycles(parameters.temporal_discretization_parameters.n_cycles),
-start_of_cyclic_phase(parameters.temporal_discretization_parameters.initial_loading_time),
+start_of_loading_phase(parameters.temporal_discretization_parameters.start_of_loading_phase),
+start_of_cyclic_phase(parameters.temporal_discretization_parameters.start_of_cyclic_phase),
 start_of_unloading_phase(parameters.temporal_discretization_parameters.start_of_unloading_phase),
-duration_of_unloading_phase(1.0)
+preloading_phase_duration(parameters.temporal_discretization_parameters.preloading_phase_duration),
+unloading_and_unloading_phase_duration(parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration)
 {
-  component_11.first  = -0.020221;
-  component_11.second = -0.019779;
-  component_22.first  = -0.020328;
-  component_22.second = -0.019672;
-  component_33.first  = 0.041;
-  component_33.second = 0.039;
-  component_23.first  = 0.020463;
-  component_23.second = 0.019537;
+  componenet_11_mean_value = -0.02;
+  componenet_22_mean_value = -0.02;
+  componenet_33_mean_value = 0.04;
+  componenet_23_mean_value = 0.02;
+  componenet_11_amplitude = 0.000250;
+  componenet_22_amplitude = 0.000250;
+  componenet_33_amplitude = 0.000350;
+  componenet_23_amplitude = 0.000450;
 }
 
 
@@ -113,70 +130,87 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
 
   macroscopic_strain = 0.0;
 
-  if (time < start_of_cyclic_phase)
+  if (time < start_of_loading_phase)
   {
-    macroscopic_strain[0][0] =
-      time / start_of_cyclic_phase *
-      (component_11.first + component_11.second) / 2.0 ;
-    macroscopic_strain[1][1] =
-      time / start_of_cyclic_phase *
-      (component_22.first + component_22.second) / 2.0 ;
-    macroscopic_strain[2][2] =
-      time / start_of_cyclic_phase *
-      (component_33.first + component_33.second) / 2.0 ;
-    macroscopic_strain[1][2] =
-      time / start_of_cyclic_phase *
-      (component_23.first + component_23.second) / 2.0 ;
+    if (time < (preloading_phase_duration) / 2)
+    {
+      const double factor = time / (preloading_phase_duration / 2);
+
+      macroscopic_strain[0][0] = componenet_11_mean_value * factor;
+
+      macroscopic_strain[1][1] = componenet_22_mean_value * factor;
+
+      macroscopic_strain[2][2] = componenet_33_mean_value * factor;
+    }
+    else
+    {
+      const double factor =
+        (1 - (time - preloading_phase_duration / 2) /
+             (start_of_loading_phase - preloading_phase_duration / 2));
+
+      macroscopic_strain[0][0] = componenet_11_mean_value * factor;
+
+      macroscopic_strain[1][1] = componenet_22_mean_value * factor;
+
+      macroscopic_strain[2][2] = componenet_33_mean_value * factor;
+
+    }
   }
-  else if (time <= start_of_unloading_phase)
+  else if (time < start_of_cyclic_phase)
   {
+      const double factor =
+        (time - start_of_loading_phase) /
+        unloading_and_unloading_phase_duration;
+
+      macroscopic_strain[0][0] = componenet_11_mean_value * factor *
+                                  reduction_factor;
+
+      macroscopic_strain[1][1] = componenet_22_mean_value * factor *
+                                  reduction_factor;
+
+      macroscopic_strain[2][2] = componenet_33_mean_value * factor *
+                                  reduction_factor;
+
+      macroscopic_strain[1][2] = componenet_23_mean_value * factor;
+  }
+  else if (time < start_of_unloading_phase)
+  {
+    const double factor =
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+
     macroscopic_strain[0][0] =
-      (component_11.first + component_11.second) / 2.0
-      -
-      abs(component_11.first - component_11.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+      componenet_11_mean_value * reduction_factor -
+        componenet_11_amplitude * factor;
+
     macroscopic_strain[1][1] =
-      (component_22.first + component_22.second) / 2.0
-      -
-      abs(component_22.first - component_22.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+      componenet_22_mean_value * reduction_factor -
+        componenet_22_amplitude * factor;
+
     macroscopic_strain[2][2] =
-      (component_33.first + component_33.second) / 2.0
-      +
-      abs(component_33.first - component_33.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+      componenet_33_mean_value * reduction_factor +
+        componenet_33_amplitude * factor;
+
     macroscopic_strain[1][2] =
-      (component_23.first + component_23.second) / 2.0
-      -
-      abs(component_23.first - component_23.second) / 2.0 *
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+      componenet_23_mean_value * reduction_factor -
+        componenet_23_amplitude * factor;
   }
   else
   {
+    const double factor =
+      1.0 - (time - start_of_unloading_phase) /
+        unloading_and_unloading_phase_duration ;
+
     macroscopic_strain[0][0] =
-      (component_11.first + component_11.second) / 2.0
-      -
-      (component_11.first + component_11.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+      componenet_11_mean_value * reduction_factor * factor;
+
     macroscopic_strain[1][1] =
-      (component_22.first + component_22.second) / 2.0
-      -
-      (component_22.first + component_22.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+      componenet_22_mean_value * reduction_factor * factor;
+
     macroscopic_strain[2][2] =
-      (component_33.first + component_33.second) / 2.0
-      -
-      (component_33.first + component_33.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+      componenet_33_mean_value * reduction_factor * factor;
+
     macroscopic_strain[1][2] =
-      (component_23.first + component_23.second) / 2.0
-      -
-      (component_23.first + component_23.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+      componenet_23_mean_value * reduction_factor * factor;
   }
 
   return (macroscopic_strain);
@@ -791,6 +825,7 @@ void SemicoupledProblem<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void SemicoupledProblem<dim>::postprocessing()
 {
+  /*
   const RunTimeParameters::TemporalDiscretizationParameters &prm =
     parameters.temporal_discretization_parameters;
 
@@ -870,7 +905,7 @@ void SemicoupledProblem<dim>::postprocessing()
       }
     }
   }
-
+  */
   if (parameters.flag_compute_macroscopic_quantities &&
       (discrete_time.get_step_number() %
          parameters.homogenization_frequency == 0 ||
@@ -1053,12 +1088,8 @@ void SemicoupledProblem<dim>::run()
 
   //return;
 
-  if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic ||
-      parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::CyclicWithUnloading)
-    discrete_time.set_desired_next_step_size(
-      parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
+  discrete_time.set_desired_next_step_size(
+    parameters.temporal_discretization_parameters.time_step_size_in_preloading_phase);
 
 
   const RunTimeParameters::ConvergenceControlParameters
@@ -1096,26 +1127,28 @@ void SemicoupledProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    if ((parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::Cyclic ||
-         parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.initial_loading_time)
-        < std::numeric_limits<double>::epsilon() * 10)
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_loading_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size);
+        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
     }
 
-    if (parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.start_of_unloading_phase)
-        < std::numeric_limits<double>::epsilon() * 10)
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_cyclic_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
+        parameters.temporal_discretization_parameters.time_step_size_in_cyclic_phase);
+    }
+
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_unloading_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
+    {
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
     }
 
     if (parameters.verbose)
@@ -1138,6 +1171,8 @@ void SemicoupledProblem<dim>::run()
     //update_dirichlet_boundary_conditions();
 
     gCP_solver.set_macroscopic_strain(macroscopic_strain.get_value());
+
+    //std::cout << macroscopic_strain.get_value() << std::endl;
 
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n
