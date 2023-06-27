@@ -132,29 +132,14 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
 
   if (time < start_of_loading_phase)
   {
-    if (time < (preloading_phase_duration) / 2)
-    {
-      const double factor = time / (preloading_phase_duration / 2);
+    const double factor =
+      std::sin(2.0 * M_PI * time / (preloading_phase_duration * 2));
 
-      macroscopic_strain[0][0] = componenet_11_mean_value * factor;
+    macroscopic_strain[0][0] = componenet_11_mean_value * factor;
 
-      macroscopic_strain[1][1] = componenet_22_mean_value * factor;
+    macroscopic_strain[1][1] = componenet_22_mean_value * factor;
 
-      macroscopic_strain[2][2] = componenet_33_mean_value * factor;
-    }
-    else
-    {
-      const double factor =
-        (1 - (time - preloading_phase_duration / 2) /
-             (start_of_loading_phase - preloading_phase_duration / 2));
-
-      macroscopic_strain[0][0] = componenet_11_mean_value * factor;
-
-      macroscopic_strain[1][1] = componenet_22_mean_value * factor;
-
-      macroscopic_strain[2][2] = componenet_33_mean_value * factor;
-
-    }
+    macroscopic_strain[2][2] = componenet_33_mean_value * factor;
   }
   else if (time < start_of_cyclic_phase)
   {
