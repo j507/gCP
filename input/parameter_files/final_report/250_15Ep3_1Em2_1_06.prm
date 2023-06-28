@@ -11,7 +11,7 @@ end
 
 
 subsection Output control parameters
-  set Graphical output directory   = results/final_report/250_15Ep3_1Em2_1_06/
+  set Graphical output directory   = results/linear_displacement/250_15Ep3_1Em2_1_06/
   set Graphical output frequency   = 1
   set Output damage variable field = true
   set Output fluctuations fields   = true
@@ -41,7 +41,7 @@ end
 subsection Solver parameters
   set Allow decohesion at grain boundaries         = true
   set Boundary conditions at grain boundaries      = microtraction
-  set Logger output directory                      = results/final_report/250_15Ep3_1Em2_1_06/
+  set Logger output directory                      = results/linear_displacement/250_15Ep3_1Em2_1_06/
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = true
   set Verbose                                      = false
