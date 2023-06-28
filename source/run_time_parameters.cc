@@ -982,20 +982,6 @@ parse_parameters(dealii::ParameterHandler &prm)
       unloading_and_unloading_phase_duration;
   }
 
-  std::cout << "time_step_size_in_cyclic_phase = "
-            << time_step_size_in_cyclic_phase
-            << ", time_step_size_in_preloading_phase = "
-            << time_step_size_in_preloading_phase
-            << ", time_step_size_in_loading_and_unloading_phase = "
-            << time_step_size_in_loading_and_unloading_phase << std::endl;
-
-  std::cout << "start_of_loading_phase = "
-    << start_of_loading_phase
-    << ", start_of_cyclic_phase = "
-    << start_of_cyclic_phase
-    << ", start_of_unloading_phase = "
-    << start_of_unloading_phase
-    << std::endl;
   Assert(start_time >= 0.0,
           dealii::ExcLowerRangeType<double>(start_time, 0.0));
 
