@@ -575,6 +575,42 @@ struct NewtonRaphsonParameters
 
 
 
+struct LineSearchParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  LineSearchParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        armijo_condition_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int  n_max_iterations;
+};
+
+
+
 
 struct ConvergenceControlParameters
 {

@@ -622,6 +622,55 @@ void NewtonRaphsonParameters::parse_parameters(
 
 
 
+LineSearchParameters::LineSearchParameters()
+:
+armijo_condition_constant(1e-4),
+n_max_iterations(15)
+{}
+
+
+
+void LineSearchParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Line search parameters");
+  {
+    prm.declare_entry("Armijo condition constant",
+                      "1e-4",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "15",
+                      dealii::Patterns::Integer());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void LineSearchParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Line search parameters");
+  {
+    armijo_condition_constant =
+      prm.get_double("Armijo condition constant");
+
+    n_max_iterations =
+      prm.get_integer("Maximum number of iterations");
+
+    AssertThrow(armijo_condition_constant > 0,
+                dealii::ExcLowerRange(armijo_condition_constant, 0));
+
+    AssertThrow(n_max_iterations > 0,
+                dealii::ExcLowerRange(n_max_iterations, 0));
+
+  }
+  prm.leave_subsection();
+}
+
+
+
 ConvergenceControlParameters::ConvergenceControlParameters()
 :
 upscaling_factor(1),
