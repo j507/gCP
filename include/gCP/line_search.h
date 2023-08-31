@@ -1,6 +1,8 @@
 #ifndef INCLUDE_LINE_SEARCH_H_
 #define INCLUDE_LINE_SEARCH_H_
 
+#include <gCP/run_time_parameters.h>
+
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/vector.h>
 
@@ -23,6 +25,8 @@ class LineSearch
 public:
   LineSearch();
 
+  LineSearch(const RunTimeParameters::LineSearchParameters &parameters);
+
   void reinit(const double initial_scalar_function_value);
 
   bool suficient_descent_condition(
@@ -35,21 +39,23 @@ public:
   unsigned int get_n_iterations() const;
 
 private:
-  unsigned int  n_iterations;
+  unsigned int        n_iterations;
 
-  const double  alpha;
+  const unsigned int  n_max_iterations;
 
-  double        initial_scalar_function_value;
+  const double        alpha;
 
-  double        descent_direction;
+  double              initial_scalar_function_value;
 
-  double        old_lambda;
+  double              descent_direction;
 
-  double        old_old_lambda;
+  double              old_lambda;
 
-  double        old_scalar_function_value;
+  double              old_old_lambda;
 
-  double        old_old_scalar_function_value;
+  double              old_scalar_function_value;
+
+  double              old_old_scalar_function_value;
 
   double quadratic_backtracking(
     const double trial_scalar_function_value);
@@ -64,9 +70,20 @@ LineSearch::suficient_descent_condition(
   const double trial_scalar_function_value,
   const double lambda) const
 {
-  return (trial_scalar_function_value <
-            initial_scalar_function_value +
-            alpha*lambda*descent_direction);
+  if (n_iterations > n_max_iterations)
+  {
+    std::cout
+      << "Warning: The maximal number of iterations of the line search"
+      << " algorithm has been reached" << std::endl;
+
+    return true;
+  }
+  else
+  {
+    return (trial_scalar_function_value <
+              initial_scalar_function_value +
+                alpha*lambda*descent_direction);
+  }
 }
 
 

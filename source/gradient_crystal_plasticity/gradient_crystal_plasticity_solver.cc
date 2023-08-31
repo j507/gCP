@@ -52,6 +52,7 @@ contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
     parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
+line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
 postprocessor(

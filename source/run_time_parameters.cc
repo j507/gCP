@@ -773,6 +773,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   KrylovParameters::declare_parameters(prm);
   NewtonRaphsonParameters::declare_parameters(prm);
+  LineSearchParameters::declare_parameters(prm);
   ConvergenceControlParameters::declare_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
@@ -824,6 +825,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   krylov_parameters.parse_parameters(prm);
 
   newton_parameters.parse_parameters(prm);
+
+  line_search_parameters.parse_parameters(prm);
 
   convergence_control_parameters.parse_parameters(prm);
 

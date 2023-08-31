@@ -706,6 +706,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  LineSearchParameters          line_search_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   ConvergenceControlParameters
                       convergence_control_parameters;
 
