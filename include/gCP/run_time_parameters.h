@@ -463,6 +463,73 @@ struct ContactLawParameters
 
 
 
+struct ConstitutiveLawsParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ConstitutiveLawsParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  HookeLawParameters    hooke_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  ScalarMicroscopicStressLawParameters
+                        scalar_microscopic_stress_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  VectorMicroscopicStressLawParameters
+                        vector_microscopic_stress_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  MicroscopicTractionLawParameters
+                        microscopic_traction_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  CohesiveLawParameters cohesive_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  ContactLawParameters  contact_law_parameters;
+};
+
+
+
 struct KrylovParameters
 {
   /*
@@ -651,52 +718,14 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  HookeLawParameters            hooke_law_parameters;
+  ConstitutiveLawsParameters    constitutive_laws_parameters;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  ScalarMicroscopicStressLawParameters
-                      scalar_microscopic_stress_law_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  VectorMicroscopicStressLawParameters
-                      vector_microscopic_stress_law_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  MicroscopicTractionLawParameters
-                      microscopic_traction_law_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  CohesiveLawParameters cohesive_law_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  ContactLawParameters  contact_law_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  bool                allow_decohesion;
+  bool                          allow_decohesion;
 
   /*!
    * @brief
@@ -704,42 +733,42 @@ struct SolverParameters
    * @todo Docu
    */
   BoundaryConditionsAtGrainBoundaries
-                      boundary_conditions_at_grain_boundaries;
+                                boundary_conditions_at_grain_boundaries;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  std::string         logger_output_directory;
+  std::string                   logger_output_directory;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  bool                flag_skip_extrapolation_at_extrema;
+  bool                          flag_skip_extrapolation_at_extrema;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  bool                flag_zero_damage_during_loading_and_unloading;
+  bool                          flag_zero_damage_during_loading_and_unloading;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  bool                print_sparsity_pattern;
+  bool                          print_sparsity_pattern;
 
   /*!
    * @brief
    *
    * @todo Docu
    */
-  bool                verbose;
+  bool                          verbose;
 };
 
 

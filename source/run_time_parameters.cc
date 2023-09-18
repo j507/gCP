@@ -452,6 +452,55 @@ void ContactLawParameters::parse_parameters(
 
 
 
+ConstitutiveLawsParameters::ConstitutiveLawsParameters()
+{}
+
+
+
+void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    HookeLawParameters::declare_parameters(prm);
+
+    ScalarMicroscopicStressLawParameters::declare_parameters(prm);
+
+    VectorMicroscopicStressLawParameters::declare_parameters(prm);
+
+    MicroscopicTractionLawParameters::declare_parameters(prm);
+
+    CohesiveLawParameters::declare_parameters(prm);
+
+    ContactLawParameters::declare_parameters(prm);
+  }
+  prm.leave_subsection();
+
+}
+
+
+
+void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Constitutive laws' parameters");
+  {
+    hooke_law_parameters.parse_parameters(prm);
+
+    scalar_microscopic_stress_law_parameters.parse_parameters(prm);
+
+    vector_microscopic_stress_law_parameters.parse_parameters(prm);
+
+    microscopic_traction_law_parameters.parse_parameters(prm);
+
+    cohesive_law_parameters.parse_parameters(prm);
+
+    contact_law_parameters.parse_parameters(prm);
+  }
+  prm.leave_subsection();
+
+}
+
+
+
 KrylovParameters::KrylovParameters()
 :
 solver_type(SolverType::CG),
@@ -687,20 +736,14 @@ verbose(false)
 
 void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
+
   KrylovParameters::declare_parameters(prm);
+
   NewtonRaphsonParameters::declare_parameters(prm);
+
   LineSearchParameters::declare_parameters(prm);
 
-  prm.enter_subsection("Constitutive laws' parameters");
-  {
-    HookeLawParameters::declare_parameters(prm);
-    ScalarMicroscopicStressLawParameters::declare_parameters(prm);
-    VectorMicroscopicStressLawParameters::declare_parameters(prm);
-    MicroscopicTractionLawParameters::declare_parameters(prm);
-    CohesiveLawParameters::declare_parameters(prm);
-    ContactLawParameters::declare_parameters(prm);
-  }
-  prm.leave_subsection();
+  ConstitutiveLawsParameters::declare_parameters(prm);
 
   prm.declare_entry("Allow decohesion at grain boundaries",
                     "false",
@@ -743,16 +786,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   line_search_parameters.parse_parameters(prm);
 
-  prm.enter_subsection("Constitutive laws' parameters");
-  {
-    hooke_law_parameters.parse_parameters(prm);
-    scalar_microscopic_stress_law_parameters.parse_parameters(prm);
-    vector_microscopic_stress_law_parameters.parse_parameters(prm);
-    microscopic_traction_law_parameters.parse_parameters(prm);
-    cohesive_law_parameters.parse_parameters(prm);
-    contact_law_parameters.parse_parameters(prm);
-  }
-  prm.leave_subsection();
+  constitutive_laws_parameters.parse_parameters(prm);
 
   allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 

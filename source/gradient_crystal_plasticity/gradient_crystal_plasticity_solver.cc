@@ -29,28 +29,28 @@ elastic_strain(
 hooke_law(
   std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
     crystals_data,
-    parameters.hooke_law_parameters)),
+    parameters.constitutive_laws_parameters.hooke_law_parameters)),
 resolved_shear_stress_law(
   std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
     crystals_data)),
 scalar_microscopic_stress_law(
   std::make_shared<ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>>(
     crystals_data,
-    parameters.scalar_microscopic_stress_law_parameters)),
+    parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters)),
 vector_microscopic_stress_law(
   std::make_shared<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>(
     crystals_data,
-    parameters.vector_microscopic_stress_law_parameters)),
+    parameters.constitutive_laws_parameters.vector_microscopic_stress_law_parameters)),
 microscopic_traction_law(
   std::make_shared<ConstitutiveLaws::MicroscopicTractionLaw<dim>>(
     crystals_data,
-    parameters.microscopic_traction_law_parameters)),
+    parameters.constitutive_laws_parameters.microscopic_traction_law_parameters)),
 cohesive_law(
   std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
-    parameters.cohesive_law_parameters)),
+    parameters.constitutive_laws_parameters.cohesive_law_parameters)),
 contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
-    parameters.contact_law_parameters)),
+    parameters.constitutive_laws_parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
 line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(

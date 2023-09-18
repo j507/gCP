@@ -106,18 +106,18 @@ crystals_data(std::make_shared<gCP::CrystalsData<dim>>()),
 elastic_strain(crystals_data),
 hooke_law(
   crystals_data,
-  parameters.solver_parameters.hooke_law_parameters),
+  parameters.solver_parameters.constitutive_laws_parameters.hooke_law_parameters),
 resolved_shear_stress_law(crystals_data),
 scalar_microscopic_stress_law(
   crystals_data,
-  parameters.solver_parameters.scalar_microscopic_stress_law_parameters),
+  parameters.solver_parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters),
 vector_microscopic_stress_law(
   crystals_data,
-  parameters.solver_parameters.vector_microscopic_stress_law_parameters),
+  parameters.solver_parameters.constitutive_laws_parameters.vector_microscopic_stress_law_parameters),
 microscopic_traction_law(
   crystals_data,
-  parameters.solver_parameters.microscopic_traction_law_parameters),
-cohesive_law(parameters.solver_parameters.cohesive_law_parameters)
+  parameters.solver_parameters.constitutive_laws_parameters.microscopic_traction_law_parameters),
+cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters)
 {
   this->pcout << "TESTING CONSTITUTIVE LAWS IN " << std::noshowpos
               << dim << "-D..." << std::endl << std::endl;
@@ -229,11 +229,11 @@ void CrystalData<dim>::init()
   vector_microscopic_stress_law.init();
 
   quadrature_point_history.init(
-    parameters.solver_parameters.scalar_microscopic_stress_law_parameters,
+    parameters.solver_parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters,
     crystals_data->get_n_slips());
 
   interface_quadrature_point_history.init(
-    parameters.solver_parameters.cohesive_law_parameters);
+    parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters);
 }
 
 
