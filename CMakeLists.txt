@@ -8,7 +8,7 @@ SET(CMAKE_CXX_STANDARD 17)
 ##
 # Is the deal.ii library installed?
 ##
-FIND_PACKAGE(deal.II 9.2.0
+FIND_PACKAGE(deal.II 9.3.3
   HINTS ${deal.II_DIR} ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
   )
 IF(NOT ${deal.II_FOUND})
@@ -22,15 +22,13 @@ ENDIF()
 #
 # Are all dependencies fulfilled?
 #
-IF(NOT DEAL_II_WITH_MPI OR NOT DEAL_II_WITH_P4EST OR NOT DEAL_II_WITH_TRILINOS) # keep in one line
+IF(NOT DEAL_II_WITH_MPI OR NOT DEAL_II_WITH_TRILINOS) # keep in one line
   MESSAGE(FATAL_ERROR "
 Error! This tutorial requires a deal.II library that was configured with the following options:
     DEAL_II_WITH_MPI = ON
-    DEAL_II_WITH_P4EST = ON
     DEAL_II_WITH_TRILINOS = ON
 However, the deal.II library found at ${DEAL_II_PATH} was configured with these options:
     DEAL_II_WITH_MPI = ${DEAL_II_WITH_MPI}
-    DEAL_II_WITH_P4EST = ${DEAL_II_WITH_P4EST}
     DEAL_II_WITH_TRILINOS = ${DEAL_II_WITH_TRILINOS}
 This conflicts with the requirements."
     )
@@ -50,30 +48,14 @@ ADD_CUSTOM_TARGET(release
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
 )
 
-#
-# Define the output that should be cleaned:
-#
-SET(CLEAN_UP_FILES *.vtu *.pvtu *.visit *.vtk)
-
 
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
 PROJECT(gCP)
-ENABLE_TESTING()
-INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 ADD_SUBDIRECTORY(source)
-ADD_SUBDIRECTORY(tests)
+ADD_SUBDIRECTORY(applications)
 
-SET(SOURCE_FILES
-    simple_shear.cc
-    GACM2023.cc
-    SPP2013.cc
-    )
-
-FOREACH(sourcefile ${SOURCE_FILES})
-  STRING(REPLACE ".cc" "" executablename ${sourcefile} )
-  PROJECT(${executablename})
-  ADD_EXECUTABLE(${executablename} ${sourcefile})
-  DEAL_II_SETUP_TARGET(${executablename})
-  TARGET_LINK_LIBRARIES(${executablename} gCP stdc++fs)
-ENDFOREACH(sourcefile ${APP_SOURCES})
+IF(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
+  ENABLE_TESTING()
+  ADD_SUBDIRECTORY(tests)
+ENDIF()

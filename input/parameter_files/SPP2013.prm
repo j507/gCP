@@ -93,14 +93,6 @@ subsection Solver parameters
 
   end
 
-  subsection Convergence control parameters
-    set Downscaling factor           = 2
-    set Lower threshold              = 1e-6
-    set Maximum number of iterations = 25
-    set Upper threshold              = 2.5e-3
-    set Upscaling factor             = 10
-  end
-
   subsection Krylov parameters
     set Absolute tolerance           = 1e-10
     set Maximum number of iterations = 5000

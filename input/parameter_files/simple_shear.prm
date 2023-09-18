@@ -40,7 +40,6 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries      = microtraction
   set Logger output directory                      = results/default_simple_shear/
   set Print sparsity pattern                       = false
-  set Scaling factor of the microforce balance     = 1
   set Skip extrapolation of start value at extrema = false
   set Verbose                                      = false
 
@@ -89,14 +88,6 @@ subsection Solver parameters
 
   end
 
-  subsection Convergence control parameters
-    set Downscaling factor           = 1
-    set Lower threshold              = 1
-    set Maximum number of iterations = 15
-    set Upper threshold              = 2
-    set Upscaling factor             = 1
-  end
-
   subsection Krylov parameters
     set Absolute tolerance                  = 1e-8
     set Maximum number of iterations        = 1000
@@ -124,21 +115,17 @@ subsection Spatial discretization parameters
   set Spatial dimension                      = 2
 end
 
-subsection Temporal discretization parameters
-  set End time       = 1.0
-  set Start time     = 0.0
-  set Time step size = 5e-4
-end
-
 
 subsection Temporal discretization parameters
-  set End time                         = 1.0
-  set Initial loading time             = 0.5
-  set Loading type                     = monotonic
-  set Number of cycles                 = 1
-  set Number of steps in loading phase = 2
-  set Number of steps per half cycle   = 2
-  set Period                           = 1.0
-  set Start time                       = 0.0
-  set Time step size                   = 5e-4
+  set End time                                 = 1.0
+  set Loading type                             = monotonic
+  set Number of cycles                         = 1
+  set Number of steps in a half cycle          = 25
+  set Number of steps in preloading phase      = 1
+  set Number of steps in un- and loading phase = 50
+  set Period                                   = 1.0
+  set Preloading phase duration                = 0.0
+  set Start time                               = 0.0
+  set Time step size                           = 1e-3
+  set Un- and loading phase duration           = 1.0
 end
