@@ -9,7 +9,18 @@ namespace gCP
 LineSearch::LineSearch()
 :
 n_iterations(0),
+n_max_iterations(15),
 alpha(1e-4)
+{}
+
+
+
+LineSearch::LineSearch(
+  const RunTimeParameters::LineSearchParameters &parameters)
+:
+n_iterations(0),
+n_max_iterations(parameters.n_max_iterations),
+alpha(parameters.armijo_condition_constant)
 {}
 
 

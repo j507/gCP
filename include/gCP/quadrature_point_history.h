@@ -75,6 +75,8 @@ public:
   void init(
     const RunTimeParameters::CohesiveLawParameters &parameters);
 
+  void set(const double damage_variable_value);
+
   void store_current_values();
 
   void reset_values();
@@ -128,6 +130,8 @@ public:
   double get_old_effective_opening_displacement() const;
 
   double get_effective_cohesive_traction() const;
+
+  double get_effective_opening_displacement() const;
 
   // are temporary and will be deleted eventually.
 
@@ -211,6 +215,15 @@ inline double InterfaceQuadraturePointHistory<dim>::
 get_effective_cohesive_traction() const
 {
   return (effective_cohesive_traction);
+}
+
+
+
+template <int dim>
+inline double InterfaceQuadraturePointHistory<dim>::
+get_effective_opening_displacement() const
+{
+  return (effective_opening_displacement);
 }
 
 

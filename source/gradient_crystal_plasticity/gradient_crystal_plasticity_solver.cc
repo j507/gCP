@@ -52,8 +52,10 @@ contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
     parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
+line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
+print_out(true),
 postprocessor(
   discrete_time,
   fe_field,
@@ -123,6 +125,26 @@ flag_init_was_called(false)
   nonlinear_solver_logger.set_scientific("(R_U)_L2", true);
   nonlinear_solver_logger.set_scientific("(R_G)_L2", true);
 
+  /*!
+   * @brief Code snippet only to be considered by bi-crystal simulations
+   *
+   * @todo Docu
+   */
+  {
+    table_handler.declare_column("effective_opening_displacement");
+    table_handler.declare_column("effective_traction_vector");
+    table_handler.declare_column("time");
+    table_handler.declare_column("damage_variable");
+    table_handler.set_scientific("effective_opening_displacement", true);
+    table_handler.set_scientific("effective_traction_vector", true);
+    table_handler.set_scientific("time", true);
+    table_handler.set_scientific("damage_variable", true);
+    table_handler.set_precision("effective_opening_displacement", 6);
+    table_handler.set_precision("effective_traction_vector", 6);
+    table_handler.set_precision("time", 6);
+    table_handler.set_precision("damage_variable", 6);
+  }
+
   // Initialize supply term shared pointer
   supply_term = nullptr;
 }
@@ -164,6 +186,17 @@ GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
   return (damage_variable_values);
 }
 
+
+
+template <int dim>
+void
+GradientCrystalPlasticitySolver<dim>::output_data_to_file(
+  std::ostream &file) const
+{
+  table_handler.write_text(
+    file,
+    dealii::TableHandler::TextOutputFormat::org_mode_table);
+}
 
 
 

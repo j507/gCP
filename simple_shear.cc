@@ -179,7 +179,7 @@ public:
     const double                          max_shear_strain_at_upper_boundary,
     const double                          min_shear_strain_at_upper_boundary,
     const double                          period,
-    const double                          initial_loading_time,
+    const double                          loading_and_unloading_phase_duration,
     const double                          start_of_unloading_phase,
     const RunTimeParameters::LoadingType  loading_type,
     const bool                            flag_is_decohesion_allowed,
@@ -201,7 +201,7 @@ private:
 
   const double                          period;
 
-  const double                          initial_loading_time;
+  const double                          loading_and_unloading_phase_duration;
 
   const double                          start_of_unloading_phase;
 
@@ -219,7 +219,7 @@ DisplacementControl<dim>::DisplacementControl(
   const double                          max_shear_strain_at_upper_boundary,
   const double                          min_shear_strain_at_upper_boundary,
   const double                          period,
-  const double                          initial_loading_time,
+  const double                          loading_and_unloading_phase_duration,
   const double                          start_of_unloading_phase,
   const RunTimeParameters::LoadingType  loading_type,
   const bool                            flag_is_decohesion_allowed,
@@ -232,7 +232,8 @@ height(height),
 max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
 min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
 period(period),
-initial_loading_time(initial_loading_time + start_time),
+loading_and_unloading_phase_duration(
+  loading_and_unloading_phase_duration + start_time),
 start_of_unloading_phase(start_of_unloading_phase),
 loading_type(loading_type),
 flag_is_decohesion_allowed(flag_is_decohesion_allowed)
@@ -261,39 +262,39 @@ void DisplacementControl<dim>::vector_value(
       break;
     case RunTimeParameters::LoadingType::Cyclic:
       {
-        if (t >= initial_loading_time)
+        if (t >= loading_and_unloading_phase_duration)
           displacement_load =
             (max_shear_strain_at_upper_boundary -
              min_shear_strain_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            std::cos(2.0 * M_PI / period * (t - loading_and_unloading_phase_duration)) +
             (max_shear_strain_at_upper_boundary +
              min_shear_strain_at_upper_boundary) / 2.0;
         else
           displacement_load =
             max_shear_strain_at_upper_boundary *
-            std::sin(M_PI / 2.0 / initial_loading_time * t);
+            std::sin(M_PI / 2.0 / loading_and_unloading_phase_duration * t);
       }
       break;
     case RunTimeParameters::LoadingType::CyclicWithUnloading:
       {
-        if (t >= initial_loading_time &&
+        if (t >= loading_and_unloading_phase_duration &&
             t <= start_of_unloading_phase)
           displacement_load =
             (max_shear_strain_at_upper_boundary -
              min_shear_strain_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
+            std::cos(2.0 * M_PI / period * (t - loading_and_unloading_phase_duration)) +
             (max_shear_strain_at_upper_boundary +
              min_shear_strain_at_upper_boundary) / 2.0;
-        else if (t <= initial_loading_time)
+        else if (t <= loading_and_unloading_phase_duration)
           displacement_load =
             max_shear_strain_at_upper_boundary *
-            std::sin(M_PI / 2.0 / initial_loading_time * t);
+            std::sin(M_PI / 2.0 / loading_and_unloading_phase_duration * t);
         else
         {
           const double max = (max_shear_strain_at_upper_boundary -
              min_shear_strain_at_upper_boundary) / 2.0 *
             std::cos(2.0 * M_PI / period * (start_of_unloading_phase -
-              initial_loading_time)) +
+              loading_and_unloading_phase_duration)) +
             (max_shear_strain_at_upper_boundary +
              min_shear_strain_at_upper_boundary) / 2.0;
 
@@ -344,7 +345,7 @@ private:
 
   std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
 
-  std::shared_ptr<NeumannBoundaryFunction<dim>>     neumann_boundary_function;
+  //std::shared_ptr<NeumannBoundaryFunction<dim>>     neumann_boundary_function;
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
 
@@ -417,14 +418,14 @@ gCP_solver(parameters.solver_parameters,
            mapping,
            pcout,
            timer_output),
-neumann_boundary_function(
+/*neumann_boundary_function(
   std::make_shared<NeumannBoundaryFunction<dim>>(
   parameters.max_shear_strain_at_upper_boundary * 10000.0,
   parameters.min_shear_strain_at_upper_boundary * 10000.0,
   parameters.temporal_discretization_parameters.period,
   parameters.temporal_discretization_parameters.initial_loading_time,
   parameters.temporal_discretization_parameters.loading_type,
-  discrete_time.get_start_time())),
+  discrete_time.get_start_time())),*/
 homogenization(fe_field,
                mapping),
 postprocessor(fe_field,
@@ -437,7 +438,7 @@ simple_shear(fe_field,
              parameters.max_shear_strain_at_upper_boundary,
              parameters.min_shear_strain_at_upper_boundary,
              parameters.temporal_discretization_parameters.period,
-             parameters.temporal_discretization_parameters.initial_loading_time,
+             parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration,
              parameters.temporal_discretization_parameters.loading_type,
              3,
              1. / parameters.n_elements_in_y_direction),
@@ -575,7 +576,7 @@ void SimpleShearProblem<dim>::setup()
       parameters.max_shear_strain_at_upper_boundary,
       parameters.min_shear_strain_at_upper_boundary,
       parameters.temporal_discretization_parameters.period,
-      parameters.temporal_discretization_parameters.initial_loading_time,
+      parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration,
       parameters.temporal_discretization_parameters.start_of_unloading_phase,
       parameters.temporal_discretization_parameters.loading_type,
       fe_field->is_decohesion_allowed(),
@@ -896,10 +897,14 @@ void SimpleShearProblem<dim>::postprocessing()
 
   fs::path filename = path / "stress12_vs_shear_strain_at_boundary.txt";
 
+  fs::path filename_ = path / "effective_quantities.txt";
+
   try
   {
     std::ofstream fstream(filename.string());
+    std::ofstream fstream_(filename_.string());
     simple_shear.output_data_to_file(fstream);
+    gCP_solver.output_data_to_file(fstream_);
   }
   catch (std::exception &exc)
   {
@@ -1059,12 +1064,19 @@ void SimpleShearProblem<dim>::run()
   // Output the triangulation data (Partition, Material id, etc.)
   triangulation_output();
 
-  if (parameters.temporal_discretization_parameters.loading_type ==
+  AssertThrow(
+    parameters.temporal_discretization_parameters.preloading_phase_duration == 0.0,
+    dealii::ExcMessage(
+      "This source file does not consider a preloading stage"));
+
+  /*if (parameters.temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::Cyclic ||
       parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::CyclicWithUnloading)
+        RunTimeParameters::LoadingType::CyclicWithUnloading)*/
+  {
     discrete_time.set_desired_next_step_size(
-      parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
+      parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
+  }
 
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
@@ -1075,8 +1087,8 @@ void SimpleShearProblem<dim>::run()
          parameters.temporal_discretization_parameters.loading_type ==
           RunTimeParameters::LoadingType::CyclicWithUnloading) &&
         std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.initial_loading_time)
-        < std::numeric_limits<double>::epsilon() * 10)
+        parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
         parameters.temporal_discretization_parameters.time_step_size);
@@ -1086,10 +1098,10 @@ void SimpleShearProblem<dim>::run()
           RunTimeParameters::LoadingType::CyclicWithUnloading &&
         std::abs(discrete_time.get_current_time() -
         parameters.temporal_discretization_parameters.start_of_unloading_phase)
-        < std::numeric_limits<double>::epsilon() * 10)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
+        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
     }
 
     if (parameters.verbose)

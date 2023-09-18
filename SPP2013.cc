@@ -44,6 +44,182 @@ namespace gCP
 
 
 template <int dim>
+class LinearDisplacement : public dealii::Function<dim>
+{
+public:
+  LinearDisplacement(
+    const unsigned int                                  n_crystals,
+    const unsigned int                                  n_components,
+    const bool                                          flag_is_decohesion_allowed,
+    const gCP::RunTimeParameters::SemicoupledParameters parameters);
+
+  virtual void vector_value(
+    const dealii::Point<dim>  &point,
+    dealii::Vector<double>    &return_vector) const override;
+
+private:
+  const unsigned int              n_crystals;
+
+  double                          time;
+
+  const double                    period;
+
+  const double                    componenet_11_mean_value;
+
+  const double                    componenet_22_mean_value;
+
+  const double                    componenet_33_mean_value;
+
+  const double                    componenet_23_mean_value;
+
+  const double                    componenet_23_amplitude;
+
+  const double                    n_cycles;
+
+  const double                    start_of_loading_phase;
+
+  const double                    start_of_cyclic_phase;
+
+  const double                    start_of_unloading_phase;
+
+  const double                    preloading_phase_duration;
+
+  const double                    unloading_and_unloading_phase_duration;
+
+  dealii::SymmetricTensor<2,dim>  preloading_macroscopic_strain;
+
+  dealii::SymmetricTensor<2,dim>  cyclic_macroscopic_strain_mean_value;
+
+  dealii::SymmetricTensor<2,dim>  cyclic_macroscopic_strain_amplitude;
+
+  const bool                      flag_is_decohesion_allowed;
+};
+
+
+
+template <int dim>
+LinearDisplacement<dim>::LinearDisplacement(
+  const unsigned int                                  n_crystals,
+  const unsigned int                                  n_components,
+  const bool                                          flag_is_decohesion_allowed,
+  const gCP::RunTimeParameters::SemicoupledParameters parameters)
+:
+dealii::Function<dim>(
+  n_components,
+  parameters.temporal_discretization_parameters.start_time),
+n_crystals(n_crystals),
+time(parameters.temporal_discretization_parameters.start_time),
+period(parameters.temporal_discretization_parameters.period),
+componenet_11_mean_value(-.02),
+componenet_22_mean_value(-.02),
+componenet_33_mean_value(.04),
+componenet_23_mean_value(.002),
+componenet_23_amplitude(.0002),
+n_cycles(parameters.temporal_discretization_parameters.n_cycles),
+start_of_loading_phase(parameters.temporal_discretization_parameters.start_of_loading_phase),
+start_of_cyclic_phase(parameters.temporal_discretization_parameters.start_of_cyclic_phase),
+start_of_unloading_phase(parameters.temporal_discretization_parameters.start_of_unloading_phase),
+preloading_phase_duration(parameters.temporal_discretization_parameters.preloading_phase_duration),
+unloading_and_unloading_phase_duration(parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration),
+flag_is_decohesion_allowed(flag_is_decohesion_allowed)
+{
+  preloading_macroscopic_strain = 0.;
+
+  cyclic_macroscopic_strain_mean_value  = 0.;
+
+  cyclic_macroscopic_strain_amplitude   = 0.;
+
+  preloading_macroscopic_strain[0][0] = componenet_11_mean_value;
+
+  preloading_macroscopic_strain[1][1] = componenet_22_mean_value;
+
+  preloading_macroscopic_strain[2][2] = componenet_33_mean_value;
+
+  cyclic_macroscopic_strain_mean_value[1][2]  = componenet_23_mean_value;
+
+  cyclic_macroscopic_strain_amplitude[1][2]   = componenet_23_amplitude;
+}
+
+
+
+template<int dim>
+void LinearDisplacement<dim>::vector_value(
+  const dealii::Point<dim>  &point,
+  dealii::Vector<double>    &return_vector) const
+{
+  const double time = this->get_time();
+
+  return_vector = 0.0;
+
+  dealii::Tensor<1,dim> displacement;
+
+  dealii::SymmetricTensor<2,dim> tensor;
+
+  displacement = 0.;
+
+  if (time < start_of_loading_phase)
+  {
+    const double factor =
+      std::sin(2.0 * M_PI * time / (preloading_phase_duration * 2));
+
+    tensor = factor * preloading_macroscopic_strain;
+
+    displacement = factor * preloading_macroscopic_strain * point;
+  }
+  else if (time < start_of_cyclic_phase)
+  {
+      const double factor =
+        (time - start_of_loading_phase) /
+        unloading_and_unloading_phase_duration;
+
+    tensor = factor * cyclic_macroscopic_strain_mean_value;
+
+    displacement = factor * cyclic_macroscopic_strain_mean_value * point;
+  }
+  else if (time < start_of_unloading_phase)
+  {
+    const double factor =
+      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+
+    tensor = cyclic_macroscopic_strain_mean_value +
+                    factor * cyclic_macroscopic_strain_amplitude;
+
+    displacement = (cyclic_macroscopic_strain_mean_value +
+                    factor * cyclic_macroscopic_strain_amplitude) *
+                   point;
+  }
+  else
+  {
+    const double factor =
+      1.0 - (time - start_of_unloading_phase) /
+        unloading_and_unloading_phase_duration ;
+
+    tensor = factor * cyclic_macroscopic_strain_mean_value;
+
+    displacement = factor * cyclic_macroscopic_strain_mean_value * point;
+  }
+
+  //std::cout << tensor << std::endl;
+
+  // Return
+  return_vector[0] = displacement[0];
+  return_vector[1] = displacement[1];
+  return_vector[2] = displacement[2];
+
+  if (flag_is_decohesion_allowed)
+  {
+    for (unsigned int i = 1; i < n_crystals; ++i)
+    {
+      return_vector[i*dim]      = displacement[0];
+      return_vector[i*dim + 1]  = displacement[1];
+      return_vector[i*dim + 2]  = displacement[2];
+    }
+  }
+}
+
+
+
+template <int dim>
 class MacroscopicStrain
 {
 public:
@@ -64,21 +240,35 @@ private:
 
   const double                    period;
 
-  std::pair<double,double>        component_11;
+  double                          componenet_11_mean_value;
 
-  std::pair<double,double>        component_22;
+  double                          componenet_22_mean_value;
 
-  std::pair<double,double>        component_33;
+  double                          componenet_33_mean_value;
 
-  std::pair<double,double>        component_23;
+  double                          componenet_23_mean_value;
+
+  double                          componenet_11_amplitude;
+
+  double                          componenet_22_amplitude;
+
+  double                          componenet_33_amplitude;
+
+  double                          componenet_23_amplitude;
+
+  const double                    reduction_factor;
 
   const double                    n_cycles;
+
+  const double                    start_of_loading_phase;
 
   const double                    start_of_cyclic_phase;
 
   const double                    start_of_unloading_phase;
 
-  const double                    duration_of_unloading_phase;
+  const double                    preloading_phase_duration;
+
+  const double                    unloading_and_unloading_phase_duration;
 };
 
 
@@ -89,19 +279,19 @@ MacroscopicStrain<dim>::MacroscopicStrain(
 :
 time(parameters.temporal_discretization_parameters.start_time),
 period(parameters.temporal_discretization_parameters.period),
+reduction_factor(0.10),
 n_cycles(parameters.temporal_discretization_parameters.n_cycles),
-start_of_cyclic_phase(parameters.temporal_discretization_parameters.initial_loading_time),
+start_of_loading_phase(parameters.temporal_discretization_parameters.start_of_loading_phase),
+start_of_cyclic_phase(parameters.temporal_discretization_parameters.start_of_cyclic_phase),
 start_of_unloading_phase(parameters.temporal_discretization_parameters.start_of_unloading_phase),
-duration_of_unloading_phase(1.0)
+preloading_phase_duration(parameters.temporal_discretization_parameters.preloading_phase_duration),
+unloading_and_unloading_phase_duration(parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration)
 {
-  component_11.first  = -0.020221;
-  component_11.second = -0.019779;
-  component_22.first  = -0.020328;
-  component_22.second = -0.019672;
-  component_33.first  = 0.041;
-  component_33.second = 0.039;
-  component_23.first  = 0.020463;
-  component_23.second = 0.019537;
+  componenet_11_mean_value  = -0.02;
+  componenet_22_mean_value  = -0.02;
+  componenet_33_mean_value  = 0.04;
+  componenet_23_mean_value  = 0.002;
+  componenet_23_amplitude   = 0.0002;
 }
 
 
@@ -113,70 +303,42 @@ dealii::SymmetricTensor<2,dim> MacroscopicStrain<dim>::get_value() const
 
   macroscopic_strain = 0.0;
 
-  if (time < start_of_cyclic_phase)
+  if (time < start_of_loading_phase)
   {
-    macroscopic_strain[0][0] =
-      time / start_of_cyclic_phase *
-      (component_11.first + component_11.second) / 2.0 ;
-    macroscopic_strain[1][1] =
-      time / start_of_cyclic_phase *
-      (component_22.first + component_22.second) / 2.0 ;
-    macroscopic_strain[2][2] =
-      time / start_of_cyclic_phase *
-      (component_33.first + component_33.second) / 2.0 ;
-    macroscopic_strain[1][2] =
-      time / start_of_cyclic_phase *
-      (component_23.first + component_23.second) / 2.0 ;
+    const double factor =
+      std::sin(2.0 * M_PI * time / (preloading_phase_duration * 2));
+
+    macroscopic_strain[0][0] = componenet_11_mean_value * factor;
+
+    macroscopic_strain[1][1] = componenet_22_mean_value * factor;
+
+    macroscopic_strain[2][2] = componenet_33_mean_value * factor;
   }
-  else if (time <= start_of_unloading_phase)
+  else if (time < start_of_cyclic_phase)
   {
-    macroscopic_strain[0][0] =
-      (component_11.first + component_11.second) / 2.0
-      -
-      abs(component_11.first - component_11.second) / 2.0*
+      const double factor =
+        (time - start_of_loading_phase) /
+        unloading_and_unloading_phase_duration;
+
+      macroscopic_strain[1][2] = componenet_23_mean_value * factor;
+  }
+  else if (time < start_of_unloading_phase)
+  {
+    const double factor =
       std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
-    macroscopic_strain[1][1] =
-      (component_22.first + component_22.second) / 2.0
-      -
-      abs(component_22.first - component_22.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
-    macroscopic_strain[2][2] =
-      (component_33.first + component_33.second) / 2.0
-      +
-      abs(component_33.first - component_33.second) / 2.0*
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+
     macroscopic_strain[1][2] =
-      (component_23.first + component_23.second) / 2.0
-      -
-      abs(component_23.first - component_23.second) / 2.0 *
-      std::sin(2.0 * M_PI / period * (time - start_of_cyclic_phase));
+      componenet_23_mean_value -
+        componenet_23_amplitude * factor;
   }
   else
   {
-    macroscopic_strain[0][0] =
-      (component_11.first + component_11.second) / 2.0
-      -
-      (component_11.first + component_11.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
-    macroscopic_strain[1][1] =
-      (component_22.first + component_22.second) / 2.0
-      -
-      (component_22.first + component_22.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
-    macroscopic_strain[2][2] =
-      (component_33.first + component_33.second) / 2.0
-      -
-      (component_33.first + component_33.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+    const double factor =
+      1.0 - (time - start_of_unloading_phase) /
+        unloading_and_unloading_phase_duration ;
+
     macroscopic_strain[1][2] =
-      (component_23.first + component_23.second) / 2.0
-      -
-      (component_23.first + component_23.second) / 2.0 /
-      duration_of_unloading_phase *
-      (time - start_of_unloading_phase);
+      componenet_23_mean_value * factor;
   }
 
   return (macroscopic_strain);
@@ -239,6 +401,8 @@ private:
   GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
   gCP::MacroscopicStrain<dim>                       macroscopic_strain;
+
+  std::unique_ptr<LinearDisplacement<dim>>          linear_displacement;
 
   Postprocessing::Homogenization<dim>               homogenization;
 
@@ -427,35 +591,6 @@ void SemicoupledProblem<dim>::make_grid()
           }
         }
 
-  // Mark faces as periodic
-  std::vector<dealii::GridTools::
-    PeriodicFacePair<typename
-      dealii::parallel::distributed::Triangulation<dim>::cell_iterator>>
-    periodicity_vector;
-
-  dealii::GridTools::collect_periodic_faces(triangulation,
-                                            x_lower_boundary_id,
-                                            x_upper_boundary_id,
-                                            0,
-                                            periodicity_vector);
-
-  dealii::GridTools::collect_periodic_faces(triangulation,
-                                            y_lower_boundary_id,
-                                            y_upper_boundary_id,
-                                            1,
-                                            periodicity_vector);
-
-  if constexpr(dim == 3)
-  {
-    dealii::GridTools::collect_periodic_faces(triangulation,
-                                              z_lower_boundary_id,
-                                              z_upper_boundary_id,
-                                              2,
-                                              periodicity_vector);
-  }
-
-  this->triangulation.add_periodicity(periodicity_vector);
-
   this->triangulation.refine_global(parameters.n_global_refinements);
 
   // Terminal output
@@ -495,6 +630,13 @@ void SemicoupledProblem<dim>::setup()
   // Sets up the degrees of freedom
   fe_field->setup_dofs();
 
+  linear_displacement =
+    std::make_unique<LinearDisplacement<dim>>(
+      crystals_data->get_n_crystals(),
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed(),
+      parameters);
+
   // Sets up the problem's constraints
   setup_constraints();
 
@@ -519,36 +661,6 @@ void SemicoupledProblem<dim>::setup()
 template<int dim>
 void SemicoupledProblem<dim>::setup_constraints()
 {
-  // Initiate the entity needed for periodic boundary conditions
-  std::vector<
-    dealii::GridTools::
-    PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
-      periodicity_vector;
-
-  dealii::GridTools::collect_periodic_faces(
-    fe_field->get_dof_handler(),
-    x_lower_boundary_id,
-    x_upper_boundary_id,
-    0,
-    periodicity_vector);
-
-  dealii::GridTools::collect_periodic_faces(
-    fe_field->get_dof_handler(),
-    y_lower_boundary_id,
-    y_upper_boundary_id,
-    1,
-    periodicity_vector);
-
-  if constexpr(dim == 3)
-  {
-    dealii::GridTools::collect_periodic_faces(
-      fe_field->get_dof_handler(),
-      z_lower_boundary_id,
-      z_upper_boundary_id,
-      2,
-      periodicity_vector);
-  }
-
   // Initiate the actual constraints – boundary conditions – of the problem
   dealii::AffineConstraints<double> affine_constraints;
 
@@ -591,56 +703,28 @@ void SemicoupledProblem<dim>::setup_constraints()
             }
     }
 
-    std::vector<dealii::Point<dim>> lower_corner_points;
+    std::map<dealii::types::boundary_id,
+            const dealii::Function<dim> *> function_map;
 
-    lower_corner_points.push_back(dealii::Point<dim>());
+    function_map[x_lower_boundary_id] = linear_displacement.get();
+    function_map[x_upper_boundary_id] = linear_displacement.get();
+    function_map[y_lower_boundary_id] = linear_displacement.get();
+    function_map[y_upper_boundary_id] = linear_displacement.get();
+    function_map[z_lower_boundary_id] = linear_displacement.get();
+    function_map[z_upper_boundary_id] = linear_displacement.get();
 
-    for (unsigned int i = 0; i < dim; ++i)
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
     {
-      dealii::Point<dim> corner_point;
-
-      corner_point[i] = 1.;
-
-      if (i == 2)
-      {
-        corner_point[i] = extrude_distance;
-      }
-
-      lower_corner_points.push_back(corner_point);
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(crystal_id)));
     }
-
-    for (const auto &cell :
-        fe_field->get_dof_handler().active_cell_iterators())
-    {
-      if (cell->is_locally_owned())
-      {
-        for (const auto vertex_index : cell->vertex_indices())
-        {
-          if (std::find(lower_corner_points.begin(),
-                        lower_corner_points.end(),
-                        cell->vertex(vertex_index))
-              != lower_corner_points.end())
-          {
-              // Get the crystal identifier for the current cell
-            const unsigned int crystal_id = cell->material_id();
-
-            for (unsigned int i = 0; i < dim; i++)
-            {
-              const dealii::types::global_dof_index degree_of_freedom =
-                cell->vertex_dof_index(vertex_index,
-                                       i, // Component
-                                       crystal_id);
-
-              affine_constraints.add_line(degree_of_freedom);
-            }
-          }
-        }
-      }
-    }
-
-    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
-      periodicity_vector,
-      affine_constraints);
   }
   affine_constraints.close();
 
@@ -686,56 +770,31 @@ void SemicoupledProblem<dim>::setup_constraints()
             }
     }
 
-    std::vector<dealii::Point<dim>> lower_corner_points;
+    dealii::Functions::ZeroFunction<dim> zero_function(
+                                          fe_field->get_n_components());
 
-    lower_corner_points.push_back(dealii::Point<dim>());
+    std::map<dealii::types::boundary_id,
+             const dealii::Function<dim> *> function_map;
 
-    for (unsigned int i = 0; i < dim; ++i)
+    function_map[x_lower_boundary_id] = &zero_function;
+    function_map[x_upper_boundary_id] = &zero_function;
+    function_map[y_lower_boundary_id] = &zero_function;
+    function_map[y_upper_boundary_id] = &zero_function;
+    function_map[z_lower_boundary_id] = &zero_function;
+    function_map[z_upper_boundary_id] = &zero_function;
+
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
     {
-      dealii::Point<dim> corner_point;
-
-      corner_point[i] = 1.;
-
-      if (i == 2)
-      {
-        corner_point[i] = extrude_distance;
-      }
-
-      lower_corner_points.push_back(corner_point);
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        newton_method_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(crystal_id)));
     }
-
-    for (const auto &cell :
-        fe_field->get_dof_handler().active_cell_iterators())
-    {
-      if (cell->is_locally_owned())
-      {
-        for (const auto vertex_index : cell->vertex_indices())
-        {
-          if (std::find(lower_corner_points.begin(),
-                        lower_corner_points.end(),
-                        cell->vertex(vertex_index))
-              != lower_corner_points.end())
-          {
-              // Get the crystal identifier for the current cell
-            const unsigned int crystal_id = cell->material_id();
-
-            for (unsigned int i = 0; i < dim; i++)
-            {
-              const dealii::types::global_dof_index degree_of_freedom =
-                cell->vertex_dof_index(vertex_index,
-                                       i, // Component
-                                       crystal_id);
-
-              newton_method_constraints.add_line(degree_of_freedom);
-            }
-          }
-        }
-      }
-    }
-
-    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
-      periodicity_vector,
-      newton_method_constraints);
   }
   newton_method_constraints.close();
 
@@ -780,6 +839,33 @@ void SemicoupledProblem<dim>::update_dirichlet_boundary_conditions()
   {
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
     affine_constraints.merge(fe_field->get_hanging_node_constraints());
+
+    dealii::Functions::ZeroFunction<dim> zero_function(
+                                          fe_field->get_n_components());
+
+
+    std::map<dealii::types::boundary_id,
+            const dealii::Function<dim> *> function_map;
+
+    function_map[x_lower_boundary_id] = linear_displacement.get();
+    function_map[x_upper_boundary_id] = linear_displacement.get();
+    function_map[y_lower_boundary_id] = linear_displacement.get();
+    function_map[y_upper_boundary_id] = linear_displacement.get();
+    function_map[z_lower_boundary_id] = linear_displacement.get();
+    function_map[z_upper_boundary_id] = linear_displacement.get();
+
+    for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
+    {
+      dealii::VectorTools::interpolate_boundary_values(
+        *mapping,
+        fe_field->get_dof_handler(),
+        function_map,
+        affine_constraints,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_displacement_extractor(crystal_id)));
+    }
   }
   affine_constraints.close();
 
@@ -791,6 +877,7 @@ void SemicoupledProblem<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void SemicoupledProblem<dim>::postprocessing()
 {
+  /*
   const RunTimeParameters::TemporalDiscretizationParameters &prm =
     parameters.temporal_discretization_parameters;
 
@@ -870,7 +957,7 @@ void SemicoupledProblem<dim>::postprocessing()
       }
     }
   }
-
+  */
   if (parameters.flag_compute_macroscopic_quantities &&
       (discrete_time.get_step_number() %
          parameters.homogenization_frequency == 0 ||
@@ -879,7 +966,7 @@ void SemicoupledProblem<dim>::postprocessing()
   {
     dealii::TimerOutput::Scope  t(*timer_output, "Problem: Homogenization");
 
-    homogenization.set_macroscopic_strain(macroscopic_strain.get_value());
+    //homogenization.set_macroscopic_strain(macroscopic_strain.get_value());
 
     homogenization.compute_macroscopic_quantities(
       discrete_time.get_current_time());
@@ -961,7 +1048,7 @@ void SemicoupledProblem<dim>::triangulation_output()
   data_out.add_data_vector(gCP_solver.get_cell_is_at_grain_boundary_vector(),
                            "cell_is_at_grain_boundary");
 
-  data_out.build_patches();
+  data_out.build_patches(2);
 
   data_out.write_vtu_in_parallel(
     parameters.graphical_output_directory + "triangulation.vtu",
@@ -977,7 +1064,7 @@ void SemicoupledProblem<dim>::data_output()
 
   dealii::DataOut<dim> data_out;
 
-  postprocessor.set_macroscopic_strain(macroscopic_strain.get_value());
+  //postprocessor.set_macroscopic_strain(macroscopic_strain.get_value());
 
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
@@ -1053,12 +1140,8 @@ void SemicoupledProblem<dim>::run()
 
   //return;
 
-  if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic ||
-      parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::CyclicWithUnloading)
-    discrete_time.set_desired_next_step_size(
-      parameters.temporal_discretization_parameters.time_step_size_in_loading_phase);
+  discrete_time.set_desired_next_step_size(
+    parameters.temporal_discretization_parameters.time_step_size_in_preloading_phase);
 
 
   const RunTimeParameters::ConvergenceControlParameters
@@ -1096,26 +1179,28 @@ void SemicoupledProblem<dim>::run()
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    if ((parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::Cyclic ||
-         parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.initial_loading_time)
-        < std::numeric_limits<double>::epsilon() * 10)
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_loading_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size);
+        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
     }
 
-    if (parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.start_of_unloading_phase)
-        < std::numeric_limits<double>::epsilon() * 10)
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_cyclic_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
     {
       discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size_in_unloading_phase);
+        parameters.temporal_discretization_parameters.time_step_size_in_cyclic_phase);
+    }
+
+    if (std::abs(discrete_time.get_current_time() -
+        parameters.temporal_discretization_parameters.start_of_unloading_phase)
+        < std::numeric_limits<double>::epsilon() * 1000)
+    {
+      discrete_time.set_desired_next_step_size(
+        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
     }
 
     if (parameters.verbose)
@@ -1132,12 +1217,16 @@ void SemicoupledProblem<dim>::run()
 
     // Update the internal time variable of all time-dependant functions
     // to t^{n}
-    macroscopic_strain.set_time(discrete_time.get_next_time());
+    //macroscopic_strain.set_time(discrete_time.get_next_time());
+
+    linear_displacement->set_time(discrete_time.get_next_time());
 
     // Update the Dirichlet boundary conditions values to t^{n}
-    //update_dirichlet_boundary_conditions();
+    update_dirichlet_boundary_conditions();
 
-    gCP_solver.set_macroscopic_strain(macroscopic_strain.get_value());
+    //gCP_solver.set_macroscopic_strain(macroscopic_strain.get_value());
+
+    //std::cout << macroscopic_strain.get_value() << std::endl;
 
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n

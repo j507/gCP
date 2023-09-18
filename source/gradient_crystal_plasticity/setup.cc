@@ -340,6 +340,16 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
                fe_field->get_dof_handler().end()),
     n_face_q_points);
 
+  const dealii::UpdateFlags face_update_flags =
+    dealii::update_quadrature_points;
+
+  // Finite element values
+  dealii::hp::FEFaceValues<dim> hp_fe_face_values(
+    mapping_collection,
+    fe_field->get_fe_collection(),
+    face_quadrature_collection,
+    face_update_flags);
+
   for (const auto &cell : fe_field->get_triangulation().active_cell_iterators())
     if (cell->is_locally_owned())
     {
@@ -364,6 +374,15 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
               cell->material_id() !=
                 cell->neighbor(face_index)->material_id())
           {
+            // Update the hp::FEFaceValues instance to the values of the current cell
+            hp_fe_face_values.reinit(cell, face_index);
+
+            const dealii::FEFaceValues<dim> &fe_face_values =
+              hp_fe_face_values.get_present_fe_values();
+
+            const std::vector<dealii::Point<dim>> quadrature_points =
+              fe_face_values.get_quadrature_points();
+
             const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
               local_interface_quadrature_point_history =
                 interface_quadrature_point_history.get_data(
@@ -376,8 +395,26 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 
             for (unsigned int face_q_point = 0;
                   face_q_point < n_face_q_points; ++face_q_point)
+            {
               local_interface_quadrature_point_history[face_q_point]->init(
                 parameters.cohesive_law_parameters);
+              /*
+              const dealii::Point<dim> quadrature_point =
+                quadrature_points[face_q_point];
+
+              bool condition =
+                quadrature_point[0] > 2.0 &&
+                quadrature_point[0] < 2.5 &&
+                quadrature_point[1] > 2.59808 && //2.59808 &&
+                quadrature_point[1] < 3.4641;
+
+              if (condition)
+              {
+                local_interface_quadrature_point_history[face_q_point]->set(
+                  1.0);
+              }
+              */
+            }
           }
 
     }

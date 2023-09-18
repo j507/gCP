@@ -622,6 +622,55 @@ void NewtonRaphsonParameters::parse_parameters(
 
 
 
+LineSearchParameters::LineSearchParameters()
+:
+armijo_condition_constant(1e-4),
+n_max_iterations(15)
+{}
+
+
+
+void LineSearchParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Line search parameters");
+  {
+    prm.declare_entry("Armijo condition constant",
+                      "1e-4",
+                      dealii::Patterns::Double());
+
+    prm.declare_entry("Maximum number of iterations",
+                      "15",
+                      dealii::Patterns::Integer());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void LineSearchParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Line search parameters");
+  {
+    armijo_condition_constant =
+      prm.get_double("Armijo condition constant");
+
+    n_max_iterations =
+      prm.get_integer("Maximum number of iterations");
+
+    AssertThrow(armijo_condition_constant > 0,
+                dealii::ExcLowerRange(armijo_condition_constant, 0));
+
+    AssertThrow(n_max_iterations > 0,
+                dealii::ExcLowerRange(n_max_iterations, 0));
+
+  }
+  prm.leave_subsection();
+}
+
+
+
 ConvergenceControlParameters::ConvergenceControlParameters()
 :
 upscaling_factor(1),
@@ -724,6 +773,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   KrylovParameters::declare_parameters(prm);
   NewtonRaphsonParameters::declare_parameters(prm);
+  LineSearchParameters::declare_parameters(prm);
   ConvergenceControlParameters::declare_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
@@ -775,6 +825,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   krylov_parameters.parse_parameters(prm);
 
   newton_parameters.parse_parameters(prm);
+
+  line_search_parameters.parse_parameters(prm);
 
   convergence_control_parameters.parse_parameters(prm);
 
@@ -836,13 +888,17 @@ end_time(1.0),
 time_step_size(0.25),
 period(1.0),
 n_cycles(1.0),
-initial_loading_time(1.0),
-start_of_unloading_phase(2.0),
-n_steps_in_loading_phase(2),
+preloading_phase_duration(2.0),
+unloading_and_unloading_phase_duration(1.0),
+n_steps_in_preloading_phase(2),
+n_steps_in_loading_and_unloading_phases(2),
 n_steps_per_half_cycle(2),
-n_steps_in_unloading_phase(2),
-time_step_size_in_loading_phase(time_step_size),
-time_step_size_in_unloading_phase(time_step_size),
+time_step_size_in_preloading_phase(time_step_size),
+time_step_size_in_cyclic_phase(time_step_size),
+time_step_size_in_loading_and_unloading_phase(time_step_size),
+start_of_loading_phase(0),
+start_of_cyclic_phase(0),
+start_of_unloading_phase(0),
 loading_type(LoadingType::Monotonic)
 {}
 
@@ -871,19 +927,23 @@ declare_parameters(dealii::ParameterHandler &prm)
                     "1",
                     dealii::Patterns::Integer());
 
-  prm.declare_entry("Number of steps per half cycle",
-                    "2",
-                    dealii::Patterns::Integer());
-
-  prm.declare_entry("Number of steps in unloading phase",
-                    "2",
-                    dealii::Patterns::Integer());
-
-  prm.declare_entry("Initial loading time",
-                    "0.5",
+  prm.declare_entry("Preloading phase duration",
+                    "0.0",
                     dealii::Patterns::Double());
 
-  prm.declare_entry("Number of steps in loading phase",
+  prm.declare_entry("Un- and loading phase duration",
+                    "2",
+                    dealii::Patterns::Double());
+
+  prm.declare_entry("Number of steps in preloading phase",
+                    "2",
+                    dealii::Patterns::Integer());
+
+  prm.declare_entry("Number of steps in un- and loading phase",
+                    "2",
+                    dealii::Patterns::Integer());
+
+  prm.declare_entry("Number of steps in a half cycle",
                     "2",
                     dealii::Patterns::Integer());
 
@@ -923,45 +983,56 @@ parse_parameters(dealii::ParameterHandler &prm)
 
   n_cycles              = prm.get_integer("Number of cycles");
 
-  initial_loading_time  = prm.get_double("Initial loading time");
+  preloading_phase_duration =
+                        prm.get_double("Preloading phase duration");
 
-  start_of_unloading_phase  = prm.get_double("End time");
+  unloading_and_unloading_phase_duration =
+                        prm.get_double("Un- and loading phase duration");
 
-  n_steps_per_half_cycle
-    = prm.get_integer("Number of steps per half cycle");
+  n_steps_in_preloading_phase =
+                        prm.get_integer("Number of steps in preloading phase");
 
-  n_steps_in_loading_phase
-    = prm.get_integer("Number of steps in loading phase");
+  n_steps_in_loading_and_unloading_phases =
+                        prm.get_integer("Number of steps in un- and loading phase");
 
-  n_steps_in_unloading_phase
-    = prm.get_integer("Number of steps in unloading phase");
+  n_steps_per_half_cycle =
+                        prm.get_integer("Number of steps in a half cycle");
+
+  time_step_size = 0.5 * period / n_steps_per_half_cycle;
+
+  time_step_size_in_cyclic_phase =
+    0.5 * period / n_steps_per_half_cycle;
+
+  time_step_size_in_preloading_phase =
+    preloading_phase_duration / n_steps_in_preloading_phase;
+
+  time_step_size_in_loading_and_unloading_phase =
+    unloading_and_unloading_phase_duration /
+      n_steps_in_loading_and_unloading_phases;
+
+  start_of_loading_phase =
+    start_time + preloading_phase_duration;
+
+  start_of_cyclic_phase =
+    start_of_loading_phase +
+    unloading_and_unloading_phase_duration;
 
   if (loading_type == LoadingType::Cyclic)
   {
-    end_time = start_time + initial_loading_time + n_cycles * period;
-
-    time_step_size = 0.5 * period / n_steps_per_half_cycle;
-
-    time_step_size_in_loading_phase =
-      initial_loading_time / n_steps_in_loading_phase;
+    end_time =
+      start_of_cyclic_phase +
+      n_cycles * period;
   }
   else if (loading_type == LoadingType::CyclicWithUnloading)
   {
     start_of_unloading_phase =
-      start_time + initial_loading_time + n_cycles * period;
+      start_of_cyclic_phase +
+      n_cycles * period;
 
-    end_time = start_of_unloading_phase + 1.0;
-
-    time_step_size = 0.5 * period / n_steps_per_half_cycle;
-
-    time_step_size_in_loading_phase =
-      initial_loading_time / n_steps_in_loading_phase;
-
-    time_step_size_in_unloading_phase =
-      1.0 / n_steps_in_unloading_phase;
+    end_time =
+      start_of_unloading_phase +
+      unloading_and_unloading_phase_duration;
   }
-  else
-    time_step_size_in_loading_phase = time_step_size;
 
   Assert(start_time >= 0.0,
           dealii::ExcLowerRangeType<double>(start_time, 0.0));
@@ -982,9 +1053,9 @@ parse_parameters(dealii::ParameterHandler &prm)
           dealii::ExcLowerRangeType<int>(
           n_steps_per_half_cycle, 1));
 
-  Assert(n_steps_in_loading_phase > 1,
+  Assert(n_steps_in_loading_and_unloading_phases > 1,
           dealii::ExcLowerRangeType<int>(
-          n_steps_in_loading_phase, 1));
+          n_steps_in_loading_and_unloading_phases, 1));
 
   Assert(end_time >= (start_time + time_step_size),
           dealii::ExcLowerRangeType<double>(
