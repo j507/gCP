@@ -1623,6 +1623,24 @@ store_local_effective_opening_displacement(
                         parameters.cohesive_law_parameters.degradation_exponent) :
               1.0 ) *
             scratch.cohesive_traction_values[face_q_point].norm());
+
+          if (false/*print_out*/)
+          {
+            table_handler.add_value(
+              "effective_opening_displacement",
+              local_interface_quadrature_point_history[face_q_point]->
+                get_effective_opening_displacement());
+            table_handler.add_value("effective_traction_vector",
+              local_interface_quadrature_point_history[face_q_point]->
+                get_effective_cohesive_traction());
+            table_handler.add_value("time",
+              discrete_time.get_next_time());
+            table_handler.add_value("damage_variable",
+              local_interface_quadrature_point_history[face_q_point]->
+                get_damage_variable());
+
+            print_out = false;
+          }
         }
       }
 }
