@@ -458,11 +458,6 @@ struct ContactLawParameters
   /*!
    * @brief See @ref ConstitutiveLaws::ContactLaw
    */
-  double  stiffness;
-
-  /*!
-   * @brief See @ref ConstitutiveLaws::ContactLaw
-   */
   double  penalty_coefficient;
 };
 
