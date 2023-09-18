@@ -408,12 +408,26 @@ namespace gCP
 
       flag_successful_convergence =
           residual_norm < newton_parameters.absolute_tolerance ||
-          (relaxation_parameter * newton_update_norm) <
-            newton_parameters.step_tolerance;
+          ((relaxation_parameter * newton_update_norm) <
+            newton_parameters.step_tolerance &&
+            residual_norm < 100. * newton_parameters.absolute_tolerance);
+
+      if ((relaxation_parameter * newton_update_norm) <
+            newton_parameters.step_tolerance &&
+            residual_norm > 100. * newton_parameters.absolute_tolerance)
+      {
+        AssertThrow(
+          false,
+          dealii::ExcMessage(
+            "The Newton step became too small but the residual has not "
+            "reached an acceptable value."));
+      }
 
     } while (!flag_successful_convergence);
 
     //slip_rate_output(false);
+
+    print_out = true;
 
     store_effective_opening_displacement_in_quadrature_history();
 
