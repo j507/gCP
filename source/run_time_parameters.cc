@@ -671,90 +671,6 @@ void LineSearchParameters::parse_parameters(
 
 
 
-ConvergenceControlParameters::ConvergenceControlParameters()
-:
-upscaling_factor(1),
-downscaling_factor(1),
-upper_threshold(2),
-lower_threshold(1),
-n_max_iterations(5)
-{}
-
-
-
-void ConvergenceControlParameters::declare_parameters(
-  dealii::ParameterHandler &prm)
-{
-  prm.enter_subsection("Convergence control parameters");
-  {
-    prm.declare_entry("Upscaling factor",
-                      "1",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Downscaling factor",
-                      "1",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Upper threshold",
-                      "2",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Lower threshold",
-                      "1",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Maximum number of iterations",
-                      "5",
-                      dealii::Patterns::Integer());
-  }
-  prm.leave_subsection();
-}
-
-
-
-void ConvergenceControlParameters::parse_parameters(
-  dealii::ParameterHandler &prm)
-{
-  prm.enter_subsection("Convergence control parameters");
-  {
-    upscaling_factor =
-      prm.get_double("Upscaling factor");
-
-    downscaling_factor =
-      prm.get_double("Downscaling factor");
-
-    upper_threshold =
-      prm.get_double("Upper threshold");
-
-    lower_threshold =
-      prm.get_double("Lower threshold");
-
-    n_max_iterations =
-      prm.get_integer("Maximum number of iterations");
-
-    AssertThrow(upscaling_factor > 0,
-                dealii::ExcLowerRange(upscaling_factor, 0));
-
-    AssertThrow(downscaling_factor > 0,
-                dealii::ExcLowerRange(downscaling_factor, 0));
-
-    AssertThrow(lower_threshold > 0,
-                dealii::ExcLowerRangeType<double>(
-                  lower_threshold, 0));
-
-    AssertThrow(upper_threshold > lower_threshold,
-                dealii::ExcLowerRangeType<double>(
-                  upper_threshold, lower_threshold));
-
-    AssertThrow(n_max_iterations > 0,
-                dealii::ExcLowerRange(n_max_iterations, 0));
-
-  }
-  prm.leave_subsection();
-}
-
-
-
 SolverParameters::SolverParameters()
 :
 allow_decohesion(false),
@@ -774,7 +690,6 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
   KrylovParameters::declare_parameters(prm);
   NewtonRaphsonParameters::declare_parameters(prm);
   LineSearchParameters::declare_parameters(prm);
-  ConvergenceControlParameters::declare_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
   {
@@ -827,8 +742,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   newton_parameters.parse_parameters(prm);
 
   line_search_parameters.parse_parameters(prm);
-
-  convergence_control_parameters.parse_parameters(prm);
 
   prm.enter_subsection("Constitutive laws' parameters");
   {

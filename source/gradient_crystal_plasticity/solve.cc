@@ -155,18 +155,10 @@ namespace gCP
 
     unsigned int nonlinear_iteration      = 0;
 
-    unsigned int regularization_iteration = 0;
-
     double previous_residual_norm         = 0.0;
-
-    double regularization_multiplier      = 1.0;
 
     const RunTimeParameters::NewtonRaphsonParameters
       &newton_parameters = parameters.newton_parameters;
-
-    const RunTimeParameters::ConvergenceControlParameters
-      &convergence_control_parameters =
-        parameters.convergence_control_parameters;
 
     // Newton-Raphson loop
     do
@@ -179,114 +171,6 @@ namespace gCP
           "The nonlinear solver has reach the given maximum number of "
           "iterations (" +
           std::to_string(newton_parameters.n_max_iterations) + ")."));
-
-
-      /*
-      if (nonlinear_iteration > newton_parameters.n_max_iterations)
-      {
-        reset_quadrature_point_history();
-
-        return (std::make_tuple(flag_successful_convergence,
-                                nonlinear_iteration));
-      }
-      */
-
-      if (nonlinear_iteration >
-          newton_parameters.n_max_iterations)
-      {
-        bool flag_initial_guess_was_computed = false;
-
-        std::stringstream message;
-
-        message << "\n  Maximum amount of nonlinear iterations reached. "
-                << "Computing a new initial solution with";
-
-        nonlinear_solver_logger.add_break(message.str().c_str());
-
-        *pcout << message.rdbuf();
-
-        do
-        {
-          regularization_iteration++;
-
-          AssertThrow(
-            regularization_iteration <=
-                convergence_control_parameters.n_max_iterations,
-            dealii::ExcMessage(
-              "The maximum number of regularization loops (" +
-              std::to_string(
-                convergence_control_parameters.n_max_iterations) +
-              ") have been reached"));
-
-          regularization_multiplier *=
-            convergence_control_parameters.upscaling_factor;
-
-          std::stringstream().swap(message);
-
-          message << "\n  a regularization parameter of "
-                  << (regularization_multiplier*
-                      parameters.scalar_microscopic_stress_law_parameters.regularization_parameter)
-                  << "...\n";
-
-          *pcout << message.rdbuf();
-
-          scalar_microscopic_stress_law->set_regularization_multiplier(
-              regularization_multiplier);
-
-          reset_trial_solution(true);
-
-          reset_quadrature_point_history();
-
-          flag_initial_guess_was_computed = compute_initial_guess();
-
-        } while (!flag_initial_guess_was_computed);
-
-        do
-        {
-          regularization_multiplier /=
-            convergence_control_parameters.downscaling_factor;
-
-          if (regularization_multiplier < 1.0)
-          {
-            regularization_multiplier = 1.0;
-          }
-
-          std::stringstream().swap(message);
-
-          message << "\n Upscaling. Computing initial solution with a "
-                  << "regularization parameter of "
-                  << (regularization_multiplier*
-                      parameters.scalar_microscopic_stress_law_parameters.regularization_parameter)
-                  << "...\n";
-
-          *pcout << message.rdbuf();
-
-          scalar_microscopic_stress_law->set_regularization_multiplier(
-            regularization_multiplier);
-
-          reset_quadrature_point_history();
-
-          flag_initial_guess_was_computed = compute_initial_guess();
-
-          AssertThrow(
-            flag_initial_guess_was_computed,
-            dealii::ExcMessage(
-              "Regularization loop failed while upscaling"));
-
-        } while (regularization_multiplier > 1.0);
-
-        std::stringstream().swap(message);
-
-        message << "\n  Initial guess computed. Restarting iteration...\n";
-
-        nonlinear_solver_logger.add_break(message.str().c_str());
-
-        *pcout << message.rdbuf();
-
-        nonlinear_iteration = 0;
-
-        continue;
-      }
 
       // The current trial solution has to be stored in case
       store_trial_solution();

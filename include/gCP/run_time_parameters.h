@@ -611,63 +611,6 @@ struct LineSearchParameters
 
 
 
-
-struct ConvergenceControlParameters
-{
-  /*
-   * @brief Constructor which sets up the parameters with default values.
-   */
-  ConvergenceControlParameters();
-
-  /*!
-   * @brief Static method which declares the associated parameter to the
-   * ParameterHandler object @p prm.
-   */
-  static void declare_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief Method which parses the parameters from the ParameterHandler
-   * object @p prm.
-   */
-  void parse_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        upscaling_factor;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        downscaling_factor;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        upper_threshold;
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        lower_threshold;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  unsigned int  n_max_iterations;
-};
-
-
-
 struct SolverParameters
 {
   /*
@@ -707,14 +650,6 @@ struct SolverParameters
    * @todo Docu
    */
   LineSearchParameters          line_search_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  ConvergenceControlParameters
-                      convergence_control_parameters;
 
   /*!
    * @brief

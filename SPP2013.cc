@@ -1143,13 +1143,6 @@ void SemicoupledProblem<dim>::run()
   discrete_time.set_desired_next_step_size(
     parameters.temporal_discretization_parameters.time_step_size_in_preloading_phase);
 
-
-  const RunTimeParameters::ConvergenceControlParameters
-    &convergence_control_parameters =
-      parameters.solver_parameters.convergence_control_parameters;
-
-  (void)convergence_control_parameters;
-
   std::ofstream macroscopic_damage_file;
 
   { // Clear file's contents
@@ -1234,23 +1227,6 @@ void SemicoupledProblem<dim>::run()
       gCP_solver.solve_nonlinear_system();
 
     (void)results;
-    /*
-    if (std::get<0>(results) == false)
-    {
-      const double desired_next_step_size =
-        discrete_time.get_next_step_size() /
-        convergence_control_parameters.downscaling_factor;
-
-      AssertThrow(
-        desired_next_step_size >
-          convergence_control_parameters.lower_threshold,
-        dealii::ExcMessage("Way to small"));
-
-      discrete_time.set_desired_next_step_size(desired_next_step_size);
-
-      continue;
-    }
-    */
 
     // Update the solution vectors, i.e.,
     // fe_field->old_solution = fe_field->solution
@@ -1258,25 +1234,6 @@ void SemicoupledProblem<dim>::run()
 
     // Advance the DiscreteTime instance to t^{n}
     discrete_time.advance_time();
-
-    /*
-    if (std::get<0>(results) == true &&
-        std::get<1>(results) < convergence_control_parameters.n_max_iterations)
-    {
-      double desired_next_step_size =
-        discrete_time.get_next_step_size() *
-        convergence_control_parameters.upscaling_factor;
-
-      if (desired_next_step_size >
-          convergence_control_parameters.upper_threshold)
-      {
-        desired_next_step_size =
-          convergence_control_parameters.upper_threshold;
-      }
-
-      discrete_time.set_desired_next_step_size(desired_next_step_size);
-    }
-    */
 
     // Call to the postprocessing method
     postprocessing();
