@@ -95,6 +95,15 @@ void InterfaceQuadraturePointHistory<dim>::init(
 
 
 template <int dim>
+void InterfaceQuadraturePointHistory<dim>::set(
+  const double damage_variable_value)
+{
+  damage_variable = damage_variable_value;
+}
+
+
+
+template <int dim>
 void InterfaceQuadraturePointHistory<dim>::store_current_values()
 {
   tmp_scalar_values[0]  = damage_variable;
