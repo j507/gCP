@@ -323,7 +323,7 @@ private:
    * @brief The macroscopic stress tensor
    * @details See @ref compute_macroscopic_stress for its definition
    */
-  dealii::SymmetricTensor<2,dim>                          microscopic_stress_fluctuations;
+  dealii::SymmetricTensor<2,dim>                          microstress_fluctuations;
 
   /*!
    * @brief The macroscopic strain tensor

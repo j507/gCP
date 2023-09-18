@@ -295,7 +295,7 @@ crystals_data(crystals_data)
 
 
 template<int dim>
-ScalarMicroscopicStressLaw<dim>::ScalarMicroscopicStressLaw(
+ScalarMicrostressLaw<dim>::ScalarMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
   const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters)
 :
@@ -311,7 +311,7 @@ hardening_parameter(parameters.hardening_parameter)
 
 
 template<int dim>
-double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
+double ScalarMicrostressLaw<dim>::get_scalar_microstress(
   const double slip_value,
   const double old_slip_value,
   const double slip_resistance,
@@ -342,7 +342,7 @@ double ScalarMicroscopicStressLaw<dim>::get_scalar_microscopic_stress(
 
 
 template<int dim>
-dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
+dealii::FullMatrix<double> ScalarMicrostressLaw<dim>::
   get_jacobian(
     const unsigned int                      q_point,
     const std::vector<std::vector<double>>  slip_values,
@@ -398,7 +398,7 @@ dealii::FullMatrix<double> ScalarMicroscopicStressLaw<dim>::
 
 
 template <int dim>
-double ScalarMicroscopicStressLaw<dim>::
+double ScalarMicrostressLaw<dim>::
 get_regularization_function_value(const double slip_rate) const
 {
   AssertIsFinite(slip_rate);
@@ -462,7 +462,7 @@ get_regularization_function_value(const double slip_rate) const
 
 
 template <int dim>
-double ScalarMicroscopicStressLaw<dim>::
+double ScalarMicrostressLaw<dim>::
 get_regularization_function_derivative_value(const double slip_rate) const
 {
   AssertIsFinite(slip_rate);
@@ -535,7 +535,7 @@ get_regularization_function_derivative_value(const double slip_rate) const
 
 
 template<int dim>
-VectorMicroscopicStressLaw<dim>::VectorMicroscopicStressLaw(
+VectorialMicrostressLaw<dim>::VectorialMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
   const RunTimeParameters::VectorMicroscopicStressLawParameters parameters)
 :
@@ -548,7 +548,7 @@ flag_init_was_called(false)
 
 
 template<int dim>
-void VectorMicroscopicStressLaw<dim>::init()
+void VectorialMicrostressLaw<dim>::init()
 {
   AssertThrow(crystals_data->is_initialized(),
               dealii::ExcMessage("The underlying CrystalsData<dim>"
@@ -609,8 +609,8 @@ void VectorMicroscopicStressLaw<dim>::init()
 
 
 template <int dim>
-dealii::Tensor<1,dim> VectorMicroscopicStressLaw<dim>::
-get_vector_microscopic_stress(
+dealii::Tensor<1,dim> VectorialMicrostressLaw<dim>::
+get_vectorial_microstress(
   const unsigned int          crystal_id,
   const unsigned int          slip_id,
   const dealii::Tensor<1,dim> slip_gradient) const
@@ -619,7 +619,7 @@ get_vector_microscopic_stress(
   AssertIndexRange(slip_id, crystals_data->get_n_slips());
 
   AssertThrow(flag_init_was_called,
-              dealii::ExcMessage("The VectorMicroscopicStressLaw<dim> "
+              dealii::ExcMessage("The VectorialMicrostressLaw<dim> "
                                  "instance has not been initialized."));
 
   return (reduced_gradient_hardening_tensors[crystal_id][slip_id] *
@@ -1420,11 +1420,11 @@ template class gCP::ConstitutiveLaws::HookeLaw<3>;
 template class gCP::ConstitutiveLaws::ResolvedShearStressLaw<2>;
 template class gCP::ConstitutiveLaws::ResolvedShearStressLaw<3>;
 
-template class gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<2>;
-template class gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<3>;
+template class gCP::ConstitutiveLaws::ScalarMicrostressLaw<2>;
+template class gCP::ConstitutiveLaws::ScalarMicrostressLaw<3>;
 
-template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<2>;
-template class gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<3>;
+template class gCP::ConstitutiveLaws::VectorialMicrostressLaw<2>;
+template class gCP::ConstitutiveLaws::VectorialMicrostressLaw<3>;
 
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
 template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;

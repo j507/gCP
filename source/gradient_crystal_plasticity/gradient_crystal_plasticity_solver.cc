@@ -33,14 +33,14 @@ hooke_law(
 resolved_shear_stress_law(
   std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
     crystals_data)),
-scalar_microscopic_stress_law(
-  std::make_shared<ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>>(
+scalar_microstress_law(
+  std::make_shared<ConstitutiveLaws::ScalarMicrostressLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters)),
-vector_microscopic_stress_law(
-  std::make_shared<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>(
+    parameters.constitutive_laws_parameters.scalar_microstress_law_parameters)),
+vectorial_microstress_law(
+  std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.vector_microscopic_stress_law_parameters)),
+    parameters.constitutive_laws_parameters.vectorial_microstress_law_parameters)),
 microscopic_traction_law(
   std::make_shared<ConstitutiveLaws::MicroscopicTractionLaw<dim>>(
     crystals_data,

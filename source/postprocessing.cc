@@ -1147,7 +1147,7 @@ flag_init_was_called(false)
   quadrature_collection.push_back(quadrature_formula);
 
   macroscopic_stress              = 0.;
-  microscopic_stress_fluctuations = 0.;
+  microstress_fluctuations        = 0.;
   macroscopic_strain              = 0.;
   microscopic_strain_fluctuations = 0.;
 
@@ -1288,7 +1288,7 @@ void Homogenization<2>::update_table_handler_values(const double time)
     deviatoric_projector * macroscopic_stress;
 
   const dealii::SymmetricTensor<2,2> deviatoric_stress_fluctuations =
-    deviatoric_projector * microscopic_stress_fluctuations;
+    deviatoric_projector * microstress_fluctuations;
 
   const dealii::SymmetricTensor<2,2> deviatoric_strain =
     deviatoric_projector * (macroscopic_strain +
@@ -1322,9 +1322,9 @@ void Homogenization<2>::update_table_handler_values(const double time)
   table_handler.add_value("Strain_11", macroscopic_strain[0][0] + microscopic_strain_fluctuations[0][0]);
   table_handler.add_value("Strain_22", macroscopic_strain[1][1] + microscopic_strain_fluctuations[1][1]);
   table_handler.add_value("Strain_12", macroscopic_strain[0][1] + microscopic_strain_fluctuations[0][1]);
-  table_handler.add_value("StressFluctuations_11", microscopic_stress_fluctuations[0][0]);
-  table_handler.add_value("StressFluctuations_22", microscopic_stress_fluctuations[1][1]);
-  table_handler.add_value("StressFluctuations_12", microscopic_stress_fluctuations[0][1]);
+  table_handler.add_value("StressFluctuations_11", microstress_fluctuations[0][0]);
+  table_handler.add_value("StressFluctuations_22", microstress_fluctuations[1][1]);
+  table_handler.add_value("StressFluctuations_12", microstress_fluctuations[0][1]);
   table_handler.add_value("StrainFluctuations_11", microscopic_strain_fluctuations[0][0]);
   table_handler.add_value("StrainFluctuations_22", microscopic_strain_fluctuations[1][1]);
   table_handler.add_value("StrainFluctuations_12", microscopic_strain_fluctuations[0][1]);
@@ -1341,7 +1341,7 @@ void Homogenization<3>::update_table_handler_values(const double time)
     deviatoric_projector * macroscopic_stress;
 
   const dealii::SymmetricTensor<2,3> deviatoric_stress_fluctuations =
-    deviatoric_projector * microscopic_stress_fluctuations;
+    deviatoric_projector * microstress_fluctuations;
 
   const dealii::SymmetricTensor<2,3> deviatoric_strain =
     deviatoric_projector * (macroscopic_strain +
@@ -1381,12 +1381,12 @@ void Homogenization<3>::update_table_handler_values(const double time)
   table_handler.add_value("Strain_23", macroscopic_strain[1][2] + microscopic_strain_fluctuations[1][2]);
   table_handler.add_value("Strain_13", macroscopic_strain[0][2] + microscopic_strain_fluctuations[0][2]);
   table_handler.add_value("Strain_12", macroscopic_strain[0][1] + microscopic_strain_fluctuations[0][1]);
-  table_handler.add_value("StressFluctuations_11", microscopic_stress_fluctuations[0][0]);
-  table_handler.add_value("StressFluctuations_22", microscopic_stress_fluctuations[1][1]);
-  table_handler.add_value("StressFluctuations_33", microscopic_stress_fluctuations[2][2]);
-  table_handler.add_value("StressFluctuations_23", microscopic_stress_fluctuations[1][2]);
-  table_handler.add_value("StressFluctuations_13", microscopic_stress_fluctuations[0][2]);
-  table_handler.add_value("StressFluctuations_12", microscopic_stress_fluctuations[0][1]);
+  table_handler.add_value("StressFluctuations_11", microstress_fluctuations[0][0]);
+  table_handler.add_value("StressFluctuations_22", microstress_fluctuations[1][1]);
+  table_handler.add_value("StressFluctuations_33", microstress_fluctuations[2][2]);
+  table_handler.add_value("StressFluctuations_23", microstress_fluctuations[1][2]);
+  table_handler.add_value("StressFluctuations_13", microstress_fluctuations[0][2]);
+  table_handler.add_value("StressFluctuations_12", microstress_fluctuations[0][1]);
   table_handler.add_value("StrainFluctuations_11", microscopic_strain_fluctuations[0][0]);
   table_handler.add_value("StrainFluctuations_22", microscopic_strain_fluctuations[1][1]);
   table_handler.add_value("StrainFluctuations_33", microscopic_strain_fluctuations[2][2]);
@@ -1419,7 +1419,7 @@ void Homogenization<dim>::compute_macroscopic_stress()
   // Initiate the local integral value and at each wall.
   macroscopic_stress              = 0.0;
 
-  microscopic_stress_fluctuations = 0.0;
+  microstress_fluctuations = 0.0;
 
   microscopic_strain_fluctuations = 0.0;
 
@@ -1449,15 +1449,15 @@ void Homogenization<dim>::compute_macroscopic_stress()
   std::vector<std::vector<double>>              slip_values(fe_field->get_n_slips(),
                                                             std::vector<double>(n_quadrature_points));
 
-  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_stress;
+  dealii::SymmetricTensor<2,dim>  domain_integral_microstress;
 
-  dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_stress_fluctuations;
+  dealii::SymmetricTensor<2,dim>  domain_integral_microstress_fluctuations;
 
   dealii::SymmetricTensor<2,dim>  domain_integral_microscopic_strain_fluctuations;
 
-  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_stress;
+  dealii::SymmetricTensor<2,dim>  cell_integral_microstress;
 
-  dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_stress_fluctuations;
+  dealii::SymmetricTensor<2,dim>  cell_integral_microstress_fluctuations;
 
   dealii::SymmetricTensor<2,dim>  cell_integral_microscopic_strain_fluctuations;
 
@@ -1465,9 +1465,9 @@ void Homogenization<dim>::compute_macroscopic_stress()
 
   double                          cell_volume = 0.;
 
-  domain_integral_microscopic_stress              = 0.;
+  domain_integral_microstress              = 0.;
 
-  domain_integral_microscopic_stress_fluctuations = 0.;
+  domain_integral_microstress_fluctuations = 0.;
 
   domain_integral_microscopic_strain_fluctuations = 0.;
 
@@ -1476,9 +1476,9 @@ void Homogenization<dim>::compute_macroscopic_stress()
     if (cell->is_locally_owned())
     {
       // Reset local values
-      cell_integral_microscopic_stress              = 0.0;
+      cell_integral_microstress              = 0.0;
 
-      cell_integral_microscopic_stress_fluctuations = 0.0;
+      cell_integral_microstress_fluctuations = 0.0;
 
       cell_integral_microscopic_strain_fluctuations = 0.0;
 
@@ -1536,11 +1536,11 @@ void Homogenization<dim>::compute_macroscopic_stress()
             crystal_id,
             elastic_strain_tensor_values[quadrature_point_id]);
 
-        cell_integral_microscopic_stress +=
+        cell_integral_microstress +=
           stress_tensor_values[quadrature_point_id] *
           JxW_values[quadrature_point_id];
 
-        cell_integral_microscopic_stress_fluctuations +=
+        cell_integral_microstress_fluctuations +=
           stress_tensor_fluctuations_values[quadrature_point_id] *
           JxW_values[quadrature_point_id];
 
@@ -1551,11 +1551,11 @@ void Homogenization<dim>::compute_macroscopic_stress()
         cell_volume += JxW_values[quadrature_point_id];
       }
 
-      domain_integral_microscopic_stress +=
-        cell_integral_microscopic_stress;
+      domain_integral_microstress +=
+        cell_integral_microstress;
 
-      domain_integral_microscopic_stress_fluctuations +=
-        cell_integral_microscopic_stress_fluctuations;
+      domain_integral_microstress_fluctuations +=
+        cell_integral_microstress_fluctuations;
 
       domain_integral_microscopic_strain_fluctuations +=
         cell_integral_microscopic_strain_fluctuations;
@@ -1565,13 +1565,13 @@ void Homogenization<dim>::compute_macroscopic_stress()
   }
 
   // Gather the values of each processor
-  domain_integral_microscopic_stress =
-    dealii::Utilities::MPI::sum(domain_integral_microscopic_stress,
+  domain_integral_microstress =
+    dealii::Utilities::MPI::sum(domain_integral_microstress,
                                 MPI_COMM_WORLD);
 
-  domain_integral_microscopic_stress_fluctuations =
+  domain_integral_microstress_fluctuations =
     dealii::Utilities::MPI::sum(
-      domain_integral_microscopic_stress_fluctuations,
+      domain_integral_microstress_fluctuations,
       MPI_COMM_WORLD);
 
   domain_integral_microscopic_strain_fluctuations =
@@ -1582,10 +1582,10 @@ void Homogenization<dim>::compute_macroscopic_stress()
     dealii::Utilities::MPI::sum(domain_volume, MPI_COMM_WORLD);
 
   // Compute the homogenized values
-  macroscopic_stress = domain_integral_microscopic_stress / domain_volume;
+  macroscopic_stress = domain_integral_microstress / domain_volume;
 
-  microscopic_stress_fluctuations =
-    domain_integral_microscopic_stress_fluctuations / domain_volume;
+  microstress_fluctuations =
+    domain_integral_microstress_fluctuations / domain_volume;
 
   microscopic_strain_fluctuations =
     domain_integral_microscopic_strain_fluctuations / domain_volume;

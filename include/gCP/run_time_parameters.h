@@ -495,7 +495,7 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   ScalarMicroscopicStressLawParameters
-                        scalar_microscopic_stress_law_parameters;
+                        scalar_microstress_law_parameters;
 
   /*!
    * @brief
@@ -503,7 +503,7 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   VectorMicroscopicStressLawParameters
-                        vector_microscopic_stress_law_parameters;
+                        vectorial_microstress_law_parameters;
 
   /*!
    * @brief

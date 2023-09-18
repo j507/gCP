@@ -259,7 +259,7 @@ stress_tensor_values(this->n_q_points),
 slip_gradient_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-vector_microscopic_stress_values(
+vectorial_microstress_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 resolved_stress_values(
@@ -271,7 +271,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-scalar_microscopic_stress_values(
+scalar_microstress_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
 microscopic_traction_values(
@@ -339,7 +339,7 @@ stress_tensor_values(this->n_q_points),
 slip_gradient_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-vector_microscopic_stress_values(
+vectorial_microstress_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 resolved_stress_values(
@@ -351,7 +351,7 @@ slip_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-scalar_microscopic_stress_values(
+scalar_microstress_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
 microscopic_traction_values(

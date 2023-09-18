@@ -485,9 +485,9 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
   {
     hooke_law_parameters.parse_parameters(prm);
 
-    scalar_microscopic_stress_law_parameters.parse_parameters(prm);
+    scalar_microstress_law_parameters.parse_parameters(prm);
 
-    vector_microscopic_stress_law_parameters.parse_parameters(prm);
+    vectorial_microstress_law_parameters.parse_parameters(prm);
 
     microscopic_traction_law_parameters.parse_parameters(prm);
 

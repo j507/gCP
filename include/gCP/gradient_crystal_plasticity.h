@@ -118,11 +118,11 @@ private:
   std::shared_ptr<ConstitutiveLaws::ResolvedShearStressLaw<dim>>
                                                     resolved_shear_stress_law;
 
-  std::shared_ptr<ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>>
-                                                    scalar_microscopic_stress_law;
+  std::shared_ptr<ConstitutiveLaws::ScalarMicrostressLaw<dim>>
+                                                    scalar_microstress_law;
 
-  std::shared_ptr<ConstitutiveLaws::VectorMicroscopicStressLaw<dim>>
-                                                    vector_microscopic_stress_law;
+  std::shared_ptr<ConstitutiveLaws::VectorialMicrostressLaw<dim>>
+                                                    vectorial_microstress_law;
 
   std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
                                                     microscopic_traction_law;

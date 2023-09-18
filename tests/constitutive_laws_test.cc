@@ -61,9 +61,9 @@ private:
 
   gCP::ConstitutiveLaws::ResolvedShearStressLaw<dim>      resolved_shear_stress_law;
 
-  gCP::ConstitutiveLaws::ScalarMicroscopicStressLaw<dim>  scalar_microscopic_stress_law;
+  gCP::ConstitutiveLaws::ScalarMicrostressLaw<dim>        scalar_microstress_law;
 
-  gCP::ConstitutiveLaws::VectorMicroscopicStressLaw<dim>  vector_microscopic_stress_law;
+  gCP::ConstitutiveLaws::VectorialMicrostressLaw<dim>     vectorial_microstress_law;
 
   gCP::ConstitutiveLaws::MicroscopicTractionLaw<dim>      microscopic_traction_law;
 
@@ -108,12 +108,12 @@ hooke_law(
   crystals_data,
   parameters.solver_parameters.constitutive_laws_parameters.hooke_law_parameters),
 resolved_shear_stress_law(crystals_data),
-scalar_microscopic_stress_law(
+scalar_microstress_law(
   crystals_data,
-  parameters.solver_parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters),
-vector_microscopic_stress_law(
+  parameters.solver_parameters.constitutive_laws_parameters.scalar_microstress_law_parameters),
+vectorial_microstress_law(
   crystals_data,
-  parameters.solver_parameters.constitutive_laws_parameters.vector_microscopic_stress_law_parameters),
+  parameters.solver_parameters.constitutive_laws_parameters.vectorial_microstress_law_parameters),
 microscopic_traction_law(
   crystals_data,
   parameters.solver_parameters.constitutive_laws_parameters.microscopic_traction_law_parameters),
@@ -226,10 +226,10 @@ void CrystalData<dim>::init()
 
   hooke_law.init();
 
-  vector_microscopic_stress_law.init();
+  vectorial_microstress_law.init();
 
   quadrature_point_history.init(
-    parameters.solver_parameters.constitutive_laws_parameters.scalar_microscopic_stress_law_parameters,
+    parameters.solver_parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
     crystals_data->get_n_slips());
 
   interface_quadrature_point_history.init(
@@ -344,7 +344,7 @@ void CrystalData<dim>::test_constitutive_laws()
       << "\n\n";
 
 
-  std::cout << "Testing ScalarMicroscopicStressLaw<dim> \n\n";
+  std::cout << "Testing ScalarMicrostressLaw<dim> \n\n";
 
 
 
@@ -367,7 +367,7 @@ void CrystalData<dim>::test_constitutive_laws()
       << std::setw(string_width) << std::left << (" Scalar microscopic stress " + std::to_string(i)) << " = "
       << std::fixed << std::left << std::showpos << std::setprecision(4)
       << std::scientific
-      << scalar_microscopic_stress_law.get_scalar_microscopic_stress(
+      << scalar_microstress_law.get_scalar_microstress(
           slip_values[i][0],
           old_slip_values[i][0],
           slip_resistances[i],
@@ -376,7 +376,7 @@ void CrystalData<dim>::test_constitutive_laws()
 
 
   const dealii::FullMatrix<double> gateaux_derivative_matrix =
-    scalar_microscopic_stress_law.get_jacobian(
+    scalar_microstress_law.get_jacobian(
       0, // q_point
       slip_values,
       old_slip_values,
@@ -389,7 +389,7 @@ void CrystalData<dim>::test_constitutive_laws()
     << gCP::Utilities::get_fullmatrix_as_string(
       gateaux_derivative_matrix, string_width + 3, 15, 3, true) << "\n\n";
 
-  std::cout << "Testing VectorMicroscopicStressLaw<dim> \n\n";
+  std::cout << "Testing VectorialMicrostressLaw<dim> \n\n";
 
   dealii::Tensor<1,dim> slip_gradient;
 
@@ -397,12 +397,12 @@ void CrystalData<dim>::test_constitutive_laws()
   slip_gradient[1] = 1.5;
 
   std::vector<dealii::Tensor<1,dim>>
-    vector_microscopic_stresses(crystals_data->get_n_slips());
+    vectorial_microstresses(crystals_data->get_n_slips());
 
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips(); ++slip_id)
-    vector_microscopic_stresses[slip_id] =
-      vector_microscopic_stress_law.get_vector_microscopic_stress(
+    vectorial_microstresses[slip_id] =
+      vectorial_microstress_law.get_vectorial_microstress(
         0, // crystal_id
         slip_id,
         slip_gradient);
@@ -419,7 +419,7 @@ void CrystalData<dim>::test_constitutive_laws()
       << std::setw(string_width) << std::left
       << (" Hardening tensor - " + std::to_string(slip_id) ) << " = "
       << gCP::Utilities::get_tensor_as_string(
-          vector_microscopic_stress_law.get_reduced_gradient_hardening_tensor(0,slip_id),
+          vectorial_microstress_law.get_reduced_gradient_hardening_tensor(0,slip_id),
           string_width + 3, 15, 3, true)
       << "\n\n";
 
@@ -428,7 +428,7 @@ void CrystalData<dim>::test_constitutive_laws()
     std::cout
       << std::setw(string_width) << std::left
       << (" Vector microscopic stress - " + std::to_string(slip_id)) << " = "
-      << gCP::Utilities::get_tensor_as_string(vector_microscopic_stresses[slip_id])
+      << gCP::Utilities::get_tensor_as_string(vectorial_microstresses[slip_id])
       << "\n\n";
 
   std::cout << "Testing MicroscopicTractionLaw<dim> \n\n";

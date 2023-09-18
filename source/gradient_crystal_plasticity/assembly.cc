@@ -112,7 +112,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   // Get the slips' reduced gradient hardening tensors of the current
   // crystal
   scratch.reduced_gradient_hardening_tensors =
-    vector_microscopic_stress_law->get_reduced_gradient_hardening_tensors(crystal_id);
+    vectorial_microstress_law->get_reduced_gradient_hardening_tensors(crystal_id);
 
   // Get the slips' symmetrized Schmid tensors of the current crystal
   scratch.symmetrized_schmid_tensors =
@@ -152,7 +152,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
     // Compute the jacobian of the scalar microscopic
     // stress w.r.t. slip at the current quadrature point
     scratch.scalar_microstress_law_jacobian_values[q_point] =
-      scalar_microscopic_stress_law->get_jacobian(
+      scalar_microstress_law->get_jacobian(
         q_point,
         scratch.slip_values,
         scratch.old_slip_values,
@@ -713,8 +713,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
          slip_id < crystals_data->get_n_slips();
          ++slip_id)
     {
-      scratch.vector_microscopic_stress_values[slip_id][q_point] =
-        vector_microscopic_stress_law->get_vector_microscopic_stress(
+      scratch.vectorial_microstress_values[slip_id][q_point] =
+        vectorial_microstress_law->get_vectorial_microstress(
           crystal_id,
           slip_id,
           scratch.slip_gradient_values[slip_id][q_point]);
@@ -725,8 +725,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
           slip_id,
           scratch.stress_tensor_values[q_point]);
 
-      scratch.scalar_microscopic_stress_values[slip_id][q_point] =
-        scalar_microscopic_stress_law->get_scalar_microscopic_stress(
+      scratch.scalar_microstress_values[slip_id][q_point] =
+        scalar_microstress_law->get_scalar_microstress(
           scratch.slip_values[slip_id][q_point],
           scratch.old_slip_values[slip_id][q_point],
           local_quadrature_point_history[q_point]->get_slip_resistance(slip_id),
@@ -778,12 +778,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
         data.local_rhs(i) -=
           (scratch.grad_scalar_phi[slip_id][i] *
-           scratch.vector_microscopic_stress_values[slip_id][q_point]
+           scratch.vectorial_microstress_values[slip_id][q_point]
            -
            scratch.scalar_phi[slip_id][i] *
            (scratch.resolved_stress_values[slip_id][q_point]
             -
-            scratch.scalar_microscopic_stress_values[slip_id][q_point])) *
+            scratch.scalar_microstress_values[slip_id][q_point])) *
           scratch.JxW_values[q_point];
       }
     } // Loop over the degrees of freedom

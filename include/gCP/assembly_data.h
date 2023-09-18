@@ -223,7 +223,7 @@ struct Scratch : ScratchBase<dim>
 
   GrainInteractionModuli                          grain_interaction_moduli;
 
-  std::vector<std::vector<dealii::Tensor<1,dim>>> vector_microscopic_stress_values;
+  std::vector<std::vector<dealii::Tensor<1,dim>>> vectorial_microstress_values;
 
   std::vector<std::vector<double>>                resolved_stress_values;
 
@@ -231,7 +231,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                old_slip_values;
 
-  std::vector<std::vector<double>>                scalar_microscopic_stress_values;
+  std::vector<std::vector<double>>                scalar_microstress_values;
 
   std::vector<std::vector<double>>                microscopic_traction_values;
 
