@@ -65,8 +65,9 @@ ADD_SUBDIRECTORY(source)
 ADD_SUBDIRECTORY(tests)
 
 SET(SOURCE_FILES
-    #simple_shear.cc
+    simple_shear.cc
     #semicoupled_rve.cc
+    GACM2023.cc
     SPP2013.cc
     )
 
