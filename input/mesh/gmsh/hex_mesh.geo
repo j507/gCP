@@ -159,4 +159,13 @@ For r In {1:n_surfaces_rows}
     EndIf
   EndFor
 EndFor//+
-Transfinite Curve {53} = 10 Using Progression 1;
+
+//Transfinite Curve {53} = 10 Using Progression 1;
+
+//Mesh.Algorithm = 4;
+//Mesh.RecombinationAlgorithm = 2;
+//Mesh.RecombineAll = 1;
+Mesh.CharacteristicLengthFactor = 0.30;
+//Mesh.SubdivisionAlgorithm = 1;
+Mesh.Smoothing = 200;
+//Mesh.AnisoMax = 1;
