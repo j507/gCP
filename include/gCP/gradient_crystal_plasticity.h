@@ -78,6 +78,13 @@ public:
 
   double get_macroscopic_damage();
 
+  /*!
+   * @brief Temporary method
+   *
+   * @todo Docu
+   */
+  void output_data_to_file(std::ostream &file) const;
+
 private:
   const RunTimeParameters::SolverParameters         &parameters;
 
@@ -168,6 +175,9 @@ private:
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
+  bool                                              print_out;
+
+  dealii::TableHandler                              table_handler;
   /*!
    * @note Only for debugging purposes
    */
