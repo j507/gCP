@@ -300,6 +300,13 @@ struct VectorMicroscopicStressLawParameters
    * @todo Docu
    */
   double                  initial_slip_resistance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  defect_energy_index;
 };
 
 

@@ -173,7 +173,8 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 VectorMicroscopicStressLawParameters::VectorMicroscopicStressLawParameters()
 :
 energetic_length_scale(0.0),
-initial_slip_resistance(0.0)
+initial_slip_resistance(0.0),
+defect_energy_index(2.0)
 {}
 
 
@@ -189,6 +190,10 @@ void VectorMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
     prm.declare_entry("Initial slip resistance",
                       "0.0",
                       dealii::Patterns::Double());
+
+    prm.declare_entry("Defect energy index",
+                      "2.0",
+                      dealii::Patterns::Double());
   }
   prm.leave_subsection();
 }
@@ -201,14 +206,18 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
   {
     energetic_length_scale  = prm.get_double("Energetic length scale");
     initial_slip_resistance = prm.get_double("Initial slip resistance");
+    defect_energy_index     = prm.get_double("Defect energy index");
 
     AssertThrow(energetic_length_scale >= 0.0,
                 dealii::ExcLowerRangeType<double>(energetic_length_scale, 0.0));
     AssertThrow(initial_slip_resistance >= 0.0,
                 dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
+    AssertThrow(defect_energy_index >= 0.0,
+                dealii::ExcLowerRangeType<double>(defect_energy_index, 0.0));
 
     AssertIsFinite(energetic_length_scale);
     AssertIsFinite(initial_slip_resistance);
+    AssertIsFinite(defect_energy_index);
   }
   prm.leave_subsection();
 }
