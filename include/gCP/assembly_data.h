@@ -119,6 +119,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                old_slip_values;
 
+  std::vector<dealii::SymmetricTensor<2,dim>>     vectorial_microstress_law_jacobian_values;
+
   std::vector<dealii::FullMatrix<double>>         scalar_microstress_law_jacobian_values;
 
   GrainInteractionModuli                          grain_interaction_moduli;
