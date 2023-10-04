@@ -95,6 +95,9 @@ symmetrized_schmid_tensors(n_slips),
 slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
+slip_gradient_values(
+  n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
@@ -164,6 +167,9 @@ symmetrized_schmid_tensors(n_slips),
 slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
+slip_gradient_values(
+  n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),

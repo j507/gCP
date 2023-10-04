@@ -117,6 +117,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                slip_values;
 
+  std::vector<std::vector<dealii::Tensor<1,dim>>> slip_gradient_values;
+
   std::vector<std::vector<double>>                old_slip_values;
 
   std::vector<dealii::SymmetricTensor<2,dim>>     vectorial_microstress_law_jacobian_values;
