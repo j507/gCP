@@ -328,6 +328,11 @@ public:
     const unsigned int          slip_id,
     const dealii::Tensor<1,dim> slip_gradient) const;
 
+  dealii::SymmetricTensor<2,dim> get_jacobian(
+    const unsigned int          crystal_id,
+    const unsigned int          slip_id,
+    const dealii::Tensor<1,dim> slip_gradient) const;
+
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
 
@@ -335,8 +340,16 @@ private:
 
   const double                                initial_slip_resistance;
 
+  const double                                defect_energy_index;
+
   std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
                                               reduced_gradient_hardening_tensors;
+
+  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
+                                              slip_direction_dyads;
+
+  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
+                                              slip_binormal_dyads;
 
   bool                                        flag_init_was_called;
 };

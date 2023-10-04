@@ -542,6 +542,7 @@ VectorialMicrostressLaw<dim>::VectorialMicrostressLaw(
 crystals_data(crystals_data),
 energetic_length_scale(parameters.energetic_length_scale),
 initial_slip_resistance(parameters.initial_slip_resistance),
+defect_energy_index(parameters.defect_energy_index),
 flag_init_was_called(false)
 {}
 
@@ -559,6 +560,12 @@ void VectorialMicrostressLaw<dim>::init()
         crystal_id < crystals_data->get_n_crystals();
         crystal_id++)
   {
+    std::vector<dealii::SymmetricTensor<2,dim>>
+      slip_direction_dyads_per_crystal;
+
+    std::vector<dealii::SymmetricTensor<2,dim>>
+      slip_binormal_dyads_per_crystal;
+
     std::vector<dealii::SymmetricTensor<2,dim>>
       reduced_gradient_hardening_tensors_per_crystal;
 
@@ -590,9 +597,21 @@ void VectorialMicrostressLaw<dim>::init()
            ++i)
         AssertIsFinite(reduced_gradient_hardening_tensor.access_raw_entry(i));
 
+      slip_direction_dyads_per_crystal.push_back(
+        slip_direction_outer_product);
+
+      slip_binormal_dyads_per_crystal.push_back(
+        slip_orthogonal_outer_product);
+
       reduced_gradient_hardening_tensors_per_crystal.push_back(
         reduced_gradient_hardening_tensor);
     }
+
+    slip_direction_dyads.push_back(
+      slip_direction_dyads_per_crystal);
+
+    slip_binormal_dyads.push_back(
+      slip_binormal_dyads_per_crystal);
 
     reduced_gradient_hardening_tensors.push_back(
       reduced_gradient_hardening_tensors_per_crystal);
@@ -622,8 +641,58 @@ get_vectorial_microstress(
               dealii::ExcMessage("The VectorialMicrostressLaw<dim> "
                                  "instance has not been initialized."));
 
-  return (reduced_gradient_hardening_tensors[crystal_id][slip_id] *
-          slip_gradient);
+  return (
+    initial_slip_resistance *
+    std::pow(energetic_length_scale, defect_energy_index) *
+    (
+      std::pow(
+        std::abs(-crystals_data->get_slip_direction(crystal_id, slip_id) *
+                slip_gradient),
+        defect_energy_index - 2.) *
+      slip_direction_dyads[crystal_id][slip_id]
+      +
+      std::pow(
+        std::abs(crystals_data->get_slip_orthogonal(crystal_id, slip_id) *
+                slip_gradient),
+        defect_energy_index - 2.) *
+      slip_binormal_dyads[crystal_id][slip_id]
+    ) *
+    slip_gradient);
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim> VectorialMicrostressLaw<dim>::
+get_jacobian(
+  const unsigned int          crystal_id,
+  const unsigned int          slip_id,
+  const dealii::Tensor<1,dim> slip_gradient) const
+{
+  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
+  AssertIndexRange(slip_id, crystals_data->get_n_slips());
+
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The VectorialMicrostressLaw<dim> "
+                                 "instance has not been initialized."));
+
+  return (
+    initial_slip_resistance *
+    std::pow(energetic_length_scale, defect_energy_index) *
+    (defect_energy_index - 1.0) *
+    (
+      std::pow(
+        std::abs(-crystals_data->get_slip_direction(crystal_id, slip_id) *
+                slip_gradient),
+        defect_energy_index - 2.) *
+      slip_direction_dyads[crystal_id][slip_id]
+      +
+      std::pow(
+        std::abs(crystals_data->get_slip_orthogonal(crystal_id, slip_id) *
+                slip_gradient),
+        defect_energy_index - 2.) *
+      slip_binormal_dyads[crystal_id][slip_id]
+    ));
 }
 
 
