@@ -314,15 +314,6 @@ public:
 
   void init();
 
-  const dealii::SymmetricTensor<2,dim>
-    &get_reduced_gradient_hardening_tensor(
-      const unsigned int crystal_id,
-      const unsigned int slip_id) const;
-
-  const std::vector<dealii::SymmetricTensor<2,dim>>
-    &get_reduced_gradient_hardening_tensors(
-      const unsigned int crystal_id) const;
-
   dealii::Tensor<1,dim> get_vectorial_microstress(
     const unsigned int          crystal_id,
     const unsigned int          slip_id,
@@ -332,6 +323,11 @@ public:
     const unsigned int          crystal_id,
     const unsigned int          slip_id,
     const dealii::Tensor<1,dim> slip_gradient) const;
+
+  std::vector<dealii::SymmetricTensor<2,dim>> get_jacobian(
+    const unsigned int          crystal_id,
+    const unsigned int          slip_id,
+    const std::vector<dealii::Tensor<1,dim>> slip_gradient) const;
 
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
@@ -343,9 +339,6 @@ private:
   const double                                defect_energy_index;
 
   std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
-                                              reduced_gradient_hardening_tensors;
-
-  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
                                               slip_direction_dyads;
 
   std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
@@ -353,42 +346,6 @@ private:
 
   bool                                        flag_init_was_called;
 };
-
-
-
-template <int dim>
-inline const dealii::SymmetricTensor<2,dim>
-&VectorialMicrostressLaw<dim>::
-  get_reduced_gradient_hardening_tensor(
-    const unsigned int crystal_id,
-    const unsigned int slip_id) const
-{
-  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
-  AssertIndexRange(slip_id, crystals_data->get_n_slips());
-
-  AssertThrow(flag_init_was_called,
-              dealii::ExcMessage("The VectorialMicrostressLaw<dim> "
-                                 "instance has not been initialized."));
-
-  return (reduced_gradient_hardening_tensors[crystal_id][slip_id]);
-}
-
-
-
-template <int dim>
-inline const std::vector<dealii::SymmetricTensor<2,dim>>
-&VectorialMicrostressLaw<dim>::
-  get_reduced_gradient_hardening_tensors(
-    const unsigned int crystal_id) const
-{
-  AssertIndexRange(crystal_id, crystals_data->get_n_crystals());
-
-  AssertThrow(flag_init_was_called,
-              dealii::ExcMessage("The VectorialMicrostressLaw<dim> "
-                                 "instance has not been initialized."));
-
-  return (reduced_gradient_hardening_tensors[crystal_id]);
-}
 
 
 

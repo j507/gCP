@@ -109,11 +109,6 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
   scratch.stiffness_tetrad =
     hooke_law->get_stiffness_tetrad(crystal_id);
 
-  // Get the slips' reduced gradient hardening tensors of the current
-  // crystal
-  scratch.reduced_gradient_hardening_tensors =
-    vectorial_microstress_law->get_reduced_gradient_hardening_tensors(crystal_id);
-
   // Get the slips' symmetrized Schmid tensors of the current crystal
   scratch.symmetrized_schmid_tensors =
     crystals_data->get_symmetrized_schmid_tensors(crystal_id);
@@ -175,6 +170,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
          slip_id < crystals_data->get_n_slips();
          ++slip_id)
     {
+      scratch.vectorial_microstress_law_jacobian_values[q_point][slip_id] =
+          vectorial_microstress_law->get_jacobian(
+            crystal_id,
+            slip_id,
+            scratch.slip_gradient_values[slip_id][q_point]);
+
       for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
       {
         scratch.scalar_phi[slip_id][i] =
@@ -187,6 +188,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
     // Loop over local degrees of freedom
     for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+    {
       for (unsigned int j = 0; j < scratch.dofs_per_cell; ++j)
       {
         if (fe_field->get_global_component(crystal_id, i) < dim)
@@ -239,15 +241,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
             if (slip_id_alpha == slip_id_beta)
             {
-              scratch.vectorial_microstress_law_jacobian_values[q_point] =
-                vectorial_microstress_law->get_jacobian(
-                  crystal_id,
-                  slip_id_alpha,
-                  scratch.slip_gradient_values[slip_id_alpha][q_point]);
-
               data.local_matrix(i,j) +=
                 scratch.grad_scalar_phi[slip_id_alpha][i] *
-                scratch.vectorial_microstress_law_jacobian_values[q_point] *
+                scratch.vectorial_microstress_law_jacobian_values[q_point][slip_id_alpha] *
                 scratch.grad_scalar_phi[slip_id_beta][j] *
                 scratch.JxW_values[q_point];
             }
@@ -268,7 +264,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             AssertIsFinite(data.local_matrix(i,j));
           }
         }
-      } // Loop over local degrees of freedom
+      }
+    } // Loop over local degrees of freedom
   } // Loop over quadrature points
 
   // Grain boundary integral

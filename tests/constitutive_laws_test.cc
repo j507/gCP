@@ -417,16 +417,6 @@ void CrystalData<dim>::test_constitutive_laws()
        slip_id < crystals_data->get_n_slips(); ++slip_id)
     std::cout
       << std::setw(string_width) << std::left
-      << (" Hardening tensor - " + std::to_string(slip_id) ) << " = "
-      << gCP::Utilities::get_tensor_as_string(
-          vectorial_microstress_law.get_reduced_gradient_hardening_tensor(0,slip_id),
-          string_width + 3, 15, 3, true)
-      << "\n\n";
-
-  for (unsigned int slip_id = 0;
-       slip_id < crystals_data->get_n_slips(); ++slip_id)
-    std::cout
-      << std::setw(string_width) << std::left
       << (" Vector microscopic stress - " + std::to_string(slip_id)) << " = "
       << gCP::Utilities::get_tensor_as_string(vectorial_microstresses[slip_id])
       << "\n\n";

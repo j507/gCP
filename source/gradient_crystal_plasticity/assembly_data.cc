@@ -90,7 +90,6 @@ normal_vector_values(this->n_face_q_points),
 JxW_values(this->n_q_points),
 face_JxW_values(this->n_face_q_points),
 face_neighbor_JxW_values(this->n_face_q_points),
-reduced_gradient_hardening_tensors(n_slips),
 symmetrized_schmid_tensors(n_slips),
 slip_values(
   n_slips,
@@ -101,7 +100,9 @@ slip_gradient_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-vectorial_microstress_law_jacobian_values(this->n_q_points),
+vectorial_microstress_law_jacobian_values(
+  this->n_q_points,
+  std::vector<dealii::SymmetricTensor<2,dim>>(n_slips)),
 scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),
@@ -162,7 +163,6 @@ normal_vector_values(this->n_face_q_points),
 JxW_values(this->n_q_points),
 face_JxW_values(this->n_face_q_points),
 face_neighbor_JxW_values(this->n_face_q_points),
-reduced_gradient_hardening_tensors(n_slips),
 symmetrized_schmid_tensors(n_slips),
 slip_values(
   n_slips,
@@ -173,7 +173,9 @@ slip_gradient_values(
 old_slip_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-vectorial_microstress_law_jacobian_values(this->n_q_points),
+vectorial_microstress_law_jacobian_values(
+  this->n_q_points,
+  std::vector<dealii::SymmetricTensor<2,dim>>(n_slips)),
 scalar_microstress_law_jacobian_values(
   this->n_q_points,
   dealii::FullMatrix<double>(n_slips)),

@@ -111,8 +111,6 @@ struct Scratch : ScratchBase<dim>
 
   dealii::SymmetricTensor<4,dim>                  stiffness_tetrad;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     reduced_gradient_hardening_tensors;
-
   std::vector<dealii::SymmetricTensor<2,dim>>     symmetrized_schmid_tensors;
 
   std::vector<std::vector<double>>                slip_values;
@@ -121,7 +119,8 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                old_slip_values;
 
-  std::vector<dealii::SymmetricTensor<2,dim>>     vectorial_microstress_law_jacobian_values;
+  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
+                                                  vectorial_microstress_law_jacobian_values;
 
   std::vector<dealii::FullMatrix<double>>         scalar_microstress_law_jacobian_values;
 

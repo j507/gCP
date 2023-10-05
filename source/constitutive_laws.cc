@@ -566,9 +566,6 @@ void VectorialMicrostressLaw<dim>::init()
     std::vector<dealii::SymmetricTensor<2,dim>>
       slip_binormal_dyads_per_crystal;
 
-    std::vector<dealii::SymmetricTensor<2,dim>>
-      reduced_gradient_hardening_tensors_per_crystal;
-
     for (unsigned int slip_id = 0;
           slip_id < crystals_data->get_n_slips();
           ++slip_id)
@@ -587,24 +584,19 @@ void VectorialMicrostressLaw<dim>::init()
         dealii::symmetrize(dealii::outer_product(slip_orthogonal,
                                                  slip_orthogonal));
 
-      const dealii::SymmetricTensor<2,dim> reduced_gradient_hardening_tensor =
-        initial_slip_resistance *
-        energetic_length_scale * energetic_length_scale *
-        (slip_direction_outer_product + slip_orthogonal_outer_product);
-
       for (unsigned int i = 0;
-           i < reduced_gradient_hardening_tensor.n_independent_components;
+           i < slip_direction_outer_product.n_independent_components;
            ++i)
-        AssertIsFinite(reduced_gradient_hardening_tensor.access_raw_entry(i));
+      {
+        AssertIsFinite(slip_direction_outer_product.access_raw_entry(i));
+        AssertIsFinite(slip_orthogonal_outer_product.access_raw_entry(i));
+      }
 
       slip_direction_dyads_per_crystal.push_back(
         slip_direction_outer_product);
 
       slip_binormal_dyads_per_crystal.push_back(
         slip_orthogonal_outer_product);
-
-      reduced_gradient_hardening_tensors_per_crystal.push_back(
-        reduced_gradient_hardening_tensor);
     }
 
     slip_direction_dyads.push_back(
@@ -612,13 +604,15 @@ void VectorialMicrostressLaw<dim>::init()
 
     slip_binormal_dyads.push_back(
       slip_binormal_dyads_per_crystal);
-
-    reduced_gradient_hardening_tensors.push_back(
-      reduced_gradient_hardening_tensors_per_crystal);
   }
 
   Assert(
-    reduced_gradient_hardening_tensors.size() ==
+    slip_direction_dyads.size() ==
+      crystals_data->get_n_crystals(),
+    dealii::ExcNotImplemented());
+
+  Assert(
+    slip_binormal_dyads.size() ==
       crystals_data->get_n_crystals(),
     dealii::ExcNotImplemented());
 
