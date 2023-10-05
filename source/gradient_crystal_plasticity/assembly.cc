@@ -144,6 +144,10 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
       fe_field->old_solution,
       scratch.old_slip_values[slip_id]);
+
+    fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
+      trial_solution,
+      scratch.slip_gradient_values[slip_id]);
   }
 
   // Loop over quadrature points
@@ -234,11 +238,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 fe_field->get_global_component(crystal_id, j) - dim;
 
             if (slip_id_alpha == slip_id_beta)
+            {
+              scratch.vectorial_microstress_law_jacobian_values[q_point] =
+                vectorial_microstress_law->get_jacobian(
+                  crystal_id,
+                  slip_id_alpha,
+                  scratch.slip_gradient_values[slip_id_alpha][q_point]);
+
               data.local_matrix(i,j) +=
                 scratch.grad_scalar_phi[slip_id_alpha][i] *
-                scratch.reduced_gradient_hardening_tensors[slip_id_alpha] *
+                scratch.vectorial_microstress_law_jacobian_values[q_point] *
                 scratch.grad_scalar_phi[slip_id_beta][j] *
                 scratch.JxW_values[q_point];
+            }
 
             AssertIsFinite(data.local_matrix(i,j));
 
