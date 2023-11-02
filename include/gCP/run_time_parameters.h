@@ -1077,7 +1077,6 @@ struct ProblemParameters
   Homogenization                    homogenization;
 
   bool                              verbose;
-};
 
   SolverParameters                  solver_parameters;
 
