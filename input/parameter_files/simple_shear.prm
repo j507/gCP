@@ -36,7 +36,7 @@ end
 
 
 subsection Solver parameters
-  set Allow decohesion at grain boundaries         = false
+  set Allow decohesion at grain boundaries         = true
   set Boundary conditions at grain boundaries      = microtraction
   set Logger output directory                      = results/default_simple_shear/
   set Print sparsity pattern                       = false

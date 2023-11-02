@@ -30,7 +30,6 @@ subsection Solver parameters
   set Boundary conditions at grain boundaries = microtraction
   set Logger output directory                 = results/simple_shear_Lara/double_slip_jump_true_alpha_30_lambda_1E3_gamma_20Em2/
   set Print sparsity pattern                  = false
-  set Scaling factor of the microforce balance     = 1
   set Verbose                                 = false
 
 
@@ -61,6 +60,8 @@ subsection Solver parameters
     subsection Vector microscopic stress law's parameters
       set Energetic length scale  = 0.2
       set Initial slip resistance = 490
+      set Defect energy index     = 2.0
+      set Regularization parameter = 1e-6
     end
 
   end

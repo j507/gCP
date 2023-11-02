@@ -347,7 +347,7 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::summary,
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
-  parameters.mapping_degree)),
+  parameters.spatial_discretization.mapping_degree)),
 discrete_time(
   parameters.temporal_discretization_parameters.start_time,
   parameters.temporal_discretization_parameters.end_time,
@@ -359,8 +359,8 @@ triangulation(
   dealii::Triangulation<dim>::smoothing_on_coarsening)),
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
-  parameters.fe_degree_displacements,
-  parameters.fe_degree_slips,
+  parameters.spatial_discretization.fe_degree_displacements,
+  parameters.spatial_discretization.fe_degree_slips,
   parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
@@ -375,23 +375,23 @@ traction_vector(
   std::make_shared<TractionVector<dim>>(parameters)),
 postprocessor(fe_field,
               crystals_data,
-              parameters.flag_output_fluctuations),
+              parameters.output.flag_output_fluctuations),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.temporal_discretization_parameters.end_time -
    parameters.temporal_discretization_parameters.start_time) /
-  parameters.temporal_discretization_parameters.time_step_size)) +
+   parameters.temporal_discretization_parameters.time_step_size)) +
   "Step ").size())
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
-    if (fs::exists(parameters.graphical_output_directory + "paraview/"))
+    if (fs::exists(parameters.output.output_directory + "paraview/"))
     {
       *pcout
         << "Deleting *.vtu and *.pvtu files inside the output folder... "
         << std::flush;
 
-      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "paraview/"))
+      for (const auto& entry : fs::directory_iterator(parameters.output.output_directory + "paraview/"))
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
           fs::remove(entry.path());
@@ -400,13 +400,13 @@ string_width(
         << "done!\n\n";
     }
 
-    if (fs::exists(parameters.graphical_output_directory + "checkpoints/"))
+    if (fs::exists(parameters.output.output_directory + "checkpoints/"))
     {
       *pcout
         << "Deleting checkpoints files inside the checkpoints folder... "
         << std::flush;
 
-      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "checkpoints/"))
+      for (const auto& entry : fs::directory_iterator(parameters.output.output_directory + "checkpoints/"))
         fs::remove(entry.path());
 
       *pcout
@@ -447,7 +447,8 @@ void SemicoupledProblem<dim>::make_grid()
             face->set_boundary_id(y_upper_boundary_id);
         }
 
-  this->triangulation.refine_global(parameters.n_global_refinements);
+  this->triangulation.refine_global(
+    parameters.spatial_discretization.n_global_refinements);
 
   // Terminal output
   *pcout << "Triangulation:"
@@ -466,9 +467,9 @@ void SemicoupledProblem<dim>::setup()
   // Initiates the crystals' data (Slip directions, normals, orthogonals,
   // Schmid-Tensor and symmetrized Schmid-Tensors)
   crystals_data->init(triangulation,
-                      parameters.euler_angles_pathname,
-                      parameters.slips_directions_pathname,
-                      parameters.slips_normals_pathname);
+                      parameters.input.euler_angles_pathname,
+                      parameters.input.slips_directions_pathname,
+                      parameters.input.slips_normals_pathname);
 
   // Sets up the FEValuesExtractor instances
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
@@ -784,7 +785,7 @@ void SemicoupledProblem<dim>::initialize_calls()
   // Initiate the solver
   gCP_solver.init();
 
-  const fs::path output_directory{parameters.graphical_output_directory};
+  const fs::path output_directory{parameters.output.output_directory};
 
   fs::path path_to_ouput_file =
     output_directory / "homogenization.txt";
@@ -911,7 +912,7 @@ void SemicoupledProblem<dim>::triangulation_output()
   data_out.build_patches(2);
 
   data_out.write_vtu_in_parallel(
-    parameters.graphical_output_directory + "triangulation.vtu",
+    parameters.output.output_directory + "triangulation.vtu",
     MPI_COMM_WORLD);
 }
 
@@ -935,13 +936,13 @@ void SemicoupledProblem<dim>::data_output()
   static int out_index = 0;
 
   data_out.write_vtu_with_pvtu_record(
-    parameters.graphical_output_directory + "paraview/",
+    parameters.output.output_directory + "paraview/",
     "solution",
     out_index,
     MPI_COMM_WORLD,
     5);
 
-  if (parameters.flag_output_damage_variable ||
+  if (parameters.output.flag_output_damage_variable ||
       discrete_time.get_current_time() ==
           discrete_time.get_end_time())
   {
@@ -961,7 +962,7 @@ void SemicoupledProblem<dim>::data_output()
     data_out_face.build_patches(2);
 
     data_out_face.write_vtu_with_pvtu_record(
-      parameters.graphical_output_directory + "paraview/",
+      parameters.output.output_directory + "paraview/",
       "damage",
       out_index,
       MPI_COMM_WORLD,
@@ -1063,7 +1064,7 @@ void SemicoupledProblem<dim>::run()
 
     // Call to the data output method
     if (discrete_time.get_step_number() %
-         parameters.graphical_output_frequency == 0 ||
+         parameters.output.graphical_output_frequency == 0 ||
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();

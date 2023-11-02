@@ -46,15 +46,15 @@ void HookeLawParameters::declare_parameters(dealii::ParameterHandler &prm)
   {
     prm.declare_entry("C1111",
                       "134615.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("C1122",
                       "57692.3",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("C1212",
                       "38461.5",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
   }
   prm.leave_subsection();
 }
@@ -66,18 +66,19 @@ void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
   prm.enter_subsection("Hooke-Law's parameters");
   {
     C1111 = prm.get_double("C1111");
+
     C1122 = prm.get_double("C1122");
+
     C1212 = prm.get_double("C1212");
 
     AssertThrow(C1111 > 0.0,
                 dealii::ExcLowerRangeType<double>(C1111, 0.0));
+
     AssertThrow(C1122 > 0.0,
                 dealii::ExcLowerRangeType<double>(C1122, 0.0));
+
     AssertThrow(C1212 > 0.0,
                 dealii::ExcLowerRangeType<double>(C1212, 0.0));
-    AssertIsFinite(C1111);
-    AssertIsFinite(C1122);
-    AssertIsFinite(C1212);
   }
   prm.leave_subsection();
 }
@@ -105,19 +106,19 @@ void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
 
     prm.declare_entry("Regularization parameter",
                       "3e-4",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Initial slip resistance",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Linear hardening modulus",
                       "500",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Hardening parameter",
                       "1.4",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
   }
   prm.leave_subsection();
 }
@@ -132,38 +133,43 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
                       prm.get("Regularization function"));
 
     if (string_regularization_function == std::string("atan"))
+    {
       regularization_function = RegularizationFunction::Atan;
+    }
     else if (string_regularization_function == std::string("sqrt"))
+    {
       regularization_function = RegularizationFunction::Sqrt;
+    }
     else if (string_regularization_function == std::string("gd"))
+    {
       regularization_function = RegularizationFunction::Gd;
+    }
     else if (string_regularization_function == std::string("tanh"))
+    {
       regularization_function = RegularizationFunction::Tanh;
+    }
     else if (string_regularization_function == std::string("erf"))
+    {
       regularization_function = RegularizationFunction::Erf;
+    }
     else
+    {
       AssertThrow(false,
                   dealii::ExcMessage("Unexpected identifier for the "
                                     "regularization function."));
+    }
 
     regularization_parameter  = prm.get_double("Regularization parameter");
+
     initial_slip_resistance   = prm.get_double("Initial slip resistance");
+
     linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
+
     hardening_parameter       = prm.get_double("Hardening parameter");
 
-    AssertThrow(regularization_parameter > 0.0,
-                dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
-    AssertThrow(initial_slip_resistance >= 0.0,
-                dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
-    AssertThrow(linear_hardening_modulus >= 0.0,
-                dealii::ExcLowerRangeType<double>(linear_hardening_modulus, 0.0));
-    AssertThrow(hardening_parameter > 0.0,
-                dealii::ExcLowerRangeType<double>(hardening_parameter, 0.0));
-
-    AssertIsFinite(regularization_parameter);
-    AssertIsFinite(initial_slip_resistance);
-    AssertIsFinite(linear_hardening_modulus);
-    AssertIsFinite(hardening_parameter);
+    AssertThrow(
+      regularization_parameter > 0.0,
+      dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
   }
   prm.leave_subsection();
 }
@@ -185,15 +191,19 @@ void VectorMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
   {
     prm.declare_entry("Energetic length scale",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Initial slip resistance",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Defect energy index",
                       "2.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(1.0));
+
+    prm.declare_entry("Regularization parameter",
+                      "1e-6",
+                      dealii::Patterns::Double(0.0));
   }
   prm.leave_subsection();
 }
@@ -204,20 +214,22 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 {
   prm.enter_subsection("Vector microscopic stress law's parameters");
   {
-    energetic_length_scale  = prm.get_double("Energetic length scale");
-    initial_slip_resistance = prm.get_double("Initial slip resistance");
-    defect_energy_index     = prm.get_double("Defect energy index");
 
-    AssertThrow(energetic_length_scale >= 0.0,
-                dealii::ExcLowerRangeType<double>(energetic_length_scale, 0.0));
-    AssertThrow(initial_slip_resistance >= 0.0,
-                dealii::ExcLowerRangeType<double>(initial_slip_resistance, 0.0));
-    AssertThrow(defect_energy_index >= 0.0,
-                dealii::ExcLowerRangeType<double>(defect_energy_index, 0.0));
+    energetic_length_scale =
+      prm.get_double("Energetic length scale");
 
-    AssertIsFinite(energetic_length_scale);
-    AssertIsFinite(initial_slip_resistance);
-    AssertIsFinite(defect_energy_index);
+    initial_slip_resistance =
+      prm.get_double("Initial slip resistance");
+
+    defect_energy_index =
+      prm.get_double("Defect energy index");
+
+    regularization_parameter =
+      prm.get_double("Regularization parameter");
+
+    AssertThrow(
+      regularization_parameter > 0.0,
+      dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
   }
   prm.leave_subsection();
 }
@@ -238,7 +250,7 @@ void MicroscopicTractionLawParameters::declare_parameters(
   {
     prm.declare_entry("Grain boundary modulus",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
   }
   prm.leave_subsection();
 }
@@ -251,12 +263,6 @@ void MicroscopicTractionLawParameters::parse_parameters(
   prm.enter_subsection("Microscopic traction law's parameters");
   {
     grain_boundary_modulus  = prm.get_double("Grain boundary modulus");
-
-    AssertThrow(grain_boundary_modulus >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  grain_boundary_modulus, 0.0));
-
-    AssertIsFinite(grain_boundary_modulus);
   }
   prm.leave_subsection();
 }
@@ -287,35 +293,35 @@ void CohesiveLawParameters::declare_parameters(
   {
     prm.declare_entry("Maximum cohesive traction",
                       "700.",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Critical opening displacement",
                       "2.5e-2",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Tangential to normal stiffness ratio",
                       "1.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Damage accumulation constant",
                       "1.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Damage decay constant",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Damage decay exponent",
                       "1.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Endurance limit",
                       "0.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Degradation exponent",
                       "1.0",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Set damage to zero",
                       "false",
@@ -342,70 +348,22 @@ void CohesiveLawParameters::parse_parameters(
     critical_cohesive_traction =
       prm.get_double("Maximum cohesive traction");
 
-    AssertThrow(critical_cohesive_traction > 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  critical_cohesive_traction, 0.0));
-
-    AssertIsFinite(critical_cohesive_traction);
-
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");
-
-    AssertThrow(critical_opening_displacement > 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  critical_opening_displacement, 0.0));
-
-    AssertIsFinite(critical_opening_displacement);
 
     tangential_to_normal_stiffness_ratio =
       prm.get_double("Tangential to normal stiffness ratio");
 
-    AssertThrow(tangential_to_normal_stiffness_ratio > 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  tangential_to_normal_stiffness_ratio, 0.0));
-
-    AssertIsFinite(tangential_to_normal_stiffness_ratio);
-
     damage_accumulation_constant =
       prm.get_double("Damage accumulation constant");
 
-    AssertThrow(damage_accumulation_constant > 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  damage_accumulation_constant, 0.0));
-
-    AssertIsFinite(damage_accumulation_constant);
-
     damage_decay_constant = prm.get_double("Damage decay constant");
-
-    AssertThrow(damage_decay_constant >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  damage_decay_constant, 0.0));
-
-    AssertIsFinite(damage_decay_constant);
 
     damage_decay_exponent = prm.get_double("Damage decay exponent");
 
-    AssertThrow(damage_decay_exponent >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  damage_decay_exponent, 0.0));
-
-    AssertIsFinite(damage_decay_exponent);
-
     endurance_limit = prm.get_double("Endurance limit");
 
-    AssertThrow(endurance_limit >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  endurance_limit, 0.0));
-
-    AssertIsFinite(endurance_limit);
-
     degradation_exponent = prm.get_double("Degradation exponent");
-
-    AssertThrow(degradation_exponent >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  degradation_exponent, 0.0));
-
-    AssertIsFinite(degradation_exponent);
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 
@@ -435,8 +393,7 @@ void ContactLawParameters::declare_parameters(
   {
     prm.declare_entry("Penalty coefficient",
                       "100.0",
-                      dealii::Patterns::Double());
-
+                      dealii::Patterns::Double(0.0));
   }
   prm.leave_subsection();
 }
@@ -449,12 +406,6 @@ void ContactLawParameters::parse_parameters(
   prm.enter_subsection("Contact law's parameters");
   {
     penalty_coefficient = prm.get_double("Penalty coefficient");
-
-    AssertThrow(penalty_coefficient >= 0.0,
-                dealii::ExcLowerRangeType<double>(
-                  penalty_coefficient, 0.0));
-
-    AssertIsFinite(penalty_coefficient);
   }
   prm.leave_subsection();
 }
@@ -532,11 +483,11 @@ void KrylovParameters::declare_parameters(
 
     prm.declare_entry("Relative tolerance",
                       "1e-6",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Absolute tolerance",
                       "1e-8",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Relaxation factor of the tolerances",
                       "1.0",
@@ -544,7 +495,7 @@ void KrylovParameters::declare_parameters(
 
     prm.declare_entry("Maximum number of iterations",
                       "1000",
-                      dealii::Patterns::Integer());
+                      dealii::Patterns::Integer(1));
   }
   prm.leave_subsection();
 }
@@ -586,22 +537,17 @@ void KrylovParameters::parse_parameters(
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
-    AssertThrow(relative_tolerance > 0,
-                dealii::ExcLowerRange(relative_tolerance, 0));
+    AssertThrow(
+      relative_tolerance > 0.0,
+      dealii::ExcLowerRangeType<double>(relative_tolerance, 0.0));
 
-    AssertThrow(absolute_tolerance > 0,
-                dealii::ExcLowerRange(absolute_tolerance, 0));
+    AssertThrow(
+      absolute_tolerance > 0.0,
+      dealii::ExcLowerRangeType<double>(absolute_tolerance, 0.0));
 
     AssertThrow(relative_tolerance > absolute_tolerance,
                 dealii::ExcLowerRangeType<double>(
                   relative_tolerance , absolute_tolerance));
-
-    AssertThrow(tolerance_relaxation_factor > 0,
-                dealii::ExcLowerRangeType<double>(
-                  tolerance_relaxation_factor, 0));
-
-    AssertThrow(n_max_iterations > 0,
-                dealii::ExcLowerRange(n_max_iterations, 0));
   }
   prm.leave_subsection();
 }
@@ -625,19 +571,19 @@ void NewtonRaphsonParameters::declare_parameters(
   {
     prm.declare_entry("Relative tolerance of the residual",
                       "1e-6",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Absolute tolerance of the residual",
                       "1e-8",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Absolute tolerance of the step",
                       "1e-8",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.));
 
     prm.declare_entry("Maximum number of iterations",
                       "15",
-                      dealii::Patterns::Integer());
+                      dealii::Patterns::Integer(1));
   }
   prm.leave_subsection();
 }
@@ -661,19 +607,18 @@ void NewtonRaphsonParameters::parse_parameters(
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
-    AssertThrow(step_tolerance > 0,
-                dealii::ExcLowerRange(step_tolerance, 0));
+    AssertThrow(
+      relative_tolerance > 0.0,
+      dealii::ExcLowerRangeType<double>(relative_tolerance, 0.0));
 
-    AssertThrow(relative_tolerance > 0,
-                dealii::ExcLowerRange(relative_tolerance, 0));
+    AssertThrow(
+      absolute_tolerance > 0.0,
+      dealii::ExcLowerRangeType<double>(absolute_tolerance, 0.0));
 
-    AssertThrow(relative_tolerance > absolute_tolerance,
-                dealii::ExcLowerRangeType<double>(
-                  relative_tolerance , absolute_tolerance));
-
-    AssertThrow(n_max_iterations > 0,
-                dealii::ExcLowerRange(n_max_iterations, 0));
-
+    AssertThrow(
+      relative_tolerance > absolute_tolerance,
+      dealii::ExcLowerRangeType<double>(relative_tolerance ,
+                                        absolute_tolerance));
   }
   prm.leave_subsection();
 }
@@ -695,11 +640,11 @@ void LineSearchParameters::declare_parameters(
   {
     prm.declare_entry("Armijo condition constant",
                       "1e-4",
-                      dealii::Patterns::Double());
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Maximum number of iterations",
                       "15",
-                      dealii::Patterns::Integer());
+                      dealii::Patterns::Integer(0));
   }
   prm.leave_subsection();
 }
@@ -717,11 +662,9 @@ void LineSearchParameters::parse_parameters(
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
-    AssertThrow(armijo_condition_constant > 0,
-                dealii::ExcLowerRange(armijo_condition_constant, 0));
-
-    AssertThrow(n_max_iterations > 0,
-                dealii::ExcLowerRange(n_max_iterations, 0));
+    AssertThrow(
+      armijo_condition_constant > 0.0,
+      dealii::ExcLowerRangeType<double>(armijo_condition_constant, 0.0));
 
   }
   prm.leave_subsection();
@@ -745,94 +688,107 @@ verbose(false)
 
 void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
+  prm.enter_subsection("Solver parameters");
+  {
+    KrylovParameters::declare_parameters(prm);
 
-  KrylovParameters::declare_parameters(prm);
+    NewtonRaphsonParameters::declare_parameters(prm);
 
-  NewtonRaphsonParameters::declare_parameters(prm);
+    LineSearchParameters::declare_parameters(prm);
 
-  LineSearchParameters::declare_parameters(prm);
+    ConstitutiveLawsParameters::declare_parameters(prm);
 
-  ConstitutiveLawsParameters::declare_parameters(prm);
+    prm.declare_entry("Allow decohesion at grain boundaries",
+                      "false",
+                      dealii::Patterns::Bool());
 
-  prm.declare_entry("Allow decohesion at grain boundaries",
-                    "false",
-                    dealii::Patterns::Bool());
-
-  prm.declare_entry("Boundary conditions at grain boundaries",
-                    "microfree",
-                    dealii::Patterns::Selection(
-                      "microhard|microfree|microtraction"));
+    prm.declare_entry("Boundary conditions at grain boundaries",
+                      "microfree",
+                      dealii::Patterns::Selection(
+                        "microhard|microfree|microtraction"));
 
 
-  prm.declare_entry("Logger output directory",
-                    "results/default/",
-                    dealii::Patterns::DirectoryName());
+    prm.declare_entry("Logger output directory",
+                      "results/default/",
+                      dealii::Patterns::DirectoryName());
 
-  prm.declare_entry("Skip extrapolation of start value at extrema",
-                    "false",
-                    dealii::Patterns::Bool());
+    prm.declare_entry("Skip extrapolation of start value at extrema",
+                      "false",
+                      dealii::Patterns::Bool());
 
-  prm.declare_entry("Zero damage evolution during un- and loading",
-                    "false",
-                    dealii::Patterns::Bool());
+    prm.declare_entry("Zero damage evolution during un- and loading",
+                      "false",
+                      dealii::Patterns::Bool());
 
-  prm.declare_entry("Print sparsity pattern",
-                    "false",
-                    dealii::Patterns::Bool());
+    prm.declare_entry("Print sparsity pattern",
+                      "false",
+                      dealii::Patterns::Bool());
 
-  prm.declare_entry("Verbose",
-                    "false",
-                    dealii::Patterns::Bool());
+    prm.declare_entry("Verbose",
+                      "false",
+                      dealii::Patterns::Bool());
+  }
+  prm.leave_subsection();
 }
 
 
 
 void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  krylov_parameters.parse_parameters(prm);
-
-  newton_parameters.parse_parameters(prm);
-
-  line_search_parameters.parse_parameters(prm);
-
-  constitutive_laws_parameters.parse_parameters(prm);
-
-  allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
-
-  const std::string string_boundary_conditions_at_grain_boundaries(
-                    prm.get("Boundary conditions at grain boundaries"));
-
-  if (string_boundary_conditions_at_grain_boundaries ==
-        std::string("microhard"))
+  prm.enter_subsection("Solver parameters");
   {
-    boundary_conditions_at_grain_boundaries =
-      BoundaryConditionsAtGrainBoundaries::Microhard;
+    krylov_parameters.parse_parameters(prm);
+
+    newton_parameters.parse_parameters(prm);
+
+    line_search_parameters.parse_parameters(prm);
+
+    constitutive_laws_parameters.parse_parameters(prm);
+
+    allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
+
+    const std::string string_boundary_conditions_at_grain_boundaries(
+                      prm.get("Boundary conditions at grain boundaries"));
+
+    if (string_boundary_conditions_at_grain_boundaries ==
+          std::string("microhard"))
+    {
+      boundary_conditions_at_grain_boundaries =
+        BoundaryConditionsAtGrainBoundaries::Microhard;
+    }
+    else if (string_boundary_conditions_at_grain_boundaries ==
+              std::string("microfree"))
+    {
+      boundary_conditions_at_grain_boundaries =
+        BoundaryConditionsAtGrainBoundaries::Microfree;
+    }
+    else if (string_boundary_conditions_at_grain_boundaries ==
+              std::string("microtraction"))
+    {
+      boundary_conditions_at_grain_boundaries =
+        BoundaryConditionsAtGrainBoundaries::Microtraction;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the boundary conditions at grain "
+          "boundaries."));
+    }
+
+    logger_output_directory = prm.get("Logger output directory");
+
+    flag_skip_extrapolation_at_extrema =
+      prm.get_bool("Skip extrapolation of start value at extrema");
+
+    flag_zero_damage_during_loading_and_unloading =
+      prm.get_bool("Zero damage evolution during un- and loading");
+
+    print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
+
+    verbose = prm.get_bool("Verbose");
   }
-  else if (string_boundary_conditions_at_grain_boundaries ==
-            std::string("microfree"))
-    boundary_conditions_at_grain_boundaries =
-      BoundaryConditionsAtGrainBoundaries::Microfree;
-  else if (string_boundary_conditions_at_grain_boundaries ==
-            std::string("microtraction"))
-    boundary_conditions_at_grain_boundaries =
-      BoundaryConditionsAtGrainBoundaries::Microtraction;
-  else
-    AssertThrow(false,
-      dealii::ExcMessage(
-        "Unexpected identifier for the boundary conditions at grain "
-        "boundaries."));
-
-  logger_output_directory = prm.get("Logger output directory");
-
-  flag_skip_extrapolation_at_extrema =
-    prm.get_bool("Skip extrapolation of start value at extrema");
-
-  flag_zero_damage_during_loading_and_unloading =
-    prm.get_bool("Zero damage evolution during un- and loading");
-
-  print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
-
-  verbose = prm.get_bool("Verbose");
+  prm.leave_subsection();
 }
 
 
@@ -863,50 +819,54 @@ loading_type(LoadingType::Monotonic)
 void TemporalDiscretizationParameters::
 declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.declare_entry("Start time",
-                    "0.0",
-                    dealii::Patterns::Double());
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    prm.declare_entry("Start time",
+                      "0.0",
+                      dealii::Patterns::Double(0.0));
 
-  prm.declare_entry("End time",
-                    "1.0",
-                    dealii::Patterns::Double());
+    prm.declare_entry("End time",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
 
-  prm.declare_entry("Time step size",
-                    "1e-1",
-                    dealii::Patterns::Double());
+    prm.declare_entry("Time step size",
+                      "1e-1",
+                      dealii::Patterns::Double(0.0));
 
-  prm.declare_entry("Period",
-                    "1.0",
-                    dealii::Patterns::Double());
+    prm.declare_entry("Period",
+                      "1.0",
+                      dealii::Patterns::Double());
 
-  prm.declare_entry("Number of cycles",
-                    "1",
-                    dealii::Patterns::Integer());
+    prm.declare_entry("Number of cycles",
+                      "1",
+                      dealii::Patterns::Integer(0));
 
-  prm.declare_entry("Preloading phase duration",
-                    "0.0",
-                    dealii::Patterns::Double());
+    prm.declare_entry("Preloading phase duration",
+                      "0.0",
+                      dealii::Patterns::Double(0.));
 
-  prm.declare_entry("Un- and loading phase duration",
-                    "2",
-                    dealii::Patterns::Double());
+    prm.declare_entry("Un- and loading phase duration",
+                      "2",
+                      dealii::Patterns::Double(0.));
 
-  prm.declare_entry("Number of steps in preloading phase",
-                    "2",
-                    dealii::Patterns::Integer());
+    prm.declare_entry("Number of steps in preloading phase",
+                      "2",
+                      dealii::Patterns::Integer(1));
 
-  prm.declare_entry("Number of steps in un- and loading phase",
-                    "2",
-                    dealii::Patterns::Integer());
+    prm.declare_entry("Number of steps in un- and loading phase",
+                      "2",
+                      dealii::Patterns::Integer(1));
 
-  prm.declare_entry("Number of steps in a half cycle",
-                    "2",
-                    dealii::Patterns::Integer());
+    prm.declare_entry("Number of steps in a half cycle",
+                      "2",
+                      dealii::Patterns::Integer(1));
 
-  prm.declare_entry("Loading type",
-                    "monotonic",
-                    dealii::Patterns::Selection(
-                      "monotonic|cyclic|cyclic_unloading"));
+    prm.declare_entry("Loading type",
+                      "monotonic",
+                      dealii::Patterns::Selection(
+                        "monotonic|cyclic|cyclic_unloading"));
+  }
+  prm.leave_subsection();
 }
 
 
@@ -914,108 +874,112 @@ declare_parameters(dealii::ParameterHandler &prm)
 void TemporalDiscretizationParameters::
 parse_parameters(dealii::ParameterHandler &prm)
 {
-  const std::string string_loading_type(
-                    prm.get("Loading type"));
+  prm.enter_subsection("Temporal discretization parameters");
+  {
+    const std::string string_loading_type(
+                      prm.get("Loading type"));
 
-  if (string_loading_type == std::string("monotonic"))
-    loading_type = LoadingType::Monotonic;
-  else if (string_loading_type == std::string("cyclic"))
-    loading_type = LoadingType::Cyclic;
-  else if (string_loading_type == std::string("cyclic_unloading"))
-    loading_type = LoadingType::CyclicWithUnloading;
-  else
-    AssertThrow(
-      false,
-      dealii::ExcMessage("Unexpected identifier for the simulation"
-                          " time control"));
+    if (string_loading_type == std::string("monotonic"))
+    {
+      loading_type = LoadingType::Monotonic;
+    }
+    else if (string_loading_type == std::string("cyclic"))
+    {
+      loading_type = LoadingType::Cyclic;
+    }
+    else if (string_loading_type == std::string("cyclic_unloading"))
+    {
+      loading_type = LoadingType::CyclicWithUnloading;
+    }
+    else
+    {
+      AssertThrow(
+        false,
+        dealii::ExcMessage("Unexpected identifier for the simulation"
+                            " time control"));
+    }
 
-  start_time            = prm.get_double("Start time");
+    start_time            = prm.get_double("Start time");
 
-  end_time              = prm.get_double("End time");
+    end_time              = prm.get_double("End time");
 
-  time_step_size        = prm.get_double("Time step size");
+    time_step_size        = prm.get_double("Time step size");
 
-  period                = prm.get_double("Period");
+    period                = prm.get_double("Period");
 
-  n_cycles              = prm.get_integer("Number of cycles");
+    n_cycles              = prm.get_integer("Number of cycles");
 
-  preloading_phase_duration =
-                        prm.get_double("Preloading phase duration");
+    preloading_phase_duration =
+                          prm.get_double("Preloading phase duration");
 
-  unloading_and_unloading_phase_duration =
-                        prm.get_double("Un- and loading phase duration");
+    unloading_and_unloading_phase_duration =
+                          prm.get_double("Un- and loading phase duration");
 
-  n_steps_in_preloading_phase =
-                        prm.get_integer("Number of steps in preloading phase");
-
-  n_steps_in_loading_and_unloading_phases =
-                        prm.get_integer("Number of steps in un- and loading phase");
-
-  n_steps_per_half_cycle =
-                        prm.get_integer("Number of steps in a half cycle");
+    n_steps_in_preloading_phase =
+                          prm.get_integer("Number of steps in preloading phase");
 
   time_step_size = 0.5 * period / n_steps_per_half_cycle;
 
-  time_step_size_in_cyclic_phase =
-    0.5 * period / n_steps_per_half_cycle;
+    n_steps_in_loading_and_unloading_phases =
+                          prm.get_integer("Number of steps in un- and loading phase");
 
-  time_step_size_in_preloading_phase =
-    preloading_phase_duration / n_steps_in_preloading_phase;
+    n_steps_per_half_cycle =
+                          prm.get_integer("Number of steps in a half cycle");
 
-  time_step_size_in_loading_and_unloading_phase =
-    unloading_and_unloading_phase_duration /
-      n_steps_in_loading_and_unloading_phases;
+    if (loading_type != LoadingType::Monotonic)
+      time_step_size = 0.5 * period / n_steps_per_half_cycle;
 
-  start_of_loading_phase =
-    start_time + preloading_phase_duration;
+    time_step_size_in_cyclic_phase =
+      0.5 * period / n_steps_per_half_cycle;
 
-  start_of_cyclic_phase =
-    start_of_loading_phase +
-    unloading_and_unloading_phase_duration;
+    time_step_size_in_preloading_phase =
+      preloading_phase_duration / n_steps_in_preloading_phase;
 
-  if (loading_type == LoadingType::Cyclic)
-  {
-    end_time =
-      start_of_cyclic_phase +
-      n_cycles * period;
-  }
-  else if (loading_type == LoadingType::CyclicWithUnloading)
-  {
-    start_of_unloading_phase =
-      start_of_cyclic_phase +
-      n_cycles * period;
+    time_step_size_in_loading_and_unloading_phase =
+      unloading_and_unloading_phase_duration /
+        n_steps_in_loading_and_unloading_phases;
 
-    end_time =
-      start_of_unloading_phase +
+    start_of_loading_phase =
+      start_time + preloading_phase_duration;
+
+    start_of_cyclic_phase =
+      start_of_loading_phase +
       unloading_and_unloading_phase_duration;
+
+    if (loading_type == LoadingType::Cyclic)
+    {
+      end_time =
+        start_of_cyclic_phase +
+        n_cycles * period;
+    }
+    else if (loading_type == LoadingType::CyclicWithUnloading)
+    {
+      start_of_unloading_phase =
+        start_of_cyclic_phase +
+        n_cycles * period;
+
+      end_time =
+        start_of_unloading_phase +
+        unloading_and_unloading_phase_duration;
+    }
+
+    Assert(start_time >= 0.0,
+            dealii::ExcLowerRangeType<double>(start_time, 0.0));
+
+    Assert(end_time > start_time,
+            dealii::ExcLowerRangeType<double>(end_time, start_time));
+
+    Assert(time_step_size > 0,
+            dealii::ExcLowerRangeType<double>(time_step_size, 0));
+
+    Assert(period > 0,
+            dealii::ExcLowerRangeType<double>(period, 0));
+
+    Assert(end_time >= (start_time + time_step_size),
+            dealii::ExcLowerRangeType<double>(
+            end_time, start_time + time_step_size));
   }
-
-  Assert(start_time >= 0.0,
-          dealii::ExcLowerRangeType<double>(start_time, 0.0));
-
-  Assert(end_time > start_time,
-          dealii::ExcLowerRangeType<double>(end_time, start_time));
-
-  Assert(time_step_size > 0,
-          dealii::ExcLowerRangeType<double>(time_step_size, 0));
-
-  Assert(period > 0,
-          dealii::ExcLowerRangeType<double>(period, 0));
-
-  //Assert(n_cycles > 0,
-  //        dealii::ExcLowerRangeType<int>(n_cycles, 0));
-
-  Assert(n_steps_per_half_cycle > 1,
-          dealii::ExcLowerRangeType<int>(
-          n_steps_per_half_cycle, 1));
-
-  Assert(n_steps_in_loading_and_unloading_phases > 1,
-          dealii::ExcLowerRangeType<int>(
-          n_steps_in_loading_and_unloading_phases, 1));
-
-  Assert(end_time >= (start_time + time_step_size),
-          dealii::ExcLowerRangeType<double>(
-          end_time, start_time + time_step_size));
+  prm.leave_subsection();
 }
 
 
@@ -1078,18 +1042,26 @@ ProblemParameters()
 
   prm.parse_input(parameter_file);
 
-  parse_parameters(prm);
-}
+SpatialDiscretizationBase::SpatialDiscretizationBase()
+:
+dim(2),
+fe_degree_displacements(2),
+fe_degree_slips(1),
+n_global_refinements(0),
+mapping_degree(1),
+flag_apply_mapping_to_interior_cells(false)
+{}
 
 
 
-void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
+void SpatialDiscretizationBase::declare_parameters(
+  dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Spatial discretization parameters");
   {
     prm.declare_entry("Spatial dimension",
                       "2",
-                      dealii::Patterns::Integer(1));
+                      dealii::Patterns::Integer(2));
 
     prm.declare_entry("Mapping - Polynomial degree",
                       "1",
@@ -1112,68 +1084,122 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Integer(1));
   }
   prm.leave_subsection();
+}
 
-  prm.enter_subsection("Temporal discretization parameters");
+
+
+void SpatialDiscretizationBase::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Spatial discretization parameters");
   {
-    prm.declare_entry("Start time",
-                      "0.0",
-                      dealii::Patterns::Double());
+    dim = prm.get_integer("Spatial dimension");
 
-    prm.declare_entry("End time",
-                      "1.0",
-                      dealii::Patterns::Double());
+    fe_degree_displacements =
+      prm.get_integer("FE's polynomial degree - Displacements");
 
-    prm.declare_entry("Time step size",
-                      "5e-1",
-                      dealii::Patterns::Double());
+    fe_degree_slips =
+      prm.get_integer("FE's polynomial degree - Slips");
+
+    n_global_refinements =
+      prm.get_integer("Number of global refinements");
+
+    mapping_degree =
+      prm.get_integer("Mapping - Polynomial degree");
+
+    flag_apply_mapping_to_interior_cells =
+      prm.get_bool("Mapping - Apply to interior cells");
+
+    AssertThrow(dim == 2 || dim == 3,
+                dealii::ExcDimensionMismatch2(dim, 2, 3));
   }
   prm.leave_subsection();
+}
 
-  prm.enter_subsection("Temporal discretization parameters");
-  {
-    TemporalDiscretizationParameters::declare_parameters(prm);
-  }
-  prm.leave_subsection();
 
-  prm.declare_entry("Verbose",
-                    "false",
-                    dealii::Patterns::Bool());
 
-  prm.enter_subsection("Solver parameters");
-  {
-    SolverParameters::declare_parameters(prm);
-  }
-  prm.leave_subsection();
+Input::Input()
+:
+slips_normals_pathname(
+  "input/crystal_structure/symmetric_double_slip_system/slip_normals"),
+slips_directions_pathname(
+  "input/crystal_structure/symmetric_double_slip_system/slip_directions"),
+euler_angles_pathname("input/crystal_orientation/euler_angles_0_30")
+{}
 
+
+
+void Input::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
   prm.enter_subsection("Input files");
   {
-    prm.declare_entry("Slip normals path name",
-                      "input/slip_normals",
-                      dealii::Patterns::FileName());
+    prm.declare_entry(
+      "Slip normals path name",
+      "input/crystal_structure/symmetric_double_slip_system/slip_normals",
+      dealii::Patterns::FileName());
 
-    prm.declare_entry("Slip directions path name",
-                      "input/slip_directions",
-                      dealii::Patterns::FileName());
+    prm.declare_entry(
+      "Slip directions path name",
+      "input/crystal_structure/symmetric_double_slip_system/slip_directions",
+      dealii::Patterns::FileName());
 
-    prm.declare_entry("Euler angles path name",
-                      "input/euler_angles",
-                      dealii::Patterns::FileName());
+    prm.declare_entry(
+      "Euler angles path name",
+      "input/crystal_orientation/euler_angles_0_30",
+      dealii::Patterns::FileName());
   }
   prm.leave_subsection();
+}
 
+
+
+void Input::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Input files");
+  {
+    slips_normals_pathname    = prm.get("Slip normals path name");
+
+    slips_directions_pathname = prm.get("Slip directions path name");
+
+    euler_angles_pathname     = prm.get("Euler angles path name");
+  }
+  prm.leave_subsection();
+}
+
+
+
+Output::Output()
+:
+output_directory("results/default/"),
+graphical_output_frequency(1),
+terminal_output_frequency(1),
+homogenization_output_frequency(1),
+flag_output_damage_variable(false),
+flag_output_residual(false),
+flag_output_fluctuations(false),
+flag_store_checkpoint(false)
+{}
+
+
+
+void Output::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
   prm.enter_subsection("Output control parameters");
   {
-    prm.declare_entry("Graphical output frequency",
-                      "1",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Terminal output frequency",
-                      "1",
-                      dealii::Patterns::Integer(1));
-
     prm.declare_entry("Graphical output directory",
                       "results/default/",
                       dealii::Patterns::DirectoryName());
+
+    prm.declare_entry("Graphical output frequency",
+                      "1",
+                      dealii::Patterns::Integer(0));
+
+    prm.declare_entry("Terminal output frequency",
+                      "1",
+                      dealii::Patterns::Integer(0));
 
     prm.declare_entry("Output damage variable field",
                       "false",
@@ -1192,177 +1218,248 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Bool());
   }
   prm.leave_subsection();
+}
 
-  /*!
-   * @note Temporary parameters
-   */
-  prm.enter_subsection("Postprocessing parameters");
+
+
+void Output::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Output control parameters");
   {
-    prm.declare_entry("Homogenization",
-                      "false",
-                      dealii::Patterns::Bool());
+    output_directory = prm.get("Graphical output directory");
 
-    prm.declare_entry("Homogenization frequency",
-                      "1",
-                      dealii::Patterns::Integer(1));
+    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
+        !fs::exists(output_directory + "paraview/"))
+    {
+      try
+      {
+        fs::create_directories(output_directory + "paraview/");
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr
+          << std::endl << std::endl
+          << "----------------------------------------------------"
+          << std::endl;
+
+        std::cerr
+          << "Exception in the creation of the output directory: "
+          << std::endl
+          << exc.what() << std::endl
+          << "Aborting!" << std::endl
+          << "----------------------------------------------------"
+          << std::endl;
+
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr
+          << std::endl << std::endl
+          << "----------------------------------------------------"
+          << std::endl;
+
+        std::cerr
+          << "Unknown exception in the creation of the output directory!"
+          << std::endl
+          << "Aborting!" << std::endl
+          << "----------------------------------------------------"
+          << std::endl;
+
+        std::abort();
+      }
+    }
+
+    graphical_output_frequency =
+      prm.get_integer("Graphical output frequency");
+
+    terminal_output_frequency =
+      prm.get_integer("Terminal output frequency");
+
+    flag_output_damage_variable =
+      prm.get_bool("Output damage variable field");
+
+    flag_output_residual =
+      prm.get_bool("Output residual field");
+
+    flag_output_fluctuations =
+      prm.get_bool("Output fluctuations fields");
+
+    flag_store_checkpoint =
+      prm.get_bool("Store checkpoints");
+
+    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
+        !fs::exists(output_directory + "checkpoints/") &&
+        flag_store_checkpoint)
+    {
+      try
+      {
+        fs::create_directories(output_directory + "checkpoints/");
+      }
+      catch (std::exception &exc)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception in the creation of the output directory: "
+                  << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+      catch (...)
+      {
+        std::cerr << std::endl << std::endl
+                  << "----------------------------------------------------"
+                    << std::endl;
+        std::cerr << "Unknown exception in the creation of the output directory!"
+                  << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::abort();
+      }
+    }
   }
   prm.leave_subsection();
 }
 
 
 
-void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
+Homogenization::Homogenization()
+:
+homogenization_frequency(1),
+flag_compute_homogenized_quantities(false)
+{}
+
+
+
+void Homogenization::declare_parameters(
+  dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Spatial discretization parameters");
+  prm.enter_subsection("Homogenization");
   {
-    dim = prm.get_integer("Spatial dimension");
-    AssertThrow(dim > 0, dealii::ExcLowerRange(dim, 0) );
-    AssertThrow(dim <= 3,
-                dealii::ExcMessage(
-                  "The spatial dimension is larger than three.") );
+    prm.declare_entry("Compute homogenized quantities",
+                      "false",
+                      dealii::Patterns::Bool());
 
-    mapping_degree = prm.get_integer("Mapping - Polynomial degree");
-    AssertThrow(mapping_degree > 0, dealii::ExcLowerRange(mapping_degree, 0) );
+    prm.declare_entry("Homogenization frequency",
+                      "1",
+                      dealii::Patterns::Integer(0));
+  }
+  prm.leave_subsection();
+}
 
-    mapping_interior_cells = prm.get_bool("Mapping - Apply to interior cells");
 
-    n_global_refinements = prm.get_integer("Number of global refinements");
 
-    fe_degree_displacements = prm.get_integer("FE's polynomial degree - Displacements");
-    AssertThrow(fe_degree_displacements > 0,
-                dealii::ExcLowerRange(fe_degree_displacements, 0));
+void Homogenization::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Homogenization");
+  {
+    homogenization_frequency =
+      prm.get_integer("Homogenization frequency");
 
-    fe_degree_slips = prm.get_integer("FE's polynomial degree - Slips");
-    AssertThrow(fe_degree_slips > 0,
-                dealii::ExcLowerRange(fe_degree_slips, 0));
+    flag_compute_homogenized_quantities =
+      prm.get_bool("Compute homogenized quantities");
+  }
+  prm.leave_subsection();
+}
+
+
+
+ProblemParameters::ProblemParameters()
+:
+verbose(true)
+{}
+
+
+
+ProblemParameters::ProblemParameters(
+  const std::string &parameter_filename)
+:
+ProblemParameters()
+{
+  dealii::ParameterHandler prm;
+
+  declare_parameters(prm);
+
+  std::ifstream parameter_file(parameter_filename.c_str());
+
+  if (!parameter_file)
+  {
+    parameter_file.close();
+
+    std::ostringstream message;
+
+    message << "Input parameter file <"
+            << parameter_filename << "> not found. Creating a"
+            << std::endl
+            << "template file of the same name."
+            << std::endl;
+
+    std::ofstream parameter_out(parameter_filename.c_str());
+
+    prm.print_parameters(parameter_out,
+                         dealii::ParameterHandler::OutputStyle::PRM);
+
+    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+  }
+
+  prm.parse_input(parameter_file);
+
+  parse_parameters(prm);
+}
+
+
+
+void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
+{
+  SpatialDiscretizationBase::declare_parameters(prm);
+
+  TemporalDiscretizationParameters::declare_parameters(prm);
+
+  SolverParameters::declare_parameters(prm);
+
+  Input::declare_parameters(prm);
+
+  Output::declare_parameters(prm);
+
+  prm.enter_subsection("Postprocessing parameters");
+  {
+    Homogenization::declare_parameters(prm);
   }
   prm.leave_subsection();
 
-  prm.enter_subsection("Temporal discretization parameters");
+  prm.declare_entry("Verbose",
+                    "false",
+                    dealii::Patterns::Bool());
+}
+
+
+
+void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
+{
+  spatial_discretization.parse_parameters(prm);
+
+  temporal_discretization_parameters.parse_parameters(prm);
+
+  solver_parameters.parse_parameters(prm);
+
+  input.parse_parameters(prm);
+
+  output.parse_parameters(prm);
+
+  prm.enter_subsection("Postprocessing parameters");
   {
-    temporal_discretization_parameters.parse_parameters(prm);
+    homogenization.parse_parameters(prm);
   }
   prm.leave_subsection();
 
   verbose = prm.get_bool("Verbose");
-
-  prm.enter_subsection("Solver parameters");
-  {
-    solver_parameters.parse_parameters(prm);
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Input files");
-  {
-    slips_normals_pathname = prm.get("Slip normals path name");
-
-    slips_directions_pathname = prm.get("Slip directions path name");
-
-    euler_angles_pathname = prm.get("Euler angles path name");
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Output control parameters");
-  {
-    graphical_output_frequency = prm.get_integer("Graphical output frequency");
-    Assert(graphical_output_frequency > 0,
-           dealii::ExcLowerRange(graphical_output_frequency, 0));
-
-    terminal_output_frequency = prm.get_integer("Terminal output frequency");
-    Assert(terminal_output_frequency > 0,
-           dealii::ExcLowerRange(terminal_output_frequency, 0));
-
-    graphical_output_directory = prm.get("Graphical output directory");
-
-    flag_output_damage_variable = prm.get_bool("Output damage variable field");
-
-    flag_output_residual        = prm.get_bool("Output residual field");
-
-    flag_output_fluctuations    = prm.get_bool("Output fluctuations fields");
-
-    flag_store_checkpoint       = prm.get_bool("Store checkpoints");
-
-    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
-        !fs::exists(graphical_output_directory + "paraview/"))
-    {
-      try
-      {
-        fs::create_directories(graphical_output_directory + "paraview/");
-      }
-      catch (std::exception &exc)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the creation of the output directory: "
-                  << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-      catch (...)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                    << std::endl;
-        std::cerr << "Unknown exception in the creation of the output directory!"
-                  << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
-
-    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
-        !fs::exists(graphical_output_directory + "checkpoints/") &&
-        flag_store_checkpoint)
-    {
-      try
-      {
-        fs::create_directories(graphical_output_directory + "checkpoints/");
-      }
-      catch (std::exception &exc)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the creation of the output directory: "
-                  << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-      catch (...)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                    << std::endl;
-        std::cerr << "Unknown exception in the creation of the output directory!"
-                  << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Postprocessing parameters");
-  {
-    flag_compute_macroscopic_quantities =
-      prm.get_bool("Homogenization");
-
-    homogenization_frequency = prm.get_integer("Homogenization frequency");
-    Assert(homogenization_frequency > 0,
-           dealii::ExcLowerRange(homogenization_frequency, 0));
-  }
-  prm.leave_subsection();
 }
 
 

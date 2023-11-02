@@ -192,9 +192,9 @@ template<int dim>
 void CrystalData<dim>::init()
 {
   crystals_data->init(triangulation,
-                      parameters.euler_angles_pathname,
-                      parameters.slips_directions_pathname,
-                      parameters.slips_normals_pathname);
+                      parameters.input.euler_angles_pathname,
+                      parameters.input.slips_directions_pathname,
+                      parameters.input.slips_normals_pathname);
 
   this->pcout
     << "Overall data" << std::endl

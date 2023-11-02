@@ -1,4 +1,5 @@
 #include <gCP/assembly_data.h>
+#include <gCP/boundary_conditions.h>
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/gradient_crystal_plasticity.h>
@@ -37,42 +38,6 @@
 
 namespace gCP
 {
-
-
-
-template <int dim>
-class DirichletBoundaryFunction : public dealii::Function<dim>
-{
-public:
-  DirichletBoundaryFunction(const unsigned int  n_components = 3,
-                            const double        time = 0.0);
-
-  virtual void vector_value(
-    const dealii::Point<dim>  &point,
-    dealii::Vector<double>    &return_vector) const override;
-
-private:
-};
-
-
-
-template<int dim>
-DirichletBoundaryFunction<dim>::DirichletBoundaryFunction(
-  const unsigned int  n_components,
-  const double        time)
-:
-dealii::Function<dim>(n_components, time)
-{}
-
-
-
-template<int dim>
-void DirichletBoundaryFunction<dim>::vector_value(
-  const dealii::Point<dim>  &/*point*/,
-  dealii::Vector<double>    &return_vector) const
-{
-  return_vector = 0.0;
-}
 
 
 
@@ -343,8 +308,6 @@ private:
 
   GradientCrystalPlasticitySolver<dim>              gCP_solver;
 
-  std::unique_ptr<DirichletBoundaryFunction<dim>>   dirichlet_boundary_function;
-
   //std::shared_ptr<NeumannBoundaryFunction<dim>>     neumann_boundary_function;
 
   std::unique_ptr<DisplacementControl<dim>>         displacement_control;
@@ -394,7 +357,7 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   dealii::TimerOutput::summary,
   dealii::TimerOutput::wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
-  parameters.mapping_degree)),
+  parameters.spatial_discretization.mapping_degree)),
 discrete_time(
   parameters.temporal_discretization_parameters.start_time,
   parameters.temporal_discretization_parameters.end_time,
@@ -406,8 +369,8 @@ triangulation(
   dealii::Triangulation<dim>::smoothing_on_coarsening)),
 fe_field(std::make_shared<FEField<dim>>(
   triangulation,
-  parameters.fe_degree_displacements,
-  parameters.fe_degree_slips,
+  parameters.spatial_discretization.fe_degree_displacements,
+  parameters.spatial_discretization.fe_degree_slips,
   parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(parameters.solver_parameters,
@@ -451,13 +414,13 @@ string_width(
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
   {
-    if (fs::exists(parameters.graphical_output_directory + "paraview/"))
+    if (fs::exists(parameters.output.output_directory + "paraview/"))
     {
       *pcout
         << "Deleting *.vtu and *.pvtu files inside the output folder... "
         << std::flush;
 
-      for (const auto& entry : fs::directory_iterator(parameters.graphical_output_directory + "paraview/"))
+      for (const auto& entry : fs::directory_iterator(parameters.output.output_directory + "paraview/"))
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
           fs::remove(entry.path());
@@ -515,7 +478,8 @@ void SimpleShearProblem<dim>::make_grid()
 
   this->triangulation.add_periodicity(periodicity_vector);
 
-  triangulation.refine_global(parameters.n_global_refinements);
+  triangulation.refine_global(
+    parameters.spatial_discretization.n_global_refinements);
 
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
@@ -547,9 +511,9 @@ void SimpleShearProblem<dim>::setup()
   // Initiates the crystals' data (Slip directions, normals, orthogonals,
   // Schmid-Tensor and symmetrized Schmid-Tensors)
   crystals_data->init(triangulation,
-                      parameters.euler_angles_pathname,
-                      parameters.slips_directions_pathname,
-                      parameters.slips_normals_pathname);
+                      parameters.input.euler_angles_pathname,
+                      parameters.input.slips_directions_pathname,
+                      parameters.input.slips_normals_pathname);
 
   // Sets up the FEValuesExtractor instances
   fe_field->setup_extractors(crystals_data->get_n_crystals(),
@@ -580,11 +544,6 @@ void SimpleShearProblem<dim>::setup()
       parameters.temporal_discretization_parameters.start_of_unloading_phase,
       parameters.temporal_discretization_parameters.loading_type,
       fe_field->is_decohesion_allowed(),
-      fe_field->get_n_components(),
-      discrete_time.get_start_time());
-
-  dirichlet_boundary_function =
-    std::make_unique<DirichletBoundaryFunction<dim>>(
       fe_field->get_n_components(),
       discrete_time.get_start_time());
 
@@ -632,6 +591,9 @@ void SimpleShearProblem<dim>::setup_constraints()
   // Initiate the actual constraints – boundary conditions – of the problem
   dealii::AffineConstraints<double> affine_constraints;
 
+  dealii::Functions::ZeroFunction<dim> zero_function(
+                                        fe_field->get_n_components());
+
   affine_constraints.clear();
   {
     affine_constraints.reinit(fe_field->get_locally_relevant_dofs());
@@ -642,7 +604,7 @@ void SimpleShearProblem<dim>::setup_constraints()
       std::map<dealii::types::boundary_id,
               const dealii::Function<dim> *> function_map;
 
-      function_map[lower_boundary_id] = dirichlet_boundary_function.get();
+      function_map[lower_boundary_id] = &zero_function;
       function_map[upper_boundary_id] = displacement_control.get();
 
       for (unsigned int crystal_id = 0;
@@ -662,8 +624,8 @@ void SimpleShearProblem<dim>::setup_constraints()
       std::map<dealii::types::boundary_id,
               const dealii::Function<dim> *> function_map;
 
-      function_map[lower_boundary_id] = dirichlet_boundary_function.get();
-      function_map[upper_boundary_id] = dirichlet_boundary_function.get();
+      function_map[lower_boundary_id] = &zero_function;
+      function_map[upper_boundary_id] = &zero_function;
 
       for (unsigned int crystal_id = 0;
            crystal_id < crystals_data->get_n_crystals();
@@ -823,7 +785,7 @@ void SimpleShearProblem<dim>::initialize_calls()
   // Initiate the solver
   gCP_solver.init();
 
-  const fs::path output_directory{parameters.graphical_output_directory};
+  const fs::path output_directory{parameters.output.output_directory};
 
   fs::path path_to_ouput_file =
     output_directory / "homogenization.txt";
@@ -881,9 +843,9 @@ void SimpleShearProblem<dim>::postprocessing()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
 
-  if (parameters.flag_compute_macroscopic_quantities &&
+  if (parameters.homogenization.flag_compute_homogenized_quantities &&
       (discrete_time.get_step_number() %
-         parameters.homogenization_frequency == 0 ||
+         parameters.homogenization.homogenization_frequency == 0 ||
         discrete_time.get_current_time() ==
           discrete_time.get_end_time()))
   {
@@ -893,7 +855,7 @@ void SimpleShearProblem<dim>::postprocessing()
 
   simple_shear.compute_data(discrete_time.get_current_time());
 
-  const fs::path path{parameters.graphical_output_directory};
+  const fs::path path{parameters.output.output_directory};
 
   fs::path filename = path / "stress12_vs_shear_strain_at_boundary.txt";
 
@@ -981,7 +943,7 @@ void SimpleShearProblem<dim>::triangulation_output()
   data_out.build_patches();
 
   data_out.write_vtu_in_parallel(
-    parameters.graphical_output_directory + "triangulation.vtu",
+    parameters.output.output_directory + "triangulation.vtu",
     MPI_COMM_WORLD);
 }
 
@@ -999,7 +961,7 @@ void SimpleShearProblem<dim>::data_output()
   data_out.add_data_vector(gCP_solver.get_residual(),
                            residual_postprocessor);
 
-  if (parameters.flag_output_residual)
+  if (parameters.output.flag_output_residual)
   {
     data_out.add_data_vector(gCP_solver.get_residual(),
                              residual_postprocessor);
@@ -1012,13 +974,13 @@ void SimpleShearProblem<dim>::data_output()
   static int out_index = 0;
 
   data_out.write_vtu_with_pvtu_record(
-    parameters.graphical_output_directory + "paraview/",
+    parameters.output.output_directory + "paraview/",
     "solution",
     out_index,
     MPI_COMM_WORLD,
     5);
 
-  if (parameters.flag_output_damage_variable)
+  if (parameters.output.flag_output_damage_variable)
   {
     dealii::DataOutFaces<dim>        data_out_face(false);
 
@@ -1035,7 +997,7 @@ void SimpleShearProblem<dim>::data_output()
 
     data_out_face.build_patches(2);
     data_out_face.write_vtu_with_pvtu_record(
-      parameters.graphical_output_directory + "paraview/",
+      parameters.output.output_directory + "paraview/",
       "damage",
       out_index,
       MPI_COMM_WORLD,
@@ -1073,6 +1035,13 @@ void SimpleShearProblem<dim>::run()
         RunTimeParameters::LoadingType::Cyclic ||
       parameters.temporal_discretization_parameters.loading_type ==
         RunTimeParameters::LoadingType::CyclicWithUnloading)*/
+  if (parameters.temporal_discretization_parameters.loading_type ==
+        RunTimeParameters::LoadingType::Monotonic)
+  {
+discrete_time.set_desired_next_step_size(
+      parameters.temporal_discretization_parameters.time_step_size);
+  }
+  else
   {
     discrete_time.set_desired_next_step_size(
       parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
@@ -1139,7 +1108,7 @@ void SimpleShearProblem<dim>::run()
 
     // Call to the data output method
     if (discrete_time.get_step_number() %
-         parameters.graphical_output_frequency == 0 ||
+         parameters.output.graphical_output_frequency == 0 ||
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
       data_output();

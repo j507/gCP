@@ -876,6 +876,156 @@ struct TemporalDiscretizationParameters
 
 
 
+struct SpatialDiscretizationBase
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SpatialDiscretizationBase();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SpatialDiscretizationBase(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  unsigned int  dim;
+
+  unsigned int  fe_degree_displacements;
+
+  unsigned int  fe_degree_slips;
+
+  unsigned int  n_global_refinements;
+
+  unsigned int  mapping_degree;
+
+  bool          flag_apply_mapping_to_interior_cells;
+};
+
+
+
+struct Input
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Input();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Input(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  std::string slips_normals_pathname;
+
+  std::string slips_directions_pathname;
+
+  std::string euler_angles_pathname;
+};
+
+
+
+struct Output
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Output();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Output(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  std::string   output_directory;
+
+  unsigned int  graphical_output_frequency;
+
+  unsigned int  terminal_output_frequency;
+
+  unsigned int  homogenization_output_frequency;
+
+  bool          flag_output_damage_variable;
+
+  bool          flag_output_residual;
+
+  bool          flag_output_fluctuations;
+
+  bool          flag_store_checkpoint;
+};
+
+
+
+struct Homogenization
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Homogenization();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Homogenization(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  unsigned int  homogenization_frequency;
+
+  bool          flag_compute_homogenized_quantities;
+};
+
+
+
 struct ProblemParameters
 {
   /*!
@@ -907,19 +1057,20 @@ struct ProblemParameters
                             const Parameters &prm);
   */
 
-  unsigned int                      dim;
-
-  unsigned int                      mapping_degree;
-
-  bool                              mapping_interior_cells;
-
-  unsigned int                      n_global_refinements;
-
-  unsigned int                      fe_degree_displacements;
-
-  unsigned int                      fe_degree_slips;
+  SpatialDiscretizationBase         spatial_discretization;
 
   TemporalDiscretizationParameters  temporal_discretization_parameters;
+
+  SolverParameters                  solver_parameters;
+
+  Input                             input;
+
+  Output                            output;
+
+  Homogenization                    homogenization;
+
+  bool                              verbose;
+};
 
   SolverParameters                  solver_parameters;
 
