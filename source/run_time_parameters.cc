@@ -985,64 +985,6 @@ parse_parameters(dealii::ParameterHandler &prm)
 
 
 
-ProblemParameters::ProblemParameters()
-:
-dim(2),
-mapping_degree(1),
-mapping_interior_cells(false),
-n_global_refinements(0),
-fe_degree_displacements(2),
-fe_degree_slips(1),
-slips_normals_pathname("input/slip_normals"),
-slips_directions_pathname("input/slip_directions"),
-euler_angles_pathname("input/euler_angles"),
-graphical_output_frequency(1),
-terminal_output_frequency(1),
-homogenization_frequency(1),
-graphical_output_directory("results/default/"),
-flag_compute_macroscopic_quantities(false),
-flag_output_damage_variable(false),
-flag_output_residual(false),
-flag_output_fluctuations(false),
-flag_store_checkpoint(false),
-verbose(true)
-{}
-
-
-
-ProblemParameters::ProblemParameters(
-  const std::string &parameter_filename)
-:
-ProblemParameters()
-{
-  dealii::ParameterHandler prm;
-
-  declare_parameters(prm);
-
-  std::ifstream parameter_file(parameter_filename.c_str());
-
-  if (!parameter_file)
-  {
-    parameter_file.close();
-
-    std::ostringstream message;
-
-    message << "Input parameter file <"
-            << parameter_filename << "> not found. Creating a"
-            << std::endl
-            << "template file of the same name."
-            << std::endl;
-
-    std::ofstream parameter_out(parameter_filename.c_str());
-
-    prm.print_parameters(parameter_out,
-                         dealii::ParameterHandler::OutputStyle::PRM);
-
-    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
-  }
-
-  prm.parse_input(parameter_file);
-
 SpatialDiscretizationBase::SpatialDiscretizationBase()
 :
 dim(2),

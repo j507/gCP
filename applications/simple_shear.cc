@@ -1,5 +1,4 @@
 #include <gCP/assembly_data.h>
-#include <gCP/boundary_conditions.h>
 #include <gCP/constitutive_laws.h>
 #include <gCP/fe_field.h>
 #include <gCP/gradient_crystal_plasticity.h>

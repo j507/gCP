@@ -1077,34 +1077,6 @@ struct ProblemParameters
   Homogenization                    homogenization;
 
   bool                              verbose;
-
-  SolverParameters                  solver_parameters;
-
-  std::string                       slips_normals_pathname;
-
-  std::string                       slips_directions_pathname;
-
-  std::string                       euler_angles_pathname;
-
-  unsigned int                      graphical_output_frequency;
-
-  unsigned int                      terminal_output_frequency;
-
-  unsigned int                      homogenization_frequency;
-
-  std::string                       graphical_output_directory;
-
-  bool                              flag_compute_macroscopic_quantities;
-
-  bool                              flag_output_damage_variable;
-
-  bool                              flag_output_residual;
-
-  bool                              flag_output_fluctuations;
-
-  bool                              flag_store_checkpoint;
-
-  bool                              verbose;
 };
 
 
