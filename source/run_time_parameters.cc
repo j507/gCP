@@ -180,7 +180,8 @@ VectorMicroscopicStressLawParameters::VectorMicroscopicStressLawParameters()
 :
 energetic_length_scale(0.0),
 initial_slip_resistance(0.0),
-defect_energy_index(2.0)
+defect_energy_index(2.0),
+regularization_parameter(1e-6)
 {}
 
 

@@ -307,6 +307,13 @@ struct VectorMicroscopicStressLawParameters
    * @todo Docu
    */
   double                  defect_energy_index;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  regularization_parameter;
 };
 
 
