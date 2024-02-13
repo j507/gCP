@@ -54,7 +54,8 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  std::tuple<bool,unsigned int> solve_nonlinear_system();
+  std::tuple<bool,unsigned int> solve_nonlinear_system(
+    const bool flag_skip_extrapolation = false);
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
     get_elastic_strain_law() const;
@@ -245,7 +246,8 @@ private:
   void reset_trial_solution(
     const bool flag_reset_to_initial_trial_solution = false);
 
-  void extrapolate_initial_trial_solution();
+  void extrapolate_initial_trial_solution(
+    const bool flag_skip_extrapolation = false);
 
   /*!
    * @note Only for debugging purposes

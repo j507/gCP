@@ -8,7 +8,8 @@ namespace gCP
 
 
   template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::extrapolate_initial_trial_solution()
+  void GradientCrystalPlasticitySolver<dim>::
+  extrapolate_initial_trial_solution(const bool flag_skip_extrapolation)
   {
     dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
 
@@ -28,74 +29,6 @@ namespace gCP
 
     distributed_newton_update   = fe_field->old_solution;
 
-    bool flag_extrapolate_old_solutions = true;
-
-    if (temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::Cyclic ||
-        temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading)
-    {
-      const bool maximum_of_preloading_phase =
-          discrete_time.get_step_number() ==
-            temporal_discretization_parameters.n_steps_in_preloading_phase / 2;
-
-      const bool start_of_loading_phase =
-          discrete_time.get_step_number() ==
-            temporal_discretization_parameters.n_steps_in_preloading_phase;
-
-      const bool start_of_cyclic_phase =
-          discrete_time.get_step_number() ==
-            temporal_discretization_parameters.n_steps_in_preloading_phase +
-            temporal_discretization_parameters.n_steps_in_loading_and_unloading_phases;
-
-      const bool start_of_unloading_phase =
-          discrete_time.get_step_number() ==
-            temporal_discretization_parameters.n_steps_in_preloading_phase +
-            temporal_discretization_parameters.n_steps_in_loading_and_unloading_phases +
-            temporal_discretization_parameters.n_steps_per_half_cycle * 2.0 *
-              temporal_discretization_parameters.n_cycles;
-
-      const int n_cycles =
-        std::floor(
-          (discrete_time.get_current_time() -
-           temporal_discretization_parameters.start_of_cyclic_phase) /
-          temporal_discretization_parameters.period);
-
-      const unsigned int effective_step_number =
-        std::abs(
-        discrete_time.get_step_number() -
-        temporal_discretization_parameters.n_steps_in_preloading_phase -
-        temporal_discretization_parameters.n_steps_in_loading_and_unloading_phases -
-        temporal_discretization_parameters.n_steps_per_half_cycle * 2.0 * n_cycles);
-
-      bool extrema_step_of_cyclic_phase =
-        effective_step_number ==
-          (2 * temporal_discretization_parameters.n_steps_per_half_cycle * 1 / 4) ||
-        effective_step_number ==
-          (2 * temporal_discretization_parameters.n_steps_per_half_cycle * 3 / 4);
-
-      if (n_cycles < 0 ||
-          (discrete_time.get_step_number() >
-            temporal_discretization_parameters.n_steps_in_preloading_phase +
-            temporal_discretization_parameters.n_steps_in_loading_and_unloading_phases +
-            temporal_discretization_parameters.n_steps_per_half_cycle * 2.0 *
-              temporal_discretization_parameters.n_cycles))
-      {
-        extrema_step_of_cyclic_phase = false;
-      }
-
-      if ((maximum_of_preloading_phase ||
-           start_of_loading_phase ||
-           start_of_cyclic_phase ||
-           start_of_unloading_phase ||
-           extrema_step_of_cyclic_phase) &&
-          parameters.flag_skip_extrapolation_at_extrema)
-      {
-        //std::cout << "Keine Extrapolation" << std::endl;
-        flag_extrapolate_old_solutions = false;
-      }
-    }
-
     double step_size_ratio = 1.0;
 
     if (discrete_time.get_step_number() > 0)
@@ -105,9 +38,7 @@ namespace gCP
         discrete_time.get_previous_step_size();
     }
 
-    //flag_extrapolate_old_solutions = false;
-
-    if (flag_extrapolate_old_solutions)
+    if (!flag_skip_extrapolation)
     {
       distributed_trial_solution.sadd(
         1.0 + step_size_ratio,
@@ -134,7 +65,8 @@ namespace gCP
 
 
   template <int dim>
-  std::tuple<bool, unsigned int> GradientCrystalPlasticitySolver<dim>::solve_nonlinear_system()
+  std::tuple<bool, unsigned int> GradientCrystalPlasticitySolver<dim>::
+  solve_nonlinear_system(const bool flag_skip_extrapolation)
   {
     nonlinear_solver_logger.add_break(
       "Step " + std::to_string(discrete_time.get_step_number() + 1) +
@@ -143,9 +75,7 @@ namespace gCP
 
     nonlinear_solver_logger.log_headers_to_terminal();
 
-    extrapolate_initial_trial_solution();
-
-    //return (std::make_tuple(true,0));
+    extrapolate_initial_trial_solution(flag_skip_extrapolation);
 
     store_trial_solution(true);
 
@@ -291,21 +221,7 @@ namespace gCP
       //slip_rate_output(true);
 
       flag_successful_convergence =
-          residual_norm < newton_parameters.absolute_tolerance ||
-          ((relaxation_parameter * newton_update_norm) <
-            newton_parameters.step_tolerance &&
-            residual_norm < 100. * newton_parameters.absolute_tolerance);
-
-      if ((relaxation_parameter * newton_update_norm) <
-            newton_parameters.step_tolerance &&
-            residual_norm > 100. * newton_parameters.absolute_tolerance)
-      {
-        AssertThrow(
-          false,
-          dealii::ExcMessage(
-            "The Newton step became too small but the residual has not "
-            "reached an acceptable value."));
-      }
+          residual_norm < newton_parameters.absolute_tolerance;
 
     } while (!flag_successful_convergence);
 
@@ -701,11 +617,11 @@ namespace gCP
 
 
 
-template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution();
-template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution();
+template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution(const bool);
+template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution(const bool);
 
-template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system();
-template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system();
+template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system(const bool);
+template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system(const bool);
 
 template unsigned int gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
 template unsigned int gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
