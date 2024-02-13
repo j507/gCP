@@ -629,7 +629,14 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   residual_norm = residual.l2_norm();
 
-  ghost_residual = residual;
+  std::ostringstream message;
+
+  message << "The residual can not be equal to zero\n";
+
+  AssertThrow(residual_norm > 0,
+              dealii::ExcMessage(message.str().c_str()))
+
+  //ghost_residual = residual;
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
@@ -1358,7 +1365,19 @@ update_local_quadrature_point_history(
         for (unsigned int face_q_point = 0;
              face_q_point < scratch.n_face_q_points; ++face_q_point)
         {
-          switch (temporal_discretization_parameters.loading_type)
+          local_interface_quadrature_point_history[face_q_point]->update_values(
+            scratch.neighbor_cell_displacement_values[face_q_point],
+            scratch.current_cell_displacement_values[face_q_point]);
+          /*scratch.effective_opening_displacement[face_q_point] =
+            cohesive_law->get_effective_opening_displacement(
+              scratch.neighbor_cell_displacement_values[face_q_point] -
+              scratch.current_cell_displacement_values[face_q_point],
+              scratch.normal_vector_values[face_q_point]);
+
+          local_interface_quadrature_point_history[face_q_point]->update_values(
+            scratch.effective_opening_displacement[face_q_point]);*/
+
+          /*switch (temporal_discretization_parameters.loading_type)
           {
             case RunTimeParameters::LoadingType::Monotonic:
               {
@@ -1467,7 +1486,7 @@ update_local_quadrature_point_history(
             default:
               Assert(false, dealii::ExcNotImplemented());
               break;
-          }
+          }*/
         }
       }
 }
