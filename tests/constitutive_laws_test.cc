@@ -32,12 +32,12 @@ class CrystalData
 public:
 
   CrystalData(
-  const gCP::RunTimeParameters::ProblemParameters &parameters);
+  const gCP::RunTimeParameters::BasicProblem &parameters);
 
   void run();
 
 private:
-  gCP::RunTimeParameters::ProblemParameters               parameters;
+  gCP::RunTimeParameters::BasicProblem               parameters;
 
   dealii::ConditionalOStream                              pcout;
 
@@ -88,7 +88,7 @@ private:
 
 template<int dim>
 CrystalData<dim>::CrystalData(
-  const gCP::RunTimeParameters::ProblemParameters &parameters)
+  const gCP::RunTimeParameters::BasicProblem &parameters)
 :
 parameters(parameters),
 pcout(std::cout,
@@ -604,14 +604,14 @@ int main(int argc, char *argv[])
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
     {
-      gCP::RunTimeParameters::ProblemParameters parameters("input/2d.prm");
+      gCP::RunTimeParameters::BasicProblem parameters("input/2d.prm");
 
       Tests::CrystalData<2> test_2d(parameters);
       test_2d.run();
     }
 
     {
-      gCP::RunTimeParameters::ProblemParameters parameters("input/3d.prm");
+      gCP::RunTimeParameters::BasicProblem parameters("input/3d.prm");
 
       Tests::CrystalData<3> test_3d(parameters);
       test_3d.run();
