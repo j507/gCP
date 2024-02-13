@@ -16,6 +16,15 @@ namespace RunTimeParameters
 
 
 
+enum class ControlType
+{
+  Displacement,
+
+  Load,
+};
+
+
+
 /*!
  * @brief A enum class specifiying the type of loading
  */
@@ -445,6 +454,85 @@ struct CohesiveLawParameters
 };
 
 
+
+struct DamageEvolutionParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DamageEvolutionParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_accumulation_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  endurance_limit;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_microtraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_macrotraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_set_damage_to_zero;
+};
+
+
+
 /*!
  * @brief Struct containing all relevant parameters of the contact law
  * @details See @ref ConstitutiveLaws::ContactLaw for explanation of
@@ -835,50 +923,91 @@ struct TemporalDiscretizationParameters
    * @brief The time step size used during the simulation
    */
   double      time_step_size;
+};
+
+
+
+struct SimpleLoading : public TemporalDiscretizationParameters
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SimpleLoading();
 
   /*!
-   * @brief The period of the cyclic load
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SimpleLoading(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Get the next time step size object
    *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
+   * @param time
+   * @return double
+   * @todo Docu
    */
-  double      period;
+  double get_next_time_step_size(const unsigned int step_number) const;
 
   /*!
-   * @brief The number of cycles to be simulated
+   * @brief
    *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
+   * @param step_number
+   * @return true
+   * @return false
+   * @todo Docu
    */
-  unsigned int         n_cycles;
+  bool skip_extrapolation(const unsigned int step_number) const;
 
-  double preloading_phase_duration;
+  LoadingType   loading_type;
 
-  double unloading_and_unloading_phase_duration;
 
-  unsigned int n_steps_in_preloading_phase;
+  double        max_load;
 
-  unsigned int n_steps_in_loading_and_unloading_phases;
+  double        min_load;
 
-  unsigned int n_steps_per_half_cycle;
 
-  double time_step_size_in_preloading_phase;
+  double        duration_monotonic_load;
 
-  double time_step_size_in_cyclic_phase;
+  unsigned int  n_steps_monotonic_load;
 
-  double time_step_size_in_loading_and_unloading_phase;
+  double        time_step_size_monotonic_load;
 
-  double start_of_loading_phase;
 
-  double start_of_cyclic_phase;
+  double        duration_loading_and_unloading_phase;
 
-  double start_of_unloading_phase;
+  unsigned int  n_steps_loading_and_unloading_phase;
 
-  /*!
-   * @brief The simulation time control to be used. See @ref
-   * RunTimeParameters::SimulationTimeControl
-   */
-  LoadingType  loading_type;
+  double        time_step_size_loading_and_unloading_phase;
+
+
+  unsigned int  n_cycles;
+
+  double        period;
+
+  unsigned int  n_steps_quarter_period;
+
+  double        time_step_size_cyclic_phase;
+
+  bool          flag_skip_unloading_phase;
+
+//private:
+
+  double        start_of_cyclic_phase;
+
+  double        start_of_unloading_phase;
 };
 
 
@@ -1033,18 +1162,18 @@ struct Homogenization
 
 
 
-struct ProblemParameters
+struct BasicProblem
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.
    */
-  ProblemParameters();
+  BasicProblem();
 
   /*!
    * @brief Constructor which sets up the parameters as specified in the
    * parameter file with the filename @p parameter_filename.
    */
-  ProblemParameters(const std::string &parameter_filename);
+  BasicProblem(const std::string &parameter_filename);
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -1079,49 +1208,20 @@ struct ProblemParameters
   bool                              verbose;
 };
 
-  SolverParameters                  solver_parameters;
-
-  std::string                       slips_normals_pathname;
-
-  std::string                       slips_directions_pathname;
-
-  std::string                       euler_angles_pathname;
-
-  unsigned int                      graphical_output_frequency;
-
-  unsigned int                      terminal_output_frequency;
-
-  unsigned int                      homogenization_frequency;
-
-  std::string                       graphical_output_directory;
-
-  bool                              flag_compute_macroscopic_quantities;
-
-  bool                              flag_output_damage_variable;
-
-  bool                              flag_output_residual;
-
-  bool                              flag_output_fluctuations;
-
-  bool                              flag_store_checkpoint;
-
-  bool                              verbose;
-};
 
 
-
-struct SimpleShearParameters : public ProblemParameters
+struct InfiniteStripProblem : public BasicProblem
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.
    */
-  SimpleShearParameters();
+  InfiniteStripProblem();
 
   /*!
    * @brief Constructor which sets up the parameters as specified in the
    * parameter file with the filename @p parameter_filename.
    */
-  SimpleShearParameters(const std::string &parameter_filename);
+  InfiniteStripProblem(const std::string &parameter_filename);
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -1135,22 +1235,54 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double        max_shear_strain_at_upper_boundary;
+  SimpleLoading simple_loading;
 
-  double        min_shear_strain_at_upper_boundary;
+  ControlType   control_type;
 
   double        height;
 
-  double        width;
-
   unsigned int  n_elements_in_y_direction;
 
-  unsigned int  n_equal_sized_divisions;
+  unsigned int  n_equal_sized_crystals;
 };
 
 
 
-struct SemicoupledParameters : public ProblemParameters
+struct RVEProblem : public BasicProblem
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  RVEProblem();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  RVEProblem(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  //RVEBoundaryConditionType  control_type;
+
+  //StrainLoading             strain_loading;
+
+  std::string               mesh_file_pathname;
+};
+
+
+
+struct SemicoupledParameters : public BasicProblem
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.

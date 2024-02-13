@@ -5,6 +5,7 @@
 #include <deal.II/base/utilities.h>
 
 #include <fstream>
+#include <cmath>
 
 #ifndef __has_include
   static_assert(false, "__has_include not supported");
@@ -457,7 +458,6 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     contact_law_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
-
 }
 
 
@@ -689,7 +689,7 @@ verbose(false)
 
 void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Solver parameters");
+  prm.enter_subsection("6. Solver parameters");
   {
     KrylovParameters::declare_parameters(prm);
 
@@ -736,7 +736,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
 void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Solver parameters");
+  prm.enter_subsection("6. Solver parameters");
   {
     krylov_parameters.parse_parameters(prm);
 
@@ -798,21 +798,7 @@ TemporalDiscretizationParameters::TemporalDiscretizationParameters()
 :
 start_time(0.0),
 end_time(1.0),
-time_step_size(0.25),
-period(1.0),
-n_cycles(1.0),
-preloading_phase_duration(2.0),
-unloading_and_unloading_phase_duration(1.0),
-n_steps_in_preloading_phase(2),
-n_steps_in_loading_and_unloading_phases(2),
-n_steps_per_half_cycle(2),
-time_step_size_in_preloading_phase(time_step_size),
-time_step_size_in_cyclic_phase(time_step_size),
-time_step_size_in_loading_and_unloading_phase(time_step_size),
-start_of_loading_phase(0),
-start_of_cyclic_phase(0),
-start_of_unloading_phase(0),
-loading_type(LoadingType::Monotonic)
+time_step_size(0.25)
 {}
 
 
@@ -820,7 +806,7 @@ loading_type(LoadingType::Monotonic)
 void TemporalDiscretizationParameters::
 declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Temporal discretization parameters");
+  prm.enter_subsection("2. Temporal discretization parameters");
   {
     prm.declare_entry("Start time",
                       "0.0",
@@ -833,39 +819,6 @@ declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Time step size",
                       "1e-1",
                       dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Period",
-                      "1.0",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Number of cycles",
-                      "1",
-                      dealii::Patterns::Integer(0));
-
-    prm.declare_entry("Preloading phase duration",
-                      "0.0",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Un- and loading phase duration",
-                      "2",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Number of steps in preloading phase",
-                      "2",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Number of steps in un- and loading phase",
-                      "2",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Number of steps in a half cycle",
-                      "2",
-                      dealii::Patterns::Integer(1));
-
-    prm.declare_entry("Loading type",
-                      "monotonic",
-                      dealii::Patterns::Selection(
-                        "monotonic|cyclic|cyclic_unloading"));
   }
   prm.leave_subsection();
 }
@@ -875,94 +828,13 @@ declare_parameters(dealii::ParameterHandler &prm)
 void TemporalDiscretizationParameters::
 parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Temporal discretization parameters");
+  prm.enter_subsection("2. Temporal discretization parameters");
   {
-    const std::string string_loading_type(
-                      prm.get("Loading type"));
-
-    if (string_loading_type == std::string("monotonic"))
-    {
-      loading_type = LoadingType::Monotonic;
-    }
-    else if (string_loading_type == std::string("cyclic"))
-    {
-      loading_type = LoadingType::Cyclic;
-    }
-    else if (string_loading_type == std::string("cyclic_unloading"))
-    {
-      loading_type = LoadingType::CyclicWithUnloading;
-    }
-    else
-    {
-      AssertThrow(
-        false,
-        dealii::ExcMessage("Unexpected identifier for the simulation"
-                            " time control"));
-    }
-
     start_time            = prm.get_double("Start time");
 
     end_time              = prm.get_double("End time");
 
     time_step_size        = prm.get_double("Time step size");
-
-    period                = prm.get_double("Period");
-
-    n_cycles              = prm.get_integer("Number of cycles");
-
-    preloading_phase_duration =
-                          prm.get_double("Preloading phase duration");
-
-    unloading_and_unloading_phase_duration =
-                          prm.get_double("Un- and loading phase duration");
-
-    n_steps_in_preloading_phase =
-                          prm.get_integer("Number of steps in preloading phase");
-
-  time_step_size = 0.5 * period / n_steps_per_half_cycle;
-
-    n_steps_in_loading_and_unloading_phases =
-                          prm.get_integer("Number of steps in un- and loading phase");
-
-    n_steps_per_half_cycle =
-                          prm.get_integer("Number of steps in a half cycle");
-
-    if (loading_type != LoadingType::Monotonic)
-      time_step_size = 0.5 * period / n_steps_per_half_cycle;
-
-    time_step_size_in_cyclic_phase =
-      0.5 * period / n_steps_per_half_cycle;
-
-    time_step_size_in_preloading_phase =
-      preloading_phase_duration / n_steps_in_preloading_phase;
-
-    time_step_size_in_loading_and_unloading_phase =
-      unloading_and_unloading_phase_duration /
-        n_steps_in_loading_and_unloading_phases;
-
-    start_of_loading_phase =
-      start_time + preloading_phase_duration;
-
-    start_of_cyclic_phase =
-      start_of_loading_phase +
-      unloading_and_unloading_phase_duration;
-
-    if (loading_type == LoadingType::Cyclic)
-    {
-      end_time =
-        start_of_cyclic_phase +
-        n_cycles * period;
-    }
-    else if (loading_type == LoadingType::CyclicWithUnloading)
-    {
-      start_of_unloading_phase =
-        start_of_cyclic_phase +
-        n_cycles * period;
-
-      end_time =
-        start_of_unloading_phase +
-        unloading_and_unloading_phase_duration;
-    }
 
     Assert(start_time >= 0.0,
             dealii::ExcLowerRangeType<double>(start_time, 0.0));
@@ -973,9 +845,6 @@ parse_parameters(dealii::ParameterHandler &prm)
     Assert(time_step_size > 0,
             dealii::ExcLowerRangeType<double>(time_step_size, 0));
 
-    Assert(period > 0,
-            dealii::ExcLowerRangeType<double>(period, 0));
-
     Assert(end_time >= (start_time + time_step_size),
             dealii::ExcLowerRangeType<double>(
             end_time, start_time + time_step_size));
@@ -985,63 +854,277 @@ parse_parameters(dealii::ParameterHandler &prm)
 
 
 
-ProblemParameters::ProblemParameters()
+
+SimpleLoading::SimpleLoading()
 :
-dim(2),
-mapping_degree(1),
-mapping_interior_cells(false),
-n_global_refinements(0),
-fe_degree_displacements(2),
-fe_degree_slips(1),
-slips_normals_pathname("input/slip_normals"),
-slips_directions_pathname("input/slip_directions"),
-euler_angles_pathname("input/euler_angles"),
-graphical_output_frequency(1),
-terminal_output_frequency(1),
-homogenization_frequency(1),
-graphical_output_directory("results/default/"),
-flag_compute_macroscopic_quantities(false),
-flag_output_damage_variable(false),
-flag_output_residual(false),
-flag_output_fluctuations(false),
-flag_store_checkpoint(false),
-verbose(true)
+loading_type(LoadingType::Monotonic),
+max_load(0.02),
+min_load(0.00),
+duration_monotonic_load(1.0),
+n_steps_monotonic_load(20),
+time_step_size_monotonic_load(5e-2),
+duration_loading_and_unloading_phase(1.0),
+n_steps_loading_and_unloading_phase(20),
+time_step_size_loading_and_unloading_phase(5e-2),
+n_cycles(1),
+period(1.0),
+n_steps_quarter_period(5),
+time_step_size_cyclic_phase(5e-2),
+flag_skip_unloading_phase(true)
 {}
 
 
 
-ProblemParameters::ProblemParameters(
-  const std::string &parameter_filename)
-:
-ProblemParameters()
+void SimpleLoading::declare_parameters(
+  dealii::ParameterHandler &prm)
 {
-  dealii::ParameterHandler prm;
-
-  declare_parameters(prm);
-
-  std::ifstream parameter_file(parameter_filename.c_str());
-
-  if (!parameter_file)
+  prm.enter_subsection("2. Temporal discretization parameters");
   {
-    parameter_file.close();
+    prm.enter_subsection("Simple loading");
+    {
+      prm.declare_entry("Loading type",
+                        "monotonic",
+                        dealii::Patterns::Selection(
+                          "monotonic|cyclic"));
 
-    std::ostringstream message;
+      prm.declare_entry("Maximum load",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
 
-    message << "Input parameter file <"
-            << parameter_filename << "> not found. Creating a"
-            << std::endl
-            << "template file of the same name."
-            << std::endl;
+      prm.declare_entry("Minimum load",
+                        "0.0",
+                        dealii::Patterns::Double(0.0));
 
-    std::ofstream parameter_out(parameter_filename.c_str());
+      prm.enter_subsection("Monotonic load parameters");
+      {
+        prm.declare_entry("Duration of monotonic load",
+                          "1.0",
+                          dealii::Patterns::Double(0.0));
 
-    prm.print_parameters(parameter_out,
-                         dealii::ParameterHandler::OutputStyle::PRM);
+        prm.declare_entry("Number of steps during monotonic load",
+                          "20",
+                          dealii::Patterns::Integer(1));
+      }
+      prm.leave_subsection();
 
-    AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+      prm.enter_subsection("Cyclic load parameters");
+      {
+        prm.declare_entry("Duration of un- and loading phase",
+                          "1.0",
+                          dealii::Patterns::Double(0.0));
+
+        prm.declare_entry("Number of steps during un- and loading phase",
+                          "20",
+                          dealii::Patterns::Integer(1));
+
+        prm.declare_entry("Period",
+                          "1.0",
+                          dealii::Patterns::Double(0.0));
+
+        prm.declare_entry("Number of steps during a quarter cycle",
+                          "5",
+                          dealii::Patterns::Integer(1));
+
+        prm.declare_entry("Number of cycles",
+                          "1",
+                          dealii::Patterns::Integer(0));
+
+        prm.declare_entry("Skip unloading phase",
+                          "true",
+                          dealii::Patterns::Bool());
+      }
+      prm.leave_subsection();
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
+}
+
+
+
+void SimpleLoading::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("2. Temporal discretization parameters");
+  {
+    prm.enter_subsection("Simple loading");
+    {
+      prm.enter_subsection("Monotonic load parameters");
+      {
+        duration_monotonic_load =
+          prm.get_double("Duration of monotonic load");
+
+        n_steps_monotonic_load =
+          prm.get_integer("Number of steps during monotonic load");
+
+        time_step_size_monotonic_load =
+          duration_monotonic_load / n_steps_monotonic_load;
+      }
+      prm.leave_subsection();
+
+      prm.enter_subsection("Cyclic load parameters");
+      {
+        duration_loading_and_unloading_phase =
+          prm.get_double("Duration of un- and loading phase");
+
+        n_steps_loading_and_unloading_phase =
+          prm.get_integer("Number of steps during un- and loading phase");
+
+        time_step_size_loading_and_unloading_phase =
+          duration_loading_and_unloading_phase /
+            n_steps_loading_and_unloading_phase;
+
+        n_cycles = prm.get_integer("Number of cycles");
+
+        period = prm.get_double("Period");
+
+        n_steps_quarter_period =
+          prm.get_integer("Number of steps during a quarter cycle");
+
+        time_step_size_cyclic_phase = period / 4. / n_steps_quarter_period;
+
+        flag_skip_unloading_phase = prm.get_bool("Skip unloading phase");
+      }
+      prm.leave_subsection();
+
+      const std::string string_loading_type(prm.get("Loading type"));
+
+      if (string_loading_type == std::string("monotonic"))
+      {
+        loading_type = LoadingType::Monotonic;
+
+        end_time = start_time + duration_monotonic_load;
+      }
+      else if (string_loading_type == std::string("cyclic"))
+      {
+        loading_type = LoadingType::Cyclic;
+
+        end_time =
+          start_time +
+          ((flag_skip_unloading_phase) ? 1. : 2.) *
+          duration_loading_and_unloading_phase + n_cycles * period;
+      }
+      else
+      {
+        std::ostringstream message;
+
+        message << "Unexpected identifier for the loading type\n";
+
+        AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+      }
+
+      max_load = prm.get_double("Maximum load");
+
+      min_load = prm.get_double("Minimum load");
+
+      start_of_cyclic_phase =
+        start_time + duration_loading_and_unloading_phase;
+
+      start_of_unloading_phase =
+        start_of_cyclic_phase + n_cycles * period;
+
+      Assert(
+        duration_monotonic_load > 0.,
+        dealii::ExcLowerRangeType<double>(duration_monotonic_load, 0.));
+
+      Assert(
+        period > 0.,
+        dealii::ExcLowerRangeType<double>(period, 0.));
+
+      std::ostringstream message;
+
+      message << "The maximum load has to be greater than the minimum load\n";
+
+      Assert(
+        max_load > min_load,
+        dealii::ExcMessage(message.str().c_str()));
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
+}
+
+
+
+double SimpleLoading::get_next_time_step_size(const unsigned int step_number) const
+{
+  if (loading_type == LoadingType::Monotonic)
+  {
+    return (time_step_size_monotonic_load);
+  }
+  else
+  {
+    if (step_number < n_steps_loading_and_unloading_phase)
+    {
+      return (time_step_size_loading_and_unloading_phase);
+    }
+    else if (step_number < (n_steps_loading_and_unloading_phase +
+          4.0 * n_steps_quarter_period * n_cycles))
+    {
+      return (time_step_size_cyclic_phase);
+    }
+    else
+    {
+      return (time_step_size_loading_and_unloading_phase);
+    }
   }
 
-  prm.parse_input(parameter_file);
+  std::ostringstream message;
+
+  message << "Uppsala. Wie sind wir hier gelandet?\n";
+
+  AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+}
+
+
+
+bool SimpleLoading::skip_extrapolation(const unsigned int step_number) const
+{
+  bool flag_skip_extrapolation = false;
+
+  if (loading_type == LoadingType::Cyclic)
+  {
+    const bool start_of_cyclic_phase =
+      step_number == n_steps_loading_and_unloading_phase;
+
+    const unsigned int n_steps_cyclic_phase =
+      4 * n_steps_quarter_period * n_cycles;
+
+    const bool start_of_unloading_phase =
+      step_number == (n_steps_loading_and_unloading_phase +
+                        n_steps_cyclic_phase);
+
+    const bool cyclic_phase =
+      step_number > n_steps_loading_and_unloading_phase &&
+      step_number < (n_steps_cyclic_phase +
+                      n_steps_loading_and_unloading_phase);
+
+    double tmp;
+
+    const double effective_cycle_percentage =
+      std::modf(
+      (step_number - n_steps_loading_and_unloading_phase) /
+      (4.0 * n_steps_quarter_period), &tmp);
+
+    const bool extrema_of_cyclic_phase =
+      effective_cycle_percentage == 0.25 ||
+      effective_cycle_percentage == 0.75;
+
+    if (start_of_cyclic_phase ||
+        start_of_unloading_phase)
+    {
+      flag_skip_extrapolation = true;
+    }
+    else if (cyclic_phase && extrema_of_cyclic_phase)
+    {
+      flag_skip_extrapolation = true;
+    }
+  }
+
+  return flag_skip_extrapolation;
+}
+
+
 
 SpatialDiscretizationBase::SpatialDiscretizationBase()
 :
@@ -1058,7 +1141,7 @@ flag_apply_mapping_to_interior_cells(false)
 void SpatialDiscretizationBase::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Spatial discretization parameters");
+  prm.enter_subsection("1. Spatial discretization parameters");
   {
     prm.declare_entry("Spatial dimension",
                       "2",
@@ -1092,7 +1175,7 @@ void SpatialDiscretizationBase::declare_parameters(
 void SpatialDiscretizationBase::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Spatial discretization parameters");
+  prm.enter_subsection("1. Spatial discretization parameters");
   {
     dim = prm.get_integer("Spatial dimension");
 
@@ -1133,7 +1216,7 @@ euler_angles_pathname("input/crystal_orientation/euler_angles_0_30")
 void Input::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Input files");
+  prm.enter_subsection("3. Input parameters");
   {
     prm.declare_entry(
       "Slip normals path name",
@@ -1158,7 +1241,7 @@ void Input::declare_parameters(
 void Input::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Input files");
+  prm.enter_subsection("3. Input parameters");
   {
     slips_normals_pathname    = prm.get("Slip normals path name");
 
@@ -1188,7 +1271,7 @@ flag_store_checkpoint(false)
 void Output::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Output control parameters");
+  prm.enter_subsection("4. Output parameters");
   {
     prm.declare_entry("Graphical output directory",
                       "results/default/",
@@ -1226,7 +1309,7 @@ void Output::declare_parameters(
 void Output::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Output control parameters");
+  prm.enter_subsection("4. Output parameters");
   {
     output_directory = prm.get("Graphical output directory");
 
@@ -1372,17 +1455,17 @@ void Homogenization::parse_parameters(
 
 
 
-ProblemParameters::ProblemParameters()
+BasicProblem::BasicProblem()
 :
 verbose(true)
 {}
 
 
 
-ProblemParameters::ProblemParameters(
+BasicProblem::BasicProblem(
   const std::string &parameter_filename)
 :
-ProblemParameters()
+BasicProblem()
 {
   dealii::ParameterHandler prm;
 
@@ -1417,7 +1500,7 @@ ProblemParameters()
 
 
 
-void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
+void BasicProblem::declare_parameters(dealii::ParameterHandler &prm)
 {
   SpatialDiscretizationBase::declare_parameters(prm);
 
@@ -1429,7 +1512,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
 
   Output::declare_parameters(prm);
 
-  prm.enter_subsection("Postprocessing parameters");
+  prm.enter_subsection("5. Postprocessing parameters");
   {
     Homogenization::declare_parameters(prm);
   }
@@ -1442,7 +1525,7 @@ void ProblemParameters::declare_parameters(dealii::ParameterHandler &prm)
 
 
 
-void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
+void BasicProblem::parse_parameters(dealii::ParameterHandler &prm)
 {
   spatial_discretization.parse_parameters(prm);
 
@@ -1454,7 +1537,7 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
   output.parse_parameters(prm);
 
-  prm.enter_subsection("Postprocessing parameters");
+  prm.enter_subsection("5. Postprocessing parameters");
   {
     homogenization.parse_parameters(prm);
   }
@@ -1465,23 +1548,21 @@ void ProblemParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
 
-SimpleShearParameters::SimpleShearParameters()
+InfiniteStripProblem::InfiniteStripProblem()
 :
-ProblemParameters(),
-max_shear_strain_at_upper_boundary(0.5),
-min_shear_strain_at_upper_boundary(0.1),
-height(1),
-width(0.1),
+BasicProblem(),
+control_type(ControlType::Displacement),
+height(1.),
 n_elements_in_y_direction(100),
-n_equal_sized_divisions(1)
+n_equal_sized_crystals(1)
 {}
 
 
 
-SimpleShearParameters::SimpleShearParameters(
+InfiniteStripProblem::InfiniteStripProblem(
   const std::string &parameter_filename)
 :
-SimpleShearParameters()
+InfiniteStripProblem()
 {
   dealii::ParameterHandler prm;
 
@@ -1513,100 +1594,117 @@ SimpleShearParameters()
 
   parse_parameters(prm);
 
-  std::string output_folder_path;
-
-  prm.enter_subsection("Output control parameters");
+  // Store a copy of the parameter file in the output folder
   {
-    output_folder_path = prm.get("Graphical output directory");
-  }
-  prm.leave_subsection();
+    std::string output_folder_path;
 
-  prm.print_parameters(
-    output_folder_path + "parameter_file.prm",
-    dealii::ParameterHandler::OutputStyle::ShortPRM);
+    prm.enter_subsection("4. Output parameters");
+    {
+      output_folder_path = prm.get("Graphical output directory");
+    }
+    prm.leave_subsection();
+
+    prm.print_parameters(
+      output_folder_path + "parameter_file.prm",
+      dealii::ParameterHandler::OutputStyle::ShortPRM);
+  }
 }
 
 
 
-void SimpleShearParameters::declare_parameters(dealii::ParameterHandler &prm)
+void InfiniteStripProblem::declare_parameters(dealii::ParameterHandler &prm)
 {
-  ProblemParameters::declare_parameters(prm);
+  BasicProblem::declare_parameters(prm);
 
-  prm.enter_subsection("Simple shear");
+  SimpleLoading::declare_parameters(prm);
+
+  prm.enter_subsection("1. Spatial discretization parameters");
   {
-    prm.declare_entry("Maximum shear strain at the upper boundary",
-                      "0.0218",
-                      dealii::Patterns::Double());
+    prm.enter_subsection("Problem specific parameters");
+    {
+      prm.declare_entry("Height of the strip",
+                        "1.0",
+                        dealii::Patterns::Double(0.));
 
-    prm.declare_entry("Minimum shear strain at the upper boundary",
-                      "0.0218",
-                      dealii::Patterns::Double());
+      prm.declare_entry("Number of elements in y-direction",
+                        "100",
+                        dealii::Patterns::Integer(1));
 
-    prm.declare_entry("Number of elements in y-direction",
-                      "100",
-                      dealii::Patterns::Integer(0));
+      prm.declare_entry("Number of equally sized crystals in y-direction",
+                        "1",
+                        dealii::Patterns::Integer(1));
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
 
-    prm.declare_entry("Number of equally sized divisions in y-direction",
-                      "1",
-                      dealii::Patterns::Integer());
-
-    prm.declare_entry("Height of the strip",
-                      "1.0",
-                      dealii::Patterns::Double());
-
-    prm.declare_entry("Width of the strip",
-                      "0.1",
-                      dealii::Patterns::Double());
+  prm.enter_subsection("0. Infinite strip parameters (Extended in 1. and 2.)");
+  {
+    prm.enter_subsection("Loading parameters");
+    {
+      prm.declare_entry("Control type",
+                        "displacement_control",
+                        dealii::Patterns::Selection(
+                          "load_control|displacement_control"));
+    }
+    prm.leave_subsection();
   }
   prm.leave_subsection();
 }
 
 
 
-void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
+void InfiniteStripProblem::parse_parameters(dealii::ParameterHandler &prm)
 {
-  ProblemParameters::parse_parameters(prm);
+  BasicProblem::parse_parameters(prm);
 
-  prm.enter_subsection("Simple shear");
+  simple_loading.parse_parameters(prm);
+
+  prm.enter_subsection("1. Spatial discretization parameters");
   {
-    max_shear_strain_at_upper_boundary =
-      prm.get_double("Maximum shear strain at the upper boundary");
+    prm.enter_subsection("Problem specific parameters");
+    {
+      height = prm.get_double("Height of the strip");
 
-    AssertIsFinite(max_shear_strain_at_upper_boundary);
+      n_elements_in_y_direction =
+        prm.get_double("Number of elements in y-direction");
 
-    min_shear_strain_at_upper_boundary =
-      prm.get_double("Minimum shear strain at the upper boundary");
+      n_equal_sized_crystals =
+        prm.get_double("Number of equally sized crystals in y-direction");
 
-    AssertIsFinite(min_shear_strain_at_upper_boundary);
+      AssertThrow(
+        height > 0.0,
+        dealii::ExcLowerRangeType<double>(height, 0.0));
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
 
-    n_elements_in_y_direction = prm.get_integer("Number of elements in y-direction");
+  prm.enter_subsection("0. Infinite strip parameters (Extended in 1. and 2.)");
+  {
 
-    Assert(n_elements_in_y_direction > 0,
-           dealii::ExcLowerRange(n_elements_in_y_direction, 0));
+    prm.enter_subsection("Loading parameters");
+    {
+      const std::string string_control_type(prm.get("Control type"));
 
-    AssertIsFinite(n_elements_in_y_direction);
+      if (string_control_type == std::string("load_control"))
+      {
+        control_type = ControlType::Load;
+      }
+      else if (string_control_type == std::string("displacement_control"))
+      {
+        control_type = ControlType::Displacement;
+      }
+      else
+      {
+        std::ostringstream message;
 
-    n_equal_sized_divisions =
-      prm.get_integer("Number of equally sized divisions in y-direction");
+        message << "Unexpected enum identifier for the control type\n";
 
-    Assert(n_equal_sized_divisions > 0,
-           dealii::ExcLowerRange(n_equal_sized_divisions, 0));
-
-    AssertIsFinite(n_equal_sized_divisions);
-
-    height = prm.get_double("Height of the strip");
-
-    Assert(height > 0,
-           dealii::ExcLowerRange(height, 0));
-
-    AssertIsFinite(height);
-
-    width = prm.get_double("Width of the strip");
-
-    Assert(width > 0,
-        dealii::ExcLowerRange(width, 0));
-
-    AssertIsFinite(width);
+        AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
+      }
+    }
+    prm.leave_subsection();
   }
   prm.leave_subsection();
 }
@@ -1615,7 +1713,7 @@ void SimpleShearParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 SemicoupledParameters::SemicoupledParameters()
 :
-ProblemParameters(),
+BasicProblem(),
 strain_component_11(0.01),
 strain_component_22(0.01),
 strain_component_33(0.01),
@@ -1665,7 +1763,7 @@ SemicoupledParameters()
 
   std::string output_folder_path;
 
-  prm.enter_subsection("Output control parameters");
+  prm.enter_subsection("4. Output parameters");
   {
     output_folder_path = prm.get("Graphical output directory");
   }
@@ -1681,7 +1779,7 @@ SemicoupledParameters()
 
 void SemicoupledParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  ProblemParameters::declare_parameters(prm);
+  BasicProblem::declare_parameters(prm);
 
   prm.enter_subsection("Semi-coupled problem");
   {
@@ -1724,7 +1822,7 @@ void SemicoupledParameters::declare_parameters(dealii::ParameterHandler &prm)
 
 void SemicoupledParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  ProblemParameters::parse_parameters(prm);
+  BasicProblem::parse_parameters(prm);
 
   prm.enter_subsection("Semi-coupled problem");
   {
