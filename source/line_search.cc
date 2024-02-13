@@ -38,6 +38,9 @@ void LineSearch::reinit(
 double LineSearch::get_lambda(const double trial_scalar_function_value,
                               const double trial_lambda)
 {
+  AssertIsFinite(trial_scalar_function_value);
+  AssertIsFinite(trial_lambda);
+
   old_old_scalar_function_value = old_scalar_function_value;
   old_scalar_function_value     = trial_scalar_function_value;
 
