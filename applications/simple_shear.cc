@@ -41,256 +41,17 @@ namespace gCP
 
 
 
-template <int dim>
-class NeumannBoundaryFunction : public dealii::TensorFunction<1,dim>
-{
-public:
-  NeumannBoundaryFunction(
-    const double                          max_traction_at_upper_boundary,
-    const double                          min_traction_at_upper_boundary,
-    const double                          period,
-    const double                          initial_loading_time,
-    const RunTimeParameters::LoadingType  loading_type,
-    const double                          start_time);
-
-  virtual dealii::Tensor<1, dim> value(
-    const dealii::Point<dim>  &point) const override;
-
-private:
-
-  const double                          max_traction_at_upper_boundary;
-
-  const double                          min_traction_at_upper_boundary;
-
-  const double                          period;
-
-  const double                          initial_loading_time;
-
-  const RunTimeParameters::LoadingType  loading_type;
-};
-
-
-
-template<int dim>
-NeumannBoundaryFunction<dim>::NeumannBoundaryFunction(
-  const double                          max_traction_at_upper_boundary,
-  const double                          min_traction_at_upper_boundary,
-  const double                          period,
-  const double                          initial_loading_time,
-  const RunTimeParameters::LoadingType  loading_type,
-  const double                          start_time)
-:
-dealii::TensorFunction<1, dim>(start_time),
-max_traction_at_upper_boundary(max_traction_at_upper_boundary),
-min_traction_at_upper_boundary(min_traction_at_upper_boundary),
-period(period),
-initial_loading_time(initial_loading_time),
-loading_type(loading_type)
-{}
-
-
-
-template<int dim>
-dealii::Tensor<1, dim> NeumannBoundaryFunction<dim>::value(
-  const dealii::Point<dim>  &/*point*/) const
-{
-  const double t = this->get_time();
-
-  dealii::Tensor<1, dim> return_vector;
-
-  double traction_load = 0.0;
-
-  switch (loading_type)
-  {
-    case RunTimeParameters::LoadingType::Monotonic:
-      {
-        traction_load =
-          t * max_traction_at_upper_boundary;
-      }
-      break;
-    case RunTimeParameters::LoadingType::Cyclic:
-      {
-        if (t >= initial_loading_time)
-          traction_load =
-            (max_traction_at_upper_boundary -
-             min_traction_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (t - initial_loading_time)) +
-            (max_traction_at_upper_boundary +
-             min_traction_at_upper_boundary) / 2.0;
-        else
-          traction_load =
-            max_traction_at_upper_boundary *
-            std::sin(M_PI / 2.0 / initial_loading_time * t);
-      }
-      break;
-    default:
-      Assert(false, dealii::ExcNotImplemented());
-  }
-
-  return_vector[1] = traction_load;
-
-  return return_vector;
-}
-
-
-
-template <int dim>
-class DisplacementControl : public dealii::Function<dim>
-{
-public:
-  DisplacementControl(
-    const unsigned int                    n_crystals,
-    const double                          height,
-    const double                          max_shear_strain_at_upper_boundary,
-    const double                          min_shear_strain_at_upper_boundary,
-    const double                          period,
-    const double                          loading_and_unloading_phase_duration,
-    const double                          start_of_unloading_phase,
-    const RunTimeParameters::LoadingType  loading_type,
-    const bool                            flag_is_decohesion_allowed,
-    const unsigned int                    n_components,
-    const double                          start_time);
-
-  virtual void vector_value(
-    const dealii::Point<dim>  &point,
-    dealii::Vector<double>    &return_vector) const override;
-
-private:
-  const unsigned int                    n_crystals;
-
-  const double                          height;
-
-  const double                          max_shear_strain_at_upper_boundary;
-
-  const double                          min_shear_strain_at_upper_boundary;
-
-  const double                          period;
-
-  const double                          loading_and_unloading_phase_duration;
-
-  const double                          start_of_unloading_phase;
-
-  const RunTimeParameters::LoadingType  loading_type;
-
-  const bool                            flag_is_decohesion_allowed;
-};
-
-
-
-template<int dim>
-DisplacementControl<dim>::DisplacementControl(
-  const unsigned int                    n_crystals,
-  const double                          height,
-  const double                          max_shear_strain_at_upper_boundary,
-  const double                          min_shear_strain_at_upper_boundary,
-  const double                          period,
-  const double                          loading_and_unloading_phase_duration,
-  const double                          start_of_unloading_phase,
-  const RunTimeParameters::LoadingType  loading_type,
-  const bool                            flag_is_decohesion_allowed,
-  const unsigned int                    n_components,
-  const double                          start_time)
-:
-dealii::Function<dim>(n_components, start_time),
-n_crystals(n_crystals),
-height(height),
-max_shear_strain_at_upper_boundary(max_shear_strain_at_upper_boundary),
-min_shear_strain_at_upper_boundary(min_shear_strain_at_upper_boundary),
-period(period),
-loading_and_unloading_phase_duration(
-  loading_and_unloading_phase_duration + start_time),
-start_of_unloading_phase(start_of_unloading_phase),
-loading_type(loading_type),
-flag_is_decohesion_allowed(flag_is_decohesion_allowed)
-{}
-
-
-
-template<int dim>
-void DisplacementControl<dim>::vector_value(
-  const dealii::Point<dim>  &/*point*/,
-  dealii::Vector<double>    &return_vector) const
-{
-  const double t = this->get_time();
-
-  return_vector = 0.0;
-
-  double displacement_load = 0.0;
-
-  switch (loading_type)
-  {
-    case RunTimeParameters::LoadingType::Monotonic:
-      {
-        displacement_load =
-          t * height * max_shear_strain_at_upper_boundary;
-      }
-      break;
-    case RunTimeParameters::LoadingType::Cyclic:
-      {
-        if (t >= loading_and_unloading_phase_duration)
-          displacement_load =
-            (max_shear_strain_at_upper_boundary -
-             min_shear_strain_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (t - loading_and_unloading_phase_duration)) +
-            (max_shear_strain_at_upper_boundary +
-             min_shear_strain_at_upper_boundary) / 2.0;
-        else
-          displacement_load =
-            max_shear_strain_at_upper_boundary *
-            std::sin(M_PI / 2.0 / loading_and_unloading_phase_duration * t);
-      }
-      break;
-    case RunTimeParameters::LoadingType::CyclicWithUnloading:
-      {
-        if (t >= loading_and_unloading_phase_duration &&
-            t <= start_of_unloading_phase)
-          displacement_load =
-            (max_shear_strain_at_upper_boundary -
-             min_shear_strain_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (t - loading_and_unloading_phase_duration)) +
-            (max_shear_strain_at_upper_boundary +
-             min_shear_strain_at_upper_boundary) / 2.0;
-        else if (t <= loading_and_unloading_phase_duration)
-          displacement_load =
-            max_shear_strain_at_upper_boundary *
-            std::sin(M_PI / 2.0 / loading_and_unloading_phase_duration * t);
-        else
-        {
-          const double max = (max_shear_strain_at_upper_boundary -
-             min_shear_strain_at_upper_boundary) / 2.0 *
-            std::cos(2.0 * M_PI / period * (start_of_unloading_phase -
-              loading_and_unloading_phase_duration)) +
-            (max_shear_strain_at_upper_boundary +
-             min_shear_strain_at_upper_boundary) / 2.0;
-
-          displacement_load = max - max * (t - start_of_unloading_phase);
-        }
-      }
-      break;
-    default:
-      Assert(false, dealii::ExcNotImplemented());
-  }
-
-  return_vector[0] = displacement_load;
-
-  if (flag_is_decohesion_allowed)
-    for (unsigned int i = 1; i < n_crystals; ++i)
-      return_vector[i*dim] = displacement_load;
-}
-
-
-
 template<int dim>
 class SimpleShearProblem
 {
 public:
   SimpleShearProblem(
-    const RunTimeParameters::SimpleShearParameters &parameters);
+    const RunTimeParameters::InfiniteStripProblem &parameters);
 
   void run();
 
 private:
-  const RunTimeParameters::SimpleShearParameters    parameters;
+  const RunTimeParameters::InfiniteStripProblem     parameters;
 
   std::shared_ptr<dealii::ConditionalOStream>       pcout;
 
@@ -310,7 +71,8 @@ private:
 
   //std::shared_ptr<NeumannBoundaryFunction<dim>>     neumann_boundary_function;
 
-  std::unique_ptr<DisplacementControl<dim>>         displacement_control;
+  std::unique_ptr<BoundaryConditions::DisplacementControl<dim>>
+                                                    displacement_control;
 
   Postprocessing::Homogenization<dim>               homogenization;
 
@@ -345,7 +107,7 @@ private:
 
 template<int dim>
 SimpleShearProblem<dim>::SimpleShearProblem(
-  const RunTimeParameters::SimpleShearParameters &parameters)
+  const RunTimeParameters::InfiniteStripProblem &parameters)
 :
 parameters(parameters),
 pcout(std::make_shared<dealii::ConditionalOStream>(
@@ -359,9 +121,9 @@ timer_output(std::make_shared<dealii::TimerOutput>(
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.spatial_discretization.mapping_degree)),
 discrete_time(
-  parameters.temporal_discretization_parameters.start_time,
-  parameters.temporal_discretization_parameters.end_time,
-  parameters.temporal_discretization_parameters.time_step_size),
+  parameters.simple_loading.start_time,
+  parameters.simple_loading.end_time,
+  parameters.simple_loading.time_step_size),
 triangulation(
   MPI_COMM_WORLD,
   typename dealii::Triangulation<dim>::MeshSmoothing(
@@ -398,18 +160,18 @@ residual_postprocessor(
   crystals_data),
 simple_shear(fe_field,
              mapping,
-             parameters.max_shear_strain_at_upper_boundary,
-             parameters.min_shear_strain_at_upper_boundary,
-             parameters.temporal_discretization_parameters.period,
-             parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration,
-             parameters.temporal_discretization_parameters.loading_type,
+             parameters.simple_loading.max_load,
+             parameters.simple_loading.min_load,
+             parameters.simple_loading.period,
+             parameters.simple_loading.duration_loading_and_unloading_phase,
+             parameters.simple_loading.loading_type,
              3,
              1. / parameters.n_elements_in_y_direction),
 string_width(
   (std::to_string((unsigned int)(
-  (parameters.temporal_discretization_parameters.end_time -
-   parameters.temporal_discretization_parameters.start_time) /
-  parameters.temporal_discretization_parameters.time_step_size)) +
+  (parameters.simple_loading.end_time -
+   parameters.simple_loading.start_time) /
+  parameters.simple_loading.time_step_size)) +
   "Step ").size())
 {
   if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
@@ -421,9 +183,13 @@ string_width(
         << std::flush;
 
       for (const auto& entry : fs::directory_iterator(parameters.output.output_directory + "paraview/"))
+      {
         if (entry.path().extension() == ".vtu" ||
             entry.path().extension() == ".pvtu")
+        {
           fs::remove(entry.path());
+        }
+      }
 
       *pcout
         << "done!\n\n";
@@ -483,17 +249,21 @@ void SimpleShearProblem<dim>::make_grid()
 
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
+  {
     if (cell->is_locally_owned())
     {
       for (unsigned int i = 1;
-           i <= parameters.n_equal_sized_divisions; ++i)
+           i <= parameters.n_equal_sized_crystals; ++i)
+      {
         if (std::fabs(cell->center()[1]) <
-            i * parameters.height / parameters.n_equal_sized_divisions)
+            i * parameters.height / parameters.n_equal_sized_crystals)
         {
           cell->set_material_id(i-1);
           break;
         }
+      }
     }
+  }
 
   *pcout << "Triangulation:"
               << std::endl
@@ -525,8 +295,12 @@ void SimpleShearProblem<dim>::setup()
   // Set the active finite elemente index of each cell
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
+  {
     if (cell->is_locally_owned())
+    {
       cell->set_active_fe_index(cell->material_id());
+    }
+  }
 
   // Sets up the degrees of freedom
   fe_field->setup_dofs();
@@ -534,18 +308,12 @@ void SimpleShearProblem<dim>::setup()
   // Instantiates the external functions, whose number of components
   // depends on the number of crystals and slips
   displacement_control =
-    std::make_unique<DisplacementControl<dim>>(
+    std::make_unique<BoundaryConditions::DisplacementControl<dim>>(
+      parameters.simple_loading,
+      fe_field->get_n_components(),
       crystals_data->get_n_crystals(),
       parameters.height,
-      parameters.max_shear_strain_at_upper_boundary,
-      parameters.min_shear_strain_at_upper_boundary,
-      parameters.temporal_discretization_parameters.period,
-      parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration,
-      parameters.temporal_discretization_parameters.start_of_unloading_phase,
-      parameters.temporal_discretization_parameters.loading_type,
-      fe_field->is_decohesion_allowed(),
-      fe_field->get_n_components(),
-      discrete_time.get_start_time());
+      fe_field->is_decohesion_allowed());
 
   // Sets up the problem's constraints
   setup_constraints();
@@ -610,6 +378,7 @@ void SimpleShearProblem<dim>::setup_constraints()
       for (unsigned int crystal_id = 0;
            crystal_id < crystals_data->get_n_crystals();
            ++crystal_id)
+      {
         dealii::VectorTools::interpolate_boundary_values(
           *mapping,
           fe_field->get_dof_handler(),
@@ -617,6 +386,7 @@ void SimpleShearProblem<dim>::setup_constraints()
           affine_constraints,
           fe_field->get_fe_collection().component_mask(
             fe_field->get_displacement_extractor(crystal_id)));
+      }
     }
 
     // Slips' Dirichlet boundary conditions
@@ -630,6 +400,7 @@ void SimpleShearProblem<dim>::setup_constraints()
       for (unsigned int crystal_id = 0;
            crystal_id < crystals_data->get_n_crystals();
            ++crystal_id)
+      {
         for(unsigned int slip_id = 0;
             slip_id < crystals_data->get_n_slips();
             ++slip_id)
@@ -642,6 +413,7 @@ void SimpleShearProblem<dim>::setup_constraints()
             fe_field->get_fe_collection().component_mask(
               fe_field->get_slip_extractor(crystal_id, slip_id)));
         }
+      }
     }
 
     if (parameters.solver_parameters.boundary_conditions_at_grain_boundaries ==
@@ -652,8 +424,11 @@ void SimpleShearProblem<dim>::setup_constraints()
 
       for (const auto &cell :
            fe_field->get_dof_handler().active_cell_iterators())
+      {
         if (cell->is_locally_owned())
+        {
           for (const auto &face_index : cell->face_indices())
+          {
             if (!cell->face(face_index)->at_boundary() &&
                 cell->material_id() !=
                   cell->neighbor(face_index)->material_id())
@@ -673,9 +448,17 @@ void SimpleShearProblem<dim>::setup_constraints()
 
               for (unsigned int i = 0;
                    i < local_face_dof_indices.size(); ++i)
+              {
                 if (fe_field->get_global_component(crystal_id, i) >= dim)
-                  affine_constraints.add_line(local_face_dof_indices[i]);
+                {
+                  affine_constraints.add_line(
+                    local_face_dof_indices[i]);
+                }
+              }
             }
+          }
+        }
+      }
     }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
@@ -705,6 +488,7 @@ void SimpleShearProblem<dim>::setup_constraints()
     for (unsigned int crystal_id = 0;
           crystal_id < crystals_data->get_n_crystals();
           ++crystal_id)
+    {
       dealii::VectorTools::interpolate_boundary_values(
         *mapping,
         fe_field->get_dof_handler(),
@@ -712,11 +496,13 @@ void SimpleShearProblem<dim>::setup_constraints()
         newton_method_constraints,
         fe_field->get_fe_collection().component_mask(
         fe_field->get_displacement_extractor(crystal_id)));
+    }
 
     // Slips' Dirichlet boundary conditions
     for (unsigned int crystal_id = 0;
           crystal_id < crystals_data->get_n_crystals();
           ++crystal_id)
+    {
       for(unsigned int slip_id = 0;
           slip_id < crystals_data->get_n_slips();
           ++slip_id)
@@ -729,6 +515,7 @@ void SimpleShearProblem<dim>::setup_constraints()
           fe_field->get_fe_collection().component_mask(
             fe_field->get_slip_extractor(crystal_id, slip_id)));
       }
+    }
 
     if (parameters.solver_parameters.boundary_conditions_at_grain_boundaries ==
           RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microhard)
@@ -738,8 +525,11 @@ void SimpleShearProblem<dim>::setup_constraints()
 
       for (const auto &cell :
            fe_field->get_dof_handler().active_cell_iterators())
+      {
         if (cell->is_locally_owned())
+        {
           for (const auto &face_index : cell->face_indices())
+          {
             if (!cell->face(face_index)->at_boundary() &&
                 cell->material_id() !=
                   cell->neighbor(face_index)->material_id())
@@ -759,9 +549,17 @@ void SimpleShearProblem<dim>::setup_constraints()
 
               for (unsigned int i = 0;
                    i < local_face_dof_indices.size(); ++i)
+              {
                 if (fe_field->get_global_component(crystal_id, i) >= dim)
-                  newton_method_constraints.add_line(local_face_dof_indices[i]);
+                {
+                  newton_method_constraints.add_line(
+                    local_face_dof_indices[i]);
+                }
+              }
             }
+          }
+        }
+      }
     }
 
     dealii::DoFTools::make_periodicity_constraints<dim, dim>(
@@ -822,6 +620,7 @@ void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
     for (unsigned int crystal_id = 0;
           crystal_id < crystals_data->get_n_crystals();
           ++crystal_id)
+    {
       dealii::VectorTools::interpolate_boundary_values(
         *mapping,
         fe_field->get_dof_handler(),
@@ -830,6 +629,7 @@ void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
         affine_constraints,
         fe_field->get_fe_collection().component_mask(
           fe_field->get_displacement_extractor(crystal_id)));
+    }
   }
   affine_constraints.close();
 
@@ -864,8 +664,11 @@ void SimpleShearProblem<dim>::postprocessing()
   try
   {
     std::ofstream fstream(filename.string());
+
     std::ofstream fstream_(filename_.string());
+
     simple_shear.output_data_to_file(fstream);
+
     gCP_solver.output_data_to_file(fstream_);
   }
   catch (std::exception &exc)
@@ -907,13 +710,16 @@ void SimpleShearProblem<dim>::triangulation_output()
   dealii::Vector<float> active_fe_index(triangulation.n_active_cells());
 
   locally_owned_subdomain = -1.0;
+
   material_id             = -1.0;
+
   active_fe_index         = -1.0;
 
   // Fill the dealii::Vector<float> instances for visualizatino of the
   // cell properties
   for (const auto &cell :
        fe_field->get_dof_handler().active_cell_iterators())
+  {
     if (cell->is_locally_owned())
     {
       locally_owned_subdomain(cell->active_cell_index()) =
@@ -923,6 +729,7 @@ void SimpleShearProblem<dim>::triangulation_output()
       active_fe_index(cell->active_cell_index()) =
         cell->active_fe_index();
     }
+  }
 
   dealii::DataOut<dim> data_out;
 
@@ -958,8 +765,8 @@ void SimpleShearProblem<dim>::data_output()
 
   data_out.add_data_vector(fe_field->solution, postprocessor);
 
-  data_out.add_data_vector(gCP_solver.get_residual(),
-                           residual_postprocessor);
+  //data_out.add_data_vector(gCP_solver.get_residual(),
+  //                         residual_postprocessor);
 
   if (parameters.output.flag_output_residual)
   {
@@ -1026,54 +833,16 @@ void SimpleShearProblem<dim>::run()
   // Output the triangulation data (Partition, Material id, etc.)
   triangulation_output();
 
-  AssertThrow(
-    parameters.temporal_discretization_parameters.preloading_phase_duration == 0.0,
-    dealii::ExcMessage(
-      "This source file does not consider a preloading stage"));
-
-  /*if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Cyclic ||
-      parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::CyclicWithUnloading)*/
-  if (parameters.temporal_discretization_parameters.loading_type ==
-        RunTimeParameters::LoadingType::Monotonic)
-  {
-discrete_time.set_desired_next_step_size(
-      parameters.temporal_discretization_parameters.time_step_size);
-  }
-  else
-  {
-    discrete_time.set_desired_next_step_size(
-      parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
-  }
-
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
   {
-    if ((parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::Cyclic ||
-         parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading) &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.unloading_and_unloading_phase_duration)
-        < std::numeric_limits<double>::epsilon() * 1000)
-    {
-      discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size);
-    }
-
-    if (parameters.temporal_discretization_parameters.loading_type ==
-          RunTimeParameters::LoadingType::CyclicWithUnloading &&
-        std::abs(discrete_time.get_current_time() -
-        parameters.temporal_discretization_parameters.start_of_unloading_phase)
-        < std::numeric_limits<double>::epsilon() * 1000)
-    {
-      discrete_time.set_desired_next_step_size(
-        parameters.temporal_discretization_parameters.time_step_size_in_loading_and_unloading_phase);
-    }
+    discrete_time.set_desired_next_step_size(
+      parameters.simple_loading.get_next_time_step_size(
+        discrete_time.get_step_number()));
 
     if (parameters.verbose)
+    {
       *pcout << std::setw(string_width) << std::left
              << "Step " +
                 std::to_string(discrete_time.get_step_number() + 1)
@@ -1084,6 +853,7 @@ discrete_time.set_desired_next_step_size(
              << " with dt = "
              << discrete_time.get_next_step_size()
              << std::endl;
+    }
 
     // Update the internal time variable of all time-dependant functions
     // to t^{n}
@@ -1094,7 +864,9 @@ discrete_time.set_desired_next_step_size(
 
     // Solve the nonlinear system. After the call fe_field->solution
     // corresponds to the solution at t^n
-    gCP_solver.solve_nonlinear_system();
+    gCP_solver.solve_nonlinear_system(
+      parameters.simple_loading.skip_extrapolation(
+        discrete_time.get_step_number()));
 
     // Update the solution vectors, i.e.,
     // fe_field->old_solution = fe_field->solution
@@ -1111,7 +883,9 @@ discrete_time.set_desired_next_step_size(
          parameters.output.graphical_output_frequency == 0 ||
         discrete_time.get_current_time() ==
           discrete_time.get_end_time())
+    {
       data_output();
+    }
   }
 
   homogenization.output_macroscopic_quantities_to_file();
@@ -1131,16 +905,18 @@ int main(int argc, char *argv[])
 
     std::string parameters_filepath;
 
-    // The switch statement verifies that the filepath includes the
-    // .prm extension. That if, a filepath was even passed to the
-    // executable. The existance of the filepath is checked by the
-    // gCP::RunTimeParameters::ProblemParameters class
+    // The following switch mainly checks if the filepath includes the
+    // .prm extension. The existance of the filepath is checked by the
+    // constructor of the problem's parameter struct.
     switch (argc)
     {
-    case 1:
-      parameters_filepath = "input/parameter_files/simple_shear.prm";
+      case 1:
+      {
+        parameters_filepath = "input/parameter_files/simple_shear.prm";
+      }
       break;
-    case 2:
+
+      case 2:
       {
         const std::string arg(argv[1]);
 
@@ -1161,24 +937,31 @@ int main(int argc, char *argv[])
                         "passed with its .prm extension."));
       }
       break;
-    default:
-      AssertThrow(false,
-                  dealii::ExcMessage(
-                    "More than one argument are being passed to the "
-                    "executable. Only one argument (the filepath to "
-                    "the parameters file) is currently supported."));
+
+      default:
+      {
+        AssertThrow(false,
+                    dealii::ExcMessage(
+                      "More than one argument are being passed to the "
+                      "executable. Only one argument (the filepath to "
+                      "the parameters file) is currently supported."));
+      }
       break;
     }
 
-    int rank;
+    { // Terminal output of the parameter file's filepath
+      int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (rank == 0)
-      std::cout << "Running with \""
-                << parameters_filepath << "\"" << "\n";
+      if (rank == 0)
+      {
+        std::cout << "Running with \""
+                  << parameters_filepath << "\"" << "\n";
+      }
+    }
 
-    gCP::RunTimeParameters::SimpleShearParameters parameters(parameters_filepath);
+    gCP::RunTimeParameters::InfiniteStripProblem parameters(parameters_filepath);
 
     gCP::SimpleShearProblem<2> problem(parameters);
 
