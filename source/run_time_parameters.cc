@@ -383,13 +383,14 @@ void CohesiveLawParameters::parse_parameters(
 
 DamageEvolution::DamageEvolution()
 :
+damage_evolution_model(DamageEvolutionModel::M1),
 damage_accumulation_constant(1.0),
 damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
 degradation_exponent(1.0),
 flag_couple_microtraction_to_damage(true),
-flag_couple_macrotraction_to_damage(false),
+flag_couple_macrotraction_to_damage(true),
 flag_set_damage_to_zero(false)
 {}
 
@@ -400,6 +401,10 @@ void DamageEvolution::declare_parameters(
 {
   prm.enter_subsection("Damage evolution parameters");
   {
+    prm.declare_entry("Damage evolution model",
+                      "M1",
+                      dealii::Patterns::Selection("OrtizEtAl|M1"));
+
     prm.declare_entry("Damage accumulation constant",
                       "1.0",
                       dealii::Patterns::Double(0.0));
@@ -442,6 +447,25 @@ void DamageEvolution::parse_parameters(
 {
   prm.enter_subsection("Damage evolution parameters");
   {
+    const std::string string_damage_evolution_model(
+      prm.get("Damage evolution model"));
+
+    if (string_damage_evolution_model == std::string("OrtizEtAl"))
+    {
+      damage_evolution_model = DamageEvolutionModel::OrtizEtAl;
+    }
+    else if (string_damage_evolution_model == std::string("M1"))
+    {
+      damage_evolution_model = DamageEvolutionModel::M1;
+    }
+    else
+    {
+      AssertThrow(
+        false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the damage evolution model."));
+    }
+
     damage_accumulation_constant =
       prm.get_double("Damage accumulation constant");
 
@@ -519,6 +543,8 @@ void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &pr
     CohesiveLawParameters::declare_parameters(prm);
 
     ContactLawParameters::declare_parameters(prm);
+
+    DamageEvolution::declare_parameters(prm);
   }
   prm.leave_subsection();
 
@@ -541,6 +567,8 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     cohesive_law_parameters.parse_parameters(prm);
 
     contact_law_parameters.parse_parameters(prm);
+
+    damage_evolution_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
 }

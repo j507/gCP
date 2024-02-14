@@ -25,6 +25,15 @@ enum class ControlType
 
 
 
+enum class DamageEvolutionModel
+{
+  OrtizEtAl,
+
+  M1
+};
+
+
+
 /*!
  * @brief A enum class specifiying the type of loading
  */
@@ -479,6 +488,13 @@ struct DamageEvolution
    *
    * @todo Docu
    */
+  DamageEvolutionModel damage_evolution_model;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   double  damage_accumulation_constant;
 
   /*!
@@ -628,6 +644,13 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DamageEvolution       damage_evolution_parameters;
 };
 
 
