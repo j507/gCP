@@ -455,12 +455,12 @@ struct CohesiveLawParameters
 
 
 
-struct DamageEvolutionParameters
+struct DamageEvolution
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  DamageEvolutionParameters();
+  DamageEvolution();
 
   /*!
    * @brief Static method which declares the associated parameter to the

@@ -381,6 +381,91 @@ void CohesiveLawParameters::parse_parameters(
 
 
 
+DamageEvolution::DamageEvolution()
+:
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
+degradation_exponent(1.0),
+flag_couple_microtraction_to_damage(true),
+flag_couple_macrotraction_to_damage(false),
+flag_set_damage_to_zero(false)
+{}
+
+
+
+void DamageEvolution::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Damage evolution parameters");
+  {
+    prm.declare_entry("Damage accumulation constant",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Damage decay constant",
+                      "0.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Damage decay exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Endurance limit",
+                      "0.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Degradation exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Set damage to zero",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple microtraction to damage",
+                      "true",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple macrotraction to damage",
+                      "false",
+                      dealii::Patterns::Bool());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DamageEvolution::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Damage evolution parameters");
+  {
+    damage_accumulation_constant =
+      prm.get_double("Damage accumulation constant");
+
+    damage_decay_constant = prm.get_double("Damage decay constant");
+
+    damage_decay_exponent = prm.get_double("Damage decay exponent");
+
+    endurance_limit = prm.get_double("Endurance limit");
+
+    degradation_exponent = prm.get_double("Degradation exponent");
+
+    flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
+
+    flag_couple_microtraction_to_damage =
+      prm.get_bool("Couple microtraction to damage");
+
+    flag_couple_macrotraction_to_damage =
+      prm.get_bool("Couple macrotraction to damage");
+  }
+  prm.leave_subsection();
+}
+
+
+
 ContactLawParameters::ContactLawParameters()
 :
 penalty_coefficient(100.0)
