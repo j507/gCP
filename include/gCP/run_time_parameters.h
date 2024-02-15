@@ -25,6 +25,13 @@ enum class ControlType
 
 
 
+enum class CohesiveLawModel
+{
+  OrtizEtAl,
+};
+
+
+
 enum class DamageEvolutionModel
 {
   OrtizEtAl,
@@ -383,6 +390,13 @@ struct CohesiveLawParameters
    * object @p prm.
    */
   void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  CohesiveLawModel cohesive_law_model;
 
   /*!
    * @brief

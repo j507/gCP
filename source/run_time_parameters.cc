@@ -173,6 +173,16 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
       dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
   }
   prm.leave_subsection();
+
+  prm.enter_subsection("Vector microscopic stress law's parameters");
+  {
+    Assert(initial_slip_resistance ==
+            prm.get_double("Initial slip resistance"),
+           dealii::ExcMessage(
+            "The initial slip resistance of the scalar-valued and "
+            "vector-valued microstress has to match"));
+  }
+  prm.leave_subsection();
 }
 
 
@@ -273,6 +283,7 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 CohesiveLawParameters::CohesiveLawParameters()
 :
+cohesive_law_model(CohesiveLawModel::OrtizEtAl),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
 tangential_to_normal_stiffness_ratio(1.0)
@@ -283,9 +294,13 @@ tangential_to_normal_stiffness_ratio(1.0)
 void CohesiveLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Decohesion law's parameters");
+  prm.enter_subsection("Cohesive law's parameters");
   {
-    prm.declare_entry("Maximum cohesive traction",
+    prm.declare_entry("Cohesive law model",
+                      "OrtizEtAl",
+                      dealii::Patterns::Selection("OrtizEtAl"));
+
+    prm.declare_entry("Critical cohesive traction",
                       "700.",
                       dealii::Patterns::Double(0.0));
 
@@ -305,10 +320,25 @@ void CohesiveLawParameters::declare_parameters(
 void CohesiveLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Decohesion law's parameters");
+  prm.enter_subsection("Cohesive law's parameters");
   {
+    const std::string string_damage_evolution_model(
+      prm.get("Cohesive law model"));
+
+    if (string_damage_evolution_model == std::string("OrtizEtAl"))
+    {
+      cohesive_law_model = CohesiveLawModel::OrtizEtAl;
+    }
+    else
+    {
+      AssertThrow(
+        false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the cohesive law model."));
+    }
+
     critical_cohesive_traction =
-      prm.get_double("Maximum cohesive traction");
+      prm.get_double("Critical cohesive traction");
 
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");
