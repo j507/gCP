@@ -68,9 +68,9 @@ end
 
 
 subsection 4. Output parameters
-  set Graphical output directory   = results/default_/
+  set Graphical output directory   = results/default/
   set Graphical output frequency   = 1
-  set Output damage variable field = false
+  set Output damage variable field = true
   set Output fluctuations fields   = false
   set Output residual field        = false
   set Store checkpoints            = false
@@ -90,7 +90,7 @@ end
 subsection 6. Solver parameters
   set Allow decohesion at grain boundaries         = true
   set Boundary conditions at grain boundaries      = microtraction
-  set Logger output directory                      = results/default_/
+  set Logger output directory                      = results/default/
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = false
   set Verbose                                      = false
@@ -98,22 +98,28 @@ subsection 6. Solver parameters
 
 
   subsection Constitutive laws' parameters
+    subsection Cohesive law's parameters
+      set Cohesive law model                   = OrtizEtAl
+      set Critical cohesive traction           = 700.
+      set Critical opening displacement        = 2.5e-2
+      set Tangential to normal stiffness ratio = 1.0
+    end
+
+
     subsection Contact law's parameters
       set Penalty coefficient = 1e4
     end
 
-    subsection Decohesion law's parameters
-      set Couple macrotraction to damage       = false
-      set Couple microtraction to damage       = false
-      set Critical opening displacement        = 2.5e-2
-      set Damage accumulation constant         = 1.0
-      set Damage decay constant                = 0.0
-      set Damage decay exponent                = 1.0
-      set Degradation exponent                 = 1.0
-      set Endurance limit                      = 0.0
-      set Maximum cohesive traction            = 700.
-      set Set damage to zero                   = true
-      set Tangential to normal stiffness ratio = 1.0
+    subsection Damage evolution parameters
+      set Couple macrotraction to damage = false
+      set Couple microtraction to damage = false
+      set Damage accumulation constant   = 1.0
+      set Damage decay constant          = 0.0
+      set Damage decay exponent          = 1.0
+      set Damage evolution model         = M1
+      set Degradation exponent           = 1.0
+      set Endurance limit                = 0.0
+      set Set damage to zero             = true
     end
 
     subsection Hooke-Law's parameters
@@ -129,7 +135,7 @@ subsection 6. Solver parameters
     subsection Scalar microscopic stress law's parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 490
-      set Linear hardening modulus = 500
+      set Linear hardening modulus = 550
       set Regularization function  = tanh
       set Regularization parameter = 7.5e-4
     end
