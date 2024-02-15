@@ -1127,8 +1127,7 @@ CohesiveLaw<dim>::CohesiveLaw(
 :
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
-tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
-degradation_exponent(parameters.degradation_exponent)
+tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio)
 {}
 
 
