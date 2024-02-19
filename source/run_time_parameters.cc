@@ -292,7 +292,7 @@ flag_set_damage_to_zero(false)
 void CohesiveLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Decohesion law's parameters");
+  prm.enter_subsection("Cohesive law's parameters");
   {
     prm.declare_entry("Cohesive law model",
                       "OrtizEtAl",
@@ -350,7 +350,7 @@ void CohesiveLawParameters::declare_parameters(
 void CohesiveLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Decohesion law's parameters");
+  prm.enter_subsection("Cohesive law's parameters");
   {
     const std::string string_cohesive_law_model(
       prm.get("Cohesive law model"));
