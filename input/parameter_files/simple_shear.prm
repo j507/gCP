@@ -112,7 +112,7 @@ subsection 6. Solver parameters
       set Damage decay exponent                = 1.0
       set Degradation exponent                 = 1.0
       set Endurance limit                      = 0.0
-      set Maximum cohesive traction            = 700.
+      set Critical cohesive traction           = 700.
       set Set damage to zero                   = false
       set Tangential to normal stiffness ratio = 1.0
     end
