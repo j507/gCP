@@ -34,6 +34,13 @@ enum class DamageEvolutionModel
 
 
 
+enum class CohesiveLawModel
+{
+  OrtizEtAl,
+};
+
+
+
 /*!
  * @brief A enum class specifiying the type of loading
  */
@@ -383,6 +390,13 @@ struct CohesiveLawParameters
    * object @p prm.
    */
   void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  CohesiveLawModel  cohesive_law_model;
 
   /*!
    * @brief

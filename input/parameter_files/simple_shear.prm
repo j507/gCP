@@ -103,6 +103,7 @@ subsection 6. Solver parameters
     end
 
     subsection Decohesion law's parameters
+      set Cohesive law model                   = OrtizEtAl
       set Couple macrotraction to damage       = false
       set Couple microtraction to damage       = true
       set Critical opening displacement        = 2.5e-2

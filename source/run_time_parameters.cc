@@ -273,6 +273,7 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 CohesiveLawParameters::CohesiveLawParameters()
 :
+cohesive_law_model(CohesiveLawModel::OrtizEtAl),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
 tangential_to_normal_stiffness_ratio(1.0),
@@ -293,6 +294,10 @@ void CohesiveLawParameters::declare_parameters(
 {
   prm.enter_subsection("Decohesion law's parameters");
   {
+    prm.declare_entry("Cohesive law model",
+                      "OrtizEtAl",
+                      dealii::Patterns::Selection("OrtizEtAl"));
+
     prm.declare_entry("Maximum cohesive traction",
                       "700.",
                       dealii::Patterns::Double(0.0));
@@ -347,6 +352,21 @@ void CohesiveLawParameters::parse_parameters(
 {
   prm.enter_subsection("Decohesion law's parameters");
   {
+    const std::string string_cohesive_law_model(
+      prm.get("Cohesive law model"));
+
+    if (string_cohesive_law_model == std::string("OrtizEtAl"))
+    {
+      cohesive_law_model = CohesiveLawModel::OrtizEtAl;
+    }
+    else
+    {
+      AssertThrow(
+        false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the cohesive law model."));
+    }
+
     critical_cohesive_traction =
       prm.get_double("Maximum cohesive traction");
 
