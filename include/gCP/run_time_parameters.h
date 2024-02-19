@@ -25,13 +25,6 @@ enum class ControlType
 
 
 
-enum class CohesiveLawModel
-{
-  OrtizEtAl,
-};
-
-
-
 enum class DamageEvolutionModel
 {
   OrtizEtAl,
@@ -396,13 +389,6 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  CohesiveLawModel cohesive_law_model;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
   double  critical_cohesive_traction;
 
   /*!
@@ -418,6 +404,62 @@ struct CohesiveLawParameters
    * @todo Docu
    */
   double  tangential_to_normal_stiffness_ratio;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_accumulation_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_constant;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  damage_decay_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  endurance_limit;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_microtraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_couple_macrotraction_to_damage;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool    flag_set_damage_to_zero;
 };
 
 

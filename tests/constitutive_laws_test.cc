@@ -233,7 +233,6 @@ void CrystalData<dim>::init()
     crystals_data->get_n_slips());
 
   interface_quadrature_point_history.init(
-    parameters.solver_parameters.constitutive_laws_parameters.damage_evolution_parameters,
     parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters);
 }
 

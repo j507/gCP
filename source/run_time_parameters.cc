@@ -173,16 +173,6 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
       dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
   }
   prm.leave_subsection();
-
-  prm.enter_subsection("Vector microscopic stress law's parameters");
-  {
-    Assert(initial_slip_resistance ==
-            prm.get_double("Initial slip resistance"),
-           dealii::ExcMessage(
-            "The initial slip resistance of the scalar-valued and "
-            "vector-valued microstress has to match"));
-  }
-  prm.leave_subsection();
 }
 
 
@@ -283,10 +273,17 @@ void MicroscopicTractionLawParameters::parse_parameters(
 
 CohesiveLawParameters::CohesiveLawParameters()
 :
-cohesive_law_model(CohesiveLawModel::OrtizEtAl),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
-tangential_to_normal_stiffness_ratio(1.0)
+tangential_to_normal_stiffness_ratio(1.0),
+damage_accumulation_constant(1.0),
+damage_decay_constant(0.0),
+damage_decay_exponent(1.0),
+endurance_limit(0.0),
+degradation_exponent(1.0),
+flag_couple_microtraction_to_damage(true),
+flag_couple_macrotraction_to_damage(false),
+flag_set_damage_to_zero(false)
 {}
 
 
@@ -294,13 +291,9 @@ tangential_to_normal_stiffness_ratio(1.0)
 void CohesiveLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Cohesive law's parameters");
+  prm.enter_subsection("Decohesion law's parameters");
   {
-    prm.declare_entry("Cohesive law model",
-                      "OrtizEtAl",
-                      dealii::Patterns::Selection("OrtizEtAl"));
-
-    prm.declare_entry("Critical cohesive traction",
+    prm.declare_entry("Maximum cohesive traction",
                       "700.",
                       dealii::Patterns::Double(0.0));
 
@@ -311,6 +304,38 @@ void CohesiveLawParameters::declare_parameters(
     prm.declare_entry("Tangential to normal stiffness ratio",
                       "1.0",
                       dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Damage accumulation constant",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Damage decay constant",
+                      "0.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Damage decay exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Endurance limit",
+                      "0.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Degradation exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Set damage to zero",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple microtraction to damage",
+                      "true",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Couple macrotraction to damage",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -320,31 +345,36 @@ void CohesiveLawParameters::declare_parameters(
 void CohesiveLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Cohesive law's parameters");
+  prm.enter_subsection("Decohesion law's parameters");
   {
-    const std::string string_damage_evolution_model(
-      prm.get("Cohesive law model"));
-
-    if (string_damage_evolution_model == std::string("OrtizEtAl"))
-    {
-      cohesive_law_model = CohesiveLawModel::OrtizEtAl;
-    }
-    else
-    {
-      AssertThrow(
-        false,
-        dealii::ExcMessage(
-          "Unexpected identifier for the cohesive law model."));
-    }
-
     critical_cohesive_traction =
-      prm.get_double("Critical cohesive traction");
+      prm.get_double("Maximum cohesive traction");
 
     critical_opening_displacement =
       prm.get_double("Critical opening displacement");
 
     tangential_to_normal_stiffness_ratio =
       prm.get_double("Tangential to normal stiffness ratio");
+
+    damage_accumulation_constant =
+      prm.get_double("Damage accumulation constant");
+
+    damage_decay_constant = prm.get_double("Damage decay constant");
+
+    damage_decay_exponent = prm.get_double("Damage decay exponent");
+
+    endurance_limit = prm.get_double("Endurance limit");
+
+    degradation_exponent = prm.get_double("Degradation exponent");
+
+    flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
+
+    flag_couple_microtraction_to_damage =
+      prm.get_bool("Couple microtraction to damage");
+
+    flag_couple_macrotraction_to_damage =
+      prm.get_bool("Couple macrotraction to damage");
+
   }
   prm.leave_subsection();
 }

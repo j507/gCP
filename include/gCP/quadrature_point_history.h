@@ -73,8 +73,7 @@ public:
   double get_max_effective_opening_displacement() const;
 
   void init(
-    const RunTimeParameters::DamageEvolution        &parameters,
-    const RunTimeParameters::CohesiveLawParameters  &prm);
+    const RunTimeParameters::CohesiveLawParameters &parameters);
 
   void set(const double damage_variable_value);
 
