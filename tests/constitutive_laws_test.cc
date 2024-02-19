@@ -69,6 +69,8 @@ private:
 
   gCP::ConstitutiveLaws::CohesiveLaw<dim>                 cohesive_law;
 
+  gCP::ConstitutiveLaws::DegradationFunction              degradation_function;
+
   gCP::QuadraturePointHistory<dim>                        quadrature_point_history;
 
   gCP::InterfaceQuadraturePointHistory<dim>               interface_quadrature_point_history;
@@ -117,7 +119,8 @@ vectorial_microstress_law(
 microscopic_traction_law(
   crystals_data,
   parameters.solver_parameters.constitutive_laws_parameters.microscopic_traction_law_parameters),
-cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters)
+cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters),
+degradation_function(parameters.solver_parameters.constitutive_laws_parameters.degradation_function_parameters)
 {
   this->pcout << "TESTING CONSTITUTIVE LAWS IN " << std::noshowpos
               << dim << "-D..." << std::endl << std::endl;
@@ -561,7 +564,7 @@ void CrystalData<dim>::test_constitutive_laws()
   std::cout << "Testing InterfaceQuadraturePointHistory<dim> \n\n";
 
   const double thermodynamic_force =
-    - cohesive_law.get_degradation_function_derivative_value(
+    - degradation_function.get_degradation_function_derivative_value(
         interface_quadrature_point_history.get_damage_variable(), true) *
     (cohesive_law_free_energy_density
       +

@@ -445,7 +445,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 {
                   data.local_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    (cohesive_law->get_degradation_function_value(
+                    (degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_macrotraction_to_damage) *
                      scratch.cohesive_law_jacobian_values[face_q_point]
@@ -457,7 +457,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_vector_phi[i] *
-                    (cohesive_law->get_degradation_function_value(
+                    (degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_macrotraction_to_damage) *
                      scratch.cohesive_law_jacobian_values[face_q_point]
@@ -489,7 +489,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_matrix(i,j) -=
                     scratch.face_scalar_phi[slip_id_alpha][i] *
-                    cohesive_law->get_degradation_function_value(
+                    degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_microtraction_to_damage) *
                     scratch.intra_gateaux_derivative_values[face_q_point][slip_id_alpha][slip_id_beta] *
@@ -498,7 +498,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
                   data.local_coupling_matrix(i,j) -=
                     scratch.face_scalar_phi[slip_id_alpha][i] *
-                    cohesive_law->get_degradation_function_value(
+                    degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
                       parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_microtraction_to_damage) *
                     scratch.inter_gateaux_derivative_values[face_q_point][slip_id_alpha][neighbour_slip_id_beta] *
@@ -971,7 +971,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
                 data.local_rhs(i) +=
                   scratch.face_vector_phi[i] *
-                  (cohesive_law->get_degradation_function_value(
+                  (degradation_function->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
                     parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_macrotraction_to_damage) *
                    scratch.cohesive_traction_values[face_q_point]
@@ -991,7 +991,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
                 data.local_rhs(i) +=
                   scratch.face_scalar_phi[slip_id][i] *
-                  cohesive_law->get_degradation_function_value(
+                  degradation_function->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
                     parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_microtraction_to_damage) *
                   scratch.microscopic_traction_values[slip_id][face_q_point] *
@@ -1396,7 +1396,7 @@ update_local_quadrature_point_history(
                     scratch.normal_vector_values[face_q_point]);
 
                 scratch.thermodynamic_force_values[face_q_point] =
-                  - cohesive_law->get_degradation_function_derivative_value(
+                  - degradation_function->get_degradation_function_derivative_value(
                       local_interface_quadrature_point_history[face_q_point]->get_damage_variable(), true) *
                   (cohesive_law->get_free_energy_density(
                     scratch.effective_opening_displacement[face_q_point])
@@ -1440,7 +1440,7 @@ update_local_quadrature_point_history(
                     scratch.normal_vector_values[face_q_point]);
 
                 scratch.thermodynamic_force_values[face_q_point] =
-                  - cohesive_law->get_degradation_function_derivative_value(
+                  - degradation_function->get_degradation_function_derivative_value(
                       local_interface_quadrature_point_history[face_q_point]->get_damage_variable(), true) *
                   (cohesive_law->get_free_energy_density(
                     scratch.effective_opening_displacement[face_q_point])

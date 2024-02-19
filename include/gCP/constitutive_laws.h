@@ -445,14 +445,6 @@ public:
   double get_free_energy_density(
     const double effective_opening_displacement) const;
 
-  double get_degradation_function_value(
-    const double  damage_variable,
-    const bool    couple) const;
-
-  double get_degradation_function_derivative_value(
-    const double  damage_variable,
-    const bool    couple) const;
-
   double get_effective_opening_displacement(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
@@ -487,35 +479,6 @@ private:
 
 template <int dim>
 inline double
-CohesiveLaw<dim>::get_degradation_function_value(
-  const double  damage_variable,
-  const bool    couple) const
-{
-  if (couple)
-    return std::pow(1.0 - damage_variable, degradation_exponent);
-  else
-    return 1.0;
-}
-
-
-
-template <int dim>
-inline double
-CohesiveLaw<dim>::get_degradation_function_derivative_value(
-  const double  damage_variable,
-  const bool    couple) const
-{
-  if (couple)
-    return (- degradation_exponent *
-           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
-  else
-    return 1.0;
-}
-
-
-
-template <int dim>
-inline double
 CohesiveLaw<dim>::macaulay_brackets(const double value) const
 {
   if (value > 0)
@@ -537,6 +500,64 @@ CohesiveLaw<dim>::get_effective_cohesive_traction(
           std::exp(1.0 - effective_opening_displacement /
                          critical_opening_displacement));
 }
+
+
+
+class DegradationFunction
+{
+public:
+
+  DegradationFunction(
+    const RunTimeParameters::DegradationFunction parameters);
+
+  double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    flag_couple_damage) const;
+
+  double get_degradation_function_derivative_value(
+    const double  damage_variable,
+    const bool    flag_couple_damage) const;
+
+private:
+
+  const double degradation_exponent;
+};
+
+
+
+inline double
+DegradationFunction::get_degradation_function_value(
+  const double  damage_variable,
+  const bool    flag_couple_damage) const
+{
+  if (flag_couple_damage)
+  {
+    return std::pow(1.0 - damage_variable, degradation_exponent);
+  }
+  else
+  {
+    return 1.0;
+  }
+}
+
+
+
+inline double
+DegradationFunction::get_degradation_function_derivative_value(
+  const double  damage_variable,
+  const bool    flag_couple_damage) const
+{
+  if (flag_couple_damage)
+  {
+    return (- degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
+  }
+  else
+  {
+    return 1.0;
+  }
+}
+
 
 
 /*!

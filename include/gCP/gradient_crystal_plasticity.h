@@ -131,6 +131,9 @@ private:
   std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
                                                     cohesive_law;
 
+  std::shared_ptr<ConstitutiveLaws::DegradationFunction>
+                                                    degradation_function;
+
   std::shared_ptr<ConstitutiveLaws::ContactLaw<dim>>
                                                     contact_law;
 

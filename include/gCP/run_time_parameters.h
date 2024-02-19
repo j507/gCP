@@ -452,13 +452,6 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  double  degradation_exponent;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
   bool    flag_couple_microtraction_to_damage;
 
   /*!
@@ -474,6 +467,36 @@ struct CohesiveLawParameters
    * @todo Docu
    */
   bool    flag_set_damage_to_zero;
+};
+
+
+
+
+struct DegradationFunction
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DegradationFunction();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
 };
 
 
@@ -658,6 +681,13 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DegradationFunction   degradation_function_parameters;
 
   /*!
    * @brief

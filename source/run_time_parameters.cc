@@ -291,7 +291,6 @@ damage_accumulation_constant(1.0),
 damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
-degradation_exponent(1.0),
 flag_couple_microtraction_to_damage(true),
 flag_couple_macrotraction_to_damage(false),
 flag_set_damage_to_zero(false)
@@ -336,9 +335,6 @@ void CohesiveLawParameters::declare_parameters(
                       "0.0",
                       dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Degradation exponent",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Set damage to zero",
                       "false",
@@ -395,8 +391,6 @@ void CohesiveLawParameters::parse_parameters(
 
     endurance_limit = prm.get_double("Endurance limit");
 
-    degradation_exponent = prm.get_double("Degradation exponent");
-
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 
     flag_couple_microtraction_to_damage =
@@ -404,7 +398,39 @@ void CohesiveLawParameters::parse_parameters(
 
     flag_couple_macrotraction_to_damage =
       prm.get_bool("Couple macrotraction to damage");
+  }
+  prm.leave_subsection();
+}
 
+
+
+DegradationFunction::DegradationFunction()
+:
+degradation_exponent(1.0)
+{}
+
+
+
+void DegradationFunction::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Degradation function parameters");
+  {
+    prm.declare_entry("Degradation exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DegradationFunction::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Degradation function parameters");
+  {
+    degradation_exponent = prm.get_double("Degradation exponent");
   }
   prm.leave_subsection();
 }
@@ -418,7 +444,6 @@ damage_accumulation_constant(1.0),
 damage_decay_constant(0.0),
 damage_decay_exponent(1.0),
 endurance_limit(0.0),
-degradation_exponent(1.0),
 flag_couple_microtraction_to_damage(true),
 flag_couple_macrotraction_to_damage(true),
 flag_set_damage_to_zero(false)
@@ -449,10 +474,6 @@ void DamageEvolution::declare_parameters(
 
     prm.declare_entry("Endurance limit",
                       "0.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Degradation exponent",
-                      "1.0",
                       dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Set damage to zero",
@@ -504,8 +525,6 @@ void DamageEvolution::parse_parameters(
     damage_decay_exponent = prm.get_double("Damage decay exponent");
 
     endurance_limit = prm.get_double("Endurance limit");
-
-    degradation_exponent = prm.get_double("Degradation exponent");
 
     flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
 
@@ -574,6 +593,8 @@ void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &pr
 
     ContactLawParameters::declare_parameters(prm);
 
+    DegradationFunction::declare_parameters(prm);
+
     DamageEvolution::declare_parameters(prm);
   }
   prm.leave_subsection();
@@ -597,6 +618,8 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     cohesive_law_parameters.parse_parameters(prm);
 
     contact_law_parameters.parse_parameters(prm);
+
+    degradation_function_parameters.parse_parameters(prm);
 
     damage_evolution_parameters.parse_parameters(prm);
   }
