@@ -70,7 +70,7 @@ end
 subsection 4. Output parameters
   set Graphical output directory   = results/default/
   set Graphical output frequency   = 1
-  set Output damage variable field = true
+  set Output damage variable field = false
   set Output fluctuations fields   = false
   set Output residual field        = false
   set Store checkpoints            = false
@@ -98,28 +98,22 @@ subsection 6. Solver parameters
 
 
   subsection Constitutive laws' parameters
-    subsection Cohesive law's parameters
-      set Cohesive law model                   = OrtizEtAl
-      set Critical cohesive traction           = 700.
-      set Critical opening displacement        = 2.5e-2
-      set Tangential to normal stiffness ratio = 1.0
-    end
-
-
     subsection Contact law's parameters
       set Penalty coefficient = 1e4
     end
 
-    subsection Damage evolution parameters
-      set Couple macrotraction to damage = false
-      set Couple microtraction to damage = false
-      set Damage accumulation constant   = 1.0
-      set Damage decay constant          = 0.0
-      set Damage decay exponent          = 1.0
-      set Damage evolution model         = M1
-      set Degradation exponent           = 1.0
-      set Endurance limit                = 0.0
-      set Set damage to zero             = true
+    subsection Decohesion law's parameters
+      set Couple macrotraction to damage       = false
+      set Couple microtraction to damage       = true
+      set Critical opening displacement        = 2.5e-2
+      set Damage accumulation constant         = 1.0
+      set Damage decay constant                = 0.0
+      set Damage decay exponent                = 1.0
+      set Degradation exponent                 = 1.0
+      set Endurance limit                      = 0.0
+      set Maximum cohesive traction            = 700.
+      set Set damage to zero                   = false
+      set Tangential to normal stiffness ratio = 1.0
     end
 
     subsection Hooke-Law's parameters
@@ -144,7 +138,7 @@ subsection 6. Solver parameters
       set Defect energy index      = 2.0
       set Energetic length scale   = 0.2
       set Initial slip resistance  = 490
-      set Regularization parameter = 1e-15
+      set Regularization parameter = 1e-16
     end
 
   end
