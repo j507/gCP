@@ -65,7 +65,7 @@ private:
 
   gCP::ConstitutiveLaws::VectorialMicrostressLaw<dim>     vectorial_microstress_law;
 
-  gCP::ConstitutiveLaws::MicroscopicTractionLaw<dim>      microscopic_traction_law;
+  gCP::ConstitutiveLaws::MicrotractionLaw<dim>      microtraction_law;
 
   gCP::ConstitutiveLaws::CohesiveLaw<dim>                 cohesive_law;
 
@@ -116,9 +116,9 @@ scalar_microstress_law(
 vectorial_microstress_law(
   crystals_data,
   parameters.solver_parameters.constitutive_laws_parameters.vectorial_microstress_law_parameters),
-microscopic_traction_law(
+microtraction_law(
   crystals_data,
-  parameters.solver_parameters.constitutive_laws_parameters.microscopic_traction_law_parameters),
+  parameters.solver_parameters.constitutive_laws_parameters.microtraction_law_parameters),
 cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters),
 degradation_function(parameters.solver_parameters.constitutive_laws_parameters.degradation_function_parameters)
 {
@@ -425,19 +425,19 @@ void CrystalData<dim>::test_constitutive_laws()
       << gCP::Utilities::get_tensor_as_string(vectorial_microstresses[slip_id])
       << "\n\n";
 
-  std::cout << "Testing MicroscopicTractionLaw<dim> \n\n";
+  std::cout << "Testing MicrotractionLaw<dim> \n\n";
 
   std::vector<dealii::Tensor<1,dim>> normal_vector_values(1);
 
   normal_vector_values[0][1] = 1.0;
 
   auto grain_interaction_moduli =
-    microscopic_traction_law.get_grain_interaction_moduli(
+    microtraction_law.get_grain_interaction_moduli(
       0,
       1,
       normal_vector_values);
 
-  std::vector<std::vector<double>> microscopic_traction_values(
+  std::vector<std::vector<double>> microtraction_values(
     crystals_data->get_n_slips(),
     std::vector<double>(1, 0));
 
@@ -457,8 +457,8 @@ void CrystalData<dim>::test_constitutive_laws()
 
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips(); ++slip_id)
-    microscopic_traction_values[slip_id][0] =
-      microscopic_traction_law.get_microscopic_traction(
+    microtraction_values[slip_id][0] =
+      microtraction_law.get_microtraction(
         0,
         slip_id,
         grain_interaction_moduli,
@@ -466,12 +466,12 @@ void CrystalData<dim>::test_constitutive_laws()
         neighbour_face_slip_values);
 
   const dealii::FullMatrix<double> intra_gateaux_derivative =
-    microscopic_traction_law.get_intra_gateaux_derivative(
+    microtraction_law.get_intra_gateaux_derivative(
       0,
       grain_interaction_moduli);
 
   const dealii::FullMatrix<double> inter_gateaux_derivative =
-    microscopic_traction_law.get_inter_gateaux_derivative(
+    microtraction_law.get_inter_gateaux_derivative(
       0,
       grain_interaction_moduli);
 
@@ -504,7 +504,7 @@ void CrystalData<dim>::test_constitutive_laws()
     std::cout
       << std::setw(string_width) << std::left
       << (" Microscopic traction - " + std::to_string(slip_id)) << " = "
-      << microscopic_traction_values[slip_id][0]
+      << microtraction_values[slip_id][0]
       << "\n\n";
 
   std::cout
@@ -520,7 +520,7 @@ void CrystalData<dim>::test_constitutive_laws()
     << "\n\n";
 
   const double microtraction_free_energy_density =
-    microscopic_traction_law.get_free_energy_density(
+    microtraction_law.get_free_energy_density(
             1,
             0,
             0,

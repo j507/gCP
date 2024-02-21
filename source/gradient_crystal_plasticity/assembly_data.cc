@@ -284,7 +284,7 @@ old_slip_values(
 scalar_microstress_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-microscopic_traction_values(
+microtraction_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
 supply_term_values(this->n_q_points),
@@ -364,7 +364,7 @@ old_slip_values(
 scalar_microstress_values(
   n_slips,
   std::vector<double>(this->n_q_points)),
-microscopic_traction_values(
+microtraction_values(
   n_slips,
   std::vector<double>(this->n_face_q_points)),
 supply_term_values(this->n_q_points),

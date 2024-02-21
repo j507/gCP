@@ -236,7 +236,7 @@ struct Scratch : ScratchBase<dim>
 
   std::vector<std::vector<double>>                scalar_microstress_values;
 
-  std::vector<std::vector<double>>                microscopic_traction_values;
+  std::vector<std::vector<double>>                microtraction_values;
 
   std::vector<dealii::Tensor<1,dim>>              supply_term_values;
 

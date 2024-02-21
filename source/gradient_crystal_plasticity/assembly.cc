@@ -322,7 +322,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
         {
           scratch.grain_interaction_moduli =
-            microscopic_traction_law->get_grain_interaction_moduli(
+            microtraction_law->get_grain_interaction_moduli(
               crystal_id,
               neighbour_crystal_id,
               scratch.normal_vector_values);
@@ -410,12 +410,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microtraction)
           {
             scratch.intra_gateaux_derivative_values[face_q_point] =
-              microscopic_traction_law->get_intra_gateaux_derivative(
+              microtraction_law->get_intra_gateaux_derivative(
                 face_q_point,
                 scratch.grain_interaction_moduli);
 
             scratch.inter_gateaux_derivative_values[face_q_point] =
-              microscopic_traction_law->get_inter_gateaux_derivative(
+              microtraction_law->get_inter_gateaux_derivative(
                 face_q_point,
                 scratch.grain_interaction_moduli);
 
@@ -846,7 +846,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         {
            // Get grain interactino moduli
           scratch.grain_interaction_moduli =
-            microscopic_traction_law->get_grain_interaction_moduli(
+            microtraction_law->get_grain_interaction_moduli(
               crystal_id,
               neighbour_crystal_id,
               scratch.normal_vector_values);
@@ -915,8 +915,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
             {
               // Compute the microscopic traction values at the
               // quadrature point
-              scratch.microscopic_traction_values[slip_id][face_q_point] =
-                microscopic_traction_law->get_microscopic_traction(
+              scratch.microtraction_values[slip_id][face_q_point] =
+                microtraction_law->get_microtraction(
                   face_q_point,
                   slip_id,
                   scratch.grain_interaction_moduli,
@@ -994,7 +994,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                   degradation_function->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
                     parameters.constitutive_laws_parameters.damage_evolution_parameters.flag_couple_microtraction_to_damage) *
-                  scratch.microscopic_traction_values[slip_id][face_q_point] *
+                  scratch.microtraction_values[slip_id][face_q_point] *
                   scratch.face_JxW_values[face_q_point];
               }
 
@@ -1401,7 +1401,7 @@ update_local_quadrature_point_history(
                   (cohesive_law->get_free_energy_density(
                     scratch.effective_opening_displacement[face_q_point])
                    +
-                   microscopic_traction_law->get_free_energy_density(
+                   microtraction_law->get_free_energy_density(
                     neighbor_crystal_id,
                     crystal_id,
                     face_q_point,
@@ -1445,7 +1445,7 @@ update_local_quadrature_point_history(
                   (cohesive_law->get_free_energy_density(
                     scratch.effective_opening_displacement[face_q_point])
                    +
-                   microscopic_traction_law->get_free_energy_density(
+                   microtraction_law->get_free_energy_density(
                     neighbor_crystal_id,
                     crystal_id,
                     face_q_point,

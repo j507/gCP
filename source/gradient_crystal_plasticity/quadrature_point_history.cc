@@ -335,7 +335,7 @@ flag_init_was_called(false)
 
 template <int dim>
 void QuadraturePointHistory<dim>::init(
-  const RunTimeParameters::ScalarMicroscopicStressLawParameters
+  const RunTimeParameters::ScalarMicrostressLawParameters
     &parameters,
   const unsigned int n_slips)
 {

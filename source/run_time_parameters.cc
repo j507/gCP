@@ -86,7 +86,7 @@ void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
 
-ScalarMicroscopicStressLawParameters::ScalarMicroscopicStressLawParameters()
+ScalarMicrostressLawParameters::ScalarMicrostressLawParameters()
 :
 regularization_function(RegularizationFunction::Tanh),
 regularization_parameter(3e-4),
@@ -97,9 +97,9 @@ hardening_parameter(1.4)
 
 
 
-void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
+void ScalarMicrostressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Scalar microscopic stress law's parameters");
+  prm.enter_subsection("Scalar microstress law's parameters");
   {
     prm.declare_entry("Regularization function",
                       "tanh",
@@ -126,9 +126,9 @@ void ScalarMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
 
 
 
-void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
+void ScalarMicrostressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Scalar microscopic stress law's parameters");
+  prm.enter_subsection("Scalar microstress law's parameters");
   {
     const std::string string_regularization_function(
                       prm.get("Regularization function"));
@@ -174,7 +174,7 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
   }
   prm.leave_subsection();
 
-  prm.enter_subsection("Vector microscopic stress law's parameters");
+  prm.enter_subsection("Vectorial microstress law's parameters");
   {
     Assert(initial_slip_resistance ==
             prm.get_double("Initial slip resistance"),
@@ -187,7 +187,7 @@ void ScalarMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 
 
-VectorMicroscopicStressLawParameters::VectorMicroscopicStressLawParameters()
+VectorialMicrostressLawParameters::VectorialMicrostressLawParameters()
 :
 energetic_length_scale(0.0),
 initial_slip_resistance(0.0),
@@ -197,9 +197,9 @@ regularization_parameter(1e-6)
 
 
 
-void VectorMicroscopicStressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
+void VectorialMicrostressLawParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Vector microscopic stress law's parameters");
+  prm.enter_subsection("Vectorial microstress law's parameters");
   {
     prm.declare_entry("Energetic length scale",
                       "0.0",
@@ -222,9 +222,9 @@ void VectorMicroscopicStressLawParameters::declare_parameters(dealii::ParameterH
 
 
 
-void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
+void VectorialMicrostressLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Vector microscopic stress law's parameters");
+  prm.enter_subsection("Vectorial microstress law's parameters");
   {
 
     energetic_length_scale =
@@ -248,17 +248,17 @@ void VectorMicroscopicStressLawParameters::parse_parameters(dealii::ParameterHan
 
 
 
-MicroscopicTractionLawParameters::MicroscopicTractionLawParameters()
+MicrotractionLawParameters::MicrotractionLawParameters()
 :
 grain_boundary_modulus(0.0)
 {}
 
 
 
-void MicroscopicTractionLawParameters::declare_parameters(
+void MicrotractionLawParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Microscopic traction law's parameters");
+  prm.enter_subsection("Microtraction law's parameters");
   {
     prm.declare_entry("Grain boundary modulus",
                       "0.0",
@@ -269,10 +269,10 @@ void MicroscopicTractionLawParameters::declare_parameters(
 
 
 
-void MicroscopicTractionLawParameters::parse_parameters(
+void MicrotractionLawParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Microscopic traction law's parameters");
+  prm.enter_subsection("Microtraction law's parameters");
   {
     grain_boundary_modulus  = prm.get_double("Grain boundary modulus");
   }
@@ -530,11 +530,11 @@ void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &pr
   {
     HookeLawParameters::declare_parameters(prm);
 
-    ScalarMicroscopicStressLawParameters::declare_parameters(prm);
+    ScalarMicrostressLawParameters::declare_parameters(prm);
 
-    VectorMicroscopicStressLawParameters::declare_parameters(prm);
+    VectorialMicrostressLawParameters::declare_parameters(prm);
 
-    MicroscopicTractionLawParameters::declare_parameters(prm);
+    MicrotractionLawParameters::declare_parameters(prm);
 
     CohesiveLawParameters::declare_parameters(prm);
 
@@ -560,7 +560,7 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     vectorial_microstress_law_parameters.parse_parameters(prm);
 
-    microscopic_traction_law_parameters.parse_parameters(prm);
+    microtraction_law_parameters.parse_parameters(prm);
 
     cohesive_law_parameters.parse_parameters(prm);
 

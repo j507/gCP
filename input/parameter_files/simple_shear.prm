@@ -130,11 +130,11 @@ subsection 6. Solver parameters
       set C1212 = 107212
     end
 
-    subsection Microscopic traction law's parameters
+    subsection Microtraction law's parameters
       set Grain boundary modulus = 1e3
     end
 
-    subsection Scalar microscopic stress law's parameters
+    subsection Scalar microstress law's parameters
       set Hardening parameter      = 1.4
       set Initial slip resistance  = 490
       set Linear hardening modulus = 550
@@ -142,7 +142,7 @@ subsection 6. Solver parameters
       set Regularization parameter = 7.5e-4
     end
 
-    subsection Vector microscopic stress law's parameters
+    subsection Vectorial microstress law's parameters
       set Defect energy index      = 2.0
       set Energetic length scale   = 0.2
       set Initial slip resistance  = 490

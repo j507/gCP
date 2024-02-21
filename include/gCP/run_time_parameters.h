@@ -236,12 +236,12 @@ struct HookeLawParameters
 
 
 
-struct ScalarMicroscopicStressLawParameters
+struct ScalarMicrostressLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  ScalarMicroscopicStressLawParameters();
+  ScalarMicrostressLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -293,12 +293,12 @@ struct ScalarMicroscopicStressLawParameters
 
 
 
-struct VectorMicroscopicStressLawParameters
+struct VectorialMicrostressLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  VectorMicroscopicStressLawParameters();
+  VectorialMicrostressLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -343,12 +343,12 @@ struct VectorMicroscopicStressLawParameters
 
 
 
-struct MicroscopicTractionLawParameters
+struct MicrotractionLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  MicroscopicTractionLawParameters();
+  MicrotractionLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -600,7 +600,7 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  ScalarMicroscopicStressLawParameters
+  ScalarMicrostressLawParameters
                         scalar_microstress_law_parameters;
 
   /*!
@@ -608,7 +608,7 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  VectorMicroscopicStressLawParameters
+  VectorialMicrostressLawParameters
                         vectorial_microstress_law_parameters;
 
   /*!
@@ -616,8 +616,8 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  MicroscopicTractionLawParameters
-                        microscopic_traction_law_parameters;
+  MicrotractionLawParameters
+                        microtraction_law_parameters;
 
   /*!
    * @brief

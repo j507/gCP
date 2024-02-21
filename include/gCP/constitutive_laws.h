@@ -241,7 +241,7 @@ class ScalarMicrostressLaw
 public:
   ScalarMicrostressLaw(
     const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-    const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters);
+    const RunTimeParameters::ScalarMicrostressLawParameters parameters);
 
   double get_scalar_microstress(
     const double slip_value,
@@ -310,7 +310,7 @@ class VectorialMicrostressLaw
 public:
   VectorialMicrostressLaw(
     const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-    const RunTimeParameters::VectorMicroscopicStressLawParameters parameters);
+    const RunTimeParameters::VectorialMicrostressLawParameters parameters);
 
   void init();
 
@@ -350,12 +350,12 @@ private:
 
 
 template<int dim>
-class MicroscopicTractionLaw
+class MicrotractionLaw
 {
 public:
-  MicroscopicTractionLaw(
+  MicrotractionLaw(
     const std::shared_ptr<CrystalsData<dim>>                  &crystals_data,
-    const RunTimeParameters::MicroscopicTractionLawParameters parameters);
+    const RunTimeParameters::MicrotractionLawParameters parameters);
 
   using GrainInteractionModuli =
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
@@ -366,7 +366,7 @@ public:
     const unsigned int                  crystal_id_neighbour_cell,
     std::vector<dealii::Tensor<1,dim>>  normal_vector_values) const;
 
-  double get_microscopic_traction(
+  double get_microtraction(
     const unsigned int                      q_point,
     const unsigned int                      slip_id_alpha,
     const GrainInteractionModuli            grain_interaction_moduli,

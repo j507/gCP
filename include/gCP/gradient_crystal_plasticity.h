@@ -125,8 +125,8 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorialMicrostressLaw<dim>>
                                                     vectorial_microstress_law;
 
-  std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
-                                                    microscopic_traction_law;
+  std::shared_ptr<ConstitutiveLaws::MicrotractionLaw<dim>>
+                                                    microtraction_law;
 
   std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
                                                     cohesive_law;

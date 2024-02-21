@@ -299,7 +299,7 @@ public:
    * @param n_slips The number of slip systems of the crystal
    */
   void init(
-    const RunTimeParameters::ScalarMicroscopicStressLawParameters
+    const RunTimeParameters::ScalarMicrostressLawParameters
       &parameters,
     const unsigned int n_slips);
 
