@@ -100,15 +100,8 @@ subsection 6. Solver parameters
   subsection Constitutive laws' parameters
     subsection Cohesive law's parameters
       set Cohesive law model                   = OrtizEtAl
-      set Couple macrotraction to damage       = false
-      set Couple microtraction to damage       = true
       set Critical opening displacement        = 2.5e-2
-      set Damage accumulation constant         = 1.0
-      set Damage decay constant                = 0.0
-      set Damage decay exponent                = 1.0
-      set Endurance limit                      = 0.0
       set Critical cohesive traction           = 700.
-      set Set damage to zero                   = false
       set Tangential to normal stiffness ratio = 1.0
     end
 

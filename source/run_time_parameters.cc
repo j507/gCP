@@ -286,14 +286,7 @@ CohesiveLawParameters::CohesiveLawParameters()
 cohesive_law_model(CohesiveLawModel::OrtizEtAl),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
-tangential_to_normal_stiffness_ratio(1.0),
-damage_accumulation_constant(1.0),
-damage_decay_constant(0.0),
-damage_decay_exponent(1.0),
-endurance_limit(0.0),
-flag_couple_microtraction_to_damage(true),
-flag_couple_macrotraction_to_damage(false),
-flag_set_damage_to_zero(false)
+tangential_to_normal_stiffness_ratio(1.0)
 {}
 
 
@@ -318,35 +311,6 @@ void CohesiveLawParameters::declare_parameters(
     prm.declare_entry("Tangential to normal stiffness ratio",
                       "1.0",
                       dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Damage accumulation constant",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Damage decay constant",
-                      "0.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Damage decay exponent",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Endurance limit",
-                      "0.0",
-                      dealii::Patterns::Double(0.0));
-
-
-    prm.declare_entry("Set damage to zero",
-                      "false",
-                      dealii::Patterns::Bool());
-
-    prm.declare_entry("Couple microtraction to damage",
-                      "true",
-                      dealii::Patterns::Bool());
-
-    prm.declare_entry("Couple macrotraction to damage",
-                      "false",
-                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -381,23 +345,6 @@ void CohesiveLawParameters::parse_parameters(
 
     tangential_to_normal_stiffness_ratio =
       prm.get_double("Tangential to normal stiffness ratio");
-
-    damage_accumulation_constant =
-      prm.get_double("Damage accumulation constant");
-
-    damage_decay_constant = prm.get_double("Damage decay constant");
-
-    damage_decay_exponent = prm.get_double("Damage decay exponent");
-
-    endurance_limit = prm.get_double("Endurance limit");
-
-    flag_set_damage_to_zero = prm.get_bool("Set damage to zero");
-
-    flag_couple_microtraction_to_damage =
-      prm.get_bool("Couple microtraction to damage");
-
-    flag_couple_macrotraction_to_damage =
-      prm.get_bool("Couple macrotraction to damage");
   }
   prm.leave_subsection();
 }

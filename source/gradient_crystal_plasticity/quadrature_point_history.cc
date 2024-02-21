@@ -64,19 +64,20 @@ flag_init_was_called(false)
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
-  const RunTimeParameters::CohesiveLawParameters &parameters)
+  const RunTimeParameters::DamageEvolution        &parameters,
+  const RunTimeParameters::CohesiveLawParameters  &prm)
 {
   if (flag_init_was_called)
     return;
 
   critical_cohesive_traction =
-    parameters.critical_cohesive_traction;
+    prm.critical_cohesive_traction;
 
   critical_opening_displacement =
-    parameters.critical_opening_displacement;
+    prm.critical_opening_displacement;
 
   tangential_to_normal_stiffness_ratio =
-    parameters.tangential_to_normal_stiffness_ratio;
+    prm.tangential_to_normal_stiffness_ratio;
 
   damage_accumulation_constant =
     parameters.damage_accumulation_constant;

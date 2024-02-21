@@ -462,8 +462,6 @@ private:
 
   double tangential_to_normal_stiffness_ratio;
 
-  double degradation_exponent;
-
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(
