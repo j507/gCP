@@ -83,15 +83,6 @@ public:
   void reset_values();
 
   void update_values(
-    const dealii::Tensor<1,dim> neighbor_cell_displacement,
-    const dealii::Tensor<1,dim> current_cell_displacement);
-  /*
-  void update_values(
-    const double  effective_opening_displacement,
-    const double  cohesive_traction_norm);
-  */
-
-  void update_values(
     const double  effective_opening_displacement,
     const double  thermodynamic_force);
 
