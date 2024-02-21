@@ -13,7 +13,6 @@ make_periodicity_constraints
 line_search_test
 tests/line_search_test.debug/*
 
-
 # Compiled Object files
 *.slo
 *.lo
@@ -129,3 +128,9 @@ input/parameter_files/*
 !input/parameter_files/simple_shear_Bittencourt*
 !input/parameter_files/simple_shear_Kergassner*
 !input/parameter_files/simple_shear_Lara*
+
+input/crystal_orientation/*
+!input/crystal_orientation/2d/
+input/crystal_orientation/2d/*
+!input/crystal_orientation/2d/euler_angles_30_0.txt
+
