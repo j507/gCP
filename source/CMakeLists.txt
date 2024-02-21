@@ -1,5 +1,6 @@
 # Set the source files to be compiled
 SET(TARGET_SRC
+    boundary_conditions.cc
     constitutive_laws.cc
     crystal_data.cc
     fe_field.cc

@@ -297,7 +297,7 @@ crystals_data(crystals_data)
 template<int dim>
 ScalarMicrostressLaw<dim>::ScalarMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-  const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters)
+  const RunTimeParameters::ScalarMicrostressLawParameters parameters)
 :
 crystals_data(crystals_data),
 regularization_function(parameters.regularization_function),
@@ -537,7 +537,7 @@ get_regularization_function_derivative_value(const double slip_rate) const
 template<int dim>
 VectorialMicrostressLaw<dim>::VectorialMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const RunTimeParameters::VectorMicroscopicStressLawParameters parameters)
+  const RunTimeParameters::VectorialMicrostressLawParameters parameters)
 :
 crystals_data(crystals_data),
 energetic_length_scale(parameters.energetic_length_scale),
@@ -692,9 +692,9 @@ get_jacobian(
 
 
 template<int dim>
-MicroscopicTractionLaw<dim>::MicroscopicTractionLaw(
+MicrotractionLaw<dim>::MicrotractionLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const RunTimeParameters::MicroscopicTractionLawParameters parameters)
+  const RunTimeParameters::MicrotractionLawParameters parameters)
 :
 crystals_data(crystals_data),
 grain_boundary_modulus(parameters.grain_boundary_modulus)
@@ -703,8 +703,8 @@ grain_boundary_modulus(parameters.grain_boundary_modulus)
 
 
 template<>
-MicroscopicTractionLaw<2>::GrainInteractionModuli
-MicroscopicTractionLaw<2>::get_grain_interaction_moduli(
+MicrotractionLaw<2>::GrainInteractionModuli
+MicrotractionLaw<2>::get_grain_interaction_moduli(
   const unsigned int                crystal_id_current_cell,
   const unsigned int                crystal_id_neighbour_cell,
   std::vector<dealii::Tensor<1,2>>  normal_vector_values) const
@@ -822,8 +822,8 @@ MicroscopicTractionLaw<2>::get_grain_interaction_moduli(
 
 
 template<>
-MicroscopicTractionLaw<3>::GrainInteractionModuli
-MicroscopicTractionLaw<3>::get_grain_interaction_moduli(
+MicrotractionLaw<3>::GrainInteractionModuli
+MicrotractionLaw<3>::get_grain_interaction_moduli(
   const unsigned int                crystal_id_current_cell,
   const unsigned int                crystal_id_neighbour_cell,
   std::vector<dealii::Tensor<1,3>>  normal_vector_values) const
@@ -931,34 +931,36 @@ MicroscopicTractionLaw<3>::get_grain_interaction_moduli(
 
 
 template <int dim>
-double MicroscopicTractionLaw<dim>::get_microscopic_traction(
+double MicrotractionLaw<dim>::get_microtraction(
   const unsigned int                      q_point,
   const unsigned int                      slip_id_alpha,
   const GrainInteractionModuli            grain_interaction_moduli,
   const std::vector<std::vector<double>>  slip_values_current_cell,
   const std::vector<std::vector<double>>  slip_values_neighbour_cell) const
 {
-  double microscopic_traction = 0.0;
+  double microtraction = 0.0;
 
   for (unsigned int slip_id_beta = 0;
        slip_id_beta < crystals_data->get_n_slips(); slip_id_beta++)
-    microscopic_traction +=
+  {
+    microtraction +=
       grain_interaction_moduli.first[q_point][slip_id_alpha][slip_id_beta] *
       slip_values_current_cell[slip_id_beta][q_point]
       -
       grain_interaction_moduli.second[q_point][slip_id_alpha][slip_id_beta] *
       slip_values_neighbour_cell[slip_id_beta][q_point];
+  }
 
-  microscopic_traction *= -grain_boundary_modulus;
+  microtraction *= -grain_boundary_modulus;
 
-  return (microscopic_traction);
+  return (microtraction);
 }
 
 
 
 template <int dim>
 const dealii::FullMatrix<double>
-MicroscopicTractionLaw<dim>::
+MicrotractionLaw<dim>::
   get_intra_gateaux_derivative(
     const unsigned int            q_point,
     const GrainInteractionModuli  grain_interaction_moduli) const
@@ -981,7 +983,7 @@ MicroscopicTractionLaw<dim>::
 
 template <int dim>
 const dealii::FullMatrix<double>
-MicroscopicTractionLaw<dim>::
+MicrotractionLaw<dim>::
   get_inter_gateaux_derivative(
     const unsigned int            q_point,
     const GrainInteractionModuli  grain_interaction_moduli) const
@@ -1003,7 +1005,7 @@ MicroscopicTractionLaw<dim>::
 
 
 template <>
-double MicroscopicTractionLaw<2>::get_free_energy_density(
+double MicrotractionLaw<2>::get_free_energy_density(
   const unsigned int                      neighbor_cell_crystal_id,
   const unsigned int                      current_cell_crystal_id,
   const unsigned int                      quadrature_point_id,
@@ -1063,7 +1065,7 @@ double MicroscopicTractionLaw<2>::get_free_energy_density(
 
 
 template <>
-double MicroscopicTractionLaw<3>::get_free_energy_density(
+double MicrotractionLaw<3>::get_free_energy_density(
   const unsigned int                      neighbor_cell_crystal_id,
   const unsigned int                      current_cell_crystal_id,
   const unsigned int                      quadrature_point_id,
@@ -1127,8 +1129,7 @@ CohesiveLaw<dim>::CohesiveLaw(
 :
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
-tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
-degradation_exponent(parameters.degradation_exponent)
+tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio)
 {}
 
 
@@ -1403,6 +1404,14 @@ CohesiveLaw<dim>::get_effective_quantities(
 
 
 
+DegradationFunction::DegradationFunction(
+    const RunTimeParameters::DegradationFunction parameters)
+:
+degradation_exponent(parameters.degradation_exponent)
+{}
+
+
+
 template<int dim>
 ContactLaw<dim>::ContactLaw(
   const RunTimeParameters::ContactLawParameters parameters)
@@ -1489,8 +1498,8 @@ template class gCP::ConstitutiveLaws::ScalarMicrostressLaw<3>;
 template class gCP::ConstitutiveLaws::VectorialMicrostressLaw<2>;
 template class gCP::ConstitutiveLaws::VectorialMicrostressLaw<3>;
 
-template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<2>;
-template class gCP::ConstitutiveLaws::MicroscopicTractionLaw<3>;
+template class gCP::ConstitutiveLaws::MicrotractionLaw<2>;
+template class gCP::ConstitutiveLaws::MicrotractionLaw<3>;
 
 template class gCP::ConstitutiveLaws::CohesiveLaw<2>;
 template class gCP::ConstitutiveLaws::CohesiveLaw<3>;

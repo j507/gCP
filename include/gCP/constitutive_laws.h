@@ -241,7 +241,7 @@ class ScalarMicrostressLaw
 public:
   ScalarMicrostressLaw(
     const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-    const RunTimeParameters::ScalarMicroscopicStressLawParameters parameters);
+    const RunTimeParameters::ScalarMicrostressLawParameters parameters);
 
   double get_scalar_microstress(
     const double slip_value,
@@ -310,7 +310,7 @@ class VectorialMicrostressLaw
 public:
   VectorialMicrostressLaw(
     const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-    const RunTimeParameters::VectorMicroscopicStressLawParameters parameters);
+    const RunTimeParameters::VectorialMicrostressLawParameters parameters);
 
   void init();
 
@@ -350,12 +350,12 @@ private:
 
 
 template<int dim>
-class MicroscopicTractionLaw
+class MicrotractionLaw
 {
 public:
-  MicroscopicTractionLaw(
+  MicrotractionLaw(
     const std::shared_ptr<CrystalsData<dim>>                  &crystals_data,
-    const RunTimeParameters::MicroscopicTractionLawParameters parameters);
+    const RunTimeParameters::MicrotractionLawParameters parameters);
 
   using GrainInteractionModuli =
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
@@ -366,7 +366,7 @@ public:
     const unsigned int                  crystal_id_neighbour_cell,
     std::vector<dealii::Tensor<1,dim>>  normal_vector_values) const;
 
-  double get_microscopic_traction(
+  double get_microtraction(
     const unsigned int                      q_point,
     const unsigned int                      slip_id_alpha,
     const GrainInteractionModuli            grain_interaction_moduli,
@@ -445,14 +445,6 @@ public:
   double get_free_energy_density(
     const double effective_opening_displacement) const;
 
-  double get_degradation_function_value(
-    const double  damage_variable,
-    const bool    couple) const;
-
-  double get_degradation_function_derivative_value(
-    const double  damage_variable,
-    const bool    couple) const;
-
   double get_effective_opening_displacement(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
@@ -470,8 +462,6 @@ private:
 
   double tangential_to_normal_stiffness_ratio;
 
-  double degradation_exponent;
-
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(
@@ -482,35 +472,6 @@ private:
     const dealii::Tensor<1,dim> neighbor_cell_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
 };
-
-
-
-template <int dim>
-inline double
-CohesiveLaw<dim>::get_degradation_function_value(
-  const double  damage_variable,
-  const bool    couple) const
-{
-  if (couple)
-    return std::pow(1.0 - damage_variable, degradation_exponent);
-  else
-    return 1.0;
-}
-
-
-
-template <int dim>
-inline double
-CohesiveLaw<dim>::get_degradation_function_derivative_value(
-  const double  damage_variable,
-  const bool    couple) const
-{
-  if (couple)
-    return (- degradation_exponent *
-           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
-  else
-    return 1.0;
-}
 
 
 
@@ -537,6 +498,64 @@ CohesiveLaw<dim>::get_effective_cohesive_traction(
           std::exp(1.0 - effective_opening_displacement /
                          critical_opening_displacement));
 }
+
+
+
+class DegradationFunction
+{
+public:
+
+  DegradationFunction(
+    const RunTimeParameters::DegradationFunction parameters);
+
+  double get_degradation_function_value(
+    const double  damage_variable,
+    const bool    flag_couple_damage) const;
+
+  double get_degradation_function_derivative_value(
+    const double  damage_variable,
+    const bool    flag_couple_damage) const;
+
+private:
+
+  const double degradation_exponent;
+};
+
+
+
+inline double
+DegradationFunction::get_degradation_function_value(
+  const double  damage_variable,
+  const bool    flag_couple_damage) const
+{
+  if (flag_couple_damage)
+  {
+    return std::pow(1.0 - damage_variable, degradation_exponent);
+  }
+  else
+  {
+    return 1.0;
+  }
+}
+
+
+
+inline double
+DegradationFunction::get_degradation_function_derivative_value(
+  const double  damage_variable,
+  const bool    flag_couple_damage) const
+{
+  if (flag_couple_damage)
+  {
+    return (- degradation_exponent *
+           std::pow(1.0 - damage_variable, degradation_exponent - 1.0));
+  }
+  else
+  {
+    return 1.0;
+  }
+}
+
 
 
 /*!

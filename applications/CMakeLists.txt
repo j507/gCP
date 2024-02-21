@@ -1,7 +1,7 @@
 SET(SOURCE_FILES
     simple_shear.cc
-    GACM2023.cc
-    SPP2013.cc
+    #GACM2023.cc
+    #SPP2013.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})

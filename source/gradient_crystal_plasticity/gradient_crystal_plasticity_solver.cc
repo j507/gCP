@@ -41,13 +41,16 @@ vectorial_microstress_law(
   std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(
     crystals_data,
     parameters.constitutive_laws_parameters.vectorial_microstress_law_parameters)),
-microscopic_traction_law(
-  std::make_shared<ConstitutiveLaws::MicroscopicTractionLaw<dim>>(
+microtraction_law(
+  std::make_shared<ConstitutiveLaws::MicrotractionLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.microscopic_traction_law_parameters)),
+    parameters.constitutive_laws_parameters.microtraction_law_parameters)),
 cohesive_law(
   std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
     parameters.constitutive_laws_parameters.cohesive_law_parameters)),
+degradation_function(
+  std::make_shared<ConstitutiveLaws::DegradationFunction>(
+    parameters.constitutive_laws_parameters.degradation_function_parameters)),
 contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
     parameters.constitutive_laws_parameters.contact_law_parameters)),

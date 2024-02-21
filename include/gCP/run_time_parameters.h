@@ -16,6 +16,31 @@ namespace RunTimeParameters
 
 
 
+enum class ControlType
+{
+  Displacement,
+
+  Load,
+};
+
+
+
+enum class DamageEvolutionModel
+{
+  OrtizEtAl,
+
+  M1
+};
+
+
+
+enum class CohesiveLawModel
+{
+  OrtizEtAl,
+};
+
+
+
 /*!
  * @brief A enum class specifiying the type of loading
  */
@@ -211,12 +236,12 @@ struct HookeLawParameters
 
 
 
-struct ScalarMicroscopicStressLawParameters
+struct ScalarMicrostressLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  ScalarMicroscopicStressLawParameters();
+  ScalarMicrostressLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -268,12 +293,12 @@ struct ScalarMicroscopicStressLawParameters
 
 
 
-struct VectorMicroscopicStressLawParameters
+struct VectorialMicrostressLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  VectorMicroscopicStressLawParameters();
+  VectorialMicrostressLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -307,16 +332,23 @@ struct VectorMicroscopicStressLawParameters
    * @todo Docu
    */
   double                  defect_energy_index;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  regularization_parameter;
 };
 
 
 
-struct MicroscopicTractionLawParameters
+struct MicrotractionLawParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  MicroscopicTractionLawParameters();
+  MicrotractionLawParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -364,6 +396,13 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
+  CohesiveLawModel  cohesive_law_model;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   double  critical_cohesive_traction;
 
   /*!
@@ -379,6 +418,65 @@ struct CohesiveLawParameters
    * @todo Docu
    */
   double  tangential_to_normal_stiffness_ratio;
+};
+
+
+
+
+struct DegradationFunction
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DegradationFunction();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double  degradation_exponent;
+};
+
+
+
+struct DamageEvolution
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DamageEvolution();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DamageEvolutionModel damage_evolution_model;
 
   /*!
    * @brief
@@ -436,6 +534,7 @@ struct CohesiveLawParameters
    */
   bool    flag_set_damage_to_zero;
 };
+
 
 
 /*!
@@ -501,7 +600,7 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  ScalarMicroscopicStressLawParameters
+  ScalarMicrostressLawParameters
                         scalar_microstress_law_parameters;
 
   /*!
@@ -509,7 +608,7 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  VectorMicroscopicStressLawParameters
+  VectorialMicrostressLawParameters
                         vectorial_microstress_law_parameters;
 
   /*!
@@ -517,8 +616,8 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
-  MicroscopicTractionLawParameters
-                        microscopic_traction_law_parameters;
+  MicrotractionLawParameters
+                        microtraction_law_parameters;
 
   /*!
    * @brief
@@ -533,6 +632,20 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DegradationFunction   degradation_function_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DamageEvolution       damage_evolution_parameters;
 };
 
 
@@ -828,66 +941,257 @@ struct TemporalDiscretizationParameters
    * @brief The time step size used during the simulation
    */
   double      time_step_size;
-
-  /*!
-   * @brief The period of the cyclic load
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  double      period;
-
-  /*!
-   * @brief The number of cycles to be simulated
-   *
-   * @note This member is only relevant if @ref loading_type
-   * corresponds to @ref SimulationTimeControl::Cyclic
-   */
-  unsigned int         n_cycles;
-
-  double preloading_phase_duration;
-
-  double unloading_and_unloading_phase_duration;
-
-  unsigned int n_steps_in_preloading_phase;
-
-  unsigned int n_steps_in_loading_and_unloading_phases;
-
-  unsigned int n_steps_per_half_cycle;
-
-  double time_step_size_in_preloading_phase;
-
-  double time_step_size_in_cyclic_phase;
-
-  double time_step_size_in_loading_and_unloading_phase;
-
-  double start_of_loading_phase;
-
-  double start_of_cyclic_phase;
-
-  double start_of_unloading_phase;
-
-  /*!
-   * @brief The simulation time control to be used. See @ref
-   * RunTimeParameters::SimulationTimeControl
-   */
-  LoadingType  loading_type;
 };
 
 
 
-struct ProblemParameters
+struct SimpleLoading : public TemporalDiscretizationParameters
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.
    */
-  ProblemParameters();
+  SimpleLoading();
 
   /*!
    * @brief Constructor which sets up the parameters as specified in the
    * parameter file with the filename @p parameter_filename.
    */
-  ProblemParameters(const std::string &parameter_filename);
+  SimpleLoading(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Get the next time step size object
+   *
+   * @param time
+   * @return double
+   * @todo Docu
+   */
+  double get_next_time_step_size(const unsigned int step_number) const;
+
+  /*!
+   * @brief
+   *
+   * @param step_number
+   * @return true
+   * @return false
+   * @todo Docu
+   */
+  bool skip_extrapolation(const unsigned int step_number) const;
+
+  LoadingType   loading_type;
+
+
+  double        max_load;
+
+  double        min_load;
+
+
+  double        duration_monotonic_load;
+
+  unsigned int  n_steps_monotonic_load;
+
+  double        time_step_size_monotonic_load;
+
+
+  double        duration_loading_and_unloading_phase;
+
+  unsigned int  n_steps_loading_and_unloading_phase;
+
+  double        time_step_size_loading_and_unloading_phase;
+
+
+  unsigned int  n_cycles;
+
+  double        period;
+
+  unsigned int  n_steps_quarter_period;
+
+  double        time_step_size_cyclic_phase;
+
+  bool          flag_skip_unloading_phase;
+
+//private:
+
+  double        start_of_cyclic_phase;
+
+  double        start_of_unloading_phase;
+};
+
+
+
+struct SpatialDiscretizationBase
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SpatialDiscretizationBase();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  SpatialDiscretizationBase(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  unsigned int  dim;
+
+  unsigned int  fe_degree_displacements;
+
+  unsigned int  fe_degree_slips;
+
+  unsigned int  n_global_refinements;
+
+  unsigned int  mapping_degree;
+
+  bool          flag_apply_mapping_to_interior_cells;
+};
+
+
+
+struct Input
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Input();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Input(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  std::string slips_normals_pathname;
+
+  std::string slips_directions_pathname;
+
+  std::string euler_angles_pathname;
+};
+
+
+
+struct Output
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Output();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Output(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  std::string   output_directory;
+
+  unsigned int  graphical_output_frequency;
+
+  unsigned int  terminal_output_frequency;
+
+  unsigned int  homogenization_output_frequency;
+
+  bool          flag_output_damage_variable;
+
+  bool          flag_output_residual;
+
+  bool          flag_output_fluctuations;
+
+  bool          flag_store_checkpoint;
+};
+
+
+
+struct Homogenization
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  Homogenization();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  Homogenization(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  unsigned int  homogenization_frequency;
+
+  bool          flag_compute_homogenized_quantities;
+};
+
+
+
+struct BasicProblem
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  BasicProblem();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  BasicProblem(const std::string &parameter_filename);
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -907,63 +1211,35 @@ struct ProblemParameters
                             const Parameters &prm);
   */
 
-  unsigned int                      dim;
-
-  unsigned int                      mapping_degree;
-
-  bool                              mapping_interior_cells;
-
-  unsigned int                      n_global_refinements;
-
-  unsigned int                      fe_degree_displacements;
-
-  unsigned int                      fe_degree_slips;
+  SpatialDiscretizationBase         spatial_discretization;
 
   TemporalDiscretizationParameters  temporal_discretization_parameters;
 
   SolverParameters                  solver_parameters;
 
-  std::string                       slips_normals_pathname;
+  Input                             input;
 
-  std::string                       slips_directions_pathname;
+  Output                            output;
 
-  std::string                       euler_angles_pathname;
-
-  unsigned int                      graphical_output_frequency;
-
-  unsigned int                      terminal_output_frequency;
-
-  unsigned int                      homogenization_frequency;
-
-  std::string                       graphical_output_directory;
-
-  bool                              flag_compute_macroscopic_quantities;
-
-  bool                              flag_output_damage_variable;
-
-  bool                              flag_output_residual;
-
-  bool                              flag_output_fluctuations;
-
-  bool                              flag_store_checkpoint;
+  Homogenization                    homogenization;
 
   bool                              verbose;
 };
 
 
 
-struct SimpleShearParameters : public ProblemParameters
+struct InfiniteStripProblem : public BasicProblem
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.
    */
-  SimpleShearParameters();
+  InfiniteStripProblem();
 
   /*!
    * @brief Constructor which sets up the parameters as specified in the
    * parameter file with the filename @p parameter_filename.
    */
-  SimpleShearParameters(const std::string &parameter_filename);
+  InfiniteStripProblem(const std::string &parameter_filename);
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -977,22 +1253,54 @@ struct SimpleShearParameters : public ProblemParameters
    */
   void parse_parameters(dealii::ParameterHandler &prm);
 
-  double        max_shear_strain_at_upper_boundary;
+  SimpleLoading simple_loading;
 
-  double        min_shear_strain_at_upper_boundary;
+  ControlType   control_type;
 
   double        height;
 
-  double        width;
-
   unsigned int  n_elements_in_y_direction;
 
-  unsigned int  n_equal_sized_divisions;
+  unsigned int  n_equal_sized_crystals;
 };
 
 
 
-struct SemicoupledParameters : public ProblemParameters
+struct RVEProblem : public BasicProblem
+{
+  /*!
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  RVEProblem();
+
+  /*!
+   * @brief Constructor which sets up the parameters as specified in the
+   * parameter file with the filename @p parameter_filename.
+   */
+  RVEProblem(const std::string &parameter_filename);
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  //RVEBoundaryConditionType  control_type;
+
+  //StrainLoading             strain_loading;
+
+  std::string               mesh_file_pathname;
+};
+
+
+
+struct SemicoupledParameters : public BasicProblem
 {
   /*!
    * @brief Constructor which sets up the parameters with default values.

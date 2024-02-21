@@ -54,7 +54,8 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  std::tuple<bool,unsigned int> solve_nonlinear_system();
+  std::tuple<bool,unsigned int> solve_nonlinear_system(
+    const bool flag_skip_extrapolation = false);
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
     get_elastic_strain_law() const;
@@ -124,11 +125,14 @@ private:
   std::shared_ptr<ConstitutiveLaws::VectorialMicrostressLaw<dim>>
                                                     vectorial_microstress_law;
 
-  std::shared_ptr<ConstitutiveLaws::MicroscopicTractionLaw<dim>>
-                                                    microscopic_traction_law;
+  std::shared_ptr<ConstitutiveLaws::MicrotractionLaw<dim>>
+                                                    microtraction_law;
 
   std::shared_ptr<ConstitutiveLaws::CohesiveLaw<dim>>
                                                     cohesive_law;
+
+  std::shared_ptr<ConstitutiveLaws::DegradationFunction>
+                                                    degradation_function;
 
   std::shared_ptr<ConstitutiveLaws::ContactLaw<dim>>
                                                     contact_law;
@@ -245,7 +249,8 @@ private:
   void reset_trial_solution(
     const bool flag_reset_to_initial_trial_solution = false);
 
-  void extrapolate_initial_trial_solution();
+  void extrapolate_initial_trial_solution(
+    const bool flag_skip_extrapolation = false);
 
   /*!
    * @note Only for debugging purposes

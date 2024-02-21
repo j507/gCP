@@ -64,19 +64,20 @@ flag_init_was_called(false)
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
-  const RunTimeParameters::CohesiveLawParameters &parameters)
+  const RunTimeParameters::DamageEvolution        &parameters,
+  const RunTimeParameters::CohesiveLawParameters  &prm)
 {
   if (flag_init_was_called)
     return;
 
   critical_cohesive_traction =
-    parameters.critical_cohesive_traction;
+    prm.critical_cohesive_traction;
 
   critical_opening_displacement =
-    parameters.critical_opening_displacement;
+    prm.critical_opening_displacement;
 
   tangential_to_normal_stiffness_ratio =
-    parameters.tangential_to_normal_stiffness_ratio;
+    prm.tangential_to_normal_stiffness_ratio;
 
   damage_accumulation_constant =
     parameters.damage_accumulation_constant;
@@ -126,21 +127,14 @@ void InterfaceQuadraturePointHistory<dim>::reset_values()
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
-  const dealii::Tensor<1,dim> neighbor_cell_displacement,
-  const dealii::Tensor<1,dim> current_cell_displacement)
+  const double  effective_opening_displacement)
 {
-  /*if (flag_values_were_updated)
-    return;*/
-
   damage_variable                     = tmp_scalar_values[0];
   max_effective_opening_displacement  = tmp_scalar_values[1];
 
-  const dealii::Tensor<1,dim> displacement_jump =
-    neighbor_cell_displacement - current_cell_displacement;
-
   max_effective_opening_displacement =
     std::max(max_effective_opening_displacement,
-             displacement_jump.norm());
+             effective_opening_displacement);
 
   const double displacement_ratio =
      max_effective_opening_displacement / critical_opening_displacement;
@@ -150,50 +144,6 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
   if (flag_set_damage_to_zero)
     damage_variable = 0.0;
-
-  flag_values_were_updated = true;
-}
-
-
-/*
-template <int dim>
-void InterfaceQuadraturePointHistory<dim>::update_values(
-  const double  effective_opening_displacement,
-  const double  cohesive_traction_norm)
-{
-  damage_variable                     = tmp_scalar_values[0];
-  max_effective_opening_displacement  = tmp_scalar_values[1];
-
-  max_effective_opening_displacement =
-    std::max(max_effective_opening_displacement,
-             effective_opening_displacement);
-
-  damage_variable +=
-    damage_accumulation_constant *
-    macaulay_brackets(effective_opening_displacement -
-                      old_effective_opening_displacement) *
-    std::pow(1.0 - damage_variable + damage_decay_constant,
-     damage_decay_exponent) *
-    (cohesive_traction_norm - endurance_limit);
-
-  if (flag_set_damage_to_zero)
-    damage_variable = 0.0;
-
-  flag_values_were_updated = true;
-}*/
-
-
-
-template <int dim>
-void InterfaceQuadraturePointHistory<dim>::update_values(
-  const double  effective_opening_displacement)
-{
-  damage_variable                     = tmp_scalar_values[0];
-  max_effective_opening_displacement  = tmp_scalar_values[1];
-
-  max_effective_opening_displacement =
-    std::max(max_effective_opening_displacement,
-             effective_opening_displacement);
 
   flag_values_were_updated = true;
 }
@@ -334,7 +284,7 @@ flag_init_was_called(false)
 
 template <int dim>
 void QuadraturePointHistory<dim>::init(
-  const RunTimeParameters::ScalarMicroscopicStressLawParameters
+  const RunTimeParameters::ScalarMicrostressLawParameters
     &parameters,
   const unsigned int n_slips)
 {

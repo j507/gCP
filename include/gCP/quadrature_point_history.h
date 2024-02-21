@@ -73,22 +73,14 @@ public:
   double get_max_effective_opening_displacement() const;
 
   void init(
-    const RunTimeParameters::CohesiveLawParameters &parameters);
+    const RunTimeParameters::DamageEvolution        &parameters,
+    const RunTimeParameters::CohesiveLawParameters  &prm);
 
   void set(const double damage_variable_value);
 
   void store_current_values();
 
   void reset_values();
-
-  void update_values(
-    const dealii::Tensor<1,dim> neighbor_cell_displacement,
-    const dealii::Tensor<1,dim> current_cell_displacement);
-  /*
-  void update_values(
-    const double  effective_opening_displacement,
-    const double  cohesive_traction_norm);
-  */
 
   void update_values(
     const double  effective_opening_displacement,
@@ -298,7 +290,7 @@ public:
    * @param n_slips The number of slip systems of the crystal
    */
   void init(
-    const RunTimeParameters::ScalarMicroscopicStressLawParameters
+    const RunTimeParameters::ScalarMicrostressLawParameters
       &parameters,
     const unsigned int n_slips);
 

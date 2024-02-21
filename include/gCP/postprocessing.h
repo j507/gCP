@@ -333,7 +333,7 @@ private:
   /*!
    * @brief The microscopic strain fluctuations
    */
-  dealii::SymmetricTensor<2,dim>                          microscopic_strain_fluctuations;
+  dealii::SymmetricTensor<2,dim>                          microstrain_fluctuations;
 
   /*!
    * @brief The macroscopic stiffness tetrad

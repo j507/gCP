@@ -32,12 +32,12 @@ class CrystalData
 public:
 
   CrystalData(
-  const gCP::RunTimeParameters::ProblemParameters &parameters);
+  const gCP::RunTimeParameters::BasicProblem &parameters);
 
   void run();
 
 private:
-  gCP::RunTimeParameters::ProblemParameters               parameters;
+  gCP::RunTimeParameters::BasicProblem               parameters;
 
   dealii::ConditionalOStream                              pcout;
 
@@ -65,9 +65,11 @@ private:
 
   gCP::ConstitutiveLaws::VectorialMicrostressLaw<dim>     vectorial_microstress_law;
 
-  gCP::ConstitutiveLaws::MicroscopicTractionLaw<dim>      microscopic_traction_law;
+  gCP::ConstitutiveLaws::MicrotractionLaw<dim>      microtraction_law;
 
   gCP::ConstitutiveLaws::CohesiveLaw<dim>                 cohesive_law;
+
+  gCP::ConstitutiveLaws::DegradationFunction              degradation_function;
 
   gCP::QuadraturePointHistory<dim>                        quadrature_point_history;
 
@@ -88,7 +90,7 @@ private:
 
 template<int dim>
 CrystalData<dim>::CrystalData(
-  const gCP::RunTimeParameters::ProblemParameters &parameters)
+  const gCP::RunTimeParameters::BasicProblem &parameters)
 :
 parameters(parameters),
 pcout(std::cout,
@@ -114,10 +116,11 @@ scalar_microstress_law(
 vectorial_microstress_law(
   crystals_data,
   parameters.solver_parameters.constitutive_laws_parameters.vectorial_microstress_law_parameters),
-microscopic_traction_law(
+microtraction_law(
   crystals_data,
-  parameters.solver_parameters.constitutive_laws_parameters.microscopic_traction_law_parameters),
-cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters)
+  parameters.solver_parameters.constitutive_laws_parameters.microtraction_law_parameters),
+cohesive_law(parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters),
+degradation_function(parameters.solver_parameters.constitutive_laws_parameters.degradation_function_parameters)
 {
   this->pcout << "TESTING CONSTITUTIVE LAWS IN " << std::noshowpos
               << dim << "-D..." << std::endl << std::endl;
@@ -192,9 +195,9 @@ template<int dim>
 void CrystalData<dim>::init()
 {
   crystals_data->init(triangulation,
-                      parameters.euler_angles_pathname,
-                      parameters.slips_directions_pathname,
-                      parameters.slips_normals_pathname);
+                      parameters.input.euler_angles_pathname,
+                      parameters.input.slips_directions_pathname,
+                      parameters.input.slips_normals_pathname);
 
   this->pcout
     << "Overall data" << std::endl
@@ -233,6 +236,7 @@ void CrystalData<dim>::init()
     crystals_data->get_n_slips());
 
   interface_quadrature_point_history.init(
+    parameters.solver_parameters.constitutive_laws_parameters.damage_evolution_parameters,
     parameters.solver_parameters.constitutive_laws_parameters.cohesive_law_parameters);
 }
 
@@ -421,19 +425,19 @@ void CrystalData<dim>::test_constitutive_laws()
       << gCP::Utilities::get_tensor_as_string(vectorial_microstresses[slip_id])
       << "\n\n";
 
-  std::cout << "Testing MicroscopicTractionLaw<dim> \n\n";
+  std::cout << "Testing MicrotractionLaw<dim> \n\n";
 
   std::vector<dealii::Tensor<1,dim>> normal_vector_values(1);
 
   normal_vector_values[0][1] = 1.0;
 
   auto grain_interaction_moduli =
-    microscopic_traction_law.get_grain_interaction_moduli(
+    microtraction_law.get_grain_interaction_moduli(
       0,
       1,
       normal_vector_values);
 
-  std::vector<std::vector<double>> microscopic_traction_values(
+  std::vector<std::vector<double>> microtraction_values(
     crystals_data->get_n_slips(),
     std::vector<double>(1, 0));
 
@@ -453,8 +457,8 @@ void CrystalData<dim>::test_constitutive_laws()
 
   for (unsigned int slip_id = 0;
        slip_id < crystals_data->get_n_slips(); ++slip_id)
-    microscopic_traction_values[slip_id][0] =
-      microscopic_traction_law.get_microscopic_traction(
+    microtraction_values[slip_id][0] =
+      microtraction_law.get_microtraction(
         0,
         slip_id,
         grain_interaction_moduli,
@@ -462,12 +466,12 @@ void CrystalData<dim>::test_constitutive_laws()
         neighbour_face_slip_values);
 
   const dealii::FullMatrix<double> intra_gateaux_derivative =
-    microscopic_traction_law.get_intra_gateaux_derivative(
+    microtraction_law.get_intra_gateaux_derivative(
       0,
       grain_interaction_moduli);
 
   const dealii::FullMatrix<double> inter_gateaux_derivative =
-    microscopic_traction_law.get_inter_gateaux_derivative(
+    microtraction_law.get_inter_gateaux_derivative(
       0,
       grain_interaction_moduli);
 
@@ -500,7 +504,7 @@ void CrystalData<dim>::test_constitutive_laws()
     std::cout
       << std::setw(string_width) << std::left
       << (" Microscopic traction - " + std::to_string(slip_id)) << " = "
-      << microscopic_traction_values[slip_id][0]
+      << microtraction_values[slip_id][0]
       << "\n\n";
 
   std::cout
@@ -516,7 +520,7 @@ void CrystalData<dim>::test_constitutive_laws()
     << "\n\n";
 
   const double microtraction_free_energy_density =
-    microscopic_traction_law.get_free_energy_density(
+    microtraction_law.get_free_energy_density(
             1,
             0,
             0,
@@ -561,7 +565,7 @@ void CrystalData<dim>::test_constitutive_laws()
   std::cout << "Testing InterfaceQuadraturePointHistory<dim> \n\n";
 
   const double thermodynamic_force =
-    - cohesive_law.get_degradation_function_derivative_value(
+    - degradation_function.get_degradation_function_derivative_value(
         interface_quadrature_point_history.get_damage_variable(), true) *
     (cohesive_law_free_energy_density
       +
@@ -604,14 +608,14 @@ int main(int argc, char *argv[])
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
     {
-      gCP::RunTimeParameters::ProblemParameters parameters("input/2d.prm");
+      gCP::RunTimeParameters::BasicProblem parameters("input/2d.prm");
 
       Tests::CrystalData<2> test_2d(parameters);
       test_2d.run();
     }
 
     {
-      gCP::RunTimeParameters::ProblemParameters parameters("input/3d.prm");
+      gCP::RunTimeParameters::BasicProblem parameters("input/3d.prm");
 
       Tests::CrystalData<3> test_3d(parameters);
       test_3d.run();
