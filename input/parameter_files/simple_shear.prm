@@ -90,7 +90,6 @@ end
 subsection 6. Solver parameters
   set Allow decohesion at grain boundaries         = true
   set Boundary conditions at grain boundaries      = microtraction
-  set Logger output directory                      = results/default/
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = false
   set Verbose                                      = false

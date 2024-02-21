@@ -821,11 +821,6 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Selection(
                         "microhard|microfree|microtraction"));
 
-
-    prm.declare_entry("Logger output directory",
-                      "results/default/",
-                      dealii::Patterns::DirectoryName());
-
     prm.declare_entry("Skip extrapolation of start value at extrema",
                       "false",
                       dealii::Patterns::Bool());
@@ -890,8 +885,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
           "boundaries."));
     }
 
-    logger_output_directory = prm.get("Logger output directory");
-
     flag_skip_extrapolation_at_extrema =
       prm.get_bool("Skip extrapolation of start value at extrema");
 
@@ -901,6 +894,12 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
 
     verbose = prm.get_bool("Verbose");
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("4. Output parameters");
+  {
+    logger_output_directory = prm.get("Graphical output directory");
   }
   prm.leave_subsection();
 }
@@ -1619,11 +1618,11 @@ void BasicProblem::declare_parameters(dealii::ParameterHandler &prm)
 
   TemporalDiscretizationParameters::declare_parameters(prm);
 
-  SolverParameters::declare_parameters(prm);
-
   Input::declare_parameters(prm);
 
   Output::declare_parameters(prm);
+
+  SolverParameters::declare_parameters(prm);
 
   prm.enter_subsection("5. Postprocessing parameters");
   {
@@ -1644,11 +1643,11 @@ void BasicProblem::parse_parameters(dealii::ParameterHandler &prm)
 
   temporal_discretization_parameters.parse_parameters(prm);
 
-  solver_parameters.parse_parameters(prm);
-
   input.parse_parameters(prm);
 
   output.parse_parameters(prm);
+
+  solver_parameters.parse_parameters(prm);
 
   prm.enter_subsection("5. Postprocessing parameters");
   {
