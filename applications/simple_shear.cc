@@ -135,14 +135,14 @@ fe_field(std::make_shared<FEField<dim>>(
   parameters.spatial_discretization.fe_degree_slips,
   parameters.solver_parameters.allow_decohesion)),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
-gCP_solver(parameters.solver_parameters,
-           parameters.temporal_discretization_parameters,
-           discrete_time,
-           fe_field,
-           crystals_data,
-           mapping,
-           pcout,
-           timer_output),
+gCP_solver(
+  parameters.solver_parameters,
+  discrete_time,
+  fe_field,
+  crystals_data,
+  mapping,
+  pcout,
+  timer_output),
 /*neumann_boundary_function(
   std::make_shared<NeumannBoundaryFunction<dim>>(
   parameters.max_shear_strain_at_upper_boundary * 10000.0,
@@ -151,22 +151,25 @@ gCP_solver(parameters.solver_parameters,
   parameters.temporal_discretization_parameters.initial_loading_time,
   parameters.temporal_discretization_parameters.loading_type,
   discrete_time.get_start_time())),*/
-homogenization(fe_field,
-               mapping),
-postprocessor(fe_field,
-              crystals_data),
+homogenization(
+  fe_field,
+  mapping),
+postprocessor(
+  fe_field,
+  crystals_data),
 residual_postprocessor(
   fe_field,
   crystals_data),
-simple_shear(fe_field,
-             mapping,
-             parameters.simple_loading.max_load,
-             parameters.simple_loading.min_load,
-             parameters.simple_loading.period,
-             parameters.simple_loading.duration_loading_and_unloading_phase,
-             parameters.simple_loading.loading_type,
-             3,
-             1. / parameters.n_elements_in_y_direction),
+simple_shear(
+  fe_field,
+  mapping,
+  parameters.simple_loading.max_load,
+  parameters.simple_loading.min_load,
+  parameters.simple_loading.period,
+  parameters.simple_loading.duration_loading_and_unloading_phase,
+  parameters.simple_loading.loading_type,
+  3,
+  1. / parameters.n_elements_in_y_direction),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.simple_loading.end_time -

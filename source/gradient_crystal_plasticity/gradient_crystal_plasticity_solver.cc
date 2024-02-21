@@ -10,7 +10,6 @@ namespace gCP
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
   const RunTimeParameters::SolverParameters         &parameters,
-  const RunTimeParameters::TemporalDiscretizationParameters &temporal_discretization_parameters,
   dealii::DiscreteTime                              &discrete_time,
   std::shared_ptr<FEField<dim>>                     &fe_field,
   std::shared_ptr<CrystalsData<dim>>                &crystals_data,
@@ -19,7 +18,6 @@ GradientCrystalPlasticitySolver<dim>::GradientCrystalPlasticitySolver(
   const std::shared_ptr<dealii::TimerOutput>        external_timer)
 :
 parameters(parameters),
-temporal_discretization_parameters(temporal_discretization_parameters),
 discrete_time(discrete_time),
 fe_field(fe_field),
 crystals_data(crystals_data),
