@@ -132,5 +132,5 @@ input/parameter_files/*
 input/crystal_orientation/*
 !input/crystal_orientation/2d/
 input/crystal_orientation/2d/*
-!input/crystal_orientation/2d/euler_angles_30_0.txt
+!input/crystal_orientation/2d/euler_angles_02C_30_0.txt
 

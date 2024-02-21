@@ -61,7 +61,7 @@ end
 
 
 subsection 3. Input parameters
-  set Euler angles path name    = input/crystal_orientation/euler_angles_30_0
+  set Euler angles path name    = input/crystal_orientation/2d/euler_angles_02C_30_0
   set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
   set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
 end
