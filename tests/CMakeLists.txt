@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SOURCE_FILES
+    compute_trial_microstress.cc
     constitutive_laws_test.cc
     crystal_data_test.cc
     fe_collection_test.cc
