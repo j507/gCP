@@ -349,6 +349,107 @@ struct Scratch : ScratchBase<dim>
 
 
 
+namespace TrialMicrostress
+{
+
+
+
+namespace Matrix
+{
+
+
+
+struct Copy : CopyBase
+{
+  Copy(const unsigned int dofs_per_cell);
+
+  dealii::Vector<double>      local_lumped_matrix;
+};
+
+
+
+template <int dim>
+struct Scratch : ScratchBase<dim>
+{
+  Scratch(const dealii::hp::MappingCollection<dim>  &mapping_collection,
+          const dealii::hp::QCollection<dim>        &quadrature_collection,
+          const dealii::hp::FECollection<dim>       &finite_element_collection,
+          const dealii::UpdateFlags                 update_flags,
+          const unsigned int                        n_slips);
+
+  Scratch(const Scratch<dim>  &data);
+
+  dealii::hp::FEValues<dim>         hp_fe_values;
+
+  const unsigned int                n_slips;
+
+  std::vector<double>               JxW_values;
+
+  std::vector<std::vector<double>>  test_function_values;
+};
+
+
+
+} // namespace Matrix
+
+
+
+namespace RightHandSide
+{
+
+
+
+struct Copy : CopyBase
+{
+  Copy(const unsigned int dofs_per_cell);
+
+  dealii::Vector<double>      local_rhs;
+};
+
+
+
+template <int dim>
+struct Scratch : ScratchBase<dim>
+{
+Scratch(
+  const dealii::hp::MappingCollection<dim>  &mapping_collection,
+  const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::FECollection<dim>       &trial_microstress_finite_element_collection,
+  const dealii::hp::FECollection<dim>       &slips_finite_element_collection,
+  const dealii::UpdateFlags                 trial_microstress_update_flags,
+  const dealii::UpdateFlags                 slips_update_flags,
+  const unsigned int                        n_slips);
+
+Scratch(const Scratch<dim>  &data);
+
+const unsigned int                n_slips;
+
+dealii::hp::FEValues<dim>         trial_microstress_hp_fe_values;
+
+dealii::hp::FEValues<dim>         slips_hp_fe_values;
+
+std::vector<std::vector<double>>  test_function_values;
+
+std::vector<std::vector<dealii::Tensor<1,dim>>>
+                                  test_function_gradient_values;
+
+std::vector<std::vector<dealii::Tensor<1,dim>>>
+                                  vectorial_microstress_values;
+
+std::vector<std::vector<double>>  scalar_microstress_values;
+
+std::vector<double>               JxW_values;
+};
+
+
+
+} // namespace RightHandSide
+
+
+
+} // namespace TrialMicrostress
+
+
 
 namespace Postprocessing
 {
