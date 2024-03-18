@@ -598,7 +598,7 @@ namespace RightHandSide
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
-local_rhs(dofs_per_cell)
+local_right_hand_side(dofs_per_cell)
 {}
 
 

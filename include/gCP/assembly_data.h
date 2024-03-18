@@ -403,7 +403,7 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
-  dealii::Vector<double>      local_rhs;
+  dealii::Vector<double>      local_right_hand_side;
 };
 
 
