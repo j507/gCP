@@ -426,17 +426,31 @@ const unsigned int                n_slips;
 
 dealii::hp::FEValues<dim>         trial_microstress_hp_fe_values;
 
-dealii::hp::FEValues<dim>         slips_hp_fe_values;
+dealii::hp::FEValues<dim>         fe_field_hp_fe_values;
 
 std::vector<std::vector<double>>  test_function_values;
 
 std::vector<std::vector<dealii::Tensor<1,dim>>>
                                   test_function_gradient_values;
 
+std::vector<dealii::SymmetricTensor<2,dim>>
+                                  linear_strain_values;
+
+std::vector<dealii::SymmetricTensor<2,dim>>
+                                  elastic_strain_values;
+
+std::vector<dealii::SymmetricTensor<2,dim>>
+                                  stress_values;
+
+std::vector<std::vector<double>>  slip_values;
+
+std::vector<std::vector<dealii::Tensor<1,dim>>>
+                                  slip_gradient_values;
+
+std::vector<std::vector<double>>  resolved_shear_stress_values;
+
 std::vector<std::vector<dealii::Tensor<1,dim>>>
                                   vectorial_microstress_values;
-
-std::vector<std::vector<double>>  scalar_microstress_values;
 
 std::vector<double>               JxW_values;
 };

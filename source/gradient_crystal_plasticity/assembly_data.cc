@@ -622,7 +622,7 @@ trial_microstress_hp_fe_values(
   trial_microstress_finite_element_collection,
   quadrature_collection,
   trial_microstress_update_flags),
-slips_hp_fe_values(
+fe_field_hp_fe_values(
   mapping_collection,
   slips_finite_element_collection,
   quadrature_collection,
@@ -633,12 +633,21 @@ test_function_values(
 test_function_gradient_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->dofs_per_cell)),
+linear_strain_values(this->n_q_points),
+elastic_strain_values(this->n_q_points),
+stress_values(this->n_q_points),
+slip_values(
+  n_slips,
+  std::vector<double>(this->n_q_points)),
+slip_gradient_values(
+  n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
+resolved_shear_stress_values(
+  n_slips,
+  std::vector<double>(this->n_q_points)),
 vectorial_microstress_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-scalar_microstress_values(
-  n_slips,
-  std::vector<double>(this->n_q_points)),
 JxW_values(this->n_q_points)
 {}
 
@@ -654,23 +663,32 @@ trial_microstress_hp_fe_values(
   data.trial_microstress_hp_fe_values.get_fe_collection(),
   data.trial_microstress_hp_fe_values.get_quadrature_collection(),
   data.trial_microstress_hp_fe_values.get_update_flags()),
-slips_hp_fe_values(
-  data.slips_hp_fe_values.get_mapping_collection(),
-  data.slips_hp_fe_values.get_fe_collection(),
-  data.slips_hp_fe_values.get_quadrature_collection(),
-  data.slips_hp_fe_values.get_update_flags()),
+fe_field_hp_fe_values(
+  data.fe_field_hp_fe_values.get_mapping_collection(),
+  data.fe_field_hp_fe_values.get_fe_collection(),
+  data.fe_field_hp_fe_values.get_quadrature_collection(),
+  data.fe_field_hp_fe_values.get_update_flags()),
 test_function_values(
   data.n_slips,
   std::vector<double>(this->dofs_per_cell)),
 test_function_gradient_values(
   data.n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->dofs_per_cell)),
+linear_strain_values(this->n_q_points),
+elastic_strain_values(this->n_q_points),
+stress_values(this->n_q_points),
+slip_values(
+  data.n_slips,
+  std::vector<double>(this->n_q_points)),
+slip_gradient_values(
+  data.n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
+resolved_shear_stress_values(
+  data.n_slips,
+  std::vector<double>(this->n_q_points)),
 vectorial_microstress_values(
   data.n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-scalar_microstress_values(
-  data.n_slips,
-  std::vector<double>(this->n_q_points)),
 JxW_values(this->n_q_points)
 {}
 
