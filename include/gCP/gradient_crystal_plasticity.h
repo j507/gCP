@@ -286,7 +286,45 @@ private:
 
   void copy_local_to_global_projection_rhs(
     const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
-  //
+
+  // Members and methods related to the trial microstress
+
+  TrialMicrostress<dim>                       trial_microstress;
+
+  std::map<dealii::types::global_dof_index,
+           dealii::types::global_dof_index>   dof_mapping;
+
+  dealii::IndexSet                            active_set;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
+
+  void create_mapping();
+
+  void compute_trial_microstress();
+
+  void determine_active_set();
+
+  void assemble_trial_microstress_lumped_matrix();
+
+  void assemble_local_trial_microstress_lumped_matrix(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::TrialMicrostress::Matrix::Scratch<dim>     &scratch,
+    gCP::AssemblyData::TrialMicrostress::Matrix::Copy             &data);
+
+  void copy_local_to_global_trial_microstress_lumped_matrix(
+    const gCP::AssemblyData::TrialMicrostress::Matrix::Copy &data);
+
+  void assemble_trial_microstress_right_hand_side();
+
+  void assemble_local_trial_microstress_right_hand_side(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
+    gCP::AssemblyData::TrialMicrostress::RightHandSide::Scratch<dim>  &scratch,
+    gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy          &data);
+
+  void copy_local_to_global_trial_microstress_right_hand_side(
+    const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy  &data);
 };
 
 

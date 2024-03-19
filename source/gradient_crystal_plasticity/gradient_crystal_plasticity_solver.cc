@@ -61,7 +61,10 @@ postprocessor(
   discrete_time,
   fe_field,
   crystals_data),
-flag_init_was_called(false)
+flag_init_was_called(false),
+trial_microstress(
+  fe_field->get_triangulation(),
+  fe_field->get_slips_fe_degree())
 {
   Assert(fe_field.get() != nullptr,
          dealii::ExcMessage("The FEField<dim>'s shared pointer has "

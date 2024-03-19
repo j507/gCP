@@ -177,6 +177,43 @@ void GradientCrystalPlasticitySolver<dim>::init()
   } // End of set-up memberes related to the L2 projection of the
     // damage variable
 
+  // Setup members related to the computation of the trial microstress
+  {
+    trial_microstress.setup_extractors(
+      crystals_data->get_n_crystals(),
+      crystals_data->get_n_slips());
+
+    trial_microstress.update_ghost_material_ids();
+
+    for (const auto &trial_microstress_cell :
+        trial_microstress.get_dof_handler().active_cell_iterators())
+    {
+      if (trial_microstress_cell->is_locally_owned())
+      {
+        trial_microstress_cell->set_active_fe_index(
+          trial_microstress_cell->material_id());
+      }
+    }
+
+    trial_microstress.setup_dofs();
+
+    trial_microstress.setup_vectors();
+
+    // Initiate vectors
+    {
+      trial_microstress_right_hand_side.reinit(
+        trial_microstress.distributed_vector);
+
+      trial_microstress_lumped_matrix.reinit(
+        trial_microstress.distributed_vector);
+    }
+
+    assemble_trial_microstress_lumped_matrix();
+
+    assemble_trial_microstress_right_hand_side();
+  } // End of set-up members related to the computation of the
+    // trial microstress
+
   flag_init_was_called = true;
 
   if (parameters.verbose)
