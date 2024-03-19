@@ -2038,8 +2038,6 @@ assemble_trial_microstress_lumped_matrix()
     dealii::update_JxW_values |
     dealii::update_values;
 
-
-
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),

@@ -300,7 +300,7 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
 
-  void create_mapping();
+  void initialize_dof_mapping();
 
   void compute_trial_microstress();
 
