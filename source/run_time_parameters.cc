@@ -384,6 +384,61 @@ void DegradationFunction::parse_parameters(
 
 
 
+HardeningLaw::HardeningLaw()
+:
+initial_slip_resistance(0.0),
+linear_hardening_modulus(500),
+hardening_parameter(1.4)
+{}
+
+
+
+void HardeningLaw::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hardening law's parameters");
+  {
+    prm.declare_entry("Initial slip resistance",
+                      "0.0",
+                      dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Linear hardening modulus",
+                      "500",
+                      dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Hardening parameter",
+                      "1.4",
+                      dealii::Patterns::Double(0.));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void HardeningLaw::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hardening law's parameters");
+  {
+    initial_slip_resistance   = prm.get_double("Initial slip resistance");
+
+    linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
+
+    hardening_parameter       = prm.get_double("Hardening parameter");
+  }
+  prm.leave_subsection();
+
+  prm.enter_subsection("Vectorial microstress law's parameters");
+  {
+    Assert(initial_slip_resistance ==
+            prm.get_double("Initial slip resistance"),
+           dealii::ExcMessage(
+            "The initial slip resistance of the hardening law and of "
+            "the vector-valued microstress has to match"));
+  }
+  prm.leave_subsection();
+}
+
+
+
 DamageEvolution::DamageEvolution()
 :
 damage_evolution_model(DamageEvolutionModel::M1),

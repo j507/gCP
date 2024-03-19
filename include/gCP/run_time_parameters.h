@@ -452,6 +452,56 @@ struct DegradationFunction
 
 
 
+struct HardeningLaw
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  HardeningLaw();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  initial_slip_resistance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  linear_hardening_modulus;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  hardening_parameter;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                    flag_perfect_plasticity;
+};
+
+
+
 struct DamageEvolution
 {
   /*
