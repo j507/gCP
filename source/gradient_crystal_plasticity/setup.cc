@@ -199,6 +199,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     trial_microstress.setup_vectors();
 
+    initialize_dof_mapping();
+
     // Initiate vectors
     {
       trial_microstress_right_hand_side.reinit(
@@ -458,6 +460,75 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
     }
 }
 
+template<int dim>
+void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
+{
+  // Initialize std::maps instances
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>>
+    fe_field_map;
+
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>>
+    trial_microstress_map;
+
+  // Loop over crystals and slip systems
+  for (unsigned int crystal_id = 0;
+       crystal_id < crystals_data->get_n_crystals();
+       crystal_id++)
+  {
+    for (unsigned int slip_id = 0;
+        slip_id < crystals_data->get_n_slips();
+        slip_id++)
+    {
+      //Clear std::maps instances
+      fe_field_map.clear();
+
+      trial_microstress_map.clear();
+
+      // Get DoF-to-Support-Point mappings for a given slip system
+      dealii::DoFTools::map_dofs_to_support_points(
+        mapping_collection,
+        fe_field->get_dof_handler(),
+        fe_field_map,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_slip_extractor(crystal_id, slip_id)));
+
+      dealii::DoFTools::map_dofs_to_support_points(
+        mapping_collection,
+        trial_microstress.get_dof_handler(),
+        trial_microstress_map,
+        trial_microstress.get_fe_collection().component_mask(
+          trial_microstress.get_extractor(crystal_id, slip_id)));
+
+      // Both std::map instances have to be equal in size
+      Assert(
+        fe_field_map.size() == trial_microstress_map.size(),
+        dealii::ExcMessage("Size mismatch!"))
+
+      // Loop over the std::map instance
+      for (auto fe_field_map_pair = fe_field_map.begin();
+           fe_field_map_pair != fe_field_map.end();
+           fe_field_map_pair++)
+      {
+        // Loop over the other std::map instance
+        for (auto trial_microstress_map_pair = trial_microstress_map.begin();
+            trial_microstress_map_pair != trial_microstress_map.end();
+            trial_microstress_map_pair++)
+        {
+          // If the dealii::Point<dim> instance coincides, insert the
+          // DoF-pair in the std::map instance, with the DoF of the
+          // TrialMicrostress instance being the key
+          if (fe_field_map_pair->second ==
+              trial_microstress_map_pair->second)
+          {
+            dof_mapping[trial_microstress_map_pair->first] =
+              fe_field_map_pair->first;
+          }
+        } // Loop over the other std::map instance
+      } // Loop over the std::map instance
+    } // Loop over slip systems
+  }  // Loop over crystals
+}
+
 
 
 template<int dim>
@@ -559,6 +630,9 @@ gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
 
 template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::initialize_dof_mapping();
+template void gCP::GradientCrystalPlasticitySolver<3>::initialize_dof_mapping();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
 template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);
