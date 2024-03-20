@@ -89,10 +89,7 @@ void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 ScalarMicrostressLawParameters::ScalarMicrostressLawParameters()
 :
 regularization_function(RegularizationFunction::Tanh),
-regularization_parameter(3e-4),
-initial_slip_resistance(0.0),
-linear_hardening_modulus(500),
-hardening_parameter(1.4)
+regularization_parameter(3e-4)
 {}
 
 
@@ -107,18 +104,6 @@ void ScalarMicrostressLawParameters::declare_parameters(dealii::ParameterHandler
 
     prm.declare_entry("Regularization parameter",
                       "3e-4",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Initial slip resistance",
-                      "0.0",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Linear hardening modulus",
-                      "500",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Hardening parameter",
-                      "1.4",
                       dealii::Patterns::Double(0.));
   }
   prm.leave_subsection();
@@ -162,25 +147,9 @@ void ScalarMicrostressLawParameters::parse_parameters(dealii::ParameterHandler &
 
     regularization_parameter  = prm.get_double("Regularization parameter");
 
-    initial_slip_resistance   = prm.get_double("Initial slip resistance");
-
-    linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
-
-    hardening_parameter       = prm.get_double("Hardening parameter");
-
     AssertThrow(
       regularization_parameter > 0.0,
       dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Vectorial microstress law's parameters");
-  {
-    Assert(initial_slip_resistance ==
-            prm.get_double("Initial slip resistance"),
-           dealii::ExcMessage(
-            "The initial slip resistance of the scalar-valued and "
-            "vector-valued microstress has to match"));
   }
   prm.leave_subsection();
 }
@@ -597,6 +566,8 @@ void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &pr
 
     DegradationFunction::declare_parameters(prm);
 
+    HardeningLaw::declare_parameters(prm);
+
     DamageEvolution::declare_parameters(prm);
   }
   prm.leave_subsection();
@@ -620,6 +591,8 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     cohesive_law_parameters.parse_parameters(prm);
 
     contact_law_parameters.parse_parameters(prm);
+
+    hardening_law_parameters.parse_parameters(prm);
 
     degradation_function_parameters.parse_parameters(prm);
 

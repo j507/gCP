@@ -12,6 +12,9 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
   dealii::TimerOutput::Scope  t(*timer_output,
                                 "Solver: Active set determination");
 
+  const RunTimeParameters::HardeningLaw &prm =
+    parameters.constitutive_laws_parameters.hardening_law_parameters;
+
   Assert(dof_mapping.size() != 0,
          dealii::ExcMessage("The degree of freedom mapping is empty"));
 
@@ -24,11 +27,9 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
   {
     double local_yield_stress = 0.;
 
-    if (true)
+    if (prm.flag_perfect_plasticity)
     {
-      local_yield_stress =
-        parameters.constitutive_laws_parameters.
-        scalar_microstress_law_parameters.initial_slip_resistance;
+      local_yield_stress = prm.initial_slip_resistance;
     }
     else
     {

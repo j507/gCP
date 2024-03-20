@@ -34,7 +34,8 @@ resolved_shear_stress_law(
 scalar_microstress_law(
   std::make_shared<ConstitutiveLaws::ScalarMicrostressLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.scalar_microstress_law_parameters)),
+    parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
+    parameters.constitutive_laws_parameters.hardening_law_parameters)),
 vectorial_microstress_law(
   std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(
     crystals_data,

@@ -403,7 +403,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             q_point < n_q_points;
             ++q_point)
         local_quadrature_point_history[q_point]->init(
-          parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
+          parameters.constitutive_laws_parameters.hardening_law_parameters,
           crystals_data->get_n_slips());
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&

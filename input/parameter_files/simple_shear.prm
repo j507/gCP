@@ -123,6 +123,12 @@ subsection 6. Solver parameters
       set Degradation exponent           = 1.0
     end
 
+    subsection Hardening law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 490
+      set Linear hardening modulus = 550
+    end
+
     subsection Hooke-Law's parameters
       set C1111 = 235467.76549434732
       set C1122 = 147905.34667489285
@@ -134,9 +140,6 @@ subsection 6. Solver parameters
     end
 
     subsection Scalar microstress law's parameters
-      set Hardening parameter      = 1.4
-      set Initial slip resistance  = 490
-      set Linear hardening modulus = 550
       set Regularization function  = tanh
       set Regularization parameter = 7.5e-4
     end

@@ -268,27 +268,6 @@ struct ScalarMicrostressLawParameters
    * @todo Docu
    */
   double                  regularization_parameter;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double                  initial_slip_resistance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double                  linear_hardening_modulus;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double                  hardening_parameter;
 };
 
 
@@ -682,6 +661,13 @@ struct ConstitutiveLawsParameters
    * @todo Docu
    */
   ContactLawParameters  contact_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  HardeningLaw          hardening_law_parameters;
 
   /*!
    * @brief
