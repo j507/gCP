@@ -277,6 +277,7 @@ void InterfaceQuadraturePointHistory<dim>::store_effective_opening_displacement(
 template <int dim>
 QuadraturePointHistory<dim>::QuadraturePointHistory()
 :
+flag_perfect_plasticity(false),
 flag_init_was_called(false)
 {}
 
@@ -295,6 +296,8 @@ void QuadraturePointHistory<dim>::init(
 
   hardening_parameter       = parameters.hardening_parameter;
 
+  flag_perfect_plasticity   = parameters.flag_perfect_plasticity;
+
   slip_resistances          = std::vector<double>(
                                 n_slips,
                                 initial_slip_resistance);
@@ -309,6 +312,10 @@ void QuadraturePointHistory<dim>::init(
 template <int dim>
 void QuadraturePointHistory<dim>::store_current_values()
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
   tmp_slip_resistances = slip_resistances;
 }
 
@@ -317,6 +324,10 @@ void QuadraturePointHistory<dim>::store_current_values()
 template <int dim>
 void QuadraturePointHistory<dim>::reset_values()
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
   slip_resistances = tmp_slip_resistances;
 }
 
@@ -328,18 +339,31 @@ void QuadraturePointHistory<dim>::update_values(
   const std::vector<std::vector<double>>  &slips,
   const std::vector<std::vector<double>>  &old_slips)
 {
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
   slip_resistances = tmp_slip_resistances;
+
+  if (flag_perfect_plasticity)
+  {
+    return;
+  }
 
   for (unsigned int slip_id_alpha = 0;
         slip_id_alpha < n_slips;
         ++slip_id_alpha)
+  {
     for (unsigned int slip_id_beta = 0;
           slip_id_beta < n_slips;
           ++slip_id_beta)
+    {
       slip_resistances[slip_id_alpha] +=
         get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
         std::fabs(slips[slip_id_beta][q_point] -
                   old_slips[slip_id_beta][q_point]);
+    }
+  }
 }
 
 

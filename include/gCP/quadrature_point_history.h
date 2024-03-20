@@ -346,6 +346,8 @@ private:
 
   double              hardening_parameter;
 
+  bool                flag_perfect_plasticity;
+
   bool                flag_init_was_called;
 
   double get_hardening_matrix_entry(const bool self_hardening) const;
