@@ -395,15 +395,21 @@ void HardeningLaw::parse_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-  prm.enter_subsection("Vectorial microstress law's parameters");
+  if (prm.subsection_path_exists(
+        {"Vectorial microstress law's parameters"}))
   {
-    Assert(initial_slip_resistance ==
-            prm.get_double("Initial slip resistance"),
-           dealii::ExcMessage(
-            "The initial slip resistance of the hardening law and of "
-            "the vector-valued microstress has to match"));
+    std::cout << "We are in!" << std::endl;
+
+    prm.enter_subsection("Vectorial microstress law's parameters");
+    {
+      Assert(initial_slip_resistance ==
+              prm.get_double("Initial slip resistance"),
+            dealii::ExcMessage(
+              "The initial slip resistance of the hardening law and of "
+              "the vector-valued microstress has to match"));
+    }
+    prm.leave_subsection();
   }
-  prm.leave_subsection();
 }
 
 
