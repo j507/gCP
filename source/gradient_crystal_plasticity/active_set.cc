@@ -22,6 +22,8 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
   compute_trial_microstress();
 
+  active_set.clear();
+
   for (const auto &locally_owned_dof :
         trial_microstress.get_locally_owned_dofs())
   {
@@ -36,7 +38,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
       AssertThrow(false, dealii::ExcNotImplemented())
     }
 
-    if (trial_microstress.solution[locally_owned_dof] >
+    if (std::abs(trial_microstress.solution[locally_owned_dof]) >
           local_yield_stress)
     {
       active_set.add_index(dof_mapping[locally_owned_dof]);
