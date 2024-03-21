@@ -107,6 +107,12 @@ namespace gCP
 
       reset_and_update_quadrature_point_history();
 
+      if (parameters.constitutive_laws_parameters.
+            scalar_microstress_law_parameters.flag_rate_independent)
+      {
+        determine_active_set();
+      }
+
       const double initial_value_scalar_function = assemble_residual();
 
       if (nonlinear_iteration == 1)
