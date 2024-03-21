@@ -304,7 +304,9 @@ crystals_data(crystals_data),
 regularization_function(parameters.regularization_function),
 regularization_parameter(parameters.regularization_parameter),
 linear_hardening_modulus(hardening_law_prm.linear_hardening_modulus),
-hardening_parameter(hardening_law_prm.hardening_parameter)
+hardening_parameter(hardening_law_prm.hardening_parameter),
+flag_perfect_plasticity(hardening_law_prm.flag_perfect_plasticity),
+flag_rate_independent(parameters.flag_rate_independent)
 {}
 
 
@@ -329,12 +331,19 @@ double ScalarMicrostressLaw<dim>::get_scalar_microstress(
   const double slip_rate =
     (slip_value - old_slip_value) / time_step_size;
 
-  const double regularization_function_value =
-    get_regularization_function_value(slip_rate);
+  if (flag_rate_independent)
+  {
+    return (slip_resistance * sgn(slip_rate));
+  }
+  else
+  {
+    const double regularization_function_value =
+      get_regularization_function_value(slip_rate);
 
-  AssertIsFinite(regularization_function_value);
+    AssertIsFinite(regularization_function_value);
 
-  return (slip_resistance * regularization_function_value);
+    return (slip_resistance * regularization_function_value);
+  }
 }
 
 
@@ -371,23 +380,48 @@ dealii::FullMatrix<double> ScalarMicrostressLaw<dim>::
   for (unsigned int slip_id_alpha = 0;
       slip_id_alpha < crystals_data->get_n_slips();
       ++slip_id_alpha)
+  {
     for (unsigned int slip_id_beta = 0;
         slip_id_beta < crystals_data->get_n_slips();
         ++slip_id_beta)
     {
-      jacobian[slip_id_alpha][slip_id_beta] =
-        (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
-          get_regularization_function_value(compute_slip_rate(q_point, slip_id_alpha)) *
-          get_regularization_function_value(compute_slip_rate(q_point, slip_id_beta)));
+      jacobian[slip_id_alpha][slip_id_beta] = 0.;
 
-      if (slip_id_alpha == slip_id_beta)
+      if (!flag_perfect_plasticity)
+      {
+        jacobian[slip_id_alpha][slip_id_beta] =
+          get_hardening_matrix_entry(slip_id_alpha == slip_id_beta);
+
+        if (flag_rate_independent)
+        {
+          jacobian[slip_id_alpha][slip_id_beta] *=
+            sgn(compute_slip_rate(q_point, slip_id_alpha)) *
+            sgn(compute_slip_rate(q_point, slip_id_beta));
+        }
+        else
+        {
+          // The latter term ought to be a sgn function but for the sake
+          // of symmetry it is also approximated by a sigmoid function
+          jacobian[slip_id_alpha][slip_id_beta] *=
+            get_regularization_function_value(
+              compute_slip_rate(q_point, slip_id_alpha)) *
+            get_regularization_function_value(
+              compute_slip_rate(q_point, slip_id_beta));
+        }
+      }
+
+      if (slip_id_alpha == slip_id_beta &&
+          !flag_rate_independent)
+      {
         jacobian[slip_id_alpha][slip_id_beta] +=
           (slip_resistances[slip_id_alpha] / time_step_size *
             get_regularization_function_derivative_value(
               compute_slip_rate(q_point, slip_id_alpha)));
+      }
 
       AssertIsFinite(jacobian[slip_id_alpha][slip_id_beta]);
     }
+  }
 
   return jacobian;
 }

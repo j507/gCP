@@ -268,6 +268,10 @@ private:
 
   const double                              hardening_parameter;
 
+  const bool                                flag_perfect_plasticity;
+
+  const bool                                flag_rate_independent;
+
   double get_hardening_matrix_entry(const bool self_hardening) const;
 
   double sgn(const double value) const;
