@@ -3,85 +3,178 @@
 set Verbose = true
 
 
-subsection Input files
-  set Euler angles path name    = input/simple_shear_Kergassner/euler_angles
-  set Slip directions path name = input/simple_shear_Kergassner/slip_directions
-  set Slip normals path name    = input/simple_shear_Kergassner/slip_normals
-end
-
-
-subsection Output control parameters
-  set Graphical output directory = results/simple_shear_Kergassner/double_slip_lh_2e-1_H_100/
-  set Graphical output frequency = 1
-  set Terminal output frequency  = 1
-end
-
-
-subsection Simple shear
-  set Height of the strip                              = 1.0
-  set Number of equally sized divisions in y-direction = 1
-  set Maximum shear strain at the upper boundary               = 0.02
-  set Width of the strip                               = 0.1
-end
-
-
-subsection Solver parameters
-  set Boundary conditions at grain boundaries = microfree
-  set Logger output directory                 = results/simple_shear_Kergassner/double_slip_lh_2e-1_H_100/
-  set Print sparsity pattern                  = false
-  set Verbose                                 = false
-
-
-  subsection Constitutive laws' parameters
-    subsection Hooke-Law's parameters
-      set C1111 = 107942.28436442571
-      set C1122 = 61246.24912213496
-      set C1212 = 28500
-    end
-
-    subsection Microscopic traction law's parameters
-      set Grain boundary modulus = 0.0
-    end
-
-    subsection Scalar microscopic stress law's parameters
-      set Hardening parameter      = 1.4
-      set Initial slip resistance  = 60
-      set Linear hardening modulus = 100.
-      set Regularization function  = tanh
-      set Regularization parameter = 1e-3
-    end
-
-    subsection Vector microscopic stress law's parameters
-      set Energetic length scale  = 0.2
-      set Initial slip resistance = 60
-    end
-
-  end
-
-  subsection Nonlinear solver's parameters
-    set Absolute tolerance of the Krylov-solver              = 1e-9
-    set Maximum number of iterations of the Krylov-solver    = 1000
-    set Maximum number of iterations of the nonlinear solver = 500
-    set Relative tolerance of the Krylov-solver              = 1e-8
-    set Tolerance of the newton update                       = 1e-15
-    set Tolerance of the residual                            = 1e-8
+subsection 0. Infinite strip parameters (Extended in 1. and 2.)
+  subsection Loading parameters
+    set Control type = displacement_control
   end
 
 end
 
 
-subsection Spatial discretization parameters
+subsection 1. Spatial discretization parameters
   set FE's polynomial degree - Displacements = 2
   set FE's polynomial degree - Slips         = 1
   set Mapping - Apply to interior cells      = false
   set Mapping - Polynomial degree            = 1
   set Number of global refinements           = 0
   set Spatial dimension                      = 2
+
+
+  subsection Problem specific parameters
+    set Height of the strip                             = 1.0
+    set Number of elements in y-direction               = 100
+    set Number of equally sized crystals in y-direction = 1
+  end
+
 end
 
-subsection Temporal discretization parameters
+
+subsection 2. Temporal discretization parameters
   set End time       = 1.0
   set Start time     = 0.0
-  set Time step size = 1e-3
+  set Time step size = 1e-1
+
+
+  subsection Simple loading
+    set Loading type = monotonic
+    set Maximum load = 0.02
+    set Minimum load = 0.0
+
+
+    subsection Cyclic load parameters
+      set Duration of un- and loading phase            = 1.0
+      set Number of cycles                             = 1
+      set Number of steps during a quarter cycle       = 5
+      set Number of steps during un- and loading phase = 20
+      set Period                                       = 1.0
+      set Skip unloading phase                         = true
+    end
+
+    subsection Monotonic load parameters
+      set Duration of monotonic load            = 1.0
+      set Number of steps during monotonic load = 1000
+    end
+
+  end
+
 end
+
+
+subsection 3. Input parameters
+  set Euler angles path name    = input/crystal_orientation/2d/euler_angles_0
+  set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
+  set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
+end
+
+
+subsection 4. Output parameters
+  set Graphical output directory   = results/simple_shear_Kergassner/double_slip_lh_2e-1_H_100/
+  set Graphical output frequency   = 1
+  set Output damage variable field = false
+  set Output fluctuations fields   = false
+  set Output residual field        = false
+  set Store checkpoints            = false
+  set Terminal output frequency    = 1
+end
+
+
+subsection 5. Postprocessing parameters
+  subsection Homogenization
+    set Compute homogenized quantities = false
+    set Homogenization frequency       = 1
+  end
+
+end
+
+
+subsection 6. Solver parameters
+  set Allow decohesion at grain boundaries         = false
+  set Boundary conditions at grain boundaries      = microtraction
+  set Print sparsity pattern                       = false
+  set Skip extrapolation of start value at extrema = false
+  set Verbose                                      = false
+  set Zero damage evolution during un- and loading = false
+
+
+  subsection Constitutive laws' parameters
+    subsection Cohesive law's parameters
+      set Cohesive law model                   = OrtizEtAl
+      set Critical opening displacement        = 2.5e-2
+      set Critical cohesive traction           = 700.
+      set Tangential to normal stiffness ratio = 1.0
+    end
+
+    subsection Contact law's parameters
+      set Penalty coefficient = 1e4
+    end
+
+    subsection Damage evolution parameters
+      set Couple macrotraction to damage = false
+      set Couple microtraction to damage = true
+      set Damage accumulation constant   = 1.0
+      set Damage decay constant          = 0.0
+      set Damage decay exponent          = 1.0
+      set Damage evolution model         = OrtizEtAl
+      set Endurance limit                = 0.0
+      set Set damage to zero             = true
+    end
+
+    subsection Degradation function parameters
+      set Degradation exponent           = 1.0
+    end
+
+    subsection Hardening law's parameters
+      set Hardening parameter      = 1.4
+      set Initial slip resistance  = 60
+      set Linear hardening modulus = 100
+      set Perfect plasticity       = false
+    end
+
+    subsection Hooke-Law's parameters
+      set C1111 = 107942.28436442571
+      set C1122 = 61246.24912213496
+      set C1212 = 28500
+    end
+
+    subsection Microtraction law's parameters
+      set Grain boundary modulus = 0.
+    end
+
+    subsection Scalar microstress law's parameters
+      set Rate-independent behavior = false
+      set Regularization function   = tanh
+      set Regularization parameter  = 1e-3
+    end
+
+    subsection Vectorial microstress law's parameters
+      set Defect energy index      = 2.0
+      set Energetic length scale   = 0.2
+      set Initial slip resistance  = 60
+      set Regularization parameter = 0.
+    end
+
+  end
+
+  subsection Krylov parameters
+    set Absolute tolerance                  = 1e-9
+    set Maximum number of iterations        = 1000
+    set Relative tolerance                  = 1e-8
+    set Relaxation factor of the tolerances = 1.0
+    set Solver type                         = cg
+  end
+
+  subsection Line search parameters
+    set Armijo condition constant    = 1e-4
+    set Maximum number of iterations = 30
+  end
+
+  subsection Newton-Raphson parameters
+    set Absolute tolerance of the residual = 1e-8
+    set Absolute tolerance of the step     = 1e-15
+    set Maximum number of iterations       = 500
+    set Relative tolerance of the residual = 1e-7
+  end
+
+end
+
 
