@@ -268,6 +268,13 @@ struct ScalarMicrostressLawParameters
    * @todo Docu
    */
   double                  regularization_parameter;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                    flag_rate_independent;
 };
 
 

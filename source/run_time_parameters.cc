@@ -89,7 +89,8 @@ void HookeLawParameters::parse_parameters(dealii::ParameterHandler &prm)
 ScalarMicrostressLawParameters::ScalarMicrostressLawParameters()
 :
 regularization_function(RegularizationFunction::Tanh),
-regularization_parameter(3e-4)
+regularization_parameter(3e-4),
+flag_rate_independent(false)
 {}
 
 
@@ -105,6 +106,10 @@ void ScalarMicrostressLawParameters::declare_parameters(dealii::ParameterHandler
     prm.declare_entry("Regularization parameter",
                       "3e-4",
                       dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Rate-independent behavior",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -145,7 +150,10 @@ void ScalarMicrostressLawParameters::parse_parameters(dealii::ParameterHandler &
                                     "regularization function."));
     }
 
-    regularization_parameter  = prm.get_double("Regularization parameter");
+    regularization_parameter = prm.get_double("Regularization parameter");
+
+    flag_rate_independent = prm.get_bool("Rate-independent behavior");
+
 
     AssertThrow(
       regularization_parameter > 0.0,
@@ -357,7 +365,8 @@ HardeningLaw::HardeningLaw()
 :
 initial_slip_resistance(0.0),
 linear_hardening_modulus(500),
-hardening_parameter(1.4)
+hardening_parameter(1.4),
+flag_perfect_plasticity(false)
 {}
 
 
@@ -377,6 +386,10 @@ void HardeningLaw::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Hardening parameter",
                       "1.4",
                       dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Perfect plasticity",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -392,14 +405,14 @@ void HardeningLaw::parse_parameters(dealii::ParameterHandler &prm)
     linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
 
     hardening_parameter       = prm.get_double("Hardening parameter");
+
+    flag_perfect_plasticity   = prm.get_bool("Perfect plasticity");
   }
   prm.leave_subsection();
 
   if (prm.subsection_path_exists(
         {"Vectorial microstress law's parameters"}))
   {
-    std::cout << "We are in!" << std::endl;
-
     prm.enter_subsection("Vectorial microstress law's parameters");
     {
       Assert(initial_slip_resistance ==
