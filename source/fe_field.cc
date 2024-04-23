@@ -245,10 +245,6 @@ void FEField<dim>::setup_dofs()
     std::vector<dealii::types::global_dof_index> local_dof_indices(
       fe_collection.max_dofs_per_cell());
 
-    dealii::Utilities::MPI::Partitioner partitioner(locally_owned_dofs,
-                                                    locally_relevant_dofs,
-                                                    MPI_COMM_WORLD);
-
     for (const auto &active_cell : dof_handler.active_cell_iterators())
     {
       if (active_cell->is_locally_owned())
@@ -259,11 +255,6 @@ void FEField<dim>::setup_dofs()
             i < local_dof_indices.size();
             ++i)
         {
-          if (partitioner.is_ghost_entry(local_dof_indices[i]))
-          {
-            continue;
-          }
-
           if (get_global_component(active_cell->material_id(), i) < dim)
           {
             vector_dof_indices.insert(local_dof_indices[i]);
@@ -277,18 +268,21 @@ void FEField<dim>::setup_dofs()
     }
   }
 
-  const unsigned int total_vector_dof_indices =
-    dealii::Utilities::MPI::sum(vector_dof_indices.size(), MPI_COMM_WORLD);
+  vector_dof_indices = dealii::Utilities::MPI::compute_set_union(
+    vector_dof_indices,
+    MPI_COMM_WORLD);
 
-  const unsigned int total_scalar_dof_indices =
-    dealii::Utilities::MPI::sum(scalar_dof_indices.size(), MPI_COMM_WORLD);
+  scalar_dof_indices = dealii::Utilities::MPI::compute_set_union(
+    scalar_dof_indices,
+    MPI_COMM_WORLD);
 
   Assert(this->n_dofs() ==
-          (total_vector_dof_indices + total_scalar_dof_indices),
-         dealii::ExcMessage("Number of degrees of freedom do not match!"))
-
-  (void)total_vector_dof_indices;
-  (void)total_scalar_dof_indices;
+          (vector_dof_indices.size() + scalar_dof_indices.size()),
+         dealii::ExcMessage(
+          "Number of degrees of freedom do not match! " +
+          std::to_string(this->n_dofs()) + "!=" +
+          std::to_string(vector_dof_indices.size() +
+                         scalar_dof_indices.size())))
 
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;
