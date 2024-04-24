@@ -41,9 +41,34 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
     if (std::abs(trial_microstress.solution[locally_owned_dof]) >
           local_yield_stress)
     {
-      active_set.add_index(dof_mapping[locally_owned_dof]);
+      const dealii::types::global_dof_index dof =
+        dof_mapping[locally_owned_dof];
+
+      // The material can not plastically flow at the Dirichlet
+      // boundary
+      if (!fe_field->get_affine_constraints().is_constrained(dof))
+      {
+        active_set.add_index(dof);
+      }
+
+      // If a degree of freedom leads to plastic flow at a periodic
+      // boundary, the corresponding degree of freedom needs to be
+      // also added to the active set
+      if (fe_field->get_affine_constraints().is_identity_constrained(dof))
+      {
+        const std::vector<
+          std::pair<dealii::types::global_dof_index, double>>
+            *constraint_entries =
+              fe_field->get_affine_constraints().
+                get_constraint_entries(dof);
+
+        active_set.add_index(dof);
+
+        active_set.add_index((*constraint_entries)[0].first);
+      }
     }
   }
+
 }
 
 
