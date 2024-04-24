@@ -201,6 +201,8 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     initialize_dof_mapping();
 
+    active_set.set_size(fe_field->get_dof_handler().n_dofs());
+
     // Initiate vectors
     {
       trial_microstress_right_hand_side.reinit(
