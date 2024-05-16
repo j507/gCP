@@ -163,6 +163,12 @@ private:
 
   double                                            newton_update_norm;
 
+  double                                            effective_l2_norm;
+
+  double                                            effective_displacement_norm;
+
+  double                                            effective_plastic_slip_norm;
+
   std::tuple<double,double,double>                  residual_norms;
 
   std::tuple<double,double,double>                  newton_update_norms;
@@ -174,6 +180,8 @@ private:
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
                                                     neumann_boundary_conditions;
+
+  dealii::AffineConstraints<double>                 internal_newton_method_constraints;
 
   Utilities::Logger                                 nonlinear_solver_logger;
 
@@ -250,6 +258,20 @@ private:
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
+  void compute_effective_residual();
+
+  void update_and_output_nonlinear_solver_logger(
+    const std::tuple<double, double, double>  residual_l2_norms);
+
+  void update_and_output_nonlinear_solver_logger(
+    const unsigned int                        nonlinear_iteration,
+    const unsigned int                        n_krylov_iterations,
+    const unsigned int                        n_line_search_iterations,
+    const std::tuple<double, double, double>  newton_update_l2_norms,
+    const std::tuple<double, double, double>  residual_l2_norms,
+    const double                              order_of_convergence,
+    const double                              relaxation_parameter = 1.0);
+
   /*!
    * @note Only for debugging purposes
    */
@@ -291,12 +313,18 @@ private:
 
   // Members and methods related to the trial microstress
 
-  TrialMicrostress<dim>                       trial_microstress;
+  std::shared_ptr<TrialMicrostress<dim>>      trial_microstress;
 
   std::map<dealii::types::global_dof_index,
            dealii::types::global_dof_index>   dof_mapping;
 
   dealii::IndexSet                            active_set;
+
+  dealii::IndexSet                            inactive_set;
+
+  dealii::IndexSet                            displacement_dofs_set;
+
+  dealii::IndexSet                            plastic_slip_dofs_set;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
 
@@ -306,9 +334,15 @@ private:
 
   void initialize_dof_mapping();
 
+  void reset_internal_newton_method_constraints();
+
   void compute_trial_microstress();
 
   void determine_active_set();
+
+  void determine_inactive_set();
+
+  void reset_inactive_set_values();
 
   void assemble_trial_microstress_lumped_matrix();
 

@@ -178,15 +178,16 @@ void GradientCrystalPlasticitySolver<dim>::init()
     // damage variable
 
   // Setup members related to the computation of the trial microstress
+  if (crystals_data->get_n_slips() > 0)
   {
-    trial_microstress.setup_extractors(
+    trial_microstress->setup_extractors(
       crystals_data->get_n_crystals(),
       crystals_data->get_n_slips());
 
-    trial_microstress.update_ghost_material_ids();
+    trial_microstress->update_ghost_material_ids();
 
     for (const auto &trial_microstress_cell :
-        trial_microstress.get_dof_handler().active_cell_iterators())
+        trial_microstress->get_dof_handler().active_cell_iterators())
     {
       if (trial_microstress_cell->is_locally_owned())
       {
@@ -195,21 +196,29 @@ void GradientCrystalPlasticitySolver<dim>::init()
       }
     }
 
-    trial_microstress.setup_dofs();
+    trial_microstress->setup_dofs();
 
-    trial_microstress.setup_vectors();
-
-    initialize_dof_mapping();
+    trial_microstress->setup_vectors();
 
     active_set.set_size(fe_field->get_dof_handler().n_dofs());
+
+    inactive_set.set_size(fe_field->get_dof_handler().n_dofs());
+
+    displacement_dofs_set.set_size(
+      fe_field->get_dof_handler().n_dofs());
+
+    plastic_slip_dofs_set.set_size(
+      fe_field->get_dof_handler().n_dofs());
+
+    initialize_dof_mapping();
 
     // Initiate vectors
     {
       trial_microstress_right_hand_side.reinit(
-        trial_microstress.distributed_vector);
+        trial_microstress->distributed_vector);
 
       trial_microstress_lumped_matrix.reinit(
-        trial_microstress.distributed_vector);
+        trial_microstress->distributed_vector);
     }
 
     assemble_trial_microstress_lumped_matrix();
@@ -496,10 +505,10 @@ void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
 
       dealii::DoFTools::map_dofs_to_support_points(
         mapping_collection,
-        trial_microstress.get_dof_handler(),
+        trial_microstress->get_dof_handler(),
         trial_microstress_map,
-        trial_microstress.get_fe_collection().component_mask(
-          trial_microstress.get_extractor(crystal_id, slip_id)));
+        trial_microstress->get_fe_collection().component_mask(
+          trial_microstress->get_extractor(crystal_id, slip_id)));
 
       // Both std::map instances have to be equal in size
       Assert(
@@ -511,6 +520,8 @@ void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
            fe_field_map_pair != fe_field_map.end();
            fe_field_map_pair++)
       {
+        plastic_slip_dofs_set.add_index(fe_field_map_pair->first);
+
         // Loop over the other std::map instance
         for (auto trial_microstress_map_pair = trial_microstress_map.begin();
             trial_microstress_map_pair != trial_microstress_map.end();
@@ -529,6 +540,30 @@ void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
       } // Loop over the std::map instance
     } // Loop over slip systems
   }  // Loop over crystals
+
+  plastic_slip_dofs_set.compress();
+
+  displacement_dofs_set = fe_field->get_locally_owned_dofs();
+
+  displacement_dofs_set.subtract_set(plastic_slip_dofs_set);
+
+  displacement_dofs_set.compress();
+}
+
+
+template<int dim>
+void GradientCrystalPlasticitySolver<dim>::
+reset_internal_newton_method_constraints()
+{
+  internal_newton_method_constraints.clear();
+  {
+    internal_newton_method_constraints.reinit(
+      fe_field->get_locally_relevant_dofs());
+
+    internal_newton_method_constraints.merge(
+      fe_field->get_newton_method_constraints());
+  }
+  internal_newton_method_constraints.close();
 }
 
 
@@ -637,6 +672,9 @@ template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_his
 
 template void gCP::GradientCrystalPlasticitySolver<2>::initialize_dof_mapping();
 template void gCP::GradientCrystalPlasticitySolver<3>::initialize_dof_mapping();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::reset_internal_newton_method_constraints();
+template void gCP::GradientCrystalPlasticitySolver<3>::reset_internal_newton_method_constraints();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
 template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);

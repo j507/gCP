@@ -526,7 +526,8 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
   const gCP::AssemblyData::Jacobian::Copy &data)
 {
-  fe_field->get_newton_method_constraints().distribute_local_to_global(
+  //fe_field->get_newton_method_constraints()
+  internal_newton_method_constraints.distribute_local_to_global(
     data.local_matrix,
     data.local_dof_indices,
     jacobian);
@@ -546,7 +547,8 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
         data.local_coupling_matrices.size(), 0));
 
     for (unsigned int i = 0; i < data.local_coupling_matrices.size(); ++i)
-      fe_field->get_newton_method_constraints().distribute_local_to_global(
+      //fe_field->get_newton_method_constraints()
+      internal_newton_method_constraints.distribute_local_to_global(
         data.local_coupling_matrices[i],
         data.local_dof_indices,
         data.neighbour_cells_local_dof_indices[i],
@@ -1057,7 +1059,8 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &data)
 {
-  fe_field->get_newton_method_constraints().distribute_local_to_global(
+  //fe_field->get_newton_method_constraints()
+  internal_newton_method_constraints.distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
     residual,
@@ -2041,19 +2044,19 @@ assemble_trial_microstress_lumped_matrix()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress.get_dof_handler().begin_active()),
+               trial_microstress->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress.get_dof_handler().end()),
+               trial_microstress->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::TrialMicrostress::Matrix::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
-      trial_microstress.get_fe_collection(),
+      trial_microstress->get_fe_collection(),
       update_flags,
       fe_field->get_n_slips()),
     gCP::AssemblyData::TrialMicrostress::Matrix::Copy(
-      trial_microstress.get_fe_collection().max_dofs_per_cell()));
+      trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
   trial_microstress_lumped_matrix.compress(dealii::VectorOperation::add);
@@ -2102,7 +2105,7 @@ assemble_local_trial_microstress_lumped_matrix(
           local_dof_id++)
       {
         scratch.test_function_values[slip_id][local_dof_id] =
-          fe_values[trial_microstress.get_extractor(crystal_id, slip_id)].
+          fe_values[trial_microstress->get_extractor(crystal_id, slip_id)].
             value(local_dof_id, quadrature_point_id);
       } // Loop over local degrees of freedom
     } // Loop over slip identifiers
@@ -2113,7 +2116,7 @@ assemble_local_trial_microstress_lumped_matrix(
          row_local_dof_id++)
     {
       const unsigned int row_slip_id =
-        trial_microstress.get_global_component(
+        trial_microstress->get_global_component(
           crystal_id,
           row_local_dof_id);
 
@@ -2122,7 +2125,7 @@ assemble_local_trial_microstress_lumped_matrix(
            column_local_dof_id++)
       {
         const unsigned int column_slip_id =
-          trial_microstress.get_global_component(
+          trial_microstress->get_global_component(
             crystal_id,
             column_local_dof_id);
 
@@ -2147,7 +2150,7 @@ void GradientCrystalPlasticitySolver<dim>::
 copy_local_to_global_trial_microstress_lumped_matrix(
   const gCP::AssemblyData::TrialMicrostress::Matrix::Copy &data)
 {
-  trial_microstress.get_hanging_node_constraints().
+  trial_microstress->get_hanging_node_constraints().
     distribute_local_to_global(
       data.local_lumped_matrix,
       data.local_dof_indices,
@@ -2201,21 +2204,21 @@ assemble_trial_microstress_right_hand_side()
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress.get_dof_handler().begin_active()),
+               trial_microstress->get_dof_handler().begin_active()),
     CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress.get_dof_handler().end()),
+               trial_microstress->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::TrialMicrostress::RightHandSide::Scratch<dim>(
       mapping_collection,
       quadrature_collection,
-      trial_microstress.get_fe_collection(),
+      trial_microstress->get_fe_collection(),
       fe_field->get_fe_collection(),
       trial_microstress_update_flags,
       slips_update_flags,
       fe_field->get_n_slips()),
     gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy(
-      trial_microstress.get_fe_collection().max_dofs_per_cell()));
+      trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
   trial_microstress_right_hand_side.compress(dealii::VectorOperation::add);
@@ -2324,12 +2327,12 @@ assemble_local_trial_microstress_right_hand_side(
           local_dof_id++)
       {
         scratch.test_function_values[slip_id][local_dof_id] =
-          trial_microstress_fe_values[trial_microstress.
+          trial_microstress_fe_values[trial_microstress->
             get_extractor(crystal_id, slip_id)].
               value(local_dof_id, quadrature_point_id);
 
         scratch.test_function_gradient_values[slip_id][local_dof_id] =
-          trial_microstress_fe_values[trial_microstress.
+          trial_microstress_fe_values[trial_microstress->
             get_extractor(crystal_id, slip_id)].
               gradient(local_dof_id, quadrature_point_id);
       } // Loop over local degrees of freedom
@@ -2341,7 +2344,7 @@ assemble_local_trial_microstress_right_hand_side(
          local_dof_id++)
     {
       const unsigned int slip_id =
-        trial_microstress.get_global_component(
+        trial_microstress->get_global_component(
           crystal_id,
           local_dof_id);
 
@@ -2364,7 +2367,7 @@ void GradientCrystalPlasticitySolver<dim>::
 copy_local_to_global_trial_microstress_right_hand_side(
   const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy &data)
 {
-  trial_microstress.get_hanging_node_constraints().
+  trial_microstress->get_hanging_node_constraints().
     distribute_local_to_global(
       data.local_right_hand_side,
       data.local_dof_indices,
