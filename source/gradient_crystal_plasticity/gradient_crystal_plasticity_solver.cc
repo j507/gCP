@@ -157,6 +157,14 @@ trial_microstress(
 
 
 template <int dim>
+GradientCrystalPlasticitySolver<dim>::~GradientCrystalPlasticitySolver()
+{
+  line_search.write_to_file(
+    parameters.logger_output_directory + "line_search_log.txt");
+}
+
+
+template <int dim>
 const dealii::LinearAlgebraTrilinos::MPI::Vector &
 GradientCrystalPlasticitySolver<dim>::get_damage_at_grain_boundaries()
 {

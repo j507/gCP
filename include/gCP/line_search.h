@@ -3,6 +3,8 @@
 
 #include <gCP/run_time_parameters.h>
 
+#include <deal.II/base/table_handler.h>
+
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/vector.h>
 
@@ -27,7 +29,9 @@ public:
 
   LineSearch(const RunTimeParameters::LineSearchParameters &parameters);
 
-  void reinit(const double initial_scalar_function_value);
+  void reinit(const double initial_scalar_function_value,
+              const unsigned int step_id = 0,
+              const unsigned int iteration_id = 0);
 
   bool suficient_descent_condition(
     const double trial_scalar_function_value,
@@ -38,24 +42,36 @@ public:
 
   unsigned int get_n_iterations() const;
 
+  void write_to_file(const std::string filepath);
+
 private:
-  unsigned int        n_iterations;
+  unsigned int          n_iterations;
 
-  const unsigned int  n_max_iterations;
+  const unsigned int    n_max_iterations;
 
-  const double        alpha;
+  const double          alpha;
 
-  double              initial_scalar_function_value;
+  const double          beta;
 
-  double              descent_direction;
+  double                initial_scalar_function_value;
 
-  double              old_lambda;
+  double                descent_direction;
 
-  double              old_old_lambda;
+  double                lambda;
 
-  double              old_scalar_function_value;
+  double                old_lambda;
 
-  double              old_old_scalar_function_value;
+  double                old_old_lambda;
+
+  double                old_scalar_function_value;
+
+  double                old_old_scalar_function_value;
+
+  unsigned int          step_id;
+
+  unsigned int          iteration_id;
+
+  dealii::TableHandler  table_handler;
 
   double quadratic_backtracking(
     const double trial_scalar_function_value);

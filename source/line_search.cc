@@ -10,8 +10,15 @@ LineSearch::LineSearch()
 :
 n_iterations(0),
 n_max_iterations(15),
-alpha(1e-4)
-{}
+alpha(1e-4),
+beta(0.9)
+{
+  table_handler.declare_column("S");
+  table_handler.declare_column("N-Itr");
+  table_handler.declare_column("L-Itr");
+  table_handler.declare_column("Rlx-Prm");
+  table_handler.set_scientific("Rlx-Prm", true);
+}
 
 
 
@@ -20,17 +27,29 @@ LineSearch::LineSearch(
 :
 n_iterations(0),
 n_max_iterations(parameters.n_max_iterations),
-alpha(parameters.armijo_condition_constant)
-{}
+alpha(parameters.armijo_condition_constant),
+beta(0.9)
+{
+  table_handler.declare_column("S");
+  table_handler.declare_column("N-Itr");
+  table_handler.declare_column("L-Itr");
+  table_handler.declare_column("Rlx-Prm");
+  table_handler.set_scientific("Rlx-Prm", true);
+}
 
 
 
 void LineSearch::reinit(
-  const double initial_scalar_function_value)
+  const double        initial_scalar_function_value,
+  const unsigned int  step_id,
+  const unsigned int  iteration_id)
 {
   this->n_iterations                  = 0;
   this->initial_scalar_function_value = initial_scalar_function_value;
-  this->descent_direction             = - 2. * initial_scalar_function_value;
+  this->descent_direction             = - 2. *
+                                          initial_scalar_function_value;
+  this->step_id                       = step_id;
+  this->iteration_id                  = iteration_id;
 }
 
 
@@ -43,8 +62,6 @@ double LineSearch::get_lambda(const double trial_scalar_function_value,
 
   old_old_scalar_function_value = old_scalar_function_value;
   old_scalar_function_value     = trial_scalar_function_value;
-
-  double lambda;
 
   if (n_iterations == 0)
   {
@@ -62,7 +79,25 @@ double LineSearch::get_lambda(const double trial_scalar_function_value,
 
   AssertIsFinite(lambda);
 
+  table_handler.add_value("S", step_id);
+  table_handler.add_value("N-Itr", iteration_id);
+  table_handler.add_value("L-Itr", n_iterations);
+  table_handler.add_value("Rlx-Prm", lambda);
+
   return lambda;
+}
+
+
+
+void LineSearch::write_to_file(const std::string filepath)
+{
+  std::ofstream file(filepath);
+
+  table_handler.write_text(
+    file,
+    dealii::TableHandler::TextOutputFormat::org_mode_table);
+
+  file.close();
 }
 
 

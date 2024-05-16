@@ -41,6 +41,8 @@ public:
     const std::shared_ptr<dealii::TimerOutput>        external_timer =
       std::shared_ptr<dealii::TimerOutput>());
 
+  ~GradientCrystalPlasticitySolver();
+
   void init();
 
   void set_supply_term(
