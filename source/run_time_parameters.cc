@@ -720,7 +720,9 @@ NewtonRaphsonParameters::NewtonRaphsonParameters()
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
 step_tolerance(1e-8),
-n_max_iterations(15)
+n_max_iterations(15),
+relaxation_parameter(1.0),
+flag_line_search(true)
 {}
 
 
@@ -745,6 +747,14 @@ void NewtonRaphsonParameters::declare_parameters(
     prm.declare_entry("Maximum number of iterations",
                       "15",
                       dealii::Patterns::Integer(1));
+
+    prm.declare_entry("Relaxation parameter",
+                      "1.0",
+                      dealii::Patterns::Double(0.,1.));
+
+    prm.declare_entry("Line search algorithm",
+                      "true",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -767,6 +777,12 @@ void NewtonRaphsonParameters::parse_parameters(
 
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
+
+    relaxation_parameter =
+      prm.get_double("Relaxation parameter");
+
+    flag_line_search =
+      prm.get_bool("Line search algorithm");
 
     AssertThrow(
       relative_tolerance > 0.0,

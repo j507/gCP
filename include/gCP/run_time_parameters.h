@@ -796,6 +796,11 @@ struct NewtonRaphsonParameters
    * @todo Docu
    */
   unsigned int  n_max_iterations;
+
+
+  double        relaxation_parameter;
+
+  bool          flag_line_search;
 };
 
 
