@@ -895,6 +895,125 @@ void RatePostprocessor<dim>::evaluate_vector_field(
 
 
 template <int dim>
+TrialstressPostprocessor<dim>::TrialstressPostprocessor(
+  std::shared_ptr<TrialMicrostress<dim>>  &trial_microstress,
+  std::shared_ptr<CrystalsData<dim>>      &crystals_data)
+:
+trial_microstress(trial_microstress),
+crystals_data(crystals_data)
+{}
+
+
+
+template <int dim>
+std::vector<std::string>
+TrialstressPostprocessor<dim>::get_names() const
+{
+  std::vector<std::string> solution_names;
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    solution_names.emplace_back(
+      "TrialMicrostress_" + std::to_string(slip_id));
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    solution_names.emplace_back(
+      "ActiveDomain_" + std::to_string(slip_id));
+
+  return solution_names;
+}
+
+
+template <int dim>
+std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
+TrialstressPostprocessor<dim>::get_data_component_interpretation()
+  const
+{
+  std::vector<
+    dealii::DataComponentInterpretation::DataComponentInterpretation>
+      interpretation;
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+
+  for (unsigned int slip_id = 0;
+      slip_id < crystals_data->get_n_slips();
+      ++slip_id)
+    interpretation.push_back(
+      dealii::DataComponentInterpretation::component_is_scalar);
+
+  return interpretation;
+}
+
+
+template <int dim>
+dealii::UpdateFlags
+TrialstressPostprocessor<dim>::get_needed_update_flags() const
+{
+  return dealii::update_values |
+         dealii::update_quadrature_points;
+}
+
+
+
+template <int dim>
+void TrialstressPostprocessor<dim>::evaluate_vector_field(
+  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
+  std::vector<dealii::Vector<double>>                 &computed_quantities) const
+{
+  const unsigned int n_q_points   = inputs.solution_values.size();
+
+  const unsigned int n_components = trial_microstress->get_n_components();
+
+  const unsigned int n_slips      = crystals_data->get_n_slips();
+
+  const unsigned int n_crystals   = crystals_data->get_n_crystals();
+
+  (void)n_components;
+
+  Assert(inputs.solution_gradients.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(computed_quantities.size() == n_q_points,
+         dealii::ExcInternalError());
+
+  Assert(inputs.solution_values[0].size() == n_components,
+         dealii::ExcInternalError());
+
+  // Reset
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
+      computed_quantities[q_point](d) = 0.0;
+
+  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  {
+    for (unsigned int slip_id = 0;
+        slip_id < n_slips; ++slip_id)
+    {
+      for (unsigned int crystal_id = 0;
+          crystal_id < n_crystals; ++crystal_id)
+      {
+        computed_quantities[q_point](slip_id) +=
+            inputs.solution_values[q_point](
+              slip_id + n_slips * crystal_id);
+
+        computed_quantities[q_point](n_slips + slip_id) +=
+            inputs.solution_values[q_point](
+              slip_id + n_slips * crystal_id) > 60.0;
+      }
+    }
+  }
+}
+
+
+
+template <int dim>
 SimpleShear<dim>::SimpleShear(
   std::shared_ptr<FEField<dim>>         &fe_field,
   std::shared_ptr<dealii::Mapping<dim>> &mapping,
@@ -1617,6 +1736,9 @@ template class gCP::Postprocessing::ResidualPostprocessor<3>;
 
 template class gCP::Postprocessing::RatePostprocessor<2>;
 template class gCP::Postprocessing::RatePostprocessor<3>;
+
+template class gCP::Postprocessing::TrialstressPostprocessor<2>;
+template class gCP::Postprocessing::TrialstressPostprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;

@@ -302,6 +302,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
 
+  gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
+
   void initialize_dof_mapping();
 
   void compute_trial_microstress();
