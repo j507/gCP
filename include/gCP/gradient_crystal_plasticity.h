@@ -181,7 +181,7 @@ private:
   /*!
    * @note Only for debugging purposes
    */
-  gCP::Postprocessing::RatePostprocessor<dim>       postprocessor;
+  gCP::Postprocessing::Postprocessor<dim>           postprocessor;
 
   bool                                              flag_init_was_called;
 

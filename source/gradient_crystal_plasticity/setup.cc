@@ -537,40 +537,42 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
   const bool flag_stepwise)
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector slip_rate;
+  dealii::LinearAlgebraTrilinos::MPI::Vector active_dofs;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_slip_rate;
+  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_active_dofs;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+  active_dofs.reinit(trial_microstress->solution);
 
-  slip_rate.reinit(fe_field->solution);
+  distributed_active_dofs.reinit(trial_microstress->distributed_vector);
 
-  distributed_slip_rate.reinit(fe_field->distributed_vector);
+  distributed_active_dofs = 0;
 
-  distributed_old_solution.reinit(fe_field->distributed_vector);
+  trial_microstress->get_hanging_node_constraints().distribute(
+    distributed_active_dofs);
 
-  distributed_slip_rate = trial_solution;
+  for (const auto &locally_owned_dof :
+        trial_microstress->get_locally_owned_dofs())
+  {
+    if (std::abs(trial_microstress->solution[locally_owned_dof]) >
+        parameters.constitutive_laws_parameters.hardening_law_parameters.initial_slip_resistance)
+    {
+      distributed_active_dofs[locally_owned_dof] = 1.0;
+    }
+  }
 
-  distributed_old_solution = fe_field->old_solution;
-
-  distributed_slip_rate.add(-1.0, distributed_old_solution);
-
-  distributed_slip_rate /= discrete_time.get_next_step_size();
-
-  fe_field->get_hanging_node_constraints().distribute(
-    distributed_slip_rate);
-
-  slip_rate = distributed_slip_rate;
-
+  active_dofs = distributed_active_dofs;
 
   dealii::DataOut<dim> data_out;
 
-  data_out.attach_dof_handler(fe_field->get_dof_handler());
+  data_out.add_data_vector(fe_field->get_dof_handler(),
+                           trial_solution,
+                           postprocessor);
 
-  data_out.add_data_vector(slip_rate, postprocessor);
+  data_out.add_data_vector(trial_microstress->get_dof_handler(),
+                           trial_microstress->solution,
+                           trial_postprocessor);
 
-  data_out.build_patches(*mapping,
-                         fe_field->get_slips_fe_degree());
+  data_out.build_patches(*mapping);
 
   static int out_index = 0;
 
@@ -578,12 +580,12 @@ void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
 
   if (flag_stepwise)
   {
-    file_name = "slip_rate_step_" +
+    file_name = "Step_" +
     std::to_string(discrete_time.get_step_number());
   }
   else
   {
-    file_name = "slip_rate";
+    file_name = "Step";
   }
 
   data_out.write_vtu_with_pvtu_record(

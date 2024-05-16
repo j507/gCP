@@ -59,7 +59,6 @@ nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
 print_out(true),
 postprocessor(
-  discrete_time,
   fe_field,
   crystals_data),
 flag_init_was_called(false),
@@ -149,6 +148,8 @@ trial_microstress(
     table_handler.set_precision("time", 6);
     table_handler.set_precision("damage_variable", 6);
   }
+
+  postprocessor.init(hooke_law);
 
   // Initialize supply term shared pointer
   supply_term = nullptr;
