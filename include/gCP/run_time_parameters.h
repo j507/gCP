@@ -829,7 +829,14 @@ struct LineSearchParameters
    *
    * @todo Docu
    */
-  double        armijo_condition_constant;
+  double        alpha;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        beta;
 
   /*!
    * @brief

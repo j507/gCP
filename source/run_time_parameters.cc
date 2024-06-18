@@ -804,7 +804,8 @@ void NewtonRaphsonParameters::parse_parameters(
 
 LineSearchParameters::LineSearchParameters()
 :
-armijo_condition_constant(1e-4),
+alpha(1e-4),
+beta(0.9),
 n_max_iterations(15)
 {}
 
@@ -815,9 +816,13 @@ void LineSearchParameters::declare_parameters(
 {
   prm.enter_subsection("Line search parameters");
   {
-    prm.declare_entry("Armijo condition constant",
+    prm.declare_entry("Alpha condition constant",
                       "1e-4",
-                      dealii::Patterns::Double(0.0));
+                      dealii::Patterns::Double(0.0,1.0));
+
+    prm.declare_entry("Beta condition constant",
+                      "0.9",
+                      dealii::Patterns::Double(0.0,1.0));
 
     prm.declare_entry("Maximum number of iterations",
                       "15",
@@ -833,16 +838,26 @@ void LineSearchParameters::parse_parameters(
 {
   prm.enter_subsection("Line search parameters");
   {
-    armijo_condition_constant =
-      prm.get_double("Armijo condition constant");
+    alpha =
+      prm.get_double("Alpha condition constant");
+
+    beta =
+      prm.get_double("Beta condition constant");
 
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
     AssertThrow(
-      armijo_condition_constant > 0.0,
-      dealii::ExcLowerRangeType<double>(armijo_condition_constant, 0.0));
+      alpha > 0.0,
+      dealii::ExcLowerRangeType<double>(alpha, 0.0));
 
+    AssertThrow(
+      beta > alpha,
+      dealii::ExcLowerRangeType<double>(beta, alpha));
+
+    AssertThrow(
+      1.0 > beta,
+      dealii::ExcMessage("The input value is outside the range (0,1)"));
   }
   prm.leave_subsection();
 }
