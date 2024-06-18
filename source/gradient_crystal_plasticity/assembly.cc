@@ -2019,6 +2019,8 @@ assemble_trial_microstress_lumped_matrix()
   // Reset data
   trial_microstress_lumped_matrix = 0.0;
 
+  trial_microstress_matrix = 0.0;
+
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
     const CellIterator                                                      &cell,
@@ -2060,6 +2062,8 @@ assemble_trial_microstress_lumped_matrix()
 
   // Compress global data
   trial_microstress_lumped_matrix.compress(dealii::VectorOperation::add);
+
+  trial_microstress_matrix.compress(dealii::VectorOperation::add);
 }
 
 
@@ -2072,6 +2076,8 @@ assemble_local_trial_microstress_lumped_matrix(
   gCP::AssemblyData::TrialMicrostress::Matrix::Copy             &data)
 {
   // Reset local data
+  data.local_matrix = 0.0;
+
   data.local_lumped_matrix = 0.0;
 
   // Local to global indices mapping
@@ -2134,10 +2140,20 @@ assemble_local_trial_microstress_lumped_matrix(
           continue;
         }
 
+        data.local_matrix(row_local_dof_id, column_local_dof_id) +=
+          scratch.test_function_values[row_slip_id][row_local_dof_id] *
+          scratch.test_function_values[column_slip_id][column_local_dof_id] *
+          scratch.JxW_values[quadrature_point_id];
+
         data.local_lumped_matrix(row_local_dof_id) +=
           scratch.test_function_values[row_slip_id][row_local_dof_id] *
           scratch.test_function_values[column_slip_id][column_local_dof_id] *
           scratch.JxW_values[quadrature_point_id];
+
+        AssertIsFinite(data.local_matrix(row_local_dof_id,
+          column_local_dof_id));
+
+        AssertIsFinite(data.local_lumped_matrix(row_local_dof_id));
       } // Loop over local degrees of freedom (column)
     } // Loop over local degrees of freedom (row)
   } // Loop over quadrature points
@@ -2155,6 +2171,12 @@ copy_local_to_global_trial_microstress_lumped_matrix(
       data.local_lumped_matrix,
       data.local_dof_indices,
       trial_microstress_lumped_matrix);
+
+  trial_microstress->get_hanging_node_constraints().
+    distribute_local_to_global(
+      data.local_matrix,
+      data.local_dof_indices,
+      trial_microstress_matrix);
 }
 
 
