@@ -538,6 +538,7 @@ namespace Matrix
 Copy::Copy(const unsigned int dofs_per_cell)
 :
 CopyBase(dofs_per_cell),
+local_matrix(dofs_per_cell,dofs_per_cell),
 local_lumped_matrix(dofs_per_cell)
 {}
 
@@ -607,10 +608,13 @@ template <int dim>
 Scratch<dim>::Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
   const dealii::hp::FECollection<dim>       &trial_microstress_finite_element_collection,
   const dealii::hp::FECollection<dim>       &slips_finite_element_collection,
   const dealii::UpdateFlags                 trial_microstress_update_flags,
   const dealii::UpdateFlags                 slips_update_flags,
+  const dealii::UpdateFlags                 trial_microstress_face_update_flags,
+  const dealii::UpdateFlags                 slips_face_update_flags,
   const unsigned int                        n_slips)
 :
 ScratchBase<dim>(
@@ -648,7 +652,29 @@ resolved_shear_stress_values(
 vectorial_microstress_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-JxW_values(this->n_q_points)
+JxW_values(this->n_q_points),
+trial_microstress_hp_fe_face_values(
+  mapping_collection,
+  trial_microstress_finite_element_collection,
+  face_quadrature_collection,
+  trial_microstress_face_update_flags),
+fe_field_hp_fe_face_values(
+  mapping_collection,
+  slips_finite_element_collection,
+  face_quadrature_collection,
+  slips_face_update_flags),
+n_face_quadrature_points(face_quadrature_collection.max_n_quadrature_points()),
+test_function_face_values(
+  n_slips,
+  std::vector<double>(this->dofs_per_cell)),
+slip_gradient_face_values(
+  n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_face_quadrature_points)),
+vectorial_microstress_face_values(
+  n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_face_quadrature_points)),
+normal_vector_values(this->n_face_quadrature_points),
+JxW_face_values(this->n_face_quadrature_points)
 {}
 
 
@@ -689,7 +715,29 @@ resolved_shear_stress_values(
 vectorial_microstress_values(
   data.n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
-JxW_values(this->n_q_points)
+JxW_values(this->n_q_points),
+trial_microstress_hp_fe_face_values(
+  data.trial_microstress_hp_fe_face_values.get_mapping_collection(),
+  data.trial_microstress_hp_fe_face_values.get_fe_collection(),
+  data.trial_microstress_hp_fe_face_values.get_quadrature_collection(),
+  data.trial_microstress_hp_fe_face_values.get_update_flags()),
+fe_field_hp_fe_face_values(
+  data.fe_field_hp_fe_face_values.get_mapping_collection(),
+  data.fe_field_hp_fe_face_values.get_fe_collection(),
+  data.fe_field_hp_fe_face_values.get_quadrature_collection(),
+  data.fe_field_hp_fe_face_values.get_update_flags()),
+n_face_quadrature_points(data.n_face_quadrature_points),
+test_function_face_values(
+  data.n_slips,
+  std::vector<double>(this->dofs_per_cell)),
+slip_gradient_face_values(
+  data.n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_face_quadrature_points)),
+vectorial_microstress_face_values(
+  data.n_slips,
+  std::vector<dealii::Tensor<1,dim>>(this->n_face_quadrature_points)),
+normal_vector_values(this->n_face_quadrature_points),
+JxW_face_values(this->n_face_quadrature_points)
 {}
 
 

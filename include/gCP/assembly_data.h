@@ -363,6 +363,8 @@ struct Copy : CopyBase
 {
   Copy(const unsigned int dofs_per_cell);
 
+  dealii::FullMatrix<double>  local_matrix;
+
   dealii::Vector<double>      local_lumped_matrix;
 };
 
@@ -414,10 +416,13 @@ struct Scratch : ScratchBase<dim>
 Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
+  const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
   const dealii::hp::FECollection<dim>       &trial_microstress_finite_element_collection,
   const dealii::hp::FECollection<dim>       &slips_finite_element_collection,
   const dealii::UpdateFlags                 trial_microstress_update_flags,
   const dealii::UpdateFlags                 slips_update_flags,
+  const dealii::UpdateFlags                 trial_microstress_face_update_flags,
+  const dealii::UpdateFlags                 slips_face_update_flags,
   const unsigned int                        n_slips);
 
 Scratch(const Scratch<dim>  &data);
@@ -453,6 +458,24 @@ std::vector<std::vector<dealii::Tensor<1,dim>>>
                                   vectorial_microstress_values;
 
 std::vector<double>               JxW_values;
+
+dealii::hp::FEFaceValues<dim>     trial_microstress_hp_fe_face_values;
+
+dealii::hp::FEFaceValues<dim>     fe_field_hp_fe_face_values;
+
+const unsigned int                n_face_quadrature_points;
+
+std::vector<std::vector<double>>  test_function_face_values;
+
+std::vector<std::vector<dealii::Tensor<1,dim>>>
+                                  slip_gradient_face_values;
+
+std::vector<std::vector<dealii::Tensor<1,dim>>>
+                                  vectorial_microstress_face_values;
+
+std::vector<dealii::Tensor<1,dim>>  normal_vector_values;
+
+std::vector<double>               JxW_face_values;
 };
 
 
