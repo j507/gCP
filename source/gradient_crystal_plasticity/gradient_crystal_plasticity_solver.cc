@@ -57,7 +57,6 @@ residual_norm(std::numeric_limits<double>::max()),
 line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
-print_out(true),
 postprocessor(
   fe_field,
   crystals_data),

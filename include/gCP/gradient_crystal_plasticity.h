@@ -161,18 +161,6 @@ private:
 
   double                                            residual_norm;
 
-  double                                            newton_update_norm;
-
-  double                                            effective_l2_norm;
-
-  double                                            effective_displacement_norm;
-
-  double                                            effective_plastic_slip_norm;
-
-  std::tuple<double,double,double>                  residual_norms;
-
-  std::tuple<double,double,double>                  newton_update_norms;
-
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
   gCP::LineSearch                                   line_search;
@@ -184,8 +172,6 @@ private:
   dealii::AffineConstraints<double>                 internal_newton_method_constraints;
 
   Utilities::Logger                                 nonlinear_solver_logger;
-
-  bool                                              print_out;
 
   dealii::TableHandler                              table_handler;
   /*!
@@ -199,8 +185,6 @@ private:
 
   void make_sparsity_pattern(
     dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
-
-  void distribute_constraints_to_initial_trial_solution();
 
   void assemble_jacobian();
 
@@ -245,9 +229,10 @@ private:
 
   unsigned int solve_linearized_system();
 
-  bool compute_initial_guess();
-
   void update_trial_solution(const double relaxation_parameter);
+
+  void update_trial_solution(const std::vector<double>
+    relaxation_parameter);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
@@ -258,7 +243,7 @@ private:
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
-  void compute_effective_residual();
+  std::vector<double> compute_residual_l2_norms();
 
   void update_and_output_nonlinear_solver_logger(
     const std::tuple<double, double, double>  residual_l2_norms);
@@ -275,7 +260,7 @@ private:
   /*!
    * @note Only for debugging purposes
    */
-  void slip_rate_output(const bool flag_stepwise);
+  void debug_output();
 
   // Members and methods related to the L2 projection of the damage
   // variable
@@ -325,6 +310,9 @@ private:
   dealii::IndexSet                            displacement_dofs_set;
 
   dealii::IndexSet                            plastic_slip_dofs_set;
+
+  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix
+                                              trial_microstress_matrix;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
 
