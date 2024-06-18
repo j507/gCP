@@ -212,6 +212,30 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     initialize_dof_mapping();
 
+
+    // Initiate trial_microstress_matrix matrix
+    {
+      trial_microstress_matrix.clear();
+
+      dealii::TrilinosWrappers::SparsityPattern
+        sparsity_pattern(
+          trial_microstress->get_locally_owned_dofs(),
+          trial_microstress->get_locally_owned_dofs(),
+          trial_microstress->get_locally_relevant_dofs(),
+          MPI_COMM_WORLD);
+
+      dealii::DoFTools::make_sparsity_pattern(
+        trial_microstress->get_dof_handler(),
+        sparsity_pattern,
+        trial_microstress->get_hanging_node_constraints(),
+        false,
+        dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
+
+      sparsity_pattern.compress();
+
+      trial_microstress_matrix.reinit(sparsity_pattern);
+    }
+
     // Initiate vectors
     {
       trial_microstress_right_hand_side.reinit(
@@ -569,33 +593,8 @@ reset_internal_newton_method_constraints()
 
 
 template<int dim>
-void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
-  const bool flag_stepwise)
+void GradientCrystalPlasticitySolver<dim>::debug_output()
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector active_dofs;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_active_dofs;
-
-  active_dofs.reinit(trial_microstress->solution);
-
-  distributed_active_dofs.reinit(trial_microstress->distributed_vector);
-
-  distributed_active_dofs = 0;
-
-  trial_microstress->get_hanging_node_constraints().distribute(
-    distributed_active_dofs);
-
-  for (const auto &locally_owned_dof :
-        trial_microstress->get_locally_owned_dofs())
-  {
-    if (std::abs(trial_microstress->solution[locally_owned_dof]) >
-        parameters.constitutive_laws_parameters.hardening_law_parameters.initial_slip_resistance)
-    {
-      distributed_active_dofs[locally_owned_dof] = 1.0;
-    }
-  }
-
-  active_dofs = distributed_active_dofs;
 
   dealii::DataOut<dim> data_out;
 
@@ -613,15 +612,9 @@ void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
 
   std::string file_name;
 
-  if (flag_stepwise)
-  {
-    file_name = "Step_" +
+  file_name = "Debugging_" +
     std::to_string(discrete_time.get_step_number());
-  }
-  else
-  {
-    file_name = "Step";
-  }
+
 
   data_out.write_vtu_with_pvtu_record(
     parameters.logger_output_directory + "paraview/",
@@ -676,5 +669,5 @@ template void gCP::GradientCrystalPlasticitySolver<3>::initialize_dof_mapping();
 template void gCP::GradientCrystalPlasticitySolver<2>::reset_internal_newton_method_constraints();
 template void gCP::GradientCrystalPlasticitySolver<3>::reset_internal_newton_method_constraints();
 
-template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
-template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);
+template void gCP::GradientCrystalPlasticitySolver<2>::debug_output();
+template void gCP::GradientCrystalPlasticitySolver<3>::debug_output();
