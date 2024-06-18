@@ -473,22 +473,6 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
               local_interface_quadrature_point_history[face_q_point]->init(
                 parameters.constitutive_laws_parameters.damage_evolution_parameters,
                 parameters.constitutive_laws_parameters.cohesive_law_parameters);
-              /*
-              const dealii::Point<dim> quadrature_point =
-                quadrature_points[face_q_point];
-
-              bool condition =
-                quadrature_point[0] > 2.0 &&
-                quadrature_point[0] < 2.5 &&
-                quadrature_point[1] > 2.59808 && //2.59808 &&
-                quadrature_point[1] < 3.4641;
-
-              if (condition)
-              {
-                local_interface_quadrature_point_history[face_q_point]->set(
-                  1.0);
-              }
-              */
             }
           }
 
