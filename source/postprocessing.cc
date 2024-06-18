@@ -1004,8 +1004,8 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
               slip_id + n_slips * crystal_id);
 
         computed_quantities[q_point](n_slips + slip_id) +=
-            inputs.solution_values[q_point](
-              slip_id + n_slips * crystal_id) > 60.0;
+            std::abs(inputs.solution_values[q_point](
+              slip_id + n_slips * crystal_id)) > 60.0;
       }
     }
   }
