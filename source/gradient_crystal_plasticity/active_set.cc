@@ -88,23 +88,16 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
         inactive_set_affine_constraints.add_line(dof);
       }
     }
+
     internal_newton_method_constraints.merge(
         inactive_set_affine_constraints,
         dealii::AffineConstraints<double>::
           MergeConflictBehavior::right_object_wins);
   }
+
   inactive_set_affine_constraints.close();
 
   active_set.compress();
-
-  /*std::cout
-    << "Number of degrees of freedom in the active set: "
-    << active_set.n_elements()
-    << ", "
-    << active_set.size()
-    << std::endl;
-
-  active_set.print(std::cout);*/
 }
 
 
@@ -112,6 +105,8 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_inactive_set()
 {
+  inactive_set.clear();
+
   for (const auto &locally_owned_dof :
         fe_field->get_locally_owned_dofs())
   {
@@ -170,20 +165,81 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
 
   distributed_solution = 0.;
 
-  for (unsigned int entry_id = 0;
-       entry_id < trial_microstress_lumped_matrix.size();
-       entry_id++)
+  if (true)
   {
-    if (trial_microstress->get_locally_owned_dofs().
-          is_element(entry_id))
+    for (unsigned int entry_id = 0;
+        entry_id < trial_microstress_lumped_matrix.size();
+        entry_id++)
     {
-      AssertThrow(
-        trial_microstress_lumped_matrix(entry_id) != 0.0,
-        dealii::ExcMessage(""));
+      if (trial_microstress->get_locally_owned_dofs().
+            is_element(entry_id))
+      {
+        AssertThrow(
+          trial_microstress_lumped_matrix(entry_id) != 0.0,
+          dealii::ExcMessage(""));
 
-      distributed_solution(entry_id) =
-        trial_microstress_right_hand_side(entry_id) /
-        trial_microstress_lumped_matrix(entry_id);
+        distributed_solution(entry_id) =
+          trial_microstress_right_hand_side(entry_id) /
+          trial_microstress_lumped_matrix(entry_id);
+      }
+    }
+  }
+  else
+  {
+    const RunTimeParameters::KrylovParameters &krylov_parameters =
+      parameters.krylov_parameters;
+
+    // The solver's tolerances are passed to the SolverControl instance
+    // used to initialize the solver
+    dealii::SolverControl solver_control(
+        krylov_parameters.n_max_iterations,
+        std::max(trial_microstress_right_hand_side.l2_norm() *
+                 krylov_parameters.relative_tolerance,
+                 krylov_parameters.absolute_tolerance));
+
+    dealii::TrilinosWrappers::SolverDirect solver(solver_control);
+
+    /*dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
+      additional_data;
+
+    dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+
+    preconditioner.initialize(trial_microstress_matrix, additional_data);
+    */
+    try
+    {
+      solver.solve(trial_microstress_matrix,
+                  distributed_solution,
+                  trial_microstress_right_hand_side);
+      /*
+      solver.solve(trial_microstress_matrix,
+                   distributed_solution,
+                   trial_microstress_right_hand_side);*/
+    }
+    catch (std::exception &exc)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Exception in the solve method: " << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
+    }
+    catch (...)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Unknown exception in the solve method!" << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::abort();
     }
   }
 
