@@ -274,21 +274,7 @@ struct ScalarMicrostressLawParameters
    *
    * @todo Docu
    */
-  double                  initial_slip_resistance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double                  linear_hardening_modulus;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double                  hardening_parameter;
+  bool                    flag_rate_independent;
 };
 
 
@@ -448,6 +434,56 @@ struct DegradationFunction
    * @todo Docu
    */
   double  degradation_exponent;
+};
+
+
+
+struct HardeningLaw
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  HardeningLaw();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  initial_slip_resistance;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  linear_hardening_modulus;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double                  hardening_parameter;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                    flag_perfect_plasticity;
 };
 
 
@@ -638,6 +674,13 @@ struct ConstitutiveLawsParameters
    *
    * @todo Docu
    */
+  HardeningLaw          hardening_law_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   DegradationFunction   degradation_function_parameters;
 
   /*!
@@ -753,6 +796,11 @@ struct NewtonRaphsonParameters
    * @todo Docu
    */
   unsigned int  n_max_iterations;
+
+
+  double        relaxation_parameter;
+
+  bool          flag_line_search;
 };
 
 
@@ -781,7 +829,14 @@ struct LineSearchParameters
    *
    * @todo Docu
    */
-  double        armijo_condition_constant;
+  double        alpha;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  double        beta;
 
   /*!
    * @brief

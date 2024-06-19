@@ -205,7 +205,7 @@ string_width(
 template<int dim>
 void SimpleShearProblem<dim>::make_grid()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Triangulation");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Triangulation");
 
   std::vector<unsigned int> repetitions(2, 1);
   repetitions[1] = parameters.n_elements_in_y_direction;
@@ -279,7 +279,7 @@ void SimpleShearProblem<dim>::make_grid()
 template<int dim>
 void SimpleShearProblem<dim>::setup()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Setup");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Setup");
 
   // Initiates the crystals' data (Slip directions, normals, orthogonals,
   // Schmid-Tensor and symmetrized Schmid-Tensors)
@@ -608,7 +608,7 @@ void SimpleShearProblem<dim>::initialize_calls()
 template<int dim>
 void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Update boundary conditions");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Update boundary conditions");
 
   // Instantiate the temporary AffineConstraint instance
   dealii::AffineConstraints<double> affine_constraints;
@@ -644,7 +644,7 @@ void SimpleShearProblem<dim>::update_dirichlet_boundary_conditions()
 template<int dim>
 void SimpleShearProblem<dim>::postprocessing()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Postprocessing");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Postprocessing");
 
   if (parameters.homogenization.flag_compute_homogenized_quantities &&
       (discrete_time.get_step_number() %
@@ -760,7 +760,7 @@ void SimpleShearProblem<dim>::triangulation_output()
 template<int dim>
 void SimpleShearProblem<dim>::data_output()
 {
-  dealii::TimerOutput::Scope  t(*timer_output, "Problem - Data output");
+  dealii::TimerOutput::Scope  t(*timer_output, "Problem: Data output");
 
   dealii::DataOut<dim> data_out;
 

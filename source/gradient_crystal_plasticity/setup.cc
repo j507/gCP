@@ -177,6 +177,80 @@ void GradientCrystalPlasticitySolver<dim>::init()
   } // End of set-up memberes related to the L2 projection of the
     // damage variable
 
+  // Setup members related to the computation of the trial microstress
+  if (crystals_data->get_n_slips() > 0)
+  {
+    trial_microstress->setup_extractors(
+      crystals_data->get_n_crystals(),
+      crystals_data->get_n_slips());
+
+    trial_microstress->update_ghost_material_ids();
+
+    for (const auto &trial_microstress_cell :
+        trial_microstress->get_dof_handler().active_cell_iterators())
+    {
+      if (trial_microstress_cell->is_locally_owned())
+      {
+        trial_microstress_cell->set_active_fe_index(
+          trial_microstress_cell->material_id());
+      }
+    }
+
+    trial_microstress->setup_dofs();
+
+    trial_microstress->setup_vectors();
+
+    active_set.set_size(fe_field->get_dof_handler().n_dofs());
+
+    inactive_set.set_size(fe_field->get_dof_handler().n_dofs());
+
+    displacement_dofs_set.set_size(
+      fe_field->get_dof_handler().n_dofs());
+
+    plastic_slip_dofs_set.set_size(
+      fe_field->get_dof_handler().n_dofs());
+
+    initialize_dof_mapping();
+
+
+    // Initiate trial_microstress_matrix matrix
+    {
+      trial_microstress_matrix.clear();
+
+      dealii::TrilinosWrappers::SparsityPattern
+        sparsity_pattern(
+          trial_microstress->get_locally_owned_dofs(),
+          trial_microstress->get_locally_owned_dofs(),
+          trial_microstress->get_locally_relevant_dofs(),
+          MPI_COMM_WORLD);
+
+      dealii::DoFTools::make_sparsity_pattern(
+        trial_microstress->get_dof_handler(),
+        sparsity_pattern,
+        trial_microstress->get_hanging_node_constraints(),
+        false,
+        dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
+
+      sparsity_pattern.compress();
+
+      trial_microstress_matrix.reinit(sparsity_pattern);
+    }
+
+    // Initiate vectors
+    {
+      trial_microstress_right_hand_side.reinit(
+        trial_microstress->distributed_vector);
+
+      trial_microstress_lumped_matrix.reinit(
+        trial_microstress->distributed_vector);
+    }
+
+    assemble_trial_microstress_lumped_matrix();
+
+    assemble_trial_microstress_right_hand_side();
+  } // End of set-up members related to the computation of the
+    // trial microstress
+
   flag_init_was_called = true;
 
   if (parameters.verbose)
@@ -364,7 +438,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             q_point < n_q_points;
             ++q_point)
         local_quadrature_point_history[q_point]->init(
-          parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
+          parameters.constitutive_laws_parameters.hardening_law_parameters,
           crystals_data->get_n_slips());
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
@@ -399,82 +473,132 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
               local_interface_quadrature_point_history[face_q_point]->init(
                 parameters.constitutive_laws_parameters.damage_evolution_parameters,
                 parameters.constitutive_laws_parameters.cohesive_law_parameters);
-              /*
-              const dealii::Point<dim> quadrature_point =
-                quadrature_points[face_q_point];
-
-              bool condition =
-                quadrature_point[0] > 2.0 &&
-                quadrature_point[0] < 2.5 &&
-                quadrature_point[1] > 2.59808 && //2.59808 &&
-                quadrature_point[1] < 3.4641;
-
-              if (condition)
-              {
-                local_interface_quadrature_point_history[face_q_point]->set(
-                  1.0);
-              }
-              */
             }
           }
 
     }
 }
 
+template<int dim>
+void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
+{
+  // Initialize std::maps instances
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>>
+    fe_field_map;
+
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>>
+    trial_microstress_map;
+
+  // Loop over crystals and slip systems
+  for (unsigned int crystal_id = 0;
+       crystal_id < crystals_data->get_n_crystals();
+       crystal_id++)
+  {
+    for (unsigned int slip_id = 0;
+        slip_id < crystals_data->get_n_slips();
+        slip_id++)
+    {
+      //Clear std::maps instances
+      fe_field_map.clear();
+
+      trial_microstress_map.clear();
+
+      // Get DoF-to-Support-Point mappings for a given slip system
+      dealii::DoFTools::map_dofs_to_support_points(
+        mapping_collection,
+        fe_field->get_dof_handler(),
+        fe_field_map,
+        fe_field->get_fe_collection().component_mask(
+          fe_field->get_slip_extractor(crystal_id, slip_id)));
+
+      dealii::DoFTools::map_dofs_to_support_points(
+        mapping_collection,
+        trial_microstress->get_dof_handler(),
+        trial_microstress_map,
+        trial_microstress->get_fe_collection().component_mask(
+          trial_microstress->get_extractor(crystal_id, slip_id)));
+
+      // Both std::map instances have to be equal in size
+      Assert(
+        fe_field_map.size() == trial_microstress_map.size(),
+        dealii::ExcMessage("Size mismatch!"))
+
+      // Loop over the std::map instance
+      for (auto fe_field_map_pair = fe_field_map.begin();
+           fe_field_map_pair != fe_field_map.end();
+           fe_field_map_pair++)
+      {
+        plastic_slip_dofs_set.add_index(fe_field_map_pair->first);
+
+        // Loop over the other std::map instance
+        for (auto trial_microstress_map_pair = trial_microstress_map.begin();
+            trial_microstress_map_pair != trial_microstress_map.end();
+            trial_microstress_map_pair++)
+        {
+          // If the dealii::Point<dim> instance coincides, insert the
+          // DoF-pair in the std::map instance, with the DoF of the
+          // TrialMicrostress instance being the key
+          if (fe_field_map_pair->second ==
+              trial_microstress_map_pair->second)
+          {
+            dof_mapping[trial_microstress_map_pair->first] =
+              fe_field_map_pair->first;
+          }
+        } // Loop over the other std::map instance
+      } // Loop over the std::map instance
+    } // Loop over slip systems
+  }  // Loop over crystals
+
+  plastic_slip_dofs_set.compress();
+
+  displacement_dofs_set = fe_field->get_locally_owned_dofs();
+
+  displacement_dofs_set.subtract_set(plastic_slip_dofs_set);
+
+  displacement_dofs_set.compress();
+}
 
 
 template<int dim>
-void GradientCrystalPlasticitySolver<dim>::slip_rate_output(
-  const bool flag_stepwise)
+void GradientCrystalPlasticitySolver<dim>::
+reset_internal_newton_method_constraints()
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector slip_rate;
+  internal_newton_method_constraints.clear();
+  {
+    internal_newton_method_constraints.reinit(
+      fe_field->get_locally_relevant_dofs());
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_slip_rate;
+    internal_newton_method_constraints.merge(
+      fe_field->get_newton_method_constraints());
+  }
+  internal_newton_method_constraints.close();
+}
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
 
-  slip_rate.reinit(fe_field->solution);
 
-  distributed_slip_rate.reinit(fe_field->distributed_vector);
-
-  distributed_old_solution.reinit(fe_field->distributed_vector);
-
-  distributed_slip_rate = trial_solution;
-
-  distributed_old_solution = fe_field->old_solution;
-
-  distributed_slip_rate.add(-1.0, distributed_old_solution);
-
-  distributed_slip_rate /= discrete_time.get_next_step_size();
-
-  fe_field->get_hanging_node_constraints().distribute(
-    distributed_slip_rate);
-
-  slip_rate = distributed_slip_rate;
-
+template<int dim>
+void GradientCrystalPlasticitySolver<dim>::debug_output()
+{
 
   dealii::DataOut<dim> data_out;
 
-  data_out.attach_dof_handler(fe_field->get_dof_handler());
+  data_out.add_data_vector(fe_field->get_dof_handler(),
+                           trial_solution,
+                           postprocessor);
 
-  data_out.add_data_vector(slip_rate, postprocessor);
+  data_out.add_data_vector(trial_microstress->get_dof_handler(),
+                           trial_microstress->solution,
+                           trial_postprocessor);
 
-  data_out.build_patches(*mapping,
-                         fe_field->get_slips_fe_degree());
+  data_out.build_patches(*mapping);
 
   static int out_index = 0;
 
   std::string file_name;
 
-  if (flag_stepwise)
-  {
-    file_name = "slip_rate_step_" +
+  file_name = "Debugging_" +
     std::to_string(discrete_time.get_step_number());
-  }
-  else
-  {
-    file_name = "slip_rate";
-  }
+
 
   data_out.write_vtu_with_pvtu_record(
     parameters.logger_output_directory + "paraview/",
@@ -523,5 +647,11 @@ gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
 template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();
 
-template void gCP::GradientCrystalPlasticitySolver<2>::slip_rate_output(const bool);
-template void gCP::GradientCrystalPlasticitySolver<3>::slip_rate_output(const bool);
+template void gCP::GradientCrystalPlasticitySolver<2>::initialize_dof_mapping();
+template void gCP::GradientCrystalPlasticitySolver<3>::initialize_dof_mapping();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::reset_internal_newton_method_constraints();
+template void gCP::GradientCrystalPlasticitySolver<3>::reset_internal_newton_method_constraints();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::debug_output();
+template void gCP::GradientCrystalPlasticitySolver<3>::debug_output();

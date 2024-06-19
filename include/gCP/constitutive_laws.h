@@ -240,8 +240,9 @@ class ScalarMicrostressLaw
 {
 public:
   ScalarMicrostressLaw(
-    const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-    const RunTimeParameters::ScalarMicrostressLawParameters parameters);
+    const std::shared_ptr<CrystalsData<dim>>                &crystals_data,
+    const RunTimeParameters::ScalarMicrostressLawParameters parameters,
+    const RunTimeParameters::HardeningLaw                   hardening_law_prm);
 
   double get_scalar_microstress(
     const double slip_value,
@@ -261,15 +262,15 @@ private:
 
   RunTimeParameters::RegularizationFunction regularization_function;
 
-  double                                    regularization_multiplier;
-
   const double                              regularization_parameter;
-
-  const double                              initial_slip_resistance;
 
   const double                              linear_hardening_modulus;
 
   const double                              hardening_parameter;
+
+  const bool                                flag_perfect_plasticity;
+
+  const bool                                flag_rate_independent;
 
   double get_hardening_matrix_entry(const bool self_hardening) const;
 

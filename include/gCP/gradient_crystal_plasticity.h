@@ -41,6 +41,8 @@ public:
     const std::shared_ptr<dealii::TimerOutput>        external_timer =
       std::shared_ptr<dealii::TimerOutput>());
 
+  ~GradientCrystalPlasticitySolver();
+
   void init();
 
   void set_supply_term(
@@ -159,12 +161,6 @@ private:
 
   double                                            residual_norm;
 
-  double                                            newton_update_norm;
-
-  std::tuple<double,double,double>                  residual_norms;
-
-  std::tuple<double,double,double>                  newton_update_norms;
-
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
   gCP::LineSearch                                   line_search;
@@ -173,15 +169,15 @@ private:
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
                                                     neumann_boundary_conditions;
 
-  Utilities::Logger                                 nonlinear_solver_logger;
+  dealii::AffineConstraints<double>                 internal_newton_method_constraints;
 
-  bool                                              print_out;
+  Utilities::Logger                                 nonlinear_solver_logger;
 
   dealii::TableHandler                              table_handler;
   /*!
    * @note Only for debugging purposes
    */
-  gCP::Postprocessing::RatePostprocessor<dim>       postprocessor;
+  gCP::Postprocessing::Postprocessor<dim>           postprocessor;
 
   bool                                              flag_init_was_called;
 
@@ -189,8 +185,6 @@ private:
 
   void make_sparsity_pattern(
     dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
-
-  void distribute_constraints_to_initial_trial_solution();
 
   void assemble_jacobian();
 
@@ -235,9 +229,10 @@ private:
 
   unsigned int solve_linearized_system();
 
-  bool compute_initial_guess();
-
   void update_trial_solution(const double relaxation_parameter);
+
+  void update_trial_solution(const std::vector<double>
+    relaxation_parameter);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
@@ -248,10 +243,24 @@ private:
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
+  std::vector<double> compute_residual_l2_norms();
+
+  void update_and_output_nonlinear_solver_logger(
+    const std::tuple<double, double, double>  residual_l2_norms);
+
+  void update_and_output_nonlinear_solver_logger(
+    const unsigned int                        nonlinear_iteration,
+    const unsigned int                        n_krylov_iterations,
+    const unsigned int                        n_line_search_iterations,
+    const std::tuple<double, double, double>  newton_update_l2_norms,
+    const std::tuple<double, double, double>  residual_l2_norms,
+    const double                              order_of_convergence,
+    const double                              relaxation_parameter = 1.0);
+
   /*!
    * @note Only for debugging purposes
    */
-  void slip_rate_output(const bool flag_stepwise);
+  void debug_output();
 
   // Members and methods related to the L2 projection of the damage
   // variable
@@ -286,7 +295,62 @@ private:
 
   void copy_local_to_global_projection_rhs(
     const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
-  //
+
+  // Members and methods related to the trial microstress
+
+  std::shared_ptr<TrialMicrostress<dim>>      trial_microstress;
+
+  std::map<dealii::types::global_dof_index,
+           dealii::types::global_dof_index>   dof_mapping;
+
+  dealii::IndexSet                            active_set;
+
+  dealii::IndexSet                            inactive_set;
+
+  dealii::IndexSet                            displacement_dofs_set;
+
+  dealii::IndexSet                            plastic_slip_dofs_set;
+
+  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix
+                                              trial_microstress_matrix;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
+
+  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
+
+  gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
+
+  void initialize_dof_mapping();
+
+  void reset_internal_newton_method_constraints();
+
+  void compute_trial_microstress();
+
+  void determine_active_set();
+
+  void determine_inactive_set();
+
+  void reset_inactive_set_values();
+
+  void assemble_trial_microstress_lumped_matrix();
+
+  void assemble_local_trial_microstress_lumped_matrix(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator  &cell,
+    gCP::AssemblyData::TrialMicrostress::Matrix::Scratch<dim>     &scratch,
+    gCP::AssemblyData::TrialMicrostress::Matrix::Copy             &data);
+
+  void copy_local_to_global_trial_microstress_lumped_matrix(
+    const gCP::AssemblyData::TrialMicrostress::Matrix::Copy &data);
+
+  void assemble_trial_microstress_right_hand_side();
+
+  void assemble_local_trial_microstress_right_hand_side(
+    const typename dealii::DoFHandler<dim>::active_cell_iterator      &cell,
+    gCP::AssemblyData::TrialMicrostress::RightHandSide::Scratch<dim>  &scratch,
+    gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy          &data);
+
+  void copy_local_to_global_trial_microstress_right_hand_side(
+    const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy  &data);
 };
 
 

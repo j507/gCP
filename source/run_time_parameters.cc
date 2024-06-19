@@ -90,9 +90,7 @@ ScalarMicrostressLawParameters::ScalarMicrostressLawParameters()
 :
 regularization_function(RegularizationFunction::Tanh),
 regularization_parameter(3e-4),
-initial_slip_resistance(0.0),
-linear_hardening_modulus(500),
-hardening_parameter(1.4)
+flag_rate_independent(false)
 {}
 
 
@@ -109,17 +107,9 @@ void ScalarMicrostressLawParameters::declare_parameters(dealii::ParameterHandler
                       "3e-4",
                       dealii::Patterns::Double(0.));
 
-    prm.declare_entry("Initial slip resistance",
-                      "0.0",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Linear hardening modulus",
-                      "500",
-                      dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Hardening parameter",
-                      "1.4",
-                      dealii::Patterns::Double(0.));
+    prm.declare_entry("Rate-independent behavior",
+                      "false",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -160,27 +150,14 @@ void ScalarMicrostressLawParameters::parse_parameters(dealii::ParameterHandler &
                                     "regularization function."));
     }
 
-    regularization_parameter  = prm.get_double("Regularization parameter");
+    regularization_parameter = prm.get_double("Regularization parameter");
 
-    initial_slip_resistance   = prm.get_double("Initial slip resistance");
+    flag_rate_independent = prm.get_bool("Rate-independent behavior");
 
-    linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
-
-    hardening_parameter       = prm.get_double("Hardening parameter");
 
     AssertThrow(
       regularization_parameter > 0.0,
       dealii::ExcLowerRangeType<double>(regularization_parameter, 0.0));
-  }
-  prm.leave_subsection();
-
-  prm.enter_subsection("Vectorial microstress law's parameters");
-  {
-    Assert(initial_slip_resistance ==
-            prm.get_double("Initial slip resistance"),
-           dealii::ExcMessage(
-            "The initial slip resistance of the scalar-valued and "
-            "vector-valued microstress has to match"));
   }
   prm.leave_subsection();
 }
@@ -384,6 +361,72 @@ void DegradationFunction::parse_parameters(
 
 
 
+HardeningLaw::HardeningLaw()
+:
+initial_slip_resistance(0.0),
+linear_hardening_modulus(500),
+hardening_parameter(1.4),
+flag_perfect_plasticity(false)
+{}
+
+
+
+void HardeningLaw::declare_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hardening law's parameters");
+  {
+    prm.declare_entry("Initial slip resistance",
+                      "0.0",
+                      dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Linear hardening modulus",
+                      "500",
+                      dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Hardening parameter",
+                      "1.4",
+                      dealii::Patterns::Double(0.));
+
+    prm.declare_entry("Perfect plasticity",
+                      "false",
+                      dealii::Patterns::Bool());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void HardeningLaw::parse_parameters(dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Hardening law's parameters");
+  {
+    initial_slip_resistance   = prm.get_double("Initial slip resistance");
+
+    linear_hardening_modulus  = prm.get_double("Linear hardening modulus");
+
+    hardening_parameter       = prm.get_double("Hardening parameter");
+
+    flag_perfect_plasticity   = prm.get_bool("Perfect plasticity");
+  }
+  prm.leave_subsection();
+
+  if (prm.subsection_path_exists(
+        {"Vectorial microstress law's parameters"}))
+  {
+    prm.enter_subsection("Vectorial microstress law's parameters");
+    {
+      Assert(initial_slip_resistance ==
+              prm.get_double("Initial slip resistance"),
+            dealii::ExcMessage(
+              "The initial slip resistance of the hardening law and of "
+              "the vector-valued microstress has to match"));
+    }
+    prm.leave_subsection();
+  }
+}
+
+
+
 DamageEvolution::DamageEvolution()
 :
 damage_evolution_model(DamageEvolutionModel::M1),
@@ -542,6 +585,8 @@ void ConstitutiveLawsParameters::declare_parameters(dealii::ParameterHandler &pr
 
     DegradationFunction::declare_parameters(prm);
 
+    HardeningLaw::declare_parameters(prm);
+
     DamageEvolution::declare_parameters(prm);
   }
   prm.leave_subsection();
@@ -565,6 +610,8 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     cohesive_law_parameters.parse_parameters(prm);
 
     contact_law_parameters.parse_parameters(prm);
+
+    hardening_law_parameters.parse_parameters(prm);
 
     degradation_function_parameters.parse_parameters(prm);
 
@@ -673,7 +720,9 @@ NewtonRaphsonParameters::NewtonRaphsonParameters()
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
 step_tolerance(1e-8),
-n_max_iterations(15)
+n_max_iterations(15),
+relaxation_parameter(1.0),
+flag_line_search(true)
 {}
 
 
@@ -698,6 +747,14 @@ void NewtonRaphsonParameters::declare_parameters(
     prm.declare_entry("Maximum number of iterations",
                       "15",
                       dealii::Patterns::Integer(1));
+
+    prm.declare_entry("Relaxation parameter",
+                      "1.0",
+                      dealii::Patterns::Double(0.,1.));
+
+    prm.declare_entry("Line search algorithm",
+                      "true",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -721,6 +778,12 @@ void NewtonRaphsonParameters::parse_parameters(
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
+    relaxation_parameter =
+      prm.get_double("Relaxation parameter");
+
+    flag_line_search =
+      prm.get_bool("Line search algorithm");
+
     AssertThrow(
       relative_tolerance > 0.0,
       dealii::ExcLowerRangeType<double>(relative_tolerance, 0.0));
@@ -741,7 +804,8 @@ void NewtonRaphsonParameters::parse_parameters(
 
 LineSearchParameters::LineSearchParameters()
 :
-armijo_condition_constant(1e-4),
+alpha(1e-4),
+beta(0.9),
 n_max_iterations(15)
 {}
 
@@ -752,9 +816,13 @@ void LineSearchParameters::declare_parameters(
 {
   prm.enter_subsection("Line search parameters");
   {
-    prm.declare_entry("Armijo condition constant",
+    prm.declare_entry("Alpha condition constant",
                       "1e-4",
-                      dealii::Patterns::Double(0.0));
+                      dealii::Patterns::Double(0.0,1.0));
+
+    prm.declare_entry("Beta condition constant",
+                      "0.9",
+                      dealii::Patterns::Double(0.0,1.0));
 
     prm.declare_entry("Maximum number of iterations",
                       "15",
@@ -770,16 +838,26 @@ void LineSearchParameters::parse_parameters(
 {
   prm.enter_subsection("Line search parameters");
   {
-    armijo_condition_constant =
-      prm.get_double("Armijo condition constant");
+    alpha =
+      prm.get_double("Alpha condition constant");
+
+    beta =
+      prm.get_double("Beta condition constant");
 
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
     AssertThrow(
-      armijo_condition_constant > 0.0,
-      dealii::ExcLowerRangeType<double>(armijo_condition_constant, 0.0));
+      alpha > 0.0,
+      dealii::ExcLowerRangeType<double>(alpha, 0.0));
 
+    AssertThrow(
+      beta > alpha,
+      dealii::ExcLowerRangeType<double>(beta, alpha));
+
+    AssertThrow(
+      1.0 > beta,
+      dealii::ExcMessage("The input value is outside the range (0,1)"));
   }
   prm.leave_subsection();
 }

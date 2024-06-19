@@ -245,10 +245,6 @@ void FEField<dim>::setup_dofs()
     std::vector<dealii::types::global_dof_index> local_dof_indices(
       fe_collection.max_dofs_per_cell());
 
-    dealii::Utilities::MPI::Partitioner partitioner(locally_owned_dofs,
-                                                    locally_relevant_dofs,
-                                                    MPI_COMM_WORLD);
-
     for (const auto &active_cell : dof_handler.active_cell_iterators())
     {
       if (active_cell->is_locally_owned())
@@ -259,11 +255,6 @@ void FEField<dim>::setup_dofs()
             i < local_dof_indices.size();
             ++i)
         {
-          if (partitioner.is_ghost_entry(local_dof_indices[i]))
-          {
-            continue;
-          }
-
           if (get_global_component(active_cell->material_id(), i) < dim)
           {
             vector_dof_indices.insert(local_dof_indices[i]);
@@ -277,18 +268,21 @@ void FEField<dim>::setup_dofs()
     }
   }
 
-  const unsigned int total_vector_dof_indices =
-    dealii::Utilities::MPI::sum(vector_dof_indices.size(), MPI_COMM_WORLD);
+  vector_dof_indices = dealii::Utilities::MPI::compute_set_union(
+    vector_dof_indices,
+    MPI_COMM_WORLD);
 
-  const unsigned int total_scalar_dof_indices =
-    dealii::Utilities::MPI::sum(scalar_dof_indices.size(), MPI_COMM_WORLD);
+  scalar_dof_indices = dealii::Utilities::MPI::compute_set_union(
+    scalar_dof_indices,
+    MPI_COMM_WORLD);
 
   Assert(this->n_dofs() ==
-          (total_vector_dof_indices + total_scalar_dof_indices),
-         dealii::ExcMessage("Number of degrees of freedom do not match!"))
-
-  (void)total_vector_dof_indices;
-  (void)total_scalar_dof_indices;
+          (vector_dof_indices.size() + scalar_dof_indices.size()),
+         dealii::ExcMessage(
+          "Number of degrees of freedom do not match! " +
+          std::to_string(this->n_dofs()) + "!=" +
+          std::to_string(vector_dof_indices.size() +
+                         scalar_dof_indices.size())))
 
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;
@@ -450,6 +444,170 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
 
 
 
+template<int dim>
+TrialMicrostress<dim>::TrialMicrostress(
+  const dealii::Triangulation<dim>  &triangulation,
+  const unsigned int                fe_degree)
+:
+fe_degree(fe_degree),
+dof_handler(triangulation)/*,
+flag_setup_extractors_was_called(false),
+flag_setup_dofs_was_called(false),
+flag_affine_constraints_were_set(false),
+flag_newton_method_constraints_were_set(false),
+flag_setup_vectors_was_called(false)*/
+{}
+
+
+
+template<int dim>
+void TrialMicrostress<dim>::setup_extractors(
+  const unsigned n_crystals,
+  const unsigned n_slips)
+{
+  this->n_crystals  = n_crystals;
+  this->n_slips     = n_slips;
+
+  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  {
+    std::vector<dealii::FEValuesExtractors::Scalar>
+      extractors_per_crystal;
+
+    for (unsigned int j = 0; j < n_slips; ++j)
+    {
+      extractors_per_crystal.push_back(
+        dealii::FEValuesExtractors::Scalar(i * n_slips + j));
+    }
+
+    extractors.push_back(extractors_per_crystal);
+  }
+}
+
+
+
+template<int dim>
+void TrialMicrostress<dim>::update_ghost_material_ids()
+{
+  Utilities::update_ghost_material_ids(dof_handler);
+}
+
+
+
+template<int dim>
+void TrialMicrostress<dim>::setup_dofs()
+{
+  // FECollection
+  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  {
+    std::vector<const dealii::FiniteElement<dim>*>  finite_elements;
+
+    for (dealii::types::material_id j = 0; j < n_crystals; ++j)
+    {
+      for (unsigned int k = 0; k < n_slips; ++k)
+      {
+        if (i == j)
+        {
+          finite_elements.push_back(new dealii::FE_Q<dim>(fe_degree));
+        }
+        else
+        {
+          finite_elements.push_back(new dealii::FE_Nothing<dim>());
+        }
+      }
+    }
+
+    fe_collection.push_back(
+      dealii::FESystem<dim>(
+        finite_elements,
+        std::vector<unsigned int>(finite_elements.size(), 1)));
+
+    for (auto finite_element: finite_elements)
+    {
+      delete finite_element;
+    }
+
+    finite_elements.clear();
+  }
+
+  // Distribute and renumber
+  dof_handler.distribute_dofs(fe_collection);
+
+  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
+
+  // Extract sets relevant to parallel structure
+  locally_owned_dofs = dof_handler.locally_owned_dofs();
+
+  dealii::DoFTools::extract_locally_relevant_dofs(
+    dof_handler,
+    locally_relevant_dofs);
+
+  // Hanging node and empty affine constraints
+  hanging_node_constraints.clear();
+  {
+    hanging_node_constraints.reinit(locally_relevant_dofs);
+
+    dealii::DoFTools::make_hanging_node_constraints(
+      dof_handler,
+      hanging_node_constraints);
+  }
+  hanging_node_constraints.close();
+
+  affine_constraints.clear();
+  {
+    affine_constraints.reinit(locally_relevant_dofs);
+    affine_constraints.merge(hanging_node_constraints);
+  }
+  affine_constraints.close();
+
+  // Mapping from the n-th component of the m-th crystal to the
+  // global component
+  global_component_mapping.resize(n_crystals * n_slips);
+
+  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
+  {
+    for (unsigned int j = 0; j < n_slips; ++j)
+    {
+      global_component_mapping[i * n_slips + j] = j;
+    }
+  }
+}
+
+
+
+template<int dim>
+void TrialMicrostress<dim>::setup_vectors()
+{
+  solution.reinit(
+    locally_relevant_dofs,
+    MPI_COMM_WORLD);
+
+  old_solution.reinit(solution);
+
+  distributed_vector.reinit(
+    locally_owned_dofs,
+    locally_relevant_dofs,
+    MPI_COMM_WORLD,
+    true);
+
+  solution = 0.;
+
+  old_solution = 0.;
+
+  distributed_vector = 0.;
+}
+
+
+
+template<int dim>
+void TrialMicrostress<dim>::set_affine_constraints(
+  const dealii::AffineConstraints<double> &affine_constraints)
+{
+  this->affine_constraints.merge(
+    affine_constraints,
+    dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+}
+
+
 
 } // gCP
 
@@ -457,3 +615,6 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
 
 template class gCP::FEField<2>;
 template class gCP::FEField<3>;
+
+template class gCP::TrialMicrostress<2>;
+template class gCP::TrialMicrostress<3>;

@@ -34,7 +34,8 @@ resolved_shear_stress_law(
 scalar_microstress_law(
   std::make_shared<ConstitutiveLaws::ScalarMicrostressLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.scalar_microstress_law_parameters)),
+    parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
+    parameters.constitutive_laws_parameters.hardening_law_parameters)),
 vectorial_microstress_law(
   std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(
     crystals_data,
@@ -56,12 +57,17 @@ residual_norm(std::numeric_limits<double>::max()),
 line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
-print_out(true),
 postprocessor(
-  discrete_time,
   fe_field,
   crystals_data),
-flag_init_was_called(false)
+flag_init_was_called(false),
+trial_microstress(
+  std::make_shared<TrialMicrostress<dim>>(
+  fe_field->get_triangulation(),
+  fe_field->get_slips_fe_degree())),
+trial_postprocessor(
+  trial_microstress,
+  crystals_data)
 {
   Assert(fe_field.get() != nullptr,
          dealii::ExcMessage("The FEField<dim>'s shared pointer has "
@@ -146,8 +152,18 @@ flag_init_was_called(false)
     table_handler.set_precision("damage_variable", 6);
   }
 
+  postprocessor.init(hooke_law);
+
   // Initialize supply term shared pointer
   supply_term = nullptr;
+}
+
+
+template <int dim>
+GradientCrystalPlasticitySolver<dim>::~GradientCrystalPlasticitySolver()
+{
+  line_search.write_to_file(
+    parameters.logger_output_directory + "line_search_log.txt");
 }
 
 

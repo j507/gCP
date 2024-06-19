@@ -296,16 +296,17 @@ crystals_data(crystals_data)
 
 template<int dim>
 ScalarMicrostressLaw<dim>::ScalarMicrostressLaw(
-  const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
-  const RunTimeParameters::ScalarMicrostressLawParameters parameters)
+  const std::shared_ptr<CrystalsData<dim>>                &crystals_data,
+  const RunTimeParameters::ScalarMicrostressLawParameters parameters,
+  const RunTimeParameters::HardeningLaw                   hardening_law_prm)
 :
 crystals_data(crystals_data),
 regularization_function(parameters.regularization_function),
-regularization_multiplier(1.0),
 regularization_parameter(parameters.regularization_parameter),
-initial_slip_resistance(parameters.initial_slip_resistance),
-linear_hardening_modulus(parameters.linear_hardening_modulus),
-hardening_parameter(parameters.hardening_parameter)
+linear_hardening_modulus(hardening_law_prm.linear_hardening_modulus),
+hardening_parameter(hardening_law_prm.hardening_parameter),
+flag_perfect_plasticity(hardening_law_prm.flag_perfect_plasticity),
+flag_rate_independent(parameters.flag_rate_independent)
 {}
 
 
@@ -330,13 +331,19 @@ double ScalarMicrostressLaw<dim>::get_scalar_microstress(
   const double slip_rate =
     (slip_value - old_slip_value) / time_step_size;
 
-  const double regularization_function_value =
-    get_regularization_function_value(slip_rate);
+  if (flag_rate_independent)
+  {
+    return (slip_resistance * sgn(slip_rate));
+  }
+  else
+  {
+    const double regularization_function_value =
+      get_regularization_function_value(slip_rate);
 
-  AssertIsFinite(regularization_function_value);
+    AssertIsFinite(regularization_function_value);
 
-  return ((initial_slip_resistance + slip_resistance) *
-          regularization_function_value);
+    return (slip_resistance * regularization_function_value);
+  }
 }
 
 
@@ -373,24 +380,48 @@ dealii::FullMatrix<double> ScalarMicrostressLaw<dim>::
   for (unsigned int slip_id_alpha = 0;
       slip_id_alpha < crystals_data->get_n_slips();
       ++slip_id_alpha)
+  {
     for (unsigned int slip_id_beta = 0;
         slip_id_beta < crystals_data->get_n_slips();
         ++slip_id_beta)
     {
-      jacobian[slip_id_alpha][slip_id_beta] =
-        (get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) *
-          get_regularization_function_value(compute_slip_rate(q_point, slip_id_alpha)) *
-          get_regularization_function_value(compute_slip_rate(q_point, slip_id_beta)));
+      jacobian[slip_id_alpha][slip_id_beta] = 0.;
 
-      if (slip_id_alpha == slip_id_beta)
+      if (!flag_perfect_plasticity)
+      {
+        jacobian[slip_id_alpha][slip_id_beta] =
+          get_hardening_matrix_entry(slip_id_alpha == slip_id_beta);
+
+        if (flag_rate_independent)
+        {
+          jacobian[slip_id_alpha][slip_id_beta] *=
+            sgn(compute_slip_rate(q_point, slip_id_alpha)) *
+            sgn(compute_slip_rate(q_point, slip_id_beta));
+        }
+        else
+        {
+          // The latter term ought to be a sgn function but for the sake
+          // of symmetry it is also approximated by a sigmoid function
+          jacobian[slip_id_alpha][slip_id_beta] *=
+            get_regularization_function_value(
+              compute_slip_rate(q_point, slip_id_alpha)) *
+            get_regularization_function_value(
+              compute_slip_rate(q_point, slip_id_beta));
+        }
+      }
+
+      if (slip_id_alpha == slip_id_beta &&
+          !flag_rate_independent)
+      {
         jacobian[slip_id_alpha][slip_id_beta] +=
-          ((initial_slip_resistance +
-            slip_resistances[slip_id_alpha]) / time_step_size *
+          (slip_resistances[slip_id_alpha] / time_step_size *
             get_regularization_function_derivative_value(
               compute_slip_rate(q_point, slip_id_alpha)));
+      }
 
       AssertIsFinite(jacobian[slip_id_alpha][slip_id_beta]);
     }
+  }
 
   return jacobian;
 }
@@ -405,44 +436,41 @@ get_regularization_function_value(const double slip_rate) const
 
   double regularization_function_value = 0.0;
 
-  const double effective_regularization_parameter =
-    regularization_multiplier * regularization_parameter;
-
   switch (regularization_function)
   {
   case RunTimeParameters::RegularizationFunction::Atan:
     {
       regularization_function_value =
         2.0 / M_PI * std::atan(
-          M_PI / 2.0 * slip_rate / effective_regularization_parameter);
+          M_PI / 2.0 * slip_rate / regularization_parameter);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Sqrt:
     {
       regularization_function_value =
         slip_rate / std::sqrt(slip_rate * slip_rate +
-                              effective_regularization_parameter *
-                              effective_regularization_parameter);
+                              regularization_parameter *
+                              regularization_parameter);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Gd:
     {
       regularization_function_value =
         2.0 / M_PI * std::atan(std::sinh(
-          M_PI / 2.0 * slip_rate / effective_regularization_parameter));
+          M_PI / 2.0 * slip_rate / regularization_parameter));
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:
     {
       regularization_function_value =
-        std::tanh(slip_rate / effective_regularization_parameter);
+        std::tanh(slip_rate / regularization_parameter);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Erf:
     {
       regularization_function_value =
         std::erf(std::sqrt(M_PI) / 2.0 * slip_rate /
-         effective_regularization_parameter);
+         regularization_parameter);
     }
     break;
   default:
@@ -469,28 +497,25 @@ get_regularization_function_derivative_value(const double slip_rate) const
 
   double regularization_function_derivative_value = 0.0;
 
-  const double effective_regularization_parameter =
-    regularization_multiplier * regularization_parameter;
-
   switch (regularization_function)
   {
   case RunTimeParameters::RegularizationFunction::Atan:
     {
       regularization_function_derivative_value =
-        effective_regularization_parameter /
-        (effective_regularization_parameter *
-         effective_regularization_parameter +
+        regularization_parameter /
+        (regularization_parameter *
+         regularization_parameter +
          M_PI * M_PI * slip_rate * slip_rate / 4.);
     }
     break;
   case RunTimeParameters::RegularizationFunction::Sqrt:
     {
       regularization_function_derivative_value =
-        effective_regularization_parameter *
-        effective_regularization_parameter /
+        regularization_parameter *
+        regularization_parameter /
         std::pow(slip_rate * slip_rate +
-                  effective_regularization_parameter *
-                  effective_regularization_parameter,
+                  regularization_parameter *
+                  regularization_parameter,
                  1.5);
     }
     break;
@@ -498,24 +523,24 @@ get_regularization_function_derivative_value(const double slip_rate) const
     {
       regularization_function_derivative_value =
         1.0 / std::cosh(M_PI / 2. * slip_rate /
-        effective_regularization_parameter) /
-        effective_regularization_parameter;
+        regularization_parameter) /
+        regularization_parameter;
     }
     break;
   case RunTimeParameters::RegularizationFunction::Tanh:
     {
       regularization_function_derivative_value =
-        std::pow(1.0 / std::cosh(slip_rate / effective_regularization_parameter),
-                 2) / effective_regularization_parameter;
+        std::pow(1.0 / std::cosh(slip_rate / regularization_parameter),
+                 2) / regularization_parameter;
     }
     break;
   case RunTimeParameters::RegularizationFunction::Erf:
     {
       regularization_function_derivative_value =
-        1. / effective_regularization_parameter *
+        1. / regularization_parameter *
         std::exp(-M_PI * slip_rate * slip_rate /
-                 effective_regularization_parameter /
-                 effective_regularization_parameter / 4.);
+                 regularization_parameter /
+                 regularization_parameter / 4.);
     }
     break;
   default:

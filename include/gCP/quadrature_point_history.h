@@ -290,9 +290,8 @@ public:
    * @param n_slips The number of slip systems of the crystal
    */
   void init(
-    const RunTimeParameters::ScalarMicrostressLawParameters
-      &parameters,
-    const unsigned int n_slips);
+    const RunTimeParameters::HardeningLaw &parameters,
+    const unsigned int                    n_slips);
 
   /*!
    * @brief Stores the values of @ref slip_resistances in @ref
@@ -346,6 +345,8 @@ private:
   double              linear_hardening_modulus;
 
   double              hardening_parameter;
+
+  bool                flag_perfect_plasticity;
 
   bool                flag_init_was_called;
 

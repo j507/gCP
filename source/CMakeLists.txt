@@ -8,6 +8,7 @@ SET(TARGET_SRC
     postprocessing.cc
     run_time_parameters.cc
     utilities.cc
+    gradient_crystal_plasticity/active_set.cc
     gradient_crystal_plasticity/assembly.cc
     gradient_crystal_plasticity/assembly_data.cc
     gradient_crystal_plasticity/gradient_crystal_plasticity_solver.cc

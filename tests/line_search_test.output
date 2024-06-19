@@ -1,16 +1,16 @@
 Iteration 1
-  Condition not met. Computing a new lambda...
+  Condition not met. Computing a new lambda..
     lambda = 0.1
     residual = 3.06283 3.2148
-  Condition not met. Computing a new lambda...
+  Condition not met. Computing a new lambda..
     lambda = 0.05
     residual = 2.39696 1.30106
-  Condition not met. Computing a new lambda...
+  Condition not met. Computing a new lambda..
     lambda = 0.0116098
     residual = 2.23787 0.85573
 line search iterations = 3
 Iteration 2
-  Condition not met. Computing a new lambda...
+  Condition not met. Computing a new lambda..
     lambda = 0.1
     residual = 2.07177 0.876604
 line search iterations = 1
