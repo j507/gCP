@@ -67,7 +67,7 @@ dealii::LinearAlgebraTrilinos::MPI::BlockVector block_solution;
 
 dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_solution;
 
-dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_oldsolution;
+dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_old_solution;
 
 /*!
   * @brief The vector-valued finite element field's corresponding
@@ -80,7 +80,7 @@ dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_vector;
 
 
 dealii::LinearAlgebraTrilinos::MPI::BlockVector
-                                            distributed_block_solution;
+                                            distributed_block_vector;
 
 
 /**
@@ -217,11 +217,17 @@ const dealii::AffineConstraints<double>&
   */
 const dealii::IndexSet& get_locally_owned_dofs() const;
 
+const std::vector<dealii::IndexSet>&
+  get_locally_owned_dofs_per_block() const;
+
 /*!
   * @brief Returns a const reference to the
   * @ref locally_relevant_owned_dofs
   */
 const dealii::IndexSet& get_locally_relevant_dofs() const;
+
+const std::vector<dealii::IndexSet>&
+  get_locally_relevant_dofs_per_block() const;
 
 /**
  * @brief Returns the global component
@@ -279,6 +285,8 @@ void prepare_for_serialization_of_active_fe_indices();
   * @brief Returns the number of degrees of freedom.
   */
 dealii::types::global_dof_index n_dofs() const;
+
+std::vector<dealii::types::global_dof_index> n_dofs_per_block() const;
 
 /*!
   * @brief Returns the number of components of the vector-valued
@@ -352,6 +360,8 @@ dealii::DoFHandler<dim>           dof_handler;
   */
 dealii::hp::FECollection<dim>     fe_collection;
 
+std::vector<dealii::types::global_dof_index>  dofs_per_block;
+
 /*!
   * @brief The AffineConstraints<double> instance handling the
   * hanging nodes.
@@ -382,9 +392,9 @@ dealii::IndexSet                  locally_owned_dofs;
   */
 dealii::IndexSet                  locally_relevant_dofs;
 
-std::vector<dealii::IndexSet>     locally_owned_block_dofs;
+std::vector<dealii::IndexSet>     locally_owned_dofs_per_block;
 
-std::vector<dealii::IndexSet>     locally_relevant_block_dofs;
+std::vector<dealii::IndexSet>     locally_relevant_dofs_per_block;
 
 /**
  * @brief
@@ -568,10 +578,28 @@ FEField<dim>::get_locally_owned_dofs() const
 
 
 template <int dim>
+inline const std::vector<dealii::IndexSet> &
+FEField<dim>::get_locally_owned_dofs_per_block() const
+{
+  return (locally_owned_dofs_per_block);
+}
+
+
+
+template <int dim>
 inline const dealii::IndexSet &
 FEField<dim>::get_locally_relevant_dofs() const
 {
   return (locally_relevant_dofs);
+}
+
+
+
+template <int dim>
+inline const std::vector<dealii::IndexSet>&
+FEField<dim>::get_locally_relevant_dofs_per_block() const
+{
+  return (locally_relevant_dofs_per_block);
 }
 
 
@@ -622,6 +650,15 @@ inline dealii::types::global_dof_index
 FEField<dim>::n_dofs() const
 {
   return (dof_handler.n_dofs());
+}
+
+
+
+template <int dim>
+inline std::vector<dealii::types::global_dof_index>
+FEField<dim>::n_dofs_per_block() const
+{
+  return (dofs_per_block);
 }
 
 

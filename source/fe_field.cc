@@ -173,18 +173,38 @@ void FEField<dim>::setup_dofs()
           i < block_component.size(); ++i)
     {
       block_component[i] = 1;
+
     }
 
-    dealii::DoFRenumbering::component_wise(dof_handler, block_component);
+    dealii::DoFRenumbering::component_wise(
+      dof_handler, block_component);
+
+    dofs_per_block =
+      dealii::DoFTools::count_dofs_per_fe_block(
+        dof_handler, block_component);
   }
 
   // Get the locally owned and relevant degrees of freedom of
   // each processor
   locally_owned_dofs = dof_handler.locally_owned_dofs();
 
+  locally_owned_dofs_per_block.push_back(
+    locally_owned_dofs.get_view(0, dofs_per_block[0]));
+
+  locally_owned_dofs_per_block.push_back(
+    locally_owned_dofs.get_view(
+      dofs_per_block[0], dof_handler.n_dofs()));
+
   dealii::DoFTools::extract_locally_relevant_dofs(
       dof_handler,
       locally_relevant_dofs);
+
+  locally_relevant_dofs_per_block.push_back(
+    locally_relevant_dofs.get_view(0, dofs_per_block[0]));
+
+  locally_relevant_dofs_per_block.push_back(
+    locally_relevant_dofs.get_view(
+      dofs_per_block[0], dof_handler.n_dofs()));
 
   // Initiate the hanging node constraints
   hanging_node_constraints.clear();
@@ -285,8 +305,8 @@ void FEField<dim>::setup_dofs()
               std::to_string(vector_dof_indices.size() +
                             scalar_dof_indices.size())))
 
-      // Modify flag because the dofs are setup
-      flag_setup_dofs_was_called = true;
+    // Modify flag because the dofs are setup
+    flag_setup_dofs_was_called = true;
 }
 
 
@@ -333,9 +353,9 @@ void FEField<dim>::setup_vectors()
                                   "called before the setup_vectors() "
                                   " method."))
 
-      // Vector instances
-      solution.reinit(locally_relevant_dofs,
-                      MPI_COMM_WORLD);
+  // Vector instances
+  solution.reinit(locally_relevant_dofs,
+                  MPI_COMM_WORLD);
 
   old_solution.reinit(solution);
 
@@ -355,24 +375,29 @@ void FEField<dim>::setup_vectors()
   distributed_vector = 0.;
 
   // BlockVector instances
-  /*if (n_slips > 0)
+  if (n_slips > 0)
   {
-    int n_displacement_components =
-      dim * ((flag_allow_decohesion) ? n_crystals : 1);
+    block_solution.reinit(
+      locally_relevant_dofs_per_block,
+      MPI_COMM_WORLD);
 
-    std::vector<unsigned int> block_component(
-      n_displacement_components + n_slips * n_crystals, 0);
+    block_old_solution.reinit(block_solution);
 
-    for (unsigned int i = n_displacement_components;
-        i < block_component.size(); ++i)
-    {
-      block_component[i] = 1;
-    }
+    block_old_old_solution.reinit(block_solution);
 
-    const std::vector<dealii::types::global_dof_index>
-      dofs_per_block = dealii::DoFTools::count_dofs_per_fe_block(
-        dof_handler, stokes_sub_blocks);
-  }*/
+    distributed_block_vector.reinit(
+      locally_owned_dofs_per_block,
+      locally_relevant_dofs_per_block,
+      MPI_COMM_WORLD);
+
+    block_solution = 0.;
+
+    block_old_solution = 0.;
+
+    block_old_old_solution = 0.;
+
+    distributed_block_vector = 0.;
+  }
 
   flag_setup_vectors_was_called = true;
 }
