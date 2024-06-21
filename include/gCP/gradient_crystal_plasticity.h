@@ -147,6 +147,8 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
 
+  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix block_jacobian;
+
   dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        initial_trial_solution;
@@ -158,6 +160,16 @@ private:
   dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
 
   dealii::LinearAlgebraTrilinos::MPI::Vector        ghost_residual;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   trial_block_solution;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   initial_trial_block_solution;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   tmp_trial_block_solution;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   block_newton_update;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   block_residual;
 
   double                                            residual_norm;
 
@@ -183,8 +195,8 @@ private:
 
   void init_quadrature_point_history();
 
-  void make_sparsity_pattern(
-    dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
+  template <typename SparsityPatternType>
+  void make_sparsity_pattern(SparsityPatternType &sparsity_pattern);
 
   void assemble_jacobian();
 

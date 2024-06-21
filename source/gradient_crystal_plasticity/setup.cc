@@ -41,6 +41,17 @@ void GradientCrystalPlasticitySolver<dim>::init()
   cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
+
+  trial_block_solution.reinit(fe_field->block_solution);
+
+  initial_trial_block_solution.reinit(fe_field->block_solution);
+
+  tmp_trial_block_solution.reinit(fe_field->block_solution);
+
+  block_newton_update.reinit(fe_field->block_solution);
+
+  block_residual.reinit(fe_field->distributed_block_vector);
+
   trial_solution            = 0.0;
   initial_trial_solution    = 0.0;
   tmp_trial_solution        = 0.0;
@@ -98,6 +109,36 @@ void GradientCrystalPlasticitySolver<dim>::init()
     }
 
     jacobian.reinit(sparsity_pattern);
+  }
+
+  {
+    block_jacobian.clear();
+
+    dealii::TrilinosWrappers::BlockSparsityPattern
+      sparsity_pattern(fe_field->get_locally_owned_dofs_per_block(),
+                       fe_field->get_locally_owned_dofs_per_block(),
+                       fe_field->get_locally_relevant_dofs_per_block(),
+                       MPI_COMM_WORLD);
+
+    make_sparsity_pattern(sparsity_pattern);
+
+    sparsity_pattern.compress();
+
+    if (parameters.print_sparsity_pattern)
+    {
+      *pcout
+        << "Printing the sparsity pattern in the gnplot file "
+        << (parameters.logger_output_directory + "sparsity_pattern.gpl")
+        << ". This might take a while... " << std::flush;
+
+      std::ofstream out(parameters.logger_output_directory +
+                        "sparsity_pattern.gpl");
+
+      sparsity_pattern.print_gnuplot(out);
+      *pcout << "done! \n\n";
+    }
+
+    block_jacobian.reinit(sparsity_pattern);
   }
 
   // Initiate constitutive laws
@@ -296,8 +337,10 @@ set_macroscopic_strain(
 
 
 template <int dim>
-void GradientCrystalPlasticitySolver<dim>::make_sparsity_pattern(
-  dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern)
+template <typename SparsityPatternType>
+void GradientCrystalPlasticitySolver<dim>::
+make_sparsity_pattern(
+  SparsityPatternType &sparsity_pattern)
 {
   const dealii::types::subdomain_id subdomain_id =
     dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
@@ -643,6 +686,13 @@ gCP::GradientCrystalPlasticitySolver<2>::make_sparsity_pattern(
 template void
 gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
    dealii::TrilinosWrappers::SparsityPattern &);
+
+template void
+gCP::GradientCrystalPlasticitySolver<2>::make_sparsity_pattern(
+   dealii::TrilinosWrappers::BlockSparsityPattern &);
+template void
+gCP::GradientCrystalPlasticitySolver<3>::make_sparsity_pattern(
+   dealii::TrilinosWrappers::BlockSparsityPattern &);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::init_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::init_quadrature_point_history();
