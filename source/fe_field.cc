@@ -24,7 +24,7 @@ FEField<dim>::FEField(
 :
 displacement_fe_degree(displacement_fe_degree),
 slips_fe_degree(slips_fe_degree),
-dof_handler(triangulation),
+dof_handler(std::make_shared<dealii::DoFHandler<dim>>(triangulation)),
 flag_allow_decohesion(flag_allow_decohesion),
 flag_setup_extractors_was_called(false),
 flag_setup_dofs_was_called(false),
@@ -32,6 +32,78 @@ flag_affine_constraints_were_set(false),
 flag_newton_method_constraints_were_set(false),
 flag_setup_vectors_was_called(false)
 {}
+
+
+
+template <int dim>
+FEField<dim>::FEField(const FEField<dim> &fe_field)
+:
+displacement_fe_degree(fe_field.displacement_fe_degree),
+slips_fe_degree(fe_field.slips_fe_degree),
+dof_handler(fe_field.dof_handler),
+flag_allow_decohesion(fe_field.flag_allow_decohesion),
+flag_setup_extractors_was_called(fe_field.flag_setup_dofs_was_called),
+flag_setup_dofs_was_called(fe_field.flag_setup_dofs_was_called),
+flag_affine_constraints_were_set(false),
+flag_newton_method_constraints_were_set(false),
+flag_setup_vectors_was_called(false)
+{
+  if (flag_setup_dofs_was_called)
+  {
+    n_crystals = fe_field.n_crystals;
+
+    n_slips = fe_field.n_slips;
+
+    displacement_extractors = fe_field.displacement_extractors;
+
+    slips_extractors = fe_field.slips_extractors;
+
+    fe_collection =
+      dealii::hp::FECollection<dim>(fe_field.fe_collection);
+
+    dofs_per_block = fe_field.dofs_per_block;
+
+    locally_owned_dofs = fe_field.locally_owned_dofs;
+
+    locally_relevant_dofs = fe_field.locally_relevant_dofs;
+
+    locally_owned_dofs_per_block =
+      fe_field.locally_owned_dofs_per_block;
+
+    locally_relevant_dofs_per_block =
+      fe_field.locally_relevant_dofs_per_block;
+
+    hanging_node_constraints.clear();
+    {
+      hanging_node_constraints.reinit(locally_relevant_dofs);
+
+      dealii::DoFTools::make_hanging_node_constraints(
+          *dof_handler,
+          hanging_node_constraints);
+    }
+    hanging_node_constraints.close();
+
+    affine_constraints.clear();
+    {
+      affine_constraints.reinit(locally_relevant_dofs);
+      affine_constraints.merge(hanging_node_constraints);
+    }
+    affine_constraints.close();
+
+    newton_method_constraints.clear();
+    {
+      newton_method_constraints.reinit(locally_relevant_dofs);
+      newton_method_constraints.merge(hanging_node_constraints);
+    }
+    newton_method_constraints.close();
+
+    global_component_mapping = fe_field.global_component_mapping;
+
+    vector_dof_indices = fe_field.vector_dof_indices;
+
+    scalar_dof_indices = fe_field.scalar_dof_indices;
+  }
+}
 
 
 
@@ -96,7 +168,7 @@ void FEField<dim>::setup_extractors(const unsigned n_crystals,
 template <int dim>
 void FEField<dim>::update_ghost_material_ids()
 {
-  Utilities::update_ghost_material_ids(dof_handler);
+  Utilities::update_ghost_material_ids(*dof_handler);
 }
 
 
@@ -156,10 +228,10 @@ void FEField<dim>::setup_dofs()
   }
 
   // Distribute degrees of freedom based on the defined finite elements
-  dof_handler.distribute_dofs(fe_collection);
+  dof_handler->distribute_dofs(fe_collection);
 
   // Renumbering of the degrees of freedom
-  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
+  dealii::DoFRenumbering::Cuthill_McKee(*dof_handler);
 
   if (n_slips > 0)
   {
@@ -173,30 +245,29 @@ void FEField<dim>::setup_dofs()
           i < block_component.size(); ++i)
     {
       block_component[i] = 1;
-
     }
 
     dealii::DoFRenumbering::component_wise(
-      dof_handler, block_component);
+      *dof_handler, block_component);
 
     dofs_per_block =
       dealii::DoFTools::count_dofs_per_fe_block(
-        dof_handler, block_component);
+        *dof_handler, block_component);
   }
 
   // Get the locally owned and relevant degrees of freedom of
   // each processor
-  locally_owned_dofs = dof_handler.locally_owned_dofs();
+  locally_owned_dofs = dof_handler->locally_owned_dofs();
 
   locally_owned_dofs_per_block.push_back(
     locally_owned_dofs.get_view(0, dofs_per_block[0]));
 
   locally_owned_dofs_per_block.push_back(
     locally_owned_dofs.get_view(
-      dofs_per_block[0], dof_handler.n_dofs()));
+      dofs_per_block[0], dof_handler->n_dofs()));
 
   dealii::DoFTools::extract_locally_relevant_dofs(
-      dof_handler,
+      *dof_handler,
       locally_relevant_dofs);
 
   locally_relevant_dofs_per_block.push_back(
@@ -204,7 +275,7 @@ void FEField<dim>::setup_dofs()
 
   locally_relevant_dofs_per_block.push_back(
     locally_relevant_dofs.get_view(
-      dofs_per_block[0], dof_handler.n_dofs()));
+      dofs_per_block[0], dof_handler->n_dofs()));
 
   // Initiate the hanging node constraints
   hanging_node_constraints.clear();
@@ -212,7 +283,7 @@ void FEField<dim>::setup_dofs()
     hanging_node_constraints.reinit(locally_relevant_dofs);
 
     dealii::DoFTools::make_hanging_node_constraints(
-        dof_handler,
+        *dof_handler,
         hanging_node_constraints);
   }
   hanging_node_constraints.close();
@@ -266,7 +337,7 @@ void FEField<dim>::setup_dofs()
     std::vector<dealii::types::global_dof_index> local_dof_indices(
         fe_collection.max_dofs_per_cell());
 
-    for (const auto &active_cell : dof_handler.active_cell_iterators())
+    for (const auto &active_cell : dof_handler->active_cell_iterators())
     {
       if (active_cell->is_locally_owned())
       {
@@ -412,7 +483,7 @@ void FEField<dim>::prepare_for_serialization_of_active_fe_indices()
                                   "called before the setup_vectors() "
                                   " method."))
 
-      dof_handler.prepare_for_serialization_of_active_fe_indices();
+      dof_handler->prepare_for_serialization_of_active_fe_indices();
 }
 
 

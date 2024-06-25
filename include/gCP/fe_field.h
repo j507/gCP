@@ -39,6 +39,8 @@ FEField(const dealii::Triangulation<dim>  &triangulation,
         const unsigned int                slips_fe_degree,
         const bool                        flag_allow_decohesion = false);
 
+FEField(const FEField<dim> &fe_field);
+
 /*!
   * @brief The solution vector
   *
@@ -350,7 +352,7 @@ unsigned int                      n_slips;
   * @brief The DoFHandler<dim> instance of the  vector-valued
   * finite element field.
   */
-dealii::DoFHandler<dim>           dof_handler;
+std::shared_ptr<dealii::DoFHandler<dim>> dof_handler;
 
 /*!
   * @brief The FECollection<dim> instance of the vector-valued
@@ -518,7 +520,7 @@ template <int dim>
 inline const dealii::Triangulation<dim> &
 FEField<dim>::get_triangulation() const
 {
-  return (dof_handler.get_triangulation());
+  return (dof_handler->get_triangulation());
 }
 
 
@@ -527,7 +529,7 @@ template <int dim>
 inline const dealii::DoFHandler<dim> &
 FEField<dim>::get_dof_handler() const
 {
-  return (dof_handler);
+  return (*dof_handler);
 }
 
 
@@ -649,7 +651,7 @@ template <int dim>
 inline dealii::types::global_dof_index
 FEField<dim>::n_dofs() const
 {
-  return (dof_handler.n_dofs());
+  return (dof_handler->n_dofs());
 }
 
 
