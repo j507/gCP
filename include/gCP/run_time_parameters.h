@@ -93,6 +93,26 @@ enum class SolverType
 
 
 
+enum class SolutionAlgorithm
+{
+  Monolithic,
+
+  Bouncing,
+
+  Embracing
+};
+
+
+
+enum class MonolithicPreconditioner
+{
+  BuiltIn,
+
+  Block
+};
+
+
+
 /*!
  * @brief Enum listing all the implemented regularizations of the sign
  * function
@@ -866,6 +886,20 @@ struct SolverParameters
    * object @p prm.
    */
   void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  SolutionAlgorithm             solution_algorithm;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  MonolithicPreconditioner      monolithic_preconditioner;
 
   /*!
    * @brief

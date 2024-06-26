@@ -866,6 +866,8 @@ void LineSearchParameters::parse_parameters(
 
 SolverParameters::SolverParameters()
 :
+solution_algorithm(SolutionAlgorithm::Monolithic),
+monolithic_preconditioner(MonolithicPreconditioner::BuiltIn),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -889,6 +891,16 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     LineSearchParameters::declare_parameters(prm);
 
     ConstitutiveLawsParameters::declare_parameters(prm);
+
+    prm.declare_entry("Solution algorithm",
+                      "monolithic",
+                      dealii::Patterns::Selection(
+                        "monolithic|bouncing|embracing"));
+
+    prm.declare_entry("Monolithic preconditioner",
+                      "built-in",
+                      dealii::Patterns::Selection(
+                        "built-in|block"));
 
     prm.declare_entry("Allow decohesion at grain boundaries",
                       "false",
@@ -931,6 +943,46 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     line_search_parameters.parse_parameters(prm);
 
     constitutive_laws_parameters.parse_parameters(prm);
+
+    const std::string string_solution_algorithm(
+                      prm.get("Solution algorithm"));
+
+    if (string_solution_algorithm == std::string("monolithic"))
+    {
+      solution_algorithm = SolutionAlgorithm::Monolithic;
+    }
+    else if (string_solution_algorithm == std::string("bouncing"))
+    {
+      solution_algorithm = SolutionAlgorithm::Bouncing;
+    }
+    else if (string_solution_algorithm == std::string("embracing"))
+    {
+      solution_algorithm = SolutionAlgorithm::Embracing;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the solution algorithm."));
+    }
+
+    const std::string string_monolithic_preconditioner(
+                      prm.get("Monolithic preconditioner"));
+
+    if (string_monolithic_preconditioner == std::string("built-in"))
+    {
+      monolithic_preconditioner = MonolithicPreconditioner::BuiltIn;
+    }
+    else if (string_monolithic_preconditioner == std::string("block"))
+    {
+      monolithic_preconditioner = MonolithicPreconditioner::Block;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the monolithic preconditioner."));
+    }
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
