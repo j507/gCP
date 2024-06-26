@@ -312,6 +312,8 @@ private:
 
   std::shared_ptr<TrialMicrostress<dim>>      trial_microstress;
 
+  std::unique_ptr<FEField<dim>> block_trial_microstress;
+
   std::map<dealii::types::global_dof_index,
            dealii::types::global_dof_index>   dof_mapping;
 
