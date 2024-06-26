@@ -39,6 +39,12 @@ FEField(const dealii::Triangulation<dim>  &triangulation,
         const unsigned int                slips_fe_degree,
         const bool                        flag_allow_decohesion = false);
 
+/*!
+ * @brief Construct a new FEField object
+ *
+ * @param fe_field
+ * @todo Docu
+ */
 FEField(const FEField<dim> &fe_field);
 
 /*!
