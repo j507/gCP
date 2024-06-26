@@ -11,24 +11,6 @@ namespace gCP
   void GradientCrystalPlasticitySolver<dim>::
   extrapolate_initial_trial_solution(const bool flag_skip_extrapolation)
   {
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
-
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
-
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
-
-    distributed_trial_solution.reinit(fe_field->distributed_vector);
-
-    distributed_old_solution.reinit(fe_field->distributed_vector);
-
-    distributed_newton_update.reinit(fe_field->distributed_vector);
-
-    distributed_trial_solution  = fe_field->old_solution;
-
-    distributed_old_solution    = fe_field->old_old_solution;
-
-    distributed_newton_update   = fe_field->old_solution;
-
     double step_size_ratio = 1.0;
 
     if (discrete_time.get_step_number() > 0)
@@ -38,29 +20,99 @@ namespace gCP
         discrete_time.get_previous_step_size();
     }
 
-    if (!flag_skip_extrapolation)
     {
-      distributed_trial_solution.sadd(
-        1.0 + step_size_ratio,
-        -step_size_ratio,
-        distributed_old_solution);
+      dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
 
-      distributed_newton_update.sadd(
-        -1.0,
-        1.0,
+      dealii::LinearAlgebraTrilinos::MPI::Vector distributed_old_solution;
+
+      dealii::LinearAlgebraTrilinos::MPI::Vector distributed_newton_update;
+
+      distributed_trial_solution.reinit(fe_field->distributed_vector);
+
+      distributed_old_solution.reinit(fe_field->distributed_vector);
+
+      distributed_newton_update.reinit(fe_field->distributed_vector);
+
+      distributed_trial_solution  = fe_field->old_solution;
+
+      distributed_old_solution    = fe_field->old_old_solution;
+
+      distributed_newton_update   = fe_field->old_solution;
+
+      if (!flag_skip_extrapolation)
+      {
+        distributed_trial_solution.sadd(
+          1.0 + step_size_ratio,
+          -step_size_ratio,
+          distributed_old_solution);
+
+        distributed_newton_update.sadd(
+          -1.0,
+          1.0,
+          distributed_trial_solution);
+      }
+
+      //fe_field->get_affine_constraints().distribute(
+      fe_field->get_hanging_node_constraints().distribute(
         distributed_trial_solution);
+
+      fe_field->get_newton_method_constraints().distribute(
+        distributed_newton_update);
+
+      trial_solution  = distributed_trial_solution;
+
+      newton_update   = distributed_newton_update;
     }
 
-    //fe_field->get_affine_constraints().distribute(
-    fe_field->get_hanging_node_constraints().distribute(
-      distributed_trial_solution);
+    {
+      dealii::LinearAlgebraTrilinos::MPI::BlockVector
+        distributed_trial_block_solution;
 
-    fe_field->get_newton_method_constraints().distribute(
-      distributed_newton_update);
+      dealii::LinearAlgebraTrilinos::MPI::BlockVector
+        distributed_old_block_solution;
 
-    trial_solution  = distributed_trial_solution;
+      dealii::LinearAlgebraTrilinos::MPI::BlockVector
+        distributed_block_newton_update;
 
-    newton_update   = distributed_newton_update;
+      distributed_trial_block_solution.reinit(
+        fe_field->distributed_block_vector);
+
+      distributed_old_block_solution.reinit(
+        fe_field->distributed_block_vector);
+
+      distributed_block_newton_update.reinit(
+        fe_field->distributed_block_vector);
+
+      distributed_trial_block_solution = fe_field->block_old_solution;
+
+      distributed_old_block_solution = fe_field->block_old_old_solution;
+
+      distributed_block_newton_update = fe_field->block_old_solution;
+
+      if (!flag_skip_extrapolation)
+      {
+        distributed_trial_block_solution.sadd(
+          1.0 + step_size_ratio,
+          -step_size_ratio,
+          distributed_old_block_solution);
+
+        distributed_block_newton_update.sadd(
+          -1.0,
+          1.0,
+          distributed_trial_block_solution);
+      }
+
+      //fe_field->get_affine_constraints().distribute(
+      fe_field->get_hanging_node_constraints().distribute(
+        distributed_trial_block_solution);
+
+      fe_field->get_newton_method_constraints().distribute(
+        distributed_block_newton_update);
+
+      trial_block_solution = distributed_trial_block_solution;
+
+      block_newton_update = distributed_block_newton_update;
+    }
   }
 
 
