@@ -671,21 +671,47 @@ namespace gCP
   void GradientCrystalPlasticitySolver<dim>::store_trial_solution(
     const bool flag_store_initial_trial_solution)
   {
-    dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
-
-    distributed_trial_solution.reinit(fe_field->distributed_vector);
-
-    distributed_trial_solution = trial_solution;
-
-    fe_field->get_affine_constraints().distribute(distributed_trial_solution);
-
-    if (flag_store_initial_trial_solution)
     {
-      initial_trial_solution  = distributed_trial_solution;
+      dealii::LinearAlgebraTrilinos::MPI::Vector
+      distributed_trial_solution;
+
+      distributed_trial_solution.reinit(fe_field->distributed_vector);
+
+      distributed_trial_solution = trial_solution;
+
+      fe_field->get_affine_constraints().distribute(
+        distributed_trial_solution);
+
+      if (flag_store_initial_trial_solution)
+      {
+        initial_trial_solution = distributed_trial_solution;
+      }
+      else
+      {
+        tmp_trial_solution = distributed_trial_solution;
+      }
     }
-    else
+
     {
-      tmp_trial_solution      = distributed_trial_solution;
+      dealii::LinearAlgebraTrilinos::MPI::BlockVector
+        distributed_block_trial_solution;
+
+      distributed_block_trial_solution.reinit(
+        fe_field->distributed_block_vector);
+
+      distributed_block_trial_solution = trial_block_solution;
+
+      fe_field->get_affine_constraints().distribute(
+        distributed_block_trial_solution);
+
+      if (flag_store_initial_trial_solution)
+      {
+        initial_trial_block_solution = distributed_block_trial_solution;
+      }
+      else
+      {
+        tmp_trial_block_solution = distributed_block_trial_solution;
+      }
     }
   }
 
