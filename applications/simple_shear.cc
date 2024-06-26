@@ -324,9 +324,6 @@ void SimpleShearProblem<dim>::setup()
   // Sets up the solution vectors
   fe_field->setup_vectors();
 
-  const std::vector<dealii::types::global_dof_index> n_dofs_per_block =
-    fe_field->n_dofs_per_block();
-
   // Terminal output
   *pcout
     << "Crystals data:" << std::endl
@@ -339,9 +336,9 @@ void SimpleShearProblem<dim>::setup()
     << " Number of total degrees of freedom         = "
     << fe_field->n_dofs() << std::endl
     << " Number of displacement degrees of freedom  = "
-    << n_dofs_per_block[0] << std::endl
+    << fe_field->get_n_displacement_dofs() << std::endl
     << " Number of plastic slips degrees of freedom = "
-    << n_dofs_per_block[1] << std::endl << std::endl;
+    << fe_field->get_n_plastic_slip_dofs() << std::endl << std::endl;
 }
 
 

@@ -64,7 +64,9 @@ flag_setup_vectors_was_called(false)
     fe_collection =
       dealii::hp::FECollection<dim>(fe_field.fe_collection);
 
-    dofs_per_block = fe_field.dofs_per_block;
+    n_displacement_dofs = fe_field.n_displacement_dofs;
+
+    n_plastic_slip_dofs = fe_field.n_plastic_slip_dofs;
 
     locally_owned_dofs = fe_field.locally_owned_dofs;
 
@@ -236,6 +238,8 @@ void FEField<dim>::setup_dofs()
   // Renumbering of the degrees of freedom
   dealii::DoFRenumbering::Cuthill_McKee(*dof_handler);
 
+  std::vector<dealii::types::global_dof_index> dofs_per_block;
+
   if (n_slips > 0)
   {
     const int n_displacement_components =
@@ -255,24 +259,19 @@ void FEField<dim>::setup_dofs()
     dealii::DoFRenumbering::component_wise(
       *dof_handler, block_component);
 
-    if (flag_use_single_block)
-    {
-      block_component =
-        std::vector<unsigned int>(n_total_components, 0);
-    }
-
     dofs_per_block =
       dealii::DoFTools::count_dofs_per_fe_block(
         *dof_handler, block_component);
 
-    std::cout << dofs_per_block.size();
+    n_displacement_dofs = dofs_per_block[0];
 
-    for (unsigned int i = 0; i < dofs_per_block.size(); i++)
+    n_plastic_slip_dofs = dofs_per_block[1];
+
+    if (flag_use_single_block)
     {
-      std::cout << ", " << dofs_per_block[i];
+      dofs_per_block =
+        std::vector<dealii::types::global_dof_index>(1, this->n_dofs());
     }
-
-    std::cout << std::endl;
   }
 
   // Get the locally owned and relevant degrees of freedom of

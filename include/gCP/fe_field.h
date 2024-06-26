@@ -295,7 +295,9 @@ void prepare_for_serialization_of_active_fe_indices();
   */
 dealii::types::global_dof_index n_dofs() const;
 
-std::vector<dealii::types::global_dof_index> n_dofs_per_block() const;
+dealii::types::global_dof_index get_n_displacement_dofs() const;
+
+dealii::types::global_dof_index get_n_plastic_slip_dofs() const;
 
 /*!
   * @brief Returns the number of components of the vector-valued
@@ -369,7 +371,9 @@ std::shared_ptr<dealii::DoFHandler<dim>> dof_handler;
   */
 dealii::hp::FECollection<dim>     fe_collection;
 
-std::vector<dealii::types::global_dof_index>  dofs_per_block;
+dealii::types::global_dof_index n_displacement_dofs;
+
+dealii::types::global_dof_index n_plastic_slip_dofs;
 
 /*!
   * @brief The AffineConstraints<double> instance handling the
@@ -671,10 +675,19 @@ FEField<dim>::n_dofs() const
 
 
 template <int dim>
-inline std::vector<dealii::types::global_dof_index>
-FEField<dim>::n_dofs_per_block() const
+inline dealii::types::global_dof_index
+FEField<dim>::get_n_displacement_dofs() const
 {
-  return (dofs_per_block);
+  return (n_displacement_dofs);
+}
+
+
+
+template <int dim>
+inline dealii::types::global_dof_index
+FEField<dim>::get_n_plastic_slip_dofs() const
+{
+  return (n_plastic_slip_dofs);
 }
 
 
