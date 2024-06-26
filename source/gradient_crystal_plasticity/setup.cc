@@ -41,7 +41,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
   cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
-
   trial_block_solution.reinit(fe_field->block_solution);
 
   initial_trial_block_solution.reinit(fe_field->block_solution);
@@ -58,6 +57,16 @@ void GradientCrystalPlasticitySolver<dim>::init()
   newton_update             = 0.0;
   residual                  = 0.0;
   cell_is_at_grain_boundary = 0.0;
+
+  trial_block_solution = 0.;
+
+  initial_trial_block_solution = 0.;
+
+  tmp_trial_block_solution = 0.;
+
+  block_newton_update = 0.;
+
+  block_residual = 0.;
 
   // Identify which cells are located at a grain boundary
   for (const auto &cell :
