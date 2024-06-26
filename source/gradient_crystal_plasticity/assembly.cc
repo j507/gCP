@@ -531,6 +531,11 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
     data.local_dof_indices,
     jacobian);
 
+  internal_newton_method_constraints.distribute_local_to_global(
+    data.local_matrix,
+    data.local_dof_indices,
+    block_jacobian);
+
   if (data.cell_is_at_grain_boundary)
   {
     AssertThrow(
@@ -546,12 +551,21 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
         data.local_coupling_matrices.size(), 0));
 
     for (unsigned int i = 0; i < data.local_coupling_matrices.size(); ++i)
+    {
       //fe_field->get_newton_method_constraints()
       internal_newton_method_constraints.distribute_local_to_global(
         data.local_coupling_matrices[i],
         data.local_dof_indices,
         data.neighbour_cells_local_dof_indices[i],
         jacobian);
+
+      //fe_field->get_newton_method_constraints()
+      internal_newton_method_constraints.distribute_local_to_global(
+        data.local_coupling_matrices[i],
+        data.local_dof_indices,
+        data.neighbour_cells_local_dof_indices[i],
+        block_jacobian);
+    }
   }
 }
 
@@ -1063,6 +1077,11 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
     data.local_dof_indices,
     residual,
     data.local_matrix_for_inhomogeneous_bcs);
+
+  internal_newton_method_constraints.distribute_local_to_global(
+    data.local_rhs,
+    data.local_dof_indices,
+    block_residual);
 }
 
 
