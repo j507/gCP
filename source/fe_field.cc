@@ -20,12 +20,14 @@ FEField<dim>::FEField(
   const dealii::Triangulation<dim> &triangulation,
   const unsigned int displacement_fe_degree,
   const unsigned int slips_fe_degree,
-  const bool flag_allow_decohesion)
+  const bool flag_allow_decohesion,
+  const bool flag_use_single_block)
 :
 displacement_fe_degree(displacement_fe_degree),
 slips_fe_degree(slips_fe_degree),
 dof_handler(std::make_shared<dealii::DoFHandler<dim>>(triangulation)),
 flag_allow_decohesion(flag_allow_decohesion),
+flag_use_single_block(flag_use_single_block),
 flag_setup_extractors_was_called(false),
 flag_setup_dofs_was_called(false),
 flag_affine_constraints_were_set(false),
@@ -42,6 +44,7 @@ displacement_fe_degree(fe_field.displacement_fe_degree),
 slips_fe_degree(fe_field.slips_fe_degree),
 dof_handler(fe_field.dof_handler),
 flag_allow_decohesion(fe_field.flag_allow_decohesion),
+flag_use_single_block(fe_field.flag_use_single_block),
 flag_setup_extractors_was_called(fe_field.flag_setup_dofs_was_called),
 flag_setup_dofs_was_called(fe_field.flag_setup_dofs_was_called),
 flag_affine_constraints_were_set(false),
@@ -235,11 +238,13 @@ void FEField<dim>::setup_dofs()
 
   if (n_slips > 0)
   {
-    int n_displacement_components =
-        dim * ((flag_allow_decohesion) ? n_crystals : 1);
+    const int n_displacement_components =
+      dim * ((flag_allow_decohesion) ? n_crystals : 1);
 
-    std::vector<unsigned int> block_component(
-        n_displacement_components + n_slips * n_crystals, 0);
+    const int n_total_components =
+      n_displacement_components + n_slips * n_crystals;
+
+    std::vector<unsigned int> block_component(n_total_components, 0);
 
     for (unsigned int i = n_displacement_components;
           i < block_component.size(); ++i)
@@ -250,9 +255,24 @@ void FEField<dim>::setup_dofs()
     dealii::DoFRenumbering::component_wise(
       *dof_handler, block_component);
 
+    if (flag_use_single_block)
+    {
+      block_component =
+        std::vector<unsigned int>(n_total_components, 0);
+    }
+
     dofs_per_block =
       dealii::DoFTools::count_dofs_per_fe_block(
         *dof_handler, block_component);
+
+    std::cout << dofs_per_block.size();
+
+    for (unsigned int i = 0; i < dofs_per_block.size(); i++)
+    {
+      std::cout << ", " << dofs_per_block[i];
+    }
+
+    std::cout << std::endl;
   }
 
   // Get the locally owned and relevant degrees of freedom of
@@ -262,9 +282,18 @@ void FEField<dim>::setup_dofs()
   locally_owned_dofs_per_block.push_back(
     locally_owned_dofs.get_view(0, dofs_per_block[0]));
 
-  locally_owned_dofs_per_block.push_back(
+  if (!flag_use_single_block)
+  {
+    locally_owned_dofs_per_block.push_back(
     locally_owned_dofs.get_view(
       dofs_per_block[0], dof_handler->n_dofs()));
+  }
+  else
+  {
+    Assert(dofs_per_block[0] == this->n_dofs(),
+      dealii::ExcMessage("The number of degrees of freedom do not "
+       "match"));
+  }
 
   dealii::DoFTools::extract_locally_relevant_dofs(
       *dof_handler,
@@ -273,9 +302,18 @@ void FEField<dim>::setup_dofs()
   locally_relevant_dofs_per_block.push_back(
     locally_relevant_dofs.get_view(0, dofs_per_block[0]));
 
-  locally_relevant_dofs_per_block.push_back(
-    locally_relevant_dofs.get_view(
-      dofs_per_block[0], dof_handler->n_dofs()));
+  if (!flag_use_single_block)
+  {
+    locally_relevant_dofs_per_block.push_back(
+      locally_relevant_dofs.get_view(
+        dofs_per_block[0], dof_handler->n_dofs()));
+  }
+  else
+  {
+    Assert(dofs_per_block[0] == this->n_dofs(),
+      dealii::ExcMessage("The number of degrees of freedom do not "
+       "match"));
+  }
 
   // Initiate the hanging node constraints
   hanging_node_constraints.clear();

@@ -37,7 +37,8 @@ public:
 FEField(const dealii::Triangulation<dim>  &triangulation,
         const unsigned int                displacement_fe_degree,
         const unsigned int                slips_fe_degree,
-        const bool                        flag_allow_decohesion = false);
+        const bool                        flag_allow_decohesion = false,
+        const bool                        flag_use_single_block = true);
 
 /*!
  * @brief Construct a new FEField object
@@ -447,6 +448,13 @@ std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>
  * @todo Docu
  */
 bool                              flag_allow_decohesion;
+
+/**
+ * @brief
+ *
+ * @todo Docu
+ */
+bool                              flag_use_single_block;
 
 /**
  * @brief
