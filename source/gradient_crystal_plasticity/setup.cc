@@ -33,11 +33,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
                                  " initialized."));
 
   // Initiate vectors
-  trial_solution.reinit(fe_field->solution);
-  initial_trial_solution.reinit(fe_field->solution);
-  tmp_trial_solution.reinit(fe_field->solution);
-  newton_update.reinit(fe_field->solution);
-  residual.reinit(fe_field->distributed_vector);
   cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
@@ -51,11 +46,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   block_residual.reinit(fe_field->distributed_block_vector);
 
-  trial_solution            = 0.0;
-  initial_trial_solution    = 0.0;
-  tmp_trial_solution        = 0.0;
-  newton_update             = 0.0;
-  residual                  = 0.0;
   cell_is_at_grain_boundary = 0.0;
 
   trial_block_solution = 0.;
@@ -82,44 +72,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
         }
 
   // Initiate Jacobian matrix
-  {
-    jacobian.clear();
-
-    dealii::TrilinosWrappers::SparsityPattern
-      sparsity_pattern(fe_field->get_locally_owned_dofs(),
-                       fe_field->get_locally_owned_dofs(),
-                       fe_field->get_locally_relevant_dofs(),
-                       MPI_COMM_WORLD);
-    /*
-    dealii::DoFTools::make_flux_sparsity_pattern(
-      fe_field->get_dof_handler(),
-      sparsity_pattern,
-      fe_field->get_newton_method_constraints(),
-      false,
-      dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
-    */
-
-    make_sparsity_pattern(sparsity_pattern);
-
-    sparsity_pattern.compress();
-
-    if (parameters.print_sparsity_pattern)
-    {
-      *pcout
-        << "Printing the sparsity pattern in the gnplot file "
-        << (parameters.logger_output_directory + "sparsity_pattern.gpl")
-        << ". This might take a while... " << std::flush;
-
-      std::ofstream out(parameters.logger_output_directory +
-                        "sparsity_pattern.gpl");
-
-      sparsity_pattern.print_gnuplot(out);
-      *pcout << "done! \n\n";
-    }
-
-    jacobian.reinit(sparsity_pattern);
-  }
-
   {
     block_jacobian.clear();
 
@@ -686,12 +638,12 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
   dealii::DataOut<dim> data_out;
 
   data_out.add_data_vector(fe_field->get_dof_handler(),
-                           trial_solution,
+                           trial_block_solution,
                            postprocessor);
 
-  data_out.add_data_vector(trial_microstress->get_dof_handler(),
+  /*data_out.add_data_vector(trial_microstress->get_dof_handler(),
                            trial_microstress->solution,
-                           trial_postprocessor);
+                           trial_postprocessor);*/
 
   data_out.build_patches(*mapping);
 

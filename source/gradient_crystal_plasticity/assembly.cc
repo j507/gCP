@@ -28,7 +28,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  jacobian = 0.0;
+  block_jacobian = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -78,7 +78,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
       fe_field->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  jacobian.compress(dealii::VectorOperation::add);
+  block_jacobian.compress(dealii::VectorOperation::add);
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;
@@ -133,15 +133,15 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
       ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      trial_solution,
+      trial_block_solution,
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      fe_field->old_solution,
+      fe_field->block_old_solution,
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
-      trial_solution,
+      trial_block_solution,
       scratch.slip_gradient_values[slip_id]);
   }
 
@@ -342,22 +342,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            trial_solution,
+            trial_block_solution,
             scratch.current_cell_displacement_values);
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            fe_field->old_solution,
+            fe_field->block_old_solution,
             scratch.current_cell_old_displacement_values);
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            trial_solution,
+            trial_block_solution,
             scratch.neighbor_cell_displacement_values);
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            fe_field->old_solution,
+            fe_field->block_old_solution,
             scratch.neighbor_cell_old_displacement_values);
         }
 
@@ -529,11 +529,6 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
   internal_newton_method_constraints.distribute_local_to_global(
     data.local_matrix,
     data.local_dof_indices,
-    jacobian);
-
-  internal_newton_method_constraints.distribute_local_to_global(
-    data.local_matrix,
-    data.local_dof_indices,
     block_jacobian);
 
   if (data.cell_is_at_grain_boundary)
@@ -552,13 +547,6 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
 
     for (unsigned int i = 0; i < data.local_coupling_matrices.size(); ++i)
     {
-      //fe_field->get_newton_method_constraints()
-      internal_newton_method_constraints.distribute_local_to_global(
-        data.local_coupling_matrices[i],
-        data.local_dof_indices,
-        data.neighbour_cells_local_dof_indices[i],
-        jacobian);
-
       //fe_field->get_newton_method_constraints()
       internal_newton_method_constraints.distribute_local_to_global(
         data.local_coupling_matrices[i],
@@ -590,7 +578,7 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  residual = 0.0;
+  block_residual = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -640,9 +628,9 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
       fe_field->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  residual.compress(dealii::VectorOperation::add);
+  block_residual.compress(dealii::VectorOperation::add);
 
-  residual_norm = residual.l2_norm();
+  residual_norm = block_residual.l2_norm();
 
   std::ostringstream message;
 
@@ -693,7 +681,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
   // Get the linear strain tensor values at the quadrature points
   fe_values[fe_field->get_displacement_extractor(crystal_id)].get_function_symmetric_gradients(
-    trial_solution,
+    trial_block_solution,
     scratch.strain_tensor_values);
 
   // Get the supply term values at the quadrature points
@@ -708,15 +696,15 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       ++slip_id)
   {
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      trial_solution,
+      trial_block_solution,
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      fe_field->old_solution,
+      fe_field->block_old_solution,
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
-      trial_solution,
+      trial_block_solution,
       scratch.slip_gradient_values[slip_id]);
   }
 
@@ -873,12 +861,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
           {
             fe_face_values[fe_field->get_slip_extractor(
                 crystal_id, slip_id)].get_function_values(
-                  trial_solution,
+                  trial_block_solution,
                   scratch.face_slip_values[slip_id]);
 
             neighbour_fe_face_values[fe_field->get_slip_extractor(
                 neighbour_crystal_id, slip_id)].get_function_values(
-                  trial_solution,
+                  trial_block_solution,
                   scratch.neighbour_face_slip_values[slip_id]);
           }
         }
@@ -900,22 +888,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            trial_solution,
+            trial_block_solution,
             scratch.current_cell_displacement_values);
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            fe_field->old_solution,
+            fe_field->block_old_solution,
             scratch.current_cell_old_displacement_values);
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            trial_solution,
+            trial_block_solution,
             scratch.neighbor_cell_displacement_values);
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            fe_field->old_solution,
+            fe_field->block_old_solution,
             scratch.neighbor_cell_old_displacement_values);
         }
 
@@ -1072,11 +1060,11 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &data)
 {
   //fe_field->get_newton_method_constraints()
-  internal_newton_method_constraints.distribute_local_to_global(
+  /*internal_newton_method_constraints.distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
     residual,
-    data.local_matrix_for_inhomogeneous_bcs);
+    data.local_matrix_for_inhomogeneous_bcs);*/
 
   internal_newton_method_constraints.distribute_local_to_global(
     data.local_rhs,
@@ -1295,13 +1283,13 @@ update_local_quadrature_point_history(
     fe_values[
       fe_field->get_slip_extractor(crystal_id,
                                    slip_id)].get_function_values(
-      trial_solution,
+      trial_block_solution,
       scratch.slips_values[slip_id]);
 
     fe_values[
       fe_field->get_slip_extractor(crystal_id,
                                    slip_id)].get_function_values(
-      fe_field->old_solution,
+      fe_field->block_old_solution,
       scratch.old_slips_values[slip_id]);
   }
 
@@ -1360,12 +1348,12 @@ update_local_quadrature_point_history(
         // Get the displacement values
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-          trial_solution,
+          trial_block_solution,
           scratch.current_cell_displacement_values);
 
         neighbor_fe_face_values[
           fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
-          trial_solution,
+          trial_block_solution,
           scratch.neighbor_cell_displacement_values);
 
         // Get plastic slips
@@ -1374,12 +1362,12 @@ update_local_quadrature_point_history(
         {
           fe_face_values[fe_field->get_slip_extractor(
               crystal_id, slip_id)].get_function_values(
-                trial_solution,
+                trial_block_solution,
                 scratch.face_slip_values[slip_id]);
 
           neighbor_fe_face_values[fe_field->get_slip_extractor(
               neighbor_crystal_id, slip_id)].get_function_values(
-                trial_solution,
+                trial_block_solution,
                 scratch.neighbor_face_slip_values[slip_id]);
         }
 
@@ -1558,22 +1546,22 @@ store_local_effective_opening_displacement(
         // Get the displacement values
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-          trial_solution,
+          trial_block_solution,
           scratch.current_cell_displacement_values);
 
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-          fe_field->old_solution,
+          fe_field->block_old_solution,
           scratch.current_cell_old_displacement_values);
 
         neighbor_fe_face_values[
           fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
-          trial_solution,
+          trial_block_solution,
           scratch.neighbor_cell_displacement_values);
 
         neighbor_fe_face_values[
           fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
-          fe_field->old_solution,
+          fe_field->block_old_solution,
           scratch.neighbor_cell_old_displacement_values);
 
         // Get normal vector values values at the quadrature points
@@ -2298,7 +2286,7 @@ assemble_local_trial_microstress_right_hand_side(
   // Get the linear strain tensor values at the quadrature points
   fe_field_fe_values[fe_field->get_displacement_extractor(crystal_id)].
     get_function_symmetric_gradients(
-      trial_solution,
+      trial_block_solution,
       scratch.linear_strain_values);
 
   // Get the slips and their gradients values at the quadrature points
@@ -2308,12 +2296,12 @@ assemble_local_trial_microstress_right_hand_side(
   {
     fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_values(
-        fe_field->old_solution,
+        fe_field->block_old_solution,
         scratch.slip_values[slip_id]);
 
     fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_gradients(
-        fe_field->old_solution,
+        fe_field->block_old_solution,
         scratch.slip_gradient_values[slip_id]);
   }
 
@@ -2426,7 +2414,7 @@ assemble_local_trial_microstress_right_hand_side(
       {
         fe_field_fe_face_values[fe_field->get_slip_extractor(
             crystal_id, slip_id)].get_function_gradients(
-              fe_field->old_solution,
+              fe_field->block_old_solution,
               scratch.slip_gradient_face_values[slip_id]);
       }
 

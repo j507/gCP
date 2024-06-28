@@ -957,13 +957,15 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     }
     else if (string_solution_algorithm == std::string("embracing"))
     {
+      Assert(false, dealii::ExcMessage(
+        "The embracing staggered approach is yet to be implemented."));
+
       solution_algorithm = SolutionAlgorithm::Embracing;
     }
     else
     {
-      AssertThrow(false,
-        dealii::ExcMessage(
-          "Unexpected identifier for the solution algorithm."));
+      AssertThrow(false, dealii::ExcMessage(
+        "Unexpected identifier for the solution algorithm."));
     }
 
     const std::string string_monolithic_preconditioner(
@@ -975,6 +977,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     }
     else if (string_monolithic_preconditioner == std::string("block"))
     {
+      Assert(false, dealii::ExcMessage(
+        "Block preconditioner has not been implemented"));
+
       monolithic_preconditioner = MonolithicPreconditioner::Block;
     }
     else

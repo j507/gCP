@@ -76,8 +76,6 @@ public:
 
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
 
-  const dealii::LinearAlgebraTrilinos::MPI::Vector &get_residual() const;
-
   double get_macroscopic_damage();
 
   /*!
@@ -145,21 +143,7 @@ private:
 
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
-
   dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix block_jacobian;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        initial_trial_solution;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        tmp_trial_solution;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        ghost_residual;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockVector   trial_block_solution;
 
@@ -419,15 +403,6 @@ inline const dealii::Vector<float> &
 GradientCrystalPlasticitySolver<dim>::get_cell_is_at_grain_boundary_vector() const
 {
   return (cell_is_at_grain_boundary);
-}
-
-
-
-template <int dim>
-inline const dealii::LinearAlgebraTrilinos::MPI::Vector &
-GradientCrystalPlasticitySolver<dim>::get_residual() const
-{
-  return (ghost_residual);
 }
 
 

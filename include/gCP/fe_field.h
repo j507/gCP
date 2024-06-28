@@ -38,7 +38,7 @@ FEField(const dealii::Triangulation<dim>  &triangulation,
         const unsigned int                displacement_fe_degree,
         const unsigned int                slips_fe_degree,
         const bool                        flag_allow_decohesion = false,
-        const bool                        flag_use_single_block = true);
+        const bool                        flag_use_single_block = false);
 
 /*!
  * @brief Construct a new FEField object
@@ -305,9 +305,8 @@ dealii::types::global_dof_index get_n_plastic_slip_dofs() const;
   */
 unsigned int get_n_components() const;
 
-
 std::tuple<double, double, double> get_l2_norms(
-  dealii::LinearAlgebraTrilinos::MPI::Vector &vector);
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const;
 
 /*!
   * @brief

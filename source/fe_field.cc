@@ -33,7 +33,11 @@ flag_setup_dofs_was_called(false),
 flag_affine_constraints_were_set(false),
 flag_newton_method_constraints_were_set(false),
 flag_setup_vectors_was_called(false)
-{}
+{
+  std::cout << "flag_use_single_block = "
+            << std::boolalpha
+            << flag_use_single_block << std::endl;
+}
 
 
 
@@ -531,6 +535,10 @@ void FEField<dim>::update_solution_vectors()
   old_old_solution = old_solution;
 
   old_solution = solution;
+
+  block_old_old_solution = block_old_solution;
+
+  block_old_solution = block_solution;
 }
 
 
@@ -557,11 +565,11 @@ void FEField<dim>::reset_all_affine_constraints()
 
 template <int dim>
 std::tuple<double, double, double> FEField<dim>::get_l2_norms(
-    dealii::LinearAlgebraTrilinos::MPI::Vector &vector)
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_vektor;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vektor;
 
-  distributed_vektor.reinit(distributed_vector);
+  distributed_vektor.reinit(distributed_block_vector);
 
   distributed_vektor = vector;
 
@@ -613,6 +621,8 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
                           std::sqrt(vector_squared_entries),
                           std::sqrt(scalar_squared_entries));
 }
+
+
 
 template <int dim>
 TrialMicrostress<dim>::TrialMicrostress(

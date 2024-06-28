@@ -141,7 +141,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 
   distributed_trial_solution.reinit(fe_field->distributed_vector);
 
-  distributed_trial_solution = trial_solution;
+  //distributed_trial_solution = trial_solution;
 
   for (const auto &locally_owned_dof : inactive_set)
   {
@@ -152,7 +152,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
   fe_field->get_affine_constraints().distribute(
     distributed_trial_solution);
 
-  trial_solution = distributed_trial_solution;
+  //trial_solution = distributed_trial_solution;
 }
 
 

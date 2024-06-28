@@ -133,7 +133,13 @@ fe_field(std::make_shared<FEField<dim>>(
   triangulation,
   parameters.spatial_discretization.fe_degree_displacements,
   parameters.spatial_discretization.fe_degree_slips,
-  parameters.solver_parameters.allow_decohesion)),
+  parameters.solver_parameters.allow_decohesion,
+  parameters.solver_parameters.solution_algorithm ==
+    RunTimeParameters::SolutionAlgorithm::Monolithic &&
+      (parameters.solver_parameters.krylov_parameters.solver_type ==
+        RunTimeParameters::SolverType::DirectSolver ||
+       parameters.solver_parameters.monolithic_preconditioner ==
+        RunTimeParameters::MonolithicPreconditioner::BuiltIn))),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(
   parameters.solver_parameters,
@@ -770,19 +776,10 @@ void SimpleShearProblem<dim>::data_output()
 
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
-  data_out.add_data_vector(fe_field->solution, postprocessor);
-
-  //data_out.add_data_vector(gCP_solver.get_residual(),
-  //                         residual_postprocessor);
-
-  if (parameters.output.flag_output_residual)
-  {
-    data_out.add_data_vector(gCP_solver.get_residual(),
-                             residual_postprocessor);
-  }
+  data_out.add_data_vector(fe_field->block_solution, postprocessor);
 
   data_out.build_patches(*mapping,
-                         fe_field->get_displacement_fe_degree(),
+                         0,//fe_field->get_displacement_fe_degree(),
                          dealii::DataOut<dim>::curved_inner_cells);
 
   static int out_index = 0;
