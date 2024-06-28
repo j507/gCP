@@ -36,13 +36,13 @@ void GradientCrystalPlasticitySolver<dim>::init()
   cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
-  trial_block_solution.reinit(fe_field->block_solution);
+  trial_block_solution.reinit(fe_field->solution);
 
-  initial_trial_block_solution.reinit(fe_field->block_solution);
+  initial_trial_block_solution.reinit(fe_field->solution);
 
-  tmp_trial_block_solution.reinit(fe_field->block_solution);
+  tmp_trial_block_solution.reinit(fe_field->solution);
 
-  block_newton_update.reinit(fe_field->block_solution);
+  block_newton_update.reinit(fe_field->solution);
 
   block_residual.reinit(fe_field->distributed_block_vector);
 

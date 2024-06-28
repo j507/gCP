@@ -776,7 +776,7 @@ void SimpleShearProblem<dim>::data_output()
 
   data_out.attach_dof_handler(fe_field->get_dof_handler());
 
-  data_out.add_data_vector(fe_field->block_solution, postprocessor);
+  data_out.add_data_vector(fe_field->solution, postprocessor);
 
   data_out.build_patches(*mapping,
                          0,//fe_field->get_displacement_fe_degree(),

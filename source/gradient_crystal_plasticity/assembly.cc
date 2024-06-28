@@ -137,7 +137,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      fe_field->block_old_solution,
+      fe_field->old_solution,
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
@@ -347,7 +347,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            fe_field->block_old_solution,
+            fe_field->old_solution,
             scratch.current_cell_old_displacement_values);
 
           neighbour_fe_face_values[
@@ -357,7 +357,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            fe_field->block_old_solution,
+            fe_field->old_solution,
             scratch.neighbor_cell_old_displacement_values);
         }
 
@@ -700,7 +700,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       scratch.slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_values(
-      fe_field->block_old_solution,
+      fe_field->old_solution,
       scratch.old_slip_values[slip_id]);
 
     fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].get_function_gradients(
@@ -893,7 +893,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
           fe_face_values[
             fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-            fe_field->block_old_solution,
+            fe_field->old_solution,
             scratch.current_cell_old_displacement_values);
 
           neighbour_fe_face_values[
@@ -903,7 +903,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
           neighbour_fe_face_values[
             fe_field->get_displacement_extractor(neighbour_crystal_id)].get_function_values(
-            fe_field->block_old_solution,
+            fe_field->old_solution,
             scratch.neighbor_cell_old_displacement_values);
         }
 
@@ -1289,7 +1289,7 @@ update_local_quadrature_point_history(
     fe_values[
       fe_field->get_slip_extractor(crystal_id,
                                    slip_id)].get_function_values(
-      fe_field->block_old_solution,
+      fe_field->old_solution,
       scratch.old_slips_values[slip_id]);
   }
 
@@ -1551,7 +1551,7 @@ store_local_effective_opening_displacement(
 
         fe_face_values[
           fe_field->get_displacement_extractor(crystal_id)].get_function_values(
-          fe_field->block_old_solution,
+          fe_field->old_solution,
           scratch.current_cell_old_displacement_values);
 
         neighbor_fe_face_values[
@@ -1561,7 +1561,7 @@ store_local_effective_opening_displacement(
 
         neighbor_fe_face_values[
           fe_field->get_displacement_extractor(neighbor_crystal_id)].get_function_values(
-          fe_field->block_old_solution,
+          fe_field->old_solution,
           scratch.neighbor_cell_old_displacement_values);
 
         // Get normal vector values values at the quadrature points
@@ -2296,12 +2296,12 @@ assemble_local_trial_microstress_right_hand_side(
   {
     fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_values(
-        fe_field->block_old_solution,
+        fe_field->old_solution,
         scratch.slip_values[slip_id]);
 
     fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_gradients(
-        fe_field->block_old_solution,
+        fe_field->old_solution,
         scratch.slip_gradient_values[slip_id]);
   }
 
@@ -2414,7 +2414,7 @@ assemble_local_trial_microstress_right_hand_side(
       {
         fe_field_fe_face_values[fe_field->get_slip_extractor(
             crystal_id, slip_id)].get_function_gradients(
-              fe_field->block_old_solution,
+              fe_field->old_solution,
               scratch.slip_gradient_face_values[slip_id]);
       }
 

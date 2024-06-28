@@ -6,6 +6,7 @@ namespace gCP
 {
 
 
+
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 {
@@ -137,9 +138,10 @@ void GradientCrystalPlasticitySolver<dim>::determine_inactive_set()
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    distributed_trial_solution;
 
-  distributed_trial_solution.reinit(fe_field->distributed_vector);
+  distributed_trial_solution.reinit(fe_field->distributed_block_vector);
 
   //distributed_trial_solution = trial_solution;
 

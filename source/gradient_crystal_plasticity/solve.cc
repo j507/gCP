@@ -39,11 +39,11 @@ namespace gCP
       distributed_block_newton_update.reinit(
         fe_field->distributed_block_vector);
 
-      distributed_trial_block_solution = fe_field->block_old_solution;
+      distributed_trial_block_solution = fe_field->old_solution;
 
-      distributed_old_block_solution = fe_field->block_old_old_solution;
+      distributed_old_block_solution = fe_field->old_old_solution;
 
-      distributed_block_newton_update = fe_field->block_old_solution;
+      distributed_block_newton_update = fe_field->old_solution;
 
       if (!flag_skip_extrapolation)
       {
@@ -371,7 +371,7 @@ namespace gCP
 
     store_effective_opening_displacement_in_quadrature_history();
 
-    fe_field->block_solution = trial_block_solution;
+    fe_field->solution = trial_block_solution;
 
     *pcout << std::endl;
 
@@ -681,7 +681,7 @@ namespace gCP
 
     if (flag_reset_to_initial_trial_solution)
     {
-      distributed_trial_solution = fe_field->block_old_solution;
+      distributed_trial_solution = fe_field->old_solution;
     }
     else
     {
