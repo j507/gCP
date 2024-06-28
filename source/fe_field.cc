@@ -33,11 +33,7 @@ flag_setup_dofs_was_called(false),
 flag_affine_constraints_were_set(false),
 flag_newton_method_constraints_were_set(false),
 flag_setup_vectors_was_called(false)
-{
-  std::cout << "flag_use_single_block = "
-            << std::boolalpha
-            << flag_use_single_block << std::endl;
-}
+{}
 
 
 
@@ -277,6 +273,11 @@ void FEField<dim>::setup_dofs()
         std::vector<dealii::types::global_dof_index>(1, this->n_dofs());
     }
   }
+  else
+  {
+    dofs_per_block =
+      std::vector<dealii::types::global_dof_index>(1, this->n_dofs());
+  }
 
   // Get the locally owned and relevant degrees of freedom of
   // each processor
@@ -465,18 +466,19 @@ void FEField<dim>::setup_vectors()
                                   "called before the setup_vectors() "
                                   " method."))
 
-  // Vector instances
-  solution.reinit(locally_relevant_dofs,
-                  MPI_COMM_WORLD);
+  // BlockVector instances
+  solution.reinit(
+    locally_relevant_dofs_per_block,
+    MPI_COMM_WORLD);
 
   old_solution.reinit(solution);
 
   old_old_solution.reinit(solution);
 
-  distributed_vector.reinit(locally_owned_dofs,
-                            locally_relevant_dofs,
-                            MPI_COMM_WORLD,
-                            true);
+  distributed_block_vector.reinit(
+    locally_owned_dofs_per_block,
+    locally_relevant_dofs_per_block,
+    MPI_COMM_WORLD);
 
   solution = 0.;
 
@@ -484,32 +486,7 @@ void FEField<dim>::setup_vectors()
 
   old_old_solution = 0.;
 
-  distributed_vector = 0.;
-
-  // BlockVector instances
-  if (n_slips > 0)
-  {
-    block_solution.reinit(
-      locally_relevant_dofs_per_block,
-      MPI_COMM_WORLD);
-
-    block_old_solution.reinit(block_solution);
-
-    block_old_old_solution.reinit(block_solution);
-
-    distributed_block_vector.reinit(
-      locally_owned_dofs_per_block,
-      locally_relevant_dofs_per_block,
-      MPI_COMM_WORLD);
-
-    block_solution = 0.;
-
-    block_old_solution = 0.;
-
-    block_old_old_solution = 0.;
-
-    distributed_block_vector = 0.;
-  }
+  distributed_block_vector = 0.;
 
   flag_setup_vectors_was_called = true;
 }
@@ -535,10 +512,6 @@ void FEField<dim>::update_solution_vectors()
   old_old_solution = old_solution;
 
   old_solution = solution;
-
-  block_old_old_solution = block_old_solution;
-
-  block_old_solution = block_solution;
 }
 
 

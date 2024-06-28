@@ -54,7 +54,7 @@ FEField(const FEField<dim> &fe_field);
   * @details It contains the nodal values of the displacements and slips
   * fields.
   */
-dealii::LinearAlgebraTrilinos::MPI::Vector  solution;
+dealii::LinearAlgebraTrilinos::MPI::BlockVector solution;
 
 /*!
   * @brief The solution vector of the previous time-step
@@ -62,7 +62,7 @@ dealii::LinearAlgebraTrilinos::MPI::Vector  solution;
   * @details It contains the nodal values of the displacements and slips
   * fields.
   */
-dealii::LinearAlgebraTrilinos::MPI::Vector  old_solution;
+dealii::LinearAlgebraTrilinos::MPI::BlockVector old_solution;
 
 /*!
   * @brief The solution vector of two load steps ago
@@ -70,13 +70,7 @@ dealii::LinearAlgebraTrilinos::MPI::Vector  old_solution;
   * @details It contains the nodal values of the displacements and slips
   * fields.
   */
-dealii::LinearAlgebraTrilinos::MPI::Vector  old_old_solution;
-
-dealii::LinearAlgebraTrilinos::MPI::BlockVector block_solution;
-
-dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_solution;
-
-dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_old_solution;
+dealii::LinearAlgebraTrilinos::MPI::BlockVector old_old_solution;
 
 /*!
   * @brief The vector-valued finite element field's corresponding
@@ -85,9 +79,6 @@ dealii::LinearAlgebraTrilinos::MPI::BlockVector block_old_old_solution;
   * @details It is used to initiate distributed vectors using the copy
   * reinit() method.
   */
-dealii::LinearAlgebraTrilinos::MPI::Vector  distributed_vector;
-
-
 dealii::LinearAlgebraTrilinos::MPI::BlockVector
                                             distributed_block_vector;
 
