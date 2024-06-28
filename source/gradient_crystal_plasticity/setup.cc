@@ -36,27 +36,27 @@ void GradientCrystalPlasticitySolver<dim>::init()
   cell_is_at_grain_boundary.reinit(
     fe_field->get_triangulation().n_active_cells());
 
-  trial_block_solution.reinit(fe_field->solution);
+  trial_solution.reinit(fe_field->solution);
 
-  initial_trial_block_solution.reinit(fe_field->solution);
+  initial_trial_solution.reinit(fe_field->solution);
 
-  tmp_trial_block_solution.reinit(fe_field->solution);
+  tmp_trial_solution.reinit(fe_field->solution);
 
-  block_newton_update.reinit(fe_field->solution);
+  newton_update.reinit(fe_field->solution);
 
-  block_residual.reinit(fe_field->distributed_block_vector);
+  residual.reinit(fe_field->distributed_block_vector);
 
   cell_is_at_grain_boundary = 0.0;
 
-  trial_block_solution = 0.;
+  trial_solution = 0.;
 
-  initial_trial_block_solution = 0.;
+  initial_trial_solution = 0.;
 
-  tmp_trial_block_solution = 0.;
+  tmp_trial_solution = 0.;
 
-  block_newton_update = 0.;
+  newton_update = 0.;
 
-  block_residual = 0.;
+  residual = 0.;
 
   // Identify which cells are located at a grain boundary
   for (const auto &cell :
@@ -73,7 +73,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   // Initiate Jacobian matrix
   {
-    block_jacobian.clear();
+    jacobian.clear();
 
     dealii::TrilinosWrappers::BlockSparsityPattern
       sparsity_pattern(fe_field->get_locally_owned_dofs_per_block(),
@@ -99,7 +99,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
       *pcout << "done! \n\n";
     }
 
-    block_jacobian.reinit(sparsity_pattern);
+    jacobian.reinit(sparsity_pattern);
   }
 
   // Initiate constitutive laws
@@ -638,7 +638,7 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
   dealii::DataOut<dim> data_out;
 
   data_out.add_data_vector(fe_field->get_dof_handler(),
-                           trial_block_solution,
+                           trial_solution,
                            postprocessor);
 
   /*data_out.add_data_vector(trial_microstress->get_dof_handler(),

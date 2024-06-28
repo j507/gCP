@@ -65,9 +65,9 @@ namespace gCP
       fe_field->get_newton_method_constraints().distribute(
         distributed_block_newton_update);
 
-      trial_block_solution = distributed_trial_block_solution;
+      trial_solution = distributed_trial_block_solution;
 
-      block_newton_update = distributed_block_newton_update;
+      newton_update = distributed_block_newton_update;
     }
   }
 
@@ -155,12 +155,12 @@ namespace gCP
         distributed_trial_solution.reinit(
           fe_field->distributed_block_vector);
 
-        distributed_trial_solution = trial_block_solution;
+        distributed_trial_solution = trial_solution;
 
         fe_field->get_affine_constraints().distribute(
           distributed_trial_solution);
 
-        trial_block_solution = distributed_trial_solution;
+        trial_solution = distributed_trial_solution;
       }
 
       // Preparations for the Newton-Update and Line-Search
@@ -193,7 +193,7 @@ namespace gCP
       if (nonlinear_iteration == 1)
       {
         const auto residual_l2_norms =
-            fe_field->get_l2_norms(block_residual);
+            fe_field->get_l2_norms(residual);
 
         update_and_output_nonlinear_solver_logger(
           residual_l2_norms);
@@ -300,10 +300,10 @@ namespace gCP
       // Terminal and log output
       {
         const auto newton_update_l2_norms =
-          fe_field->get_l2_norms(block_newton_update);
+          fe_field->get_l2_norms(newton_update);
 
         const auto residual_l2_norms =
-          fe_field->get_l2_norms(block_residual);
+          fe_field->get_l2_norms(residual);
 
         const double order_of_convergence =
           std::log(residual_norm) /std::log(old_residual_norm);
@@ -371,7 +371,7 @@ namespace gCP
 
     store_effective_opening_displacement_in_quadrature_history();
 
-    fe_field->solution = trial_block_solution;
+    fe_field->solution = trial_solution;
 
     *pcout << std::endl;
 
@@ -399,7 +399,7 @@ namespace gCP
     distributed_block_newton_update.reinit(
       fe_field->distributed_block_vector);
 
-    distributed_block_newton_update = block_newton_update;
+    distributed_block_newton_update = newton_update;
 
     const RunTimeParameters::KrylovParameters &krylov_parameters =
       parameters.krylov_parameters;
@@ -411,9 +411,9 @@ namespace gCP
         std::max(residual_norm * krylov_parameters.relative_tolerance,
                  krylov_parameters.absolute_tolerance));
 
-    const auto &system_matrix = block_jacobian.block(0,0);
+    const auto &system_matrix = jacobian.block(0,0);
 
-    const auto &right_hand_side = block_residual.block(0);
+    const auto &right_hand_side = residual.block(0);
 
     auto &solution = distributed_block_newton_update.block(0);
 
@@ -558,7 +558,7 @@ namespace gCP
       distributed_block_newton_update);
 
     // Pass the distributed vectors to their ghosted counterpart
-    block_newton_update = distributed_block_newton_update;
+    newton_update = distributed_block_newton_update;
 
     if (parameters.verbose)
       *pcout << " done!" << std::endl;
@@ -582,9 +582,9 @@ namespace gCP
     distributed_block_newton_update.reinit(
       fe_field->distributed_block_vector);
 
-    distributed_block_trial_solution  = trial_block_solution;
+    distributed_block_trial_solution  = trial_solution;
 
-    distributed_block_newton_update   = block_newton_update;
+    distributed_block_newton_update   = newton_update;
 
     distributed_block_trial_solution.add(
       relaxation_parameter, distributed_block_newton_update);
@@ -592,7 +592,7 @@ namespace gCP
     fe_field->get_affine_constraints().distribute(
       distributed_block_trial_solution);
 
-    trial_block_solution = distributed_block_trial_solution;
+    trial_solution = distributed_block_trial_solution;
   }
 
 
@@ -609,9 +609,9 @@ namespace gCP
 
     distributed_newton_update.reinit(fe_field->distributed_block_vector);
 
-    distributed_trial_solution = trial_block_solution;
+    distributed_trial_solution = trial_solution;
 
-    distributed_newton_update = block_newton_update;
+    distributed_newton_update = newton_update;
 
     for (const auto &locally_owned_dof :
           fe_field->get_locally_owned_dofs())
@@ -637,7 +637,7 @@ namespace gCP
     fe_field->get_affine_constraints().distribute(
       distributed_trial_solution);
 
-    trial_block_solution = distributed_trial_solution;
+    trial_solution = distributed_trial_solution;
   }
 
 
@@ -652,18 +652,18 @@ namespace gCP
     distributed_block_trial_solution.reinit(
       fe_field->distributed_block_vector);
 
-    distributed_block_trial_solution = trial_block_solution;
+    distributed_block_trial_solution = trial_solution;
 
     fe_field->get_affine_constraints().distribute(
       distributed_block_trial_solution);
 
     if (flag_store_initial_trial_solution)
     {
-      initial_trial_block_solution = distributed_block_trial_solution;
+      initial_trial_solution = distributed_block_trial_solution;
     }
     else
     {
-      tmp_trial_block_solution = distributed_block_trial_solution;
+      tmp_trial_solution = distributed_block_trial_solution;
     }
   }
 
@@ -685,13 +685,13 @@ namespace gCP
     }
     else
     {
-      distributed_trial_solution = tmp_trial_block_solution;
+      distributed_trial_solution = tmp_trial_solution;
     }
 
     fe_field->get_affine_constraints().distribute(
       distributed_trial_solution);
 
-    trial_block_solution = distributed_trial_solution;
+    trial_solution = distributed_trial_solution;
   }
 
 
@@ -780,7 +780,7 @@ namespace gCP
 
     distributed_residual.reinit(fe_field->distributed_block_vector);
 
-    distributed_residual = block_residual;
+    distributed_residual = residual;
 
     double vector_squared_entries = 0.0;
 

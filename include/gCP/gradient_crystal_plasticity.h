@@ -143,17 +143,17 @@ private:
 
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix block_jacobian;
+  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix jacobian;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector   trial_block_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector   initial_trial_block_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   initial_trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector   tmp_trial_block_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   tmp_trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector   block_newton_update;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   newton_update;
 
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector   block_residual;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   residual;
 
   double                                            residual_norm;
 
