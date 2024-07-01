@@ -475,7 +475,7 @@ void FEField<dim>::setup_vectors()
 
   old_old_solution.reinit(solution);
 
-  distributed_block_vector.reinit(
+  distributed_vector.reinit(
     locally_owned_dofs_per_block,
     locally_relevant_dofs_per_block,
     MPI_COMM_WORLD);
@@ -486,7 +486,7 @@ void FEField<dim>::setup_vectors()
 
   old_old_solution = 0.;
 
-  distributed_block_vector = 0.;
+  distributed_vector = 0.;
 
   flag_setup_vectors_was_called = true;
 }
@@ -542,7 +542,7 @@ std::tuple<double, double, double> FEField<dim>::get_l2_norms(
 {
   dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vektor;
 
-  distributed_vektor.reinit(distributed_block_vector);
+  distributed_vektor.reinit(distributed_vector);
 
   distributed_vektor = vector;
 

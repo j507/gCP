@@ -80,7 +80,7 @@ dealii::LinearAlgebraTrilinos::MPI::BlockVector old_old_solution;
   * reinit() method.
   */
 dealii::LinearAlgebraTrilinos::MPI::BlockVector
-                                            distributed_block_vector;
+                                            distributed_vector;
 
 
 /**

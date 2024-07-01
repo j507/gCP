@@ -44,7 +44,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   newton_update.reinit(fe_field->solution);
 
-  residual.reinit(fe_field->distributed_block_vector);
+  residual.reinit(fe_field->distributed_vector);
 
   cell_is_at_grain_boundary = 0.0;
 
@@ -287,10 +287,10 @@ void GradientCrystalPlasticitySolver<dim>::init()
       // Initiate vectors
       {
         trial_microstress_block_right_hand_side.reinit(
-          block_trial_microstress->distributed_block_vector);
+          block_trial_microstress->distributed_vector);
 
         trial_microstress_lumped_block_matrix.reinit(
-          block_trial_microstress->distributed_block_vector);
+          block_trial_microstress->distributed_vector);
       }
 
       /*

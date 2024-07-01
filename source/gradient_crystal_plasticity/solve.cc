@@ -31,13 +31,13 @@ namespace gCP
         distributed_block_newton_update;
 
       distributed_trial_block_solution.reinit(
-        fe_field->distributed_block_vector);
+        fe_field->distributed_vector);
 
       distributed_old_block_solution.reinit(
-        fe_field->distributed_block_vector);
+        fe_field->distributed_vector);
 
       distributed_block_newton_update.reinit(
-        fe_field->distributed_block_vector);
+        fe_field->distributed_vector);
 
       distributed_trial_block_solution = fe_field->old_solution;
 
@@ -153,7 +153,7 @@ namespace gCP
           distributed_trial_solution;
 
         distributed_trial_solution.reinit(
-          fe_field->distributed_block_vector);
+          fe_field->distributed_vector);
 
         distributed_trial_solution = trial_solution;
 
@@ -397,7 +397,7 @@ namespace gCP
       distributed_block_newton_update;
 
     distributed_block_newton_update.reinit(
-      fe_field->distributed_block_vector);
+      fe_field->distributed_vector);
 
     distributed_block_newton_update = newton_update;
 
@@ -577,10 +577,10 @@ namespace gCP
       distributed_block_newton_update;
 
     distributed_block_trial_solution.reinit(
-      fe_field->distributed_block_vector);
+      fe_field->distributed_vector);
 
     distributed_block_newton_update.reinit(
-      fe_field->distributed_block_vector);
+      fe_field->distributed_vector);
 
     distributed_block_trial_solution  = trial_solution;
 
@@ -605,9 +605,9 @@ namespace gCP
 
     dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_newton_update;
 
-    distributed_trial_solution.reinit(fe_field->distributed_block_vector);
+    distributed_trial_solution.reinit(fe_field->distributed_vector);
 
-    distributed_newton_update.reinit(fe_field->distributed_block_vector);
+    distributed_newton_update.reinit(fe_field->distributed_vector);
 
     distributed_trial_solution = trial_solution;
 
@@ -650,7 +650,7 @@ namespace gCP
       distributed_block_trial_solution;
 
     distributed_block_trial_solution.reinit(
-      fe_field->distributed_block_vector);
+      fe_field->distributed_vector);
 
     distributed_block_trial_solution = trial_solution;
 
@@ -677,7 +677,7 @@ namespace gCP
       distributed_trial_solution;
 
     distributed_trial_solution.reinit(
-      fe_field->distributed_block_vector);
+      fe_field->distributed_vector);
 
     if (flag_reset_to_initial_trial_solution)
     {
@@ -778,7 +778,7 @@ namespace gCP
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
       distributed_residual;
 
-    distributed_residual.reinit(fe_field->distributed_block_vector);
+    distributed_residual.reinit(fe_field->distributed_vector);
 
     distributed_residual = residual;
 
