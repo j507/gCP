@@ -895,13 +895,14 @@ void RatePostprocessor<dim>::evaluate_vector_field(
 
 
 template <int dim>
-TrialstressPostprocessor<dim>::TrialstressPostprocessor(
-  std::shared_ptr<FEField<dim>>  &trial_microstress,
-  std::shared_ptr<CrystalsData<dim>>      &crystals_data)
-:
-trial_microstress(trial_microstress),
-crystals_data(crystals_data)
-{}
+void TrialstressPostprocessor<dim>::reinit(
+  std::shared_ptr<FEField<dim>> &trial_microstress,
+  std::shared_ptr<const CrystalsData<dim>> &crystals_data)
+{
+  this->trial_microstress = trial_microstress;
+
+  this->crystals_data = crystals_data;
+}
 
 
 

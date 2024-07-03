@@ -60,10 +60,7 @@ nonlinear_solver_logger(
 postprocessor(
   fe_field,
   crystals_data),
-flag_init_was_called(false),
-trial_postprocessor(
-  block_trial_microstress,
-  crystals_data)
+flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,
          dealii::ExcMessage("The FEField<dim>'s shared pointer has "

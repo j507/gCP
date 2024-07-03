@@ -153,9 +153,9 @@ template <int dim>
 class TrialstressPostprocessor :  public dealii::DataPostprocessor<dim>
 {
 public:
-  TrialstressPostprocessor(
-    std::shared_ptr<FEField<dim>>  &trial_microstress,
-    std::shared_ptr<CrystalsData<dim>>      &crystals_data);
+  void reinit(
+    std::shared_ptr<FEField<dim>> &trial_microstress,
+    std::shared_ptr<const CrystalsData<dim>> &crystals_data);
 
   virtual void evaluate_vector_field(
     const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,

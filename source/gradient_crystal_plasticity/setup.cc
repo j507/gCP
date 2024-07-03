@@ -197,6 +197,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     block_trial_microstress->setup_vectors();
 
+    trial_postprocessor.reinit(
+      block_trial_microstress,
+      crystals_data);
     // Initiate trial_microstress_matrix matrix
     {
       trial_microstress_block_matrix.clear();
