@@ -217,6 +217,11 @@ const dealii::AffineConstraints<double>&
   */
 const dealii::IndexSet& get_locally_owned_dofs() const;
 
+const dealii::IndexSet& get_locally_owned_displacement_dofs() const;
+
+const dealii::IndexSet& get_locally_owned_plastic_slip_dofs() const;
+
+
 const std::vector<dealii::IndexSet>&
   get_locally_owned_dofs_per_block() const;
 
@@ -388,6 +393,10 @@ dealii::AffineConstraints<double> newton_method_constraints;
   * @brief The set of the degrees of freedom owned by the processor.
   */
 dealii::IndexSet                  locally_owned_dofs;
+
+dealii::IndexSet                  locally_owned_displacement_dofs;
+
+dealii::IndexSet                  locally_owned_plastic_slip_dofs;
 
 /*!
   * @brief The set of the degrees of freedom that are relevant for
@@ -583,6 +592,24 @@ inline const dealii::IndexSet &
 FEField<dim>::get_locally_owned_dofs() const
 {
   return (locally_owned_dofs);
+}
+
+
+
+template <int dim>
+inline const dealii::IndexSet &
+FEField<dim>::get_locally_owned_displacement_dofs() const
+{
+  return (locally_owned_displacement_dofs);
+}
+
+
+
+template <int dim>
+inline const dealii::IndexSet &
+FEField<dim>::get_locally_owned_plastic_slip_dofs() const
+{
+  return (locally_owned_plastic_slip_dofs);
 }
 
 

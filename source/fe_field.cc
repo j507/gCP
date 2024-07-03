@@ -70,6 +70,12 @@ flag_setup_vectors_was_called(false)
 
     locally_owned_dofs = fe_field.locally_owned_dofs;
 
+    locally_owned_displacement_dofs =
+      fe_field.locally_owned_displacement_dofs;
+
+    locally_owned_plastic_slip_dofs =
+      fe_field.locally_owned_plastic_slip_dofs;
+
     locally_relevant_dofs = fe_field.locally_relevant_dofs;
 
     locally_owned_dofs_per_block =
@@ -418,8 +424,28 @@ void FEField<dim>::setup_dofs()
               std::to_string(vector_dof_indices.size() +
                             scalar_dof_indices.size())))
 
-    // Modify flag because the dofs are setup
-    flag_setup_dofs_was_called = true;
+
+  locally_owned_displacement_dofs =  locally_owned_dofs;
+
+  locally_owned_plastic_slip_dofs =  locally_owned_dofs;
+
+  for (unsigned int crystal_id = 0;
+        crystal_id < this->get_n_crystals(); crystal_id++)
+  {
+    const dealii::IndexSet extracted_dofs =
+      dealii::DoFTools::extract_dofs(
+        this->get_dof_handler(),
+        this->get_fe_collection().component_mask(
+          this->get_displacement_extractor(crystal_id)));
+
+    locally_owned_plastic_slip_dofs.subtract_set(extracted_dofs);
+  }
+
+  locally_owned_displacement_dofs.subtract_set(
+    locally_owned_plastic_slip_dofs);
+
+  // Modify flag because the dofs are setup
+  flag_setup_dofs_was_called = true;
 }
 
 
