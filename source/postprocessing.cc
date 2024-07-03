@@ -896,7 +896,7 @@ void RatePostprocessor<dim>::evaluate_vector_field(
 
 template <int dim>
 TrialstressPostprocessor<dim>::TrialstressPostprocessor(
-  std::shared_ptr<TrialMicrostress<dim>>  &trial_microstress,
+  std::shared_ptr<FEField<dim>>  &trial_microstress,
   std::shared_ptr<CrystalsData<dim>>      &crystals_data)
 :
 trial_microstress(trial_microstress),
@@ -1001,11 +1001,12 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
       {
         computed_quantities[q_point](slip_id) +=
             inputs.solution_values[q_point](
-              slip_id + n_slips * crystal_id);
+              dim * n_crystals + slip_id + n_slips * crystal_id);
 
         computed_quantities[q_point](n_slips + slip_id) +=
             std::abs(inputs.solution_values[q_point](
-              slip_id + n_slips * crystal_id)) > 60.0;
+              dim * n_crystals + slip_id + n_slips * crystal_id))
+                > 60.0;
       }
     }
   }

@@ -61,12 +61,8 @@ postprocessor(
   fe_field,
   crystals_data),
 flag_init_was_called(false),
-trial_microstress(
-  std::make_shared<TrialMicrostress<dim>>(
-  fe_field->get_triangulation(),
-  fe_field->get_slips_fe_degree())),
 trial_postprocessor(
-  trial_microstress,
+  block_trial_microstress,
   crystals_data)
 {
   Assert(fe_field.get() != nullptr,

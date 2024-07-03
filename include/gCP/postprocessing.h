@@ -154,7 +154,7 @@ class TrialstressPostprocessor :  public dealii::DataPostprocessor<dim>
 {
 public:
   TrialstressPostprocessor(
-    std::shared_ptr<TrialMicrostress<dim>>  &trial_microstress,
+    std::shared_ptr<FEField<dim>>  &trial_microstress,
     std::shared_ptr<CrystalsData<dim>>      &crystals_data);
 
   virtual void evaluate_vector_field(
@@ -171,9 +171,9 @@ public:
   virtual dealii::UpdateFlags get_needed_update_flags() const override;
 
 private:
-  std::shared_ptr<const TrialMicrostress<dim>>  trial_microstress;
+  std::shared_ptr<const FEField<dim>> trial_microstress;
 
-  std::shared_ptr<const CrystalsData<dim>>      crystals_data;
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 };
 
 
