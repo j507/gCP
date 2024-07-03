@@ -609,28 +609,20 @@ Scratch<dim>::Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
   const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
-  const dealii::hp::FECollection<dim>       &trial_microstress_finite_element_collection,
-  const dealii::hp::FECollection<dim>       &slips_finite_element_collection,
-  const dealii::UpdateFlags                 trial_microstress_update_flags,
-  const dealii::UpdateFlags                 slips_update_flags,
-  const dealii::UpdateFlags                 trial_microstress_face_update_flags,
-  const dealii::UpdateFlags                 slips_face_update_flags,
+  const dealii::hp::FECollection<dim>       &finite_element_collection,
+  const dealii::UpdateFlags                 update_flags,
+  const dealii::UpdateFlags                 face_update_flags,
   const unsigned int                        n_slips)
 :
 ScratchBase<dim>(
   quadrature_collection,
-  trial_microstress_finite_element_collection),
+  finite_element_collection),
 n_slips(n_slips),
-trial_microstress_hp_fe_values(
+hp_fe_values(
   mapping_collection,
-  trial_microstress_finite_element_collection,
+  finite_element_collection,
   quadrature_collection,
-  trial_microstress_update_flags),
-fe_field_hp_fe_values(
-  mapping_collection,
-  slips_finite_element_collection,
-  quadrature_collection,
-  slips_update_flags),
+  update_flags),
 test_function_values(
   n_slips,
   std::vector<double>(this->dofs_per_cell)),
@@ -653,16 +645,11 @@ vectorial_microstress_values(
   n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 JxW_values(this->n_q_points),
-trial_microstress_hp_fe_face_values(
+hp_fe_face_values(
   mapping_collection,
-  trial_microstress_finite_element_collection,
+  finite_element_collection,
   face_quadrature_collection,
-  trial_microstress_face_update_flags),
-fe_field_hp_fe_face_values(
-  mapping_collection,
-  slips_finite_element_collection,
-  face_quadrature_collection,
-  slips_face_update_flags),
+  face_update_flags),
 n_face_quadrature_points(face_quadrature_collection.max_n_quadrature_points()),
 test_function_face_values(
   n_slips,
@@ -684,16 +671,11 @@ Scratch<dim>::Scratch(const Scratch<dim> &data)
 :
 ScratchBase<dim>(data),
 n_slips(data.n_slips),
-trial_microstress_hp_fe_values(
-  data.trial_microstress_hp_fe_values.get_mapping_collection(),
-  data.trial_microstress_hp_fe_values.get_fe_collection(),
-  data.trial_microstress_hp_fe_values.get_quadrature_collection(),
-  data.trial_microstress_hp_fe_values.get_update_flags()),
-fe_field_hp_fe_values(
-  data.fe_field_hp_fe_values.get_mapping_collection(),
-  data.fe_field_hp_fe_values.get_fe_collection(),
-  data.fe_field_hp_fe_values.get_quadrature_collection(),
-  data.fe_field_hp_fe_values.get_update_flags()),
+hp_fe_values(
+  data.hp_fe_values.get_mapping_collection(),
+  data.hp_fe_values.get_fe_collection(),
+  data.hp_fe_values.get_quadrature_collection(),
+  data.hp_fe_values.get_update_flags()),
 test_function_values(
   data.n_slips,
   std::vector<double>(this->dofs_per_cell)),
@@ -716,16 +698,11 @@ vectorial_microstress_values(
   data.n_slips,
   std::vector<dealii::Tensor<1,dim>>(this->n_q_points)),
 JxW_values(this->n_q_points),
-trial_microstress_hp_fe_face_values(
-  data.trial_microstress_hp_fe_face_values.get_mapping_collection(),
-  data.trial_microstress_hp_fe_face_values.get_fe_collection(),
-  data.trial_microstress_hp_fe_face_values.get_quadrature_collection(),
-  data.trial_microstress_hp_fe_face_values.get_update_flags()),
-fe_field_hp_fe_face_values(
-  data.fe_field_hp_fe_face_values.get_mapping_collection(),
-  data.fe_field_hp_fe_face_values.get_fe_collection(),
-  data.fe_field_hp_fe_face_values.get_quadrature_collection(),
-  data.fe_field_hp_fe_face_values.get_update_flags()),
+hp_fe_face_values(
+  data.hp_fe_face_values.get_mapping_collection(),
+  data.hp_fe_face_values.get_fe_collection(),
+  data.hp_fe_face_values.get_quadrature_collection(),
+  data.hp_fe_face_values.get_update_flags()),
 n_face_quadrature_points(data.n_face_quadrature_points),
 test_function_face_values(
   data.n_slips,
