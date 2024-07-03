@@ -135,13 +135,12 @@ namespace gCP
           reset_inactive_set_values();
 
           flag_compute_active_set = false;
-
-          //active_set = plastic_slip_dofs_set;
         }
       }
       else
       {
-        active_set = plastic_slip_dofs_set;
+        locally_owned_active_set =
+          fe_field->get_locally_owned_plastic_slip_dofs();
       }
 
       debug_output();
@@ -329,7 +328,7 @@ namespace gCP
         parameters.constitutive_laws_parameters.
             scalar_microstress_law_parameters.flag_rate_independent)
     {
-      const dealii::IndexSet original_active_set = active_set;
+      const dealii::IndexSet original_active_set = locally_owned_active_set;
 
       // Active set
       reset_internal_newton_method_constraints();
@@ -348,10 +347,10 @@ namespace gCP
       }
       else
       {
-        active_set = plastic_slip_dofs_set;
+        locally_owned_active_set = fe_field->get_locally_owned_plastic_slip_dofs();
       }
 
-      if (original_active_set != active_set)
+      if (original_active_set != locally_owned_active_set)
       {
         flag_successful_convergence = false;
 
@@ -615,13 +614,15 @@ namespace gCP
     for (const auto &locally_owned_dof :
           fe_field->get_locally_owned_dofs())
     {
-      if (displacement_dofs_set.is_element(locally_owned_dof))
+      if (fe_field->get_locally_owned_displacement_dofs().
+            is_element(locally_owned_dof))
       {
         distributed_trial_solution(locally_owned_dof) +=
           relaxation_parameters[0] *
           distributed_newton_update(locally_owned_dof);
       }
-      else if (plastic_slip_dofs_set.is_element(locally_owned_dof))
+      else if (fe_field->get_locally_owned_plastic_slip_dofs().
+                is_element(locally_owned_dof))
       {
         distributed_trial_solution(locally_owned_dof) +=
           relaxation_parameters[1] *

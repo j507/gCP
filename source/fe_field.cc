@@ -441,8 +441,12 @@ void FEField<dim>::setup_dofs()
     locally_owned_plastic_slip_dofs.subtract_set(extracted_dofs);
   }
 
+  locally_owned_plastic_slip_dofs.compress();
+
   locally_owned_displacement_dofs.subtract_set(
     locally_owned_plastic_slip_dofs);
+
+  locally_owned_displacement_dofs.compress();
 
   // Modify flag because the dofs are setup
   flag_setup_dofs_was_called = true;

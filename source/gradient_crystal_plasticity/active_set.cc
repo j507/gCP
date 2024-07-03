@@ -28,7 +28,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
   compute_trial_microstress();
 
-  active_set.clear();
+  locally_owned_active_set.clear();
 
   dealii::AffineConstraints<double> inactive_set_affine_constraints;
 
@@ -65,7 +65,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
         if (!fe_field->get_affine_constraints().is_constrained(
               locally_owned_dof))
         {
-          active_set.add_index(locally_owned_dof);
+          locally_owned_active_set.add_index(locally_owned_dof);
         }
 
         // If a degree of freedom leads to plastic flow at a periodic
@@ -80,13 +80,13 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
                 fe_field->get_affine_constraints().
                   get_constraint_entries(locally_owned_dof);
 
-          active_set.add_index(locally_owned_dof);
+          locally_owned_active_set.add_index(locally_owned_dof);
 
-          active_set.add_index((*constraint_entries)[0].first);
+          locally_owned_active_set.add_index((*constraint_entries)[0].first);
         }
       }
 
-      if (!active_set.is_element(locally_owned_dof))
+      if (!locally_owned_active_set.is_element(locally_owned_dof))
       {
         inactive_set_affine_constraints.add_line(locally_owned_dof);
       }
@@ -100,7 +100,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
   inactive_set_affine_constraints.close();
 
-  active_set.compress();
+  locally_owned_active_set.compress();
 }
 
 
@@ -108,13 +108,14 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_inactive_set()
 {
-  inactive_set.clear();
+  locally_owned_inactive_set.clear();
 
   for (const auto &locally_owned_dof :
         fe_field->get_locally_owned_dofs())
   {
     const bool flag_plastic_slip_dof =
-      plastic_slip_dofs_set.is_element(locally_owned_dof);
+      fe_field->get_locally_owned_plastic_slip_dofs().is_element(
+        locally_owned_dof);
 
     const bool flag_no_dirichlet_dof =
       fe_field->get_affine_constraints().is_identity_constrained(
@@ -123,16 +124,16 @@ void GradientCrystalPlasticitySolver<dim>::determine_inactive_set()
         locally_owned_dof);
 
     const bool flag_inactive_dof =
-      !active_set.is_element(locally_owned_dof);
+      !locally_owned_active_set.is_element(locally_owned_dof);
 
     if (flag_plastic_slip_dof && flag_no_dirichlet_dof &&
           flag_inactive_dof)
     {
-      inactive_set.add_index(locally_owned_dof);
+      locally_owned_inactive_set.add_index(locally_owned_dof);
     }
   }
 
-  inactive_set.compress();
+  locally_owned_inactive_set.compress();
 }
 
 
@@ -147,7 +148,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 
   //distributed_trial_solution = trial_solution;
 
-  for (const auto &locally_owned_dof : inactive_set)
+  for (const auto &locally_owned_dof : locally_owned_inactive_set)
   {
     distributed_trial_solution(locally_owned_dof) =
       fe_field->old_solution(locally_owned_dof);

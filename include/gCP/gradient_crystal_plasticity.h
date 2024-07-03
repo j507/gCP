@@ -293,16 +293,9 @@ private:
   // Members and methods related to the trial microstress
   std::shared_ptr<FEField<dim>> block_trial_microstress;
 
-  std::map<dealii::types::global_dof_index,
-           dealii::types::global_dof_index>   dof_mapping;
+  dealii::IndexSet                            locally_owned_active_set;
 
-  dealii::IndexSet                            active_set;
-
-  dealii::IndexSet                            inactive_set;
-
-  dealii::IndexSet                            displacement_dofs_set;
-
-  dealii::IndexSet                            plastic_slip_dofs_set;
+  dealii::IndexSet                            locally_owned_inactive_set;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix
     trial_microstress_block_matrix;
@@ -314,8 +307,6 @@ private:
     trial_microstress_block_right_hand_side;
 
   gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
-
-  void initialize_dof_mapping();
 
   void reset_internal_newton_method_constraints();
 
