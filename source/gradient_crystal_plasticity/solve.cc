@@ -347,7 +347,8 @@ namespace gCP
       }
       else
       {
-        locally_owned_active_set = fe_field->get_locally_owned_plastic_slip_dofs();
+        locally_owned_active_set =
+          fe_field->get_locally_owned_plastic_slip_dofs();
       }
 
       if (original_active_set != locally_owned_active_set)
@@ -427,28 +428,11 @@ namespace gCP
         }
         catch (std::exception &exc)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Exception in the solve method: " << std::endl
-                    << exc.what() << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_std_excepction(exc, "solve method");
         }
         catch (...)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Unknown exception in the solve method!" << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_unknown_exception("solve method");
         }
       }
       break;
@@ -473,28 +457,11 @@ namespace gCP
         }
         catch (std::exception &exc)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Exception in the solve method: " << std::endl
-                    << exc.what() << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_std_excepction(exc, "solve method");
         }
         catch (...)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Unknown exception in the solve method!" << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_unknown_exception("solve method");
         }
       }
       break;
@@ -519,28 +486,11 @@ namespace gCP
         }
         catch (std::exception &exc)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Exception in the solve method: " << std::endl
-                    << exc.what() << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_std_excepction(exc, "solve method");
         }
         catch (...)
         {
-          std::cerr << std::endl
-                    << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::cerr << "Unknown exception in the solve method!" << std::endl
-                    << "Aborting!" << std::endl
-                    << "----------------------------------------------------"
-                    << std::endl;
-          std::abort();
+          internal::handle_unknown_exception("solve method");
         }
       }
       break;

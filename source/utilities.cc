@@ -8,6 +8,47 @@ namespace gCP
 
 
 
+namespace internal
+{
+
+
+
+void handle_std_excepction(
+  const std::exception  &exception,
+  const std::string     string)
+{
+  std::cerr << std::endl << std::endl
+            << "----------------------------------------------------"
+            << std::endl
+            << "Exception in the " << string << ": " << std::endl
+            << exception.what() << std::endl << "Aborting!" << std::endl
+            << "----------------------------------------------------"
+            << std::endl;
+
+  std::abort();
+}
+
+
+
+void handle_unknown_exception(const std::string string)
+{
+  std::cerr << std::endl << std::endl
+            << "----------------------------------------------------"
+            << std::endl
+            << "Exception in the " << string << ": " << std::endl
+            << "Aborting!" << std::endl
+            << "----------------------------------------------------"
+            << std::endl;
+
+  std::abort();
+}
+
+
+
+} // internal
+
+
+
 namespace Utilities
 {
 
