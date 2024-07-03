@@ -21,8 +21,8 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
   const RunTimeParameters::HardeningLaw &prm =
     parameters.constitutive_laws_parameters.hardening_law_parameters;
 
-  Assert(dof_mapping.size() != 0,
-         dealii::ExcMessage("The degree of freedom mapping is empty"));
+  //Assert(dof_mapping.size() != 0,
+  //       dealii::ExcMessage("The degree of freedom mapping is empty"));
 
   assemble_trial_microstress_right_hand_side();
 
@@ -41,7 +41,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
       fe_field->get_hanging_node_constraints());
 
     for (const auto &locally_owned_dof :
-          trial_microstress->get_locally_owned_dofs())
+          fe_field->get_locally_owned_plastic_slip_dofs())
     {
       double local_yield_stress = 0.;
 
@@ -54,39 +54,41 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
         AssertThrow(false, dealii::ExcNotImplemented())
       }
 
-      const dealii::types::global_dof_index dof =
-        dof_mapping[locally_owned_dof];
+      //const dealii::types::global_dof_index dof =
+      //  dof_mapping[locally_owned_dof];
 
-      if (std::abs(trial_microstress->solution[locally_owned_dof]) >
-            local_yield_stress)
+      if (std::abs(block_trial_microstress->
+            solution[locally_owned_dof]) > local_yield_stress)
       {
         // The material can not plastically flow at the Dirichlet
         // boundary
-        if (!fe_field->get_affine_constraints().is_constrained(dof))
+        if (!fe_field->get_affine_constraints().is_constrained(
+              locally_owned_dof))
         {
-          active_set.add_index(dof);
+          active_set.add_index(locally_owned_dof);
         }
 
         // If a degree of freedom leads to plastic flow at a periodic
         // boundary, the corresponding degree of freedom needs to be
         // also added to the active set
-        if (fe_field->get_affine_constraints().is_identity_constrained(dof))
+        if (fe_field->get_affine_constraints().is_identity_constrained(
+              locally_owned_dof))
         {
           const std::vector<
             std::pair<dealii::types::global_dof_index, double>>
               *constraint_entries =
                 fe_field->get_affine_constraints().
-                  get_constraint_entries(dof);
+                  get_constraint_entries(locally_owned_dof);
 
-          active_set.add_index(dof);
+          active_set.add_index(locally_owned_dof);
 
           active_set.add_index((*constraint_entries)[0].first);
         }
       }
 
-      if (!active_set.is_element(dof))
+      if (!active_set.is_element(locally_owned_dof))
       {
-        inactive_set_affine_constraints.add_line(dof);
+        inactive_set_affine_constraints.add_line(locally_owned_dof);
       }
     }
 
@@ -161,33 +163,33 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
 {
-  dealii::LinearAlgebraTrilinos::MPI::Vector distributed_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_solution;
 
-  distributed_solution.reinit(trial_microstress->distributed_vector);
+  distributed_solution.reinit(
+    block_trial_microstress->distributed_vector);
 
   distributed_solution = 0.;
 
   if (true)
   {
-    for (unsigned int entry_id = 0;
-        entry_id < trial_microstress_lumped_matrix.size();
-        entry_id++)
+    for (unsigned int entry_id = 0; entry_id < distributed_solution.size();
+          entry_id++)
     {
-      if (trial_microstress->get_locally_owned_dofs().
+      if (block_trial_microstress->get_locally_owned_plastic_slip_dofs().
             is_element(entry_id))
       {
         AssertThrow(
-          trial_microstress_lumped_matrix(entry_id) != 0.0,
+          trial_microstress_lumped_block_matrix(entry_id) != 0.0,
           dealii::ExcMessage(""));
 
         distributed_solution(entry_id) =
-          trial_microstress_right_hand_side(entry_id) /
-          trial_microstress_lumped_matrix(entry_id);
+          trial_microstress_block_right_hand_side(entry_id) /
+            trial_microstress_lumped_block_matrix(entry_id);
       }
     }
   }
   else
-  {
+  {/*
     const RunTimeParameters::KrylovParameters &krylov_parameters =
       parameters.krylov_parameters;
 
@@ -201,22 +203,22 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
 
     dealii::TrilinosWrappers::SolverDirect solver(solver_control);
 
-    /*dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
+    dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
       additional_data;
 
     dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
 
     preconditioner.initialize(trial_microstress_matrix, additional_data);
-    */
+
     try
     {
       solver.solve(trial_microstress_matrix,
                   distributed_solution,
                   trial_microstress_right_hand_side);
-      /*
+
       solver.solve(trial_microstress_matrix,
                    distributed_solution,
-                   trial_microstress_right_hand_side);*/
+                   trial_microstress_right_hand_side);
     }
     catch (std::exception &exc)
     {
@@ -242,13 +244,13 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
                 << "----------------------------------------------------"
                 << std::endl;
       std::abort();
-    }
+    }*/
   }
 
-  trial_microstress->get_hanging_node_constraints().distribute(
+  block_trial_microstress->get_hanging_node_constraints().distribute(
     distributed_solution);
 
-  trial_microstress->solution = distributed_solution;
+  block_trial_microstress->solution = distributed_solution;
 }
 
 

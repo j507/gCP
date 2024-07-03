@@ -291,10 +291,7 @@ private:
     const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
 
   // Members and methods related to the trial microstress
-
-  std::shared_ptr<TrialMicrostress<dim>>      trial_microstress;
-
-  std::unique_ptr<FEField<dim>> block_trial_microstress;
+  std::shared_ptr<FEField<dim>> block_trial_microstress;
 
   std::map<dealii::types::global_dof_index,
            dealii::types::global_dof_index>   dof_mapping;
@@ -306,13 +303,6 @@ private:
   dealii::IndexSet                            displacement_dofs_set;
 
   dealii::IndexSet                            plastic_slip_dofs_set;
-
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix
-                                              trial_microstress_matrix;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix
     trial_microstress_block_matrix;

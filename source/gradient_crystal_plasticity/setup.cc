@@ -192,113 +192,44 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   if (crystals_data->get_n_slips() > 0)
   {
+    block_trial_microstress =
+      std::make_shared<FEField<dim>>(*fe_field);
+
+    block_trial_microstress->setup_vectors();
+
+    // Initiate trial_microstress_matrix matrix
     {
-      trial_microstress->setup_extractors(
-        crystals_data->get_n_crystals(),
-        crystals_data->get_n_slips());
+      trial_microstress_block_matrix.clear();
 
-      trial_microstress->update_ghost_material_ids();
+      dealii::TrilinosWrappers::BlockSparsityPattern
+        sparsity_pattern(
+          block_trial_microstress->get_locally_owned_dofs_per_block(),
+          block_trial_microstress->get_locally_owned_dofs_per_block(),
+          block_trial_microstress->get_locally_relevant_dofs_per_block(),
+          MPI_COMM_WORLD);
 
-      for (const auto &trial_microstress_cell :
-          trial_microstress->get_dof_handler().active_cell_iterators())
-      {
-        if (trial_microstress_cell->is_locally_owned())
-        {
-          trial_microstress_cell->set_active_fe_index(
-            trial_microstress_cell->material_id());
-        }
-      }
+      dealii::DoFTools::make_sparsity_pattern(
+        block_trial_microstress->get_dof_handler(),
+        sparsity_pattern,
+        block_trial_microstress->get_hanging_node_constraints(),
+        false,
+        dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
-      trial_microstress->setup_dofs();
+      sparsity_pattern.compress();
 
-      trial_microstress->setup_vectors();
-
-      initialize_dof_mapping();
-
-
-      // Initiate trial_microstress_matrix matrix
-      {
-        trial_microstress_matrix.clear();
-
-        dealii::TrilinosWrappers::SparsityPattern
-          sparsity_pattern(
-            trial_microstress->get_locally_owned_dofs(),
-            trial_microstress->get_locally_owned_dofs(),
-            trial_microstress->get_locally_relevant_dofs(),
-            MPI_COMM_WORLD);
-
-        dealii::DoFTools::make_sparsity_pattern(
-          trial_microstress->get_dof_handler(),
-          sparsity_pattern,
-          trial_microstress->get_hanging_node_constraints(),
-          false,
-          dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
-
-        sparsity_pattern.compress();
-
-        trial_microstress_matrix.reinit(sparsity_pattern);
-      }
-
-      // Initiate vectors
-      {
-        trial_microstress_right_hand_side.reinit(
-          trial_microstress->distributed_vector);
-
-        trial_microstress_lumped_matrix.reinit(
-          trial_microstress->distributed_vector);
-      }
-
-      assemble_trial_microstress_lumped_matrix();
-
-      assemble_trial_microstress_right_hand_side();
+      trial_microstress_block_matrix.reinit(sparsity_pattern);
     }
 
+    // Initiate vectors
     {
-      block_trial_microstress =
-        std::make_unique<FEField<dim>>(*fe_field);
+      trial_microstress_block_right_hand_side.reinit(
+        block_trial_microstress->distributed_vector);
 
-
-      block_trial_microstress->setup_vectors();
-
-
-      // Initiate trial_microstress_matrix matrix
-      {
-        trial_microstress_block_matrix.clear();
-
-        dealii::TrilinosWrappers::BlockSparsityPattern
-          sparsity_pattern(
-            block_trial_microstress->get_locally_owned_dofs_per_block(),
-            block_trial_microstress->get_locally_owned_dofs_per_block(),
-            block_trial_microstress->get_locally_relevant_dofs_per_block(),
-            MPI_COMM_WORLD);
-
-        dealii::DoFTools::make_sparsity_pattern(
-          block_trial_microstress->get_dof_handler(),
-          sparsity_pattern,
-          block_trial_microstress->get_hanging_node_constraints(),
-          false,
-          dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
-
-        sparsity_pattern.compress();
-
-        trial_microstress_block_matrix.reinit(sparsity_pattern);
-      }
-
-      // Initiate vectors
-      {
-        trial_microstress_block_right_hand_side.reinit(
-          block_trial_microstress->distributed_vector);
-
-        trial_microstress_lumped_block_matrix.reinit(
-          block_trial_microstress->distributed_vector);
-      }
-
-      /*
-      assemble_trial_microstress_lumped_matrix();
-
-      assemble_trial_microstress_right_hand_side();
-      */
+      trial_microstress_lumped_block_matrix.reinit(
+        block_trial_microstress->distributed_vector);
     }
+
+    assemble_trial_microstress_lumped_matrix();
   } // End of set-up members related to the computation of the
     // trial microstress
 
@@ -537,7 +468,13 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
 {
-  // Initialize std::maps instances
+  const auto locally_owned_dofs_per_block =
+    fe_field->get_locally_owned_dofs_per_block();
+
+  displacement_dofs_set = locally_owned_dofs_per_block[0];
+
+  plastic_slip_dofs_set = locally_owned_dofs_per_block[1];
+  /*// Initialize std::maps instances
   std::map<dealii::types::global_dof_index, dealii::Point<dim>>
     fe_field_map;
 
@@ -610,7 +547,7 @@ void GradientCrystalPlasticitySolver<dim>::initialize_dof_mapping()
 
   displacement_dofs_set.subtract_set(plastic_slip_dofs_set);
 
-  displacement_dofs_set.compress();
+  displacement_dofs_set.compress();*/
 }
 
 
