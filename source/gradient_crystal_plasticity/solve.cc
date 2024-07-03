@@ -94,9 +94,7 @@ namespace gCP
 
     double old_residual_norm          = 0.0;
 
-    std::vector<double> residual_l2_norms;
-
-    residual_l2_norms.reserve(3);
+    std::vector<double> residual_l2_norms(3, 0.);
 
     const RunTimeParameters::NewtonRaphsonParameters
       &newton_parameters = parameters.newton_parameters;
@@ -137,6 +135,8 @@ namespace gCP
           reset_inactive_set_values();
 
           flag_compute_active_set = false;
+
+          //active_set = plastic_slip_dofs_set;
         }
       }
       else
@@ -176,7 +176,7 @@ namespace gCP
       assemble_jacobian();
 
       // Residuals
-      residual_l2_norms = compute_residual_l2_norms();
+      residual_l2_norms = fe_field->get_l2_norms(residual);
 
       const double initial_objective_function_value =
         residual_l2_norms[0];
@@ -218,7 +218,7 @@ namespace gCP
       // (and possibly Line-Search)
       assemble_residual();
 
-      residual_l2_norms = compute_residual_l2_norms();
+      residual_l2_norms = fe_field->get_l2_norms(residual);
 
       double objective_function_value =
         LineSearch::get_objective_function_value(
@@ -299,10 +299,10 @@ namespace gCP
 
       // Terminal and log output
       {
-        const auto newton_update_l2_norms =
+        const std::vector<double> newton_update_l2_norms =
           fe_field->get_l2_norms(newton_update);
 
-        const auto residual_l2_norms =
+        const std::vector<double> residual_l2_norms =
           fe_field->get_l2_norms(residual);
 
         const double order_of_convergence =
@@ -318,12 +318,11 @@ namespace gCP
           relaxation_parameter);
       }
 
-      residual_l2_norms = compute_residual_l2_norms();
+      residual_l2_norms = fe_field->get_l2_norms(residual);
 
       //slip_rate_output(false);
 
       flag_successful_convergence =
-          //residual_norm < newton_parameters.absolute_tolerance;
           residual_l2_norms[0] < newton_parameters.absolute_tolerance;
 
     if (flag_successful_convergence &&
@@ -699,7 +698,7 @@ namespace gCP
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::
   update_and_output_nonlinear_solver_logger(
-    const std::tuple<double, double, double>  residual_l2_norms)
+    const std::vector<double>  residual_l2_norms)
   {
     nonlinear_solver_logger.update_value("N-Itr",
                                         0);
@@ -714,11 +713,11 @@ namespace gCP
     nonlinear_solver_logger.update_value("(NS_G)_L2",
                                         0);
     nonlinear_solver_logger.update_value("(R)_L2",
-                                        std::get<0>(residual_l2_norms));
+                                        residual_l2_norms[0]);
     nonlinear_solver_logger.update_value("(R_U)_L2",
-                                        std::get<1>(residual_l2_norms));
+                                        residual_l2_norms[1]);
     nonlinear_solver_logger.update_value("(R_G)_L2",
-                                        std::get<2>(residual_l2_norms));
+                                        residual_l2_norms[2]);
     nonlinear_solver_logger.update_value("C-Rate",
                                         0);
 
@@ -732,13 +731,13 @@ namespace gCP
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::
   update_and_output_nonlinear_solver_logger(
-    const unsigned int                        nonlinear_iteration,
-    const unsigned int                        n_krylov_iterations,
-    const unsigned int                        n_line_search_iterations,
-    const std::tuple<double, double, double>  newton_update_l2_norms,
-    const std::tuple<double, double, double>  residual_l2_norms,
-    const double                              order_of_convergence,
-    const double                              relaxation_parameter)
+    const unsigned int        nonlinear_iteration,
+    const unsigned int        n_krylov_iterations,
+    const unsigned int        n_line_search_iterations,
+    const std::vector<double> newton_update_l2_norms,
+    const std::vector<double> residual_l2_norms,
+    const double              order_of_convergence,
+    const double              relaxation_parameter)
   {
     nonlinear_solver_logger.update_value("N-Itr",
                                         nonlinear_iteration);
@@ -748,84 +747,25 @@ namespace gCP
                                         n_line_search_iterations);
     nonlinear_solver_logger.update_value("(NS)_L2",
                                         relaxation_parameter *
-                                        std::get<0>(newton_update_l2_norms));
+                                        newton_update_l2_norms[0]);
     nonlinear_solver_logger.update_value("(NS_U)_L2",
                                         relaxation_parameter *
-                                        std::get<1>(newton_update_l2_norms));
+                                        newton_update_l2_norms[1]);
     nonlinear_solver_logger.update_value("(NS_G)_L2",
                                         relaxation_parameter *
-                                        std::get<2>(newton_update_l2_norms));
+                                        newton_update_l2_norms[2]);
     nonlinear_solver_logger.update_value("(R)_L2",
-                                        std::get<0>(residual_l2_norms));
+                                        residual_l2_norms[0]);
     nonlinear_solver_logger.update_value("(R_U)_L2",
-                                        std::get<1>(residual_l2_norms));
+                                        residual_l2_norms[1]);
     nonlinear_solver_logger.update_value("(R_G)_L2",
-                                        std::get<2>(residual_l2_norms));
+                                        residual_l2_norms[2]);
     nonlinear_solver_logger.update_value("C-Rate",
                                         order_of_convergence);
 
     nonlinear_solver_logger.log_to_file();
 
     nonlinear_solver_logger.log_values_to_terminal();
-  }
-
-
-
-  template <int dim>
-  std::vector<double> GradientCrystalPlasticitySolver<dim>::
-  compute_residual_l2_norms()
-  {
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector
-      distributed_residual;
-
-    distributed_residual.reinit(fe_field->distributed_vector);
-
-    distributed_residual = residual;
-
-    double vector_squared_entries = 0.0;
-
-    double scalar_squared_entries = 0.0;
-
-    for (auto const &locally_owned_dof: displacement_dofs_set)
-    {
-      vector_squared_entries +=
-        distributed_residual[locally_owned_dof] *
-        distributed_residual[locally_owned_dof];
-    }
-
-    for (auto const &locally_owned_dof: active_set)
-    {
-      scalar_squared_entries +=
-        distributed_residual[locally_owned_dof] *
-        distributed_residual[locally_owned_dof];
-    }
-
-    vector_squared_entries =
-      dealii::Utilities::MPI::sum(vector_squared_entries,
-                                  MPI_COMM_WORLD);
-
-    scalar_squared_entries =
-      dealii::Utilities::MPI::sum(scalar_squared_entries,
-                                  MPI_COMM_WORLD);
-
-    const double residual_l2_norm =
-      std::sqrt(vector_squared_entries + scalar_squared_entries);
-
-    const double linear_momentum_balance_residual_l2_norm =
-      std::sqrt(vector_squared_entries);
-
-    const double pseudo_balance_residual_l2_norm =
-      std::sqrt(scalar_squared_entries);
-
-    std::vector<double> residual_l2_norms(3);
-
-    residual_l2_norms[0] = residual_l2_norm;
-
-    residual_l2_norms[1] = linear_momentum_balance_residual_l2_norm;
-
-    residual_l2_norms[2] = pseudo_balance_residual_l2_norm;
-
-    return (residual_l2_norms);
   }
 
 

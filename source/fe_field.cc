@@ -563,239 +563,92 @@ void FEField<dim>::reset_all_affine_constraints()
 
 
 template <int dim>
-std::tuple<double, double, double> FEField<dim>::get_l2_norms(
+std::vector<double> FEField<dim>::get_l2_norms(
   const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
 {
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vektor;
+  std::vector<double> l2_norms(3, 0.);
 
-  distributed_vektor.reinit(distributed_vector);
+  l2_norms[0] = vector.l2_norm();
 
-  distributed_vektor = vector;
-
-  const double l2_norm = distributed_vektor.l2_norm();
-
-  double vector_squared_entries = 0.0;
-
-  double scalar_squared_entries = 0.0;
-
-  for (const unsigned int dof_index : vector_dof_indices)
+  if (flag_use_single_block)
   {
-    vector_squared_entries += distributed_vektor[dof_index] *
-                              distributed_vektor[dof_index];
-  }
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vector;
 
-  for (const unsigned int dof_index : scalar_dof_indices)
-  {
-    scalar_squared_entries += distributed_vektor[dof_index] *
-                              distributed_vektor[dof_index];
-  }
+    distributed_vector.reinit(distributed_vector);
 
-  vector_squared_entries =
-      dealii::Utilities::MPI::sum(vector_squared_entries, MPI_COMM_WORLD);
+    /*Assert(distributed_vector.locally_owned_size() ==
+            vector.locally_owned_size(),
+           dealii::ExcMessage("The vectors are not of the same size"))
+      */
+    distributed_vector = vector;
 
-  scalar_squared_entries =
-      dealii::Utilities::MPI::sum(scalar_squared_entries, MPI_COMM_WORLD);
+    double vector_squared_entries = 0.0;
 
-  const double control_l2_norm =
-      std::sqrt(vector_squared_entries + scalar_squared_entries);
+    double scalar_squared_entries = 0.0;
 
-  auto to_string =
-      [](const double number)
-  {
-    std::ostringstream out;
-    out.precision(10);
-    out << std::scientific << number;
-    return std::move(out).str();
-  };
-
-  Assert(
-      std::fabs(l2_norm - control_l2_norm) <
-          std::numeric_limits<double>::epsilon() * 1000.,
-      dealii::ExcMessage("The norms do not match (" + to_string(l2_norm) + ", " + to_string(control_l2_norm) + ")"));
-
-  (void)control_l2_norm;
-  (void)to_string;
-
-  return std::make_tuple(l2_norm,
-                          std::sqrt(vector_squared_entries),
-                          std::sqrt(scalar_squared_entries));
-}
-
-
-
-template <int dim>
-TrialMicrostress<dim>::TrialMicrostress(
-    const dealii::Triangulation<dim> &triangulation,
-    const unsigned int fe_degree)
-    : fe_degree(fe_degree),
-      dof_handler(triangulation) /*,
-        flag_setup_extractors_was_called(false),
-        flag_setup_dofs_was_called(false),
-        flag_affine_constraints_were_set(false),
-        flag_newton_method_constraints_were_set(false),
-        flag_setup_vectors_was_called(false)*/
-{}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::setup_extractors(
-    const unsigned n_crystals,
-    const unsigned n_slips)
-{
-  this->n_crystals = n_crystals;
-  this->n_slips = n_slips;
-
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    std::vector<dealii::FEValuesExtractors::Scalar>
-        extractors_per_crystal;
-
-    for (unsigned int j = 0; j < n_slips; ++j)
+    for (const unsigned int locally_owned_displacement_dof :
+          locally_owned_displacement_dofs)
     {
-      extractors_per_crystal.push_back(
-          dealii::FEValuesExtractors::Scalar(i * n_slips + j));
+      vector_squared_entries +=
+        distributed_vector[locally_owned_displacement_dof] *
+        distributed_vector[locally_owned_displacement_dof];
     }
 
-    extractors.push_back(extractors_per_crystal);
-  }
-}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::update_ghost_material_ids()
-{
-  Utilities::update_ghost_material_ids(dof_handler);
-}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::setup_dofs()
-{
-  // FECollection
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    std::vector<const dealii::FiniteElement<dim> *> finite_elements;
-
-    for (dealii::types::material_id j = 0; j < n_crystals; ++j)
+    for (const unsigned int locally_owned_plastic_slip_dof :
+          locally_owned_plastic_slip_dofs)
     {
-      for (unsigned int k = 0; k < n_slips; ++k)
-      {
-        if (i == j)
-        {
-          finite_elements.push_back(new dealii::FE_Q<dim>(fe_degree));
-        }
-        else
-        {
-          finite_elements.push_back(new dealii::FE_Nothing<dim>());
-        }
-      }
+      scalar_squared_entries +=
+        distributed_vector[locally_owned_plastic_slip_dof] *
+        distributed_vector[locally_owned_plastic_slip_dof];
     }
 
-    fe_collection.push_back(
-        dealii::FESystem<dim>(
-            finite_elements,
-            std::vector<unsigned int>(finite_elements.size(), 1)));
+    vector_squared_entries =
+        dealii::Utilities::MPI::sum(
+          vector_squared_entries,
+          MPI_COMM_WORLD);
 
-    for (auto finite_element : finite_elements)
+    scalar_squared_entries =
+        dealii::Utilities::MPI::sum(
+          scalar_squared_entries,
+          MPI_COMM_WORLD);
+
+    const double control_l2_norm =
+        std::sqrt(vector_squared_entries + scalar_squared_entries);
+
+    auto to_string =
+        [](const double number)
     {
-      delete finite_element;
-    }
+      std::ostringstream out;
+      out.precision(10);
+      out << std::scientific << number;
+      return std::move(out).str();
+    };
 
-    finite_elements.clear();
+    const double factor = 1e4;
+
+    Assert(
+      std::fabs(l2_norms[0] - control_l2_norm) <
+        std::numeric_limits<double>::epsilon() * factor,
+      dealii::ExcMessage("The norms do not match (" +
+        to_string(l2_norms[0]) + ", " + to_string(control_l2_norm) +
+          ")"));
+
+    (void)control_l2_norm;
+
+    (void)to_string;
+
+    l2_norms[1] = std::sqrt(vector_squared_entries);
+
+    l2_norms[2] = std::sqrt(scalar_squared_entries);
   }
-
-  // Distribute and renumber
-  dof_handler.distribute_dofs(fe_collection);
-
-  dealii::DoFRenumbering::Cuthill_McKee(dof_handler);
-
-  // Extract sets relevant to parallel structure
-  locally_owned_dofs = dof_handler.locally_owned_dofs();
-
-  dealii::DoFTools::extract_locally_relevant_dofs(
-      dof_handler,
-      locally_relevant_dofs);
-
-  // Hanging node and empty affine constraints
-  hanging_node_constraints.clear();
+  else
   {
-    hanging_node_constraints.reinit(locally_relevant_dofs);
+    l2_norms[1] = vector.block(0).l2_norm();
 
-    dealii::DoFTools::make_hanging_node_constraints(
-        dof_handler,
-        hanging_node_constraints);
+    l2_norms[2] = vector.block(1).l2_norm();
   }
-  hanging_node_constraints.close();
 
-  affine_constraints.clear();
-  {
-    affine_constraints.reinit(locally_relevant_dofs);
-    affine_constraints.merge(hanging_node_constraints);
-  }
-  affine_constraints.close();
-
-  // Mapping from the n-th component of the m-th crystal to the
-  // global component
-  global_component_mapping.resize(n_crystals * n_slips);
-
-  for (dealii::types::material_id i = 0; i < n_crystals; ++i)
-  {
-    for (unsigned int j = 0; j < n_slips; ++j)
-    {
-      global_component_mapping[i * n_slips + j] = j;
-    }
-  }
-}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::setup_vectors()
-{
-  solution.reinit(
-      locally_relevant_dofs,
-      MPI_COMM_WORLD);
-
-  old_solution.reinit(solution);
-
-  distributed_vector.reinit(
-      locally_owned_dofs,
-      locally_relevant_dofs,
-      MPI_COMM_WORLD,
-      true);
-
-  solution = 0.;
-
-  old_solution = 0.;
-
-  distributed_vector = 0.;
-}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::reset_all_affine_constraints()
-{
-  affine_constraints.clear();
-  {
-    affine_constraints.reinit(locally_relevant_dofs);
-    affine_constraints.merge(hanging_node_constraints);
-  }
-  affine_constraints.close();
-}
-
-
-
-template <int dim>
-void TrialMicrostress<dim>::set_affine_constraints(
-    const dealii::AffineConstraints<double> &affine_constraints)
-{
-  this->affine_constraints.merge(
-      affine_constraints,
-      dealii::AffineConstraints<double>::MergeConflictBehavior::right_object_wins);
+  return l2_norms;
 }
 
 
@@ -806,6 +659,3 @@ void TrialMicrostress<dim>::set_affine_constraints(
 
 template class gCP::FEField<2>;
 template class gCP::FEField<3>;
-
-template class gCP::TrialMicrostress<2>;
-template class gCP::TrialMicrostress<3>;

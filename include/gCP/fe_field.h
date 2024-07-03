@@ -301,7 +301,7 @@ dealii::types::global_dof_index get_n_plastic_slip_dofs() const;
   */
 unsigned int get_n_components() const;
 
-std::tuple<double, double, double> get_l2_norms(
+std::vector<double> get_l2_norms(
   const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const;
 
 /*!

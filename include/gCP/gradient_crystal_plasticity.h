@@ -239,19 +239,17 @@ private:
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
-  std::vector<double> compute_residual_l2_norms();
+  void update_and_output_nonlinear_solver_logger(
+    const std::vector<double>  residual_l2_norms);
 
   void update_and_output_nonlinear_solver_logger(
-    const std::tuple<double, double, double>  residual_l2_norms);
-
-  void update_and_output_nonlinear_solver_logger(
-    const unsigned int                        nonlinear_iteration,
-    const unsigned int                        n_krylov_iterations,
-    const unsigned int                        n_line_search_iterations,
-    const std::tuple<double, double, double>  newton_update_l2_norms,
-    const std::tuple<double, double, double>  residual_l2_norms,
-    const double                              order_of_convergence,
-    const double                              relaxation_parameter = 1.0);
+    const unsigned int          nonlinear_iteration,
+    const unsigned int          n_krylov_iterations,
+    const unsigned int          n_line_search_iterations,
+    const std::vector<double>   newton_update_l2_norms,
+    const std::vector<double>   residual_l2_norms,
+    const double                order_of_convergence,
+    const double                relaxation_parameter = 1.0);
 
   /*!
    * @note Only for debugging purposes
