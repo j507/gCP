@@ -291,7 +291,7 @@ private:
     const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
 
   // Members and methods related to the trial microstress
-  std::shared_ptr<FEField<dim>> block_trial_microstress;
+  std::shared_ptr<FEField<dim>> trial_microstress;
 
   dealii::IndexSet                            locally_owned_active_set;
 

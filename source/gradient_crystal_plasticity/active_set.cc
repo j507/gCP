@@ -57,7 +57,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
       //const dealii::types::global_dof_index dof =
       //  dof_mapping[locally_owned_dof];
 
-      if (std::abs(block_trial_microstress->
+      if (std::abs(trial_microstress->
             solution[locally_owned_dof]) > local_yield_stress)
       {
         // The material can not plastically flow at the Dirichlet
@@ -167,7 +167,7 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
   dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_solution;
 
   distributed_solution.reinit(
-    block_trial_microstress->distributed_vector);
+    trial_microstress->distributed_vector);
 
   distributed_solution = 0.;
 
@@ -176,7 +176,7 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
     for (unsigned int entry_id = 0; entry_id < distributed_solution.size();
           entry_id++)
     {
-      if (block_trial_microstress->get_locally_owned_plastic_slip_dofs().
+      if (trial_microstress->get_locally_owned_plastic_slip_dofs().
             is_element(entry_id))
       {
         AssertThrow(
@@ -248,10 +248,10 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
     }*/
   }
 
-  block_trial_microstress->get_hanging_node_constraints().distribute(
+  trial_microstress->get_hanging_node_constraints().distribute(
     distributed_solution);
 
-  block_trial_microstress->solution = distributed_solution;
+  trial_microstress->solution = distributed_solution;
 }
 
 

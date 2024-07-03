@@ -186,13 +186,13 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   if (crystals_data->get_n_slips() > 0)
   {
-    block_trial_microstress =
+    trial_microstress =
       std::make_shared<FEField<dim>>(*fe_field);
 
-    block_trial_microstress->setup_vectors();
+    trial_microstress->setup_vectors();
 
     trial_postprocessor.reinit(
-      block_trial_microstress,
+      trial_microstress,
       crystals_data);
     // Initiate trial_microstress_matrix matrix
     {
@@ -202,15 +202,15 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
       dealii::TrilinosWrappers::BlockSparsityPattern
         sparsity_pattern(
-          block_trial_microstress->get_locally_owned_dofs_per_block(),
-          block_trial_microstress->get_locally_owned_dofs_per_block(),
-          block_trial_microstress->get_locally_relevant_dofs_per_block(),
+          trial_microstress->get_locally_owned_dofs_per_block(),
+          trial_microstress->get_locally_owned_dofs_per_block(),
+          trial_microstress->get_locally_relevant_dofs_per_block(),
           MPI_COMM_WORLD);
 
       dealii::DoFTools::make_sparsity_pattern(
-        block_trial_microstress->get_dof_handler(),
+        trial_microstress->get_dof_handler(),
         sparsity_pattern,
-        block_trial_microstress->get_hanging_node_constraints(),
+        trial_microstress->get_hanging_node_constraints(),
         false,
         dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD));
 
@@ -222,10 +222,10 @@ void GradientCrystalPlasticitySolver<dim>::init()
     // Initiate vectors
     {
       trial_microstress_block_right_hand_side.reinit(
-        block_trial_microstress->distributed_vector);
+        trial_microstress->distributed_vector);
 
       trial_microstress_lumped_block_matrix.reinit(
-        block_trial_microstress->distributed_vector);
+        trial_microstress->distributed_vector);
     }
 
     assemble_trial_microstress_lumped_matrix();
@@ -494,7 +494,7 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
                            postprocessor);
 
   data_out.add_data_vector(fe_field->get_dof_handler(),
-                           block_trial_microstress->solution,
+                           trial_microstress->solution,
                            trial_postprocessor);
 
   data_out.build_patches(*mapping);
