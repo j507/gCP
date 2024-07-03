@@ -230,8 +230,6 @@ void GradientCrystalPlasticitySolver<dim>::init()
   } // End of set-up members related to the computation of the
     // trial microstress
 
-
-
   flag_init_was_called = true;
 
   if (parameters.verbose)

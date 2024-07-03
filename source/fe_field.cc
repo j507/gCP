@@ -508,7 +508,8 @@ void FEField<dim>::setup_vectors()
   distributed_vector.reinit(
     locally_owned_dofs_per_block,
     locally_relevant_dofs_per_block,
-    MPI_COMM_WORLD);
+    MPI_COMM_WORLD,
+    true);
 
   solution = 0.;
 
@@ -570,21 +571,24 @@ template <int dim>
 std::vector<double> FEField<dim>::get_l2_norms(
   const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
 {
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vector_tmp;
+
+  distributed_vector_tmp.reinit(distributed_vector);
+
+  distributed_vector_tmp = vector;
+
   std::vector<double> l2_norms(3, 0.);
 
-  l2_norms[0] = vector.l2_norm();
+  l2_norms[0] = distributed_vector_tmp.l2_norm();
 
   if (flag_use_single_block)
   {
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vector;
 
-    distributed_vector.reinit(distributed_vector);
 
     /*Assert(distributed_vector.locally_owned_size() ==
             vector.locally_owned_size(),
            dealii::ExcMessage("The vectors are not of the same size"))
       */
-    distributed_vector = vector;
 
     double vector_squared_entries = 0.0;
 
@@ -594,16 +598,16 @@ std::vector<double> FEField<dim>::get_l2_norms(
           locally_owned_displacement_dofs)
     {
       vector_squared_entries +=
-        distributed_vector[locally_owned_displacement_dof] *
-        distributed_vector[locally_owned_displacement_dof];
+        distributed_vector_tmp[locally_owned_displacement_dof] *
+        distributed_vector_tmp[locally_owned_displacement_dof];
     }
 
     for (const unsigned int locally_owned_plastic_slip_dof :
           locally_owned_plastic_slip_dofs)
     {
       scalar_squared_entries +=
-        distributed_vector[locally_owned_plastic_slip_dof] *
-        distributed_vector[locally_owned_plastic_slip_dof];
+        distributed_vector_tmp[locally_owned_plastic_slip_dof] *
+        distributed_vector_tmp[locally_owned_plastic_slip_dof];
     }
 
     vector_squared_entries =
@@ -647,9 +651,9 @@ std::vector<double> FEField<dim>::get_l2_norms(
   }
   else
   {
-    l2_norms[1] = vector.block(0).l2_norm();
+    l2_norms[1] = distributed_vector_tmp.block(0).l2_norm();
 
-    l2_norms[2] = vector.block(1).l2_norm();
+    l2_norms[2] = distributed_vector_tmp.block(1).l2_norm();
   }
 
   return l2_norms;
