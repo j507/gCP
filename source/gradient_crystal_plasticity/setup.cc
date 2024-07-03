@@ -196,9 +196,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
       crystals_data);
     // Initiate trial_microstress_matrix matrix
     {
-      trial_microstress_block_matrix.clear();
-
-
+      trial_microstress_matrix.clear();
 
       dealii::TrilinosWrappers::BlockSparsityPattern
         sparsity_pattern(
@@ -216,15 +214,15 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
       sparsity_pattern.compress();
 
-      trial_microstress_block_matrix.reinit(sparsity_pattern);
+      trial_microstress_matrix.reinit(sparsity_pattern);
     }
 
     // Initiate vectors
     {
-      trial_microstress_block_right_hand_side.reinit(
+      trial_microstress_right_hand_side.reinit(
         trial_microstress->distributed_vector);
 
-      trial_microstress_lumped_block_matrix.reinit(
+      trial_microstress_lumped_matrix.reinit(
         trial_microstress->distributed_vector);
     }
 

@@ -180,12 +180,12 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
             is_element(entry_id))
       {
         AssertThrow(
-          trial_microstress_lumped_block_matrix(entry_id) != 0.0,
+          trial_microstress_lumped_matrix(entry_id) != 0.0,
           dealii::ExcMessage(""));
 
         distributed_solution(entry_id) =
-          trial_microstress_block_right_hand_side(entry_id) /
-            trial_microstress_lumped_block_matrix(entry_id);
+          trial_microstress_right_hand_side(entry_id) /
+            trial_microstress_lumped_matrix(entry_id);
       }
     }
   }

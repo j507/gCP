@@ -298,13 +298,13 @@ private:
   dealii::IndexSet                            locally_owned_inactive_set;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix
-    trial_microstress_block_matrix;
+    trial_microstress_matrix;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
-    trial_microstress_lumped_block_matrix;
+    trial_microstress_lumped_matrix;
 
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
-    trial_microstress_block_right_hand_side;
+    trial_microstress_right_hand_side;
 
   gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
 

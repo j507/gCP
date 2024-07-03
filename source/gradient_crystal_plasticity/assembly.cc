@@ -2004,7 +2004,7 @@ assemble_trial_microstress_lumped_matrix()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  trial_microstress_lumped_block_matrix = 0.0;
+  trial_microstress_lumped_matrix = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -2048,7 +2048,7 @@ assemble_trial_microstress_lumped_matrix()
       trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  trial_microstress_lumped_block_matrix.compress(
+  trial_microstress_lumped_matrix.compress(
     dealii::VectorOperation::add);
 }
 
@@ -2165,7 +2165,7 @@ copy_local_to_global_trial_microstress_lumped_matrix(
     distribute_local_to_global(
       data.local_lumped_matrix,
       data.local_dof_indices,
-      trial_microstress_lumped_block_matrix);
+      trial_microstress_lumped_matrix);
 }
 
 
@@ -2183,7 +2183,7 @@ assemble_trial_microstress_right_hand_side()
       typename dealii::DoFHandler<dim>::active_cell_iterator>;
 
   // Reset data
-  trial_microstress_block_right_hand_side = 0.0;
+  trial_microstress_right_hand_side = 0.0;
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
@@ -2234,7 +2234,7 @@ assemble_trial_microstress_right_hand_side()
       trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  trial_microstress_block_right_hand_side.compress(
+  trial_microstress_right_hand_side.compress(
     dealii::VectorOperation::add);
 }
 
@@ -2463,7 +2463,7 @@ copy_local_to_global_trial_microstress_right_hand_side(
     distribute_local_to_global(
       data.local_right_hand_side,
       data.local_dof_indices,
-      trial_microstress_block_right_hand_side);
+      trial_microstress_right_hand_side);
 }
 
 
