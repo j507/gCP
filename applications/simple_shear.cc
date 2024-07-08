@@ -136,9 +136,12 @@ fe_field(std::make_shared<FEField<dim>>(
   parameters.solver_parameters.allow_decohesion,
   parameters.solver_parameters.solution_algorithm ==
     RunTimeParameters::SolutionAlgorithm::Monolithic &&
-      (parameters.solver_parameters.krylov_parameters.solver_type ==
-        RunTimeParameters::SolverType::DirectSolver ||
-       parameters.solver_parameters.monolithic_preconditioner ==
+      (parameters.solver_parameters.monolithic_algorithm_parameters.
+        monolithic_system_solver_parameters.
+          krylov_parameters.solver_type ==
+            RunTimeParameters::SolverType::DirectSolver ||
+       parameters.solver_parameters.monolithic_algorithm_parameters.
+        monolithic_preconditioner ==
         RunTimeParameters::MonolithicPreconditioner::BuiltIn))),
 crystals_data(std::make_shared<CrystalsData<dim>>()),
 gCP_solver(

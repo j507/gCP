@@ -864,10 +864,142 @@ void LineSearchParameters::parse_parameters(
 
 
 
+NonlinearSystemSolverParameters::NonlinearSystemSolverParameters(){}
+
+
+
+void NonlinearSystemSolverParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  NewtonRaphsonParameters::declare_parameters(prm);
+
+  LineSearchParameters::declare_parameters(prm);
+
+  KrylovParameters::declare_parameters(prm);
+}
+
+
+
+void NonlinearSystemSolverParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  krylov_parameters.parse_parameters(prm);
+
+  newton_parameters.parse_parameters(prm);
+
+  line_search_parameters.parse_parameters(prm);
+}
+
+
+
+MonolithicAlgorithmParameters::MonolithicAlgorithmParameters()
+:
+monolithic_preconditioner(MonolithicPreconditioner::BuiltIn)
+{}
+
+
+
+void MonolithicAlgorithmParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Monolithic algorithm");
+  {
+    NonlinearSystemSolverParameters::declare_parameters(prm);
+
+    prm.declare_entry("Monolithic preconditioner",
+                      "built-in",
+                      dealii::Patterns::Selection(
+                        "built-in|block"));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void MonolithicAlgorithmParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Monolithic algorithm");
+  {
+    monolithic_system_solver_parameters.parse_parameters(prm);
+
+    const std::string string_monolithic_preconditioner(
+                      prm.get("Monolithic preconditioner"));
+
+    if (string_monolithic_preconditioner == std::string("built-in"))
+    {
+      monolithic_preconditioner = MonolithicPreconditioner::BuiltIn;
+    }
+    else if (string_monolithic_preconditioner == std::string("block"))
+    {
+      Assert(false, dealii::ExcMessage(
+        "Block preconditioner has not been implemented"));
+
+      monolithic_preconditioner = MonolithicPreconditioner::Block;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the monolithic preconditioner."));
+    }
+  }
+  prm.leave_subsection();
+}
+
+
+
+StaggeredAlgorithmParameters::StaggeredAlgorithmParameters(){}
+
+
+
+void StaggeredAlgorithmParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Staggered algorithm");
+  {
+    prm.enter_subsection("Linear momentum balance");
+    {
+      NonlinearSystemSolverParameters::declare_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("Pseudo-balance");
+    {
+      NonlinearSystemSolverParameters::declare_parameters(prm);
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
+}
+
+
+
+void StaggeredAlgorithmParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Staggered algorithm");
+  {
+    prm.enter_subsection("Linear momentum balance");
+    {
+      linear_momentum_solver_parameters.parse_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("Pseudo-balance");
+    {
+      pseudo_balance_solver_parameters.parse_parameters(prm);
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
 solution_algorithm(SolutionAlgorithm::Monolithic),
-monolithic_preconditioner(MonolithicPreconditioner::BuiltIn),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
@@ -884,23 +1016,16 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("6. Solver parameters");
   {
-    KrylovParameters::declare_parameters(prm);
-
-    NewtonRaphsonParameters::declare_parameters(prm);
-
-    LineSearchParameters::declare_parameters(prm);
-
     ConstitutiveLawsParameters::declare_parameters(prm);
+
+    MonolithicAlgorithmParameters::declare_parameters(prm);
+
+    StaggeredAlgorithmParameters::declare_parameters(prm);
 
     prm.declare_entry("Solution algorithm",
                       "monolithic",
                       dealii::Patterns::Selection(
                         "monolithic|bouncing|embracing"));
-
-    prm.declare_entry("Monolithic preconditioner",
-                      "built-in",
-                      dealii::Patterns::Selection(
-                        "built-in|block"));
 
     prm.declare_entry("Allow decohesion at grain boundaries",
                       "false",
@@ -936,12 +1061,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("6. Solver parameters");
   {
-    krylov_parameters.parse_parameters(prm);
-
-    newton_parameters.parse_parameters(prm);
-
-    line_search_parameters.parse_parameters(prm);
-
     constitutive_laws_parameters.parse_parameters(prm);
 
     const std::string string_solution_algorithm(
@@ -950,6 +1069,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     if (string_solution_algorithm == std::string("monolithic"))
     {
       solution_algorithm = SolutionAlgorithm::Monolithic;
+
+      monolithic_algorithm_parameters.parse_parameters(prm);
     }
     else if (string_solution_algorithm == std::string("bouncing"))
     {
@@ -957,6 +1078,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
         "The embracing staggered approach is yet to be implemented."));
 
       solution_algorithm = SolutionAlgorithm::Bouncing;
+
+      staggered_algorithm_parameters.parse_parameters(prm);
     }
     else if (string_solution_algorithm == std::string("embracing"))
     {
@@ -964,32 +1087,13 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
         "The embracing staggered approach is yet to be implemented."));
 
       solution_algorithm = SolutionAlgorithm::Embracing;
+
+      staggered_algorithm_parameters.parse_parameters(prm);
     }
     else
     {
       AssertThrow(false, dealii::ExcMessage(
         "Unexpected identifier for the solution algorithm."));
-    }
-
-    const std::string string_monolithic_preconditioner(
-                      prm.get("Monolithic preconditioner"));
-
-    if (string_monolithic_preconditioner == std::string("built-in"))
-    {
-      monolithic_preconditioner = MonolithicPreconditioner::BuiltIn;
-    }
-    else if (string_monolithic_preconditioner == std::string("block"))
-    {
-      Assert(false, dealii::ExcMessage(
-        "Block preconditioner has not been implemented"));
-
-      monolithic_preconditioner = MonolithicPreconditioner::Block;
-    }
-    else
-    {
-      AssertThrow(false,
-        dealii::ExcMessage(
-          "Unexpected identifier for the monolithic preconditioner."));
     }
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");

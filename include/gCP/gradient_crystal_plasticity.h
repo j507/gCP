@@ -184,7 +184,7 @@ private:
 
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
-  gCP::LineSearch                                   line_search;
+  std::unique_ptr<gCP::LineSearch>                  line_search;
 
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
@@ -254,7 +254,10 @@ private:
 
   void embracing_algorihtm(SolverData &solver_data);
 
-  unsigned int solve_linearized_system();
+  unsigned int solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &krylov_parameters,
+    const unsigned int block_id,
+    const double right_hand_side_l2_norm);
 
   void update_trial_solution(const double relaxation_parameter);
 

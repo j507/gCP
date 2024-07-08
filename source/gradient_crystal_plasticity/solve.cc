@@ -133,6 +133,19 @@ namespace gCP
   void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm(
     SolverData &solver_data)
   {
+    const RunTimeParameters::NewtonRaphsonParameters
+      &newton_parameters = parameters.monolithic_algorithm_parameters.
+        monolithic_system_solver_parameters.newton_parameters;
+
+    const RunTimeParameters::KrylovParameters
+      &krylov_parameters = parameters.monolithic_algorithm_parameters.
+        monolithic_system_solver_parameters.krylov_parameters;
+
+    line_search =
+      std::make_unique<gCP::LineSearch>(
+        parameters.monolithic_algorithm_parameters.
+          monolithic_system_solver_parameters.line_search_parameters);
+
     // Newton-Raphson loop
     do
     {
@@ -142,12 +155,12 @@ namespace gCP
 
       AssertThrow(
         solver_data.nonlinear_iteration <=
-          parameters.newton_parameters.n_max_iterations,
+          newton_parameters.n_max_iterations,
         dealii::ExcMessage(
           "The nonlinear solver has reach the given maximum number of "
           "iterations (" +
           std::to_string(
-            parameters.newton_parameters.n_max_iterations) + ")."));
+            newton_parameters.n_max_iterations) + ")."));
 
       if (parameters.constitutive_laws_parameters.
             scalar_microstress_law_parameters.flag_rate_independent)
@@ -214,23 +227,23 @@ namespace gCP
       // Terminal and log output
       if (solver_data.nonlinear_iteration == 1)
       {
-        solver_data.residual_l2_norms =
-          fe_field->get_l2_norms(residual);
-
         update_and_output_nonlinear_solver_logger(
           solver_data.residual_l2_norms);
       }
 
       // Newton-Update
       const unsigned int n_krylov_iterations =
-        solve_linearized_system();
+        solve_linearized_system(
+          krylov_parameters,
+          0,
+          solver_data.residual_l2_norms[0]);
 
       double relaxation_parameter =
-        parameters.newton_parameters.relaxation_parameter;
+        newton_parameters.relaxation_parameter;
 
       std::vector<double> relaxation_parameters(
         2,
-        parameters.newton_parameters.relaxation_parameter);
+        newton_parameters.relaxation_parameter);
 
       update_trial_solution(relaxation_parameter);
 
@@ -253,18 +266,18 @@ namespace gCP
             solver_data.residual_l2_norms.end()));
 
       // Line search algorithm
-      if (parameters.newton_parameters.flag_line_search)
+      if (newton_parameters.flag_line_search)
       {
-        line_search.reinit(
+        line_search->reinit(
           initial_objective_function_value,
           discrete_time.get_step_number() + 1,
           solver_data.nonlinear_iteration);
 
-        while (!line_search.suficient_descent_condition(
+        while (!line_search->suficient_descent_condition(
             objective_function_value, relaxation_parameter))
         {
           relaxation_parameter =
-              line_search.get_lambda(objective_function_value,
+              line_search->get_lambda(objective_function_value,
                                      relaxation_parameter);
 
           reset_trial_solution();
@@ -277,12 +290,12 @@ namespace gCP
         }
 
         /*
-        line_search.reinit(
+        line_search->reinit(
           initial_objective_function_values,
           discrete_time.get_step_number() + 1,
           nonlinear_iteration);
 
-        while (!line_search.suficient_descent_condition(
+        while (!line_search->suficient_descent_condition(
                   objective_function_values,
                   relaxation_parameters))
         {
@@ -291,7 +304,7 @@ namespace gCP
                     << relaxation_parameters[1] << std::endl;
 
           relaxation_parameters =
-              line_search.get_lambdas(
+              line_search->get_lambdas(
                 objective_function_values,
                 relaxation_parameters);
 
@@ -334,7 +347,7 @@ namespace gCP
         update_and_output_nonlinear_solver_logger(
           solver_data.nonlinear_iteration,
           n_krylov_iterations,
-          line_search.get_n_iterations(),
+          line_search->get_n_iterations(),
           newton_update_l2_norms,
           solver_data.residual_l2_norms,
           order_of_convergence,
@@ -347,7 +360,7 @@ namespace gCP
 
       solver_data.flag_successful_convergence =
         solver_data.residual_l2_norms[0] <
-          parameters.newton_parameters.absolute_tolerance;
+          newton_parameters.absolute_tolerance;
 
     if (solver_data.flag_successful_convergence &&
         parameters.constitutive_laws_parameters.
@@ -413,7 +426,11 @@ namespace gCP
 
 
   template <int dim>
-  unsigned int GradientCrystalPlasticitySolver<dim>::solve_linearized_system()
+  unsigned int GradientCrystalPlasticitySolver<dim>::
+  solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &krylov_parameters,
+    const unsigned int block_id,
+    const double right_hand_side_l2_norm)
   {
     if (parameters.verbose)
       *pcout << std::setw(38) << std::left
@@ -428,21 +445,19 @@ namespace gCP
       distributed_newton_update =
         fe_field->get_distributed_vector_instance(newton_update);
 
-    const RunTimeParameters::KrylovParameters &krylov_parameters =
-      parameters.krylov_parameters;
-
     // The solver's tolerances are passed to the SolverControl instance
     // used to initialize the solver
     dealii::SolverControl solver_control(
         krylov_parameters.n_max_iterations,
-        std::max(residual_norm * krylov_parameters.relative_tolerance,
+        std::max(right_hand_side_l2_norm *
+                  krylov_parameters.relative_tolerance,
                  krylov_parameters.absolute_tolerance));
 
-    const auto &system_matrix = jacobian.block(0,0);
+    const auto &system_matrix = jacobian.block(block_id,block_id);
 
-    const auto &right_hand_side = residual.block(0);
+    const auto &right_hand_side = residual.block(block_id);
 
-    auto &solution = distributed_newton_update.block(0);
+    auto &solution = distributed_newton_update.block(block_id);
 
     switch (krylov_parameters.solver_type)
     {
@@ -469,10 +484,11 @@ namespace gCP
       {
         dealii::LinearAlgebraTrilinos::SolverCG solver(solver_control);
 
-        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU
+          preconditioner;
 
-        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
-          additional_data;
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::
+          AdditionalData additional_data;
 
         preconditioner.initialize(system_matrix, additional_data);
 
@@ -496,12 +512,14 @@ namespace gCP
 
     case RunTimeParameters::SolverType::GMRES:
       {
-        dealii::LinearAlgebraTrilinos::SolverGMRES solver(solver_control);
+        dealii::LinearAlgebraTrilinos::SolverGMRES solver(
+          solver_control);
 
-        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU preconditioner;
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU
+          preconditioner;
 
-        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
-          additional_data;
+        dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::
+          AdditionalData additional_data;
 
         preconditioner.initialize(system_matrix, additional_data);
 
@@ -534,7 +552,7 @@ namespace gCP
       distributed_newton_update);
 
     // Pass the distributed vectors to their ghosted counterpart
-    newton_update = distributed_newton_update;
+    newton_update.block(block_id) = solution;
 
     if (parameters.verbose)
       *pcout << " done!" << std::endl;
@@ -742,8 +760,16 @@ template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial
 template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system(const bool);
 template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system(const bool);
 
-template unsigned int gCP::GradientCrystalPlasticitySolver<2>::solve_linearized_system();
-template unsigned int gCP::GradientCrystalPlasticitySolver<3>::solve_linearized_system();
+template unsigned int gCP::GradientCrystalPlasticitySolver<2>::
+solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &,
+    const unsigned int,
+    const double);
+template unsigned int gCP::GradientCrystalPlasticitySolver<3>::
+solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &,
+    const unsigned int,
+    const double);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::update_trial_solution(const double);
 template void gCP::GradientCrystalPlasticitySolver<3>::update_trial_solution(const double);

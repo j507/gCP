@@ -868,6 +868,122 @@ struct LineSearchParameters
 
 
 
+struct NonlinearSystemSolverParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  NonlinearSystemSolverParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  KrylovParameters              krylov_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NewtonRaphsonParameters       newton_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  LineSearchParameters          line_search_parameters;
+};
+
+
+
+
+struct MonolithicAlgorithmParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  MonolithicAlgorithmParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters monolithic_system_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  MonolithicPreconditioner monolithic_preconditioner;
+};
+
+
+
+struct StaggeredAlgorithmParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  StaggeredAlgorithmParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters linear_momentum_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters pseudo_balance_solver_parameters;
+};
+
+
+
 struct SolverParameters
 {
   /*
@@ -894,37 +1010,13 @@ struct SolverParameters
    */
   SolutionAlgorithm             solution_algorithm;
 
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  MonolithicPreconditioner      monolithic_preconditioner;
+  MonolithicAlgorithmParameters monolithic_algorithm_parameters;
+
+  StaggeredAlgorithmParameters staggered_algorithm_parameters;
 
   /*!
    * @brief
-   *
-   * @todo Docu
-   */
-  KrylovParameters              krylov_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  NewtonRaphsonParameters       newton_parameters;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  LineSearchParameters          line_search_parameters;
-
-  /*!
-   * @brief
-   *
+   *f
    * @todo Docu
    */
   ConstitutiveLawsParameters    constitutive_laws_parameters;

@@ -54,7 +54,7 @@ contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
     parameters.constitutive_laws_parameters.contact_law_parameters)),
 residual_norm(std::numeric_limits<double>::max()),
-line_search(parameters.line_search_parameters),
+//line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
 postprocessor(
@@ -155,7 +155,7 @@ flag_init_was_called(false)
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::~GradientCrystalPlasticitySolver()
 {
-  line_search.write_to_file(
+  line_search->write_to_file(
     parameters.logger_output_directory + "line_search_log.txt");
 }
 
