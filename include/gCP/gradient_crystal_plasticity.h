@@ -20,6 +20,8 @@
 #include <memory>
 #include <fstream>
 
+
+
 namespace gCP
 {
 
@@ -86,6 +88,29 @@ public:
   void output_data_to_file(std::ostream &file) const;
 
 private:
+
+  struct SolverData
+  {
+    SolverData()
+    :
+    flag_successful_convergence(false),
+    flag_compute_active_set(true),
+    nonlinear_iteration(0),
+    residual_l2_norms(3,0.),
+    old_residual_l2_norms(3,0.)
+    {};
+
+    bool flag_successful_convergence;
+
+    bool flag_compute_active_set;
+
+    unsigned int nonlinear_iteration;
+
+    std::vector<double> residual_l2_norms;
+
+    std::vector<double> old_residual_l2_norms;
+  };
+
   const RunTimeParameters::SolverParameters         &parameters;
 
   const dealii::DiscreteTime                        &discrete_time;
@@ -222,6 +247,12 @@ private:
 
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
+
+  void monolithic_algorithm(SolverData &solver_data);
+
+  void bouncing_algorithm(SolverData &solver_data);
+
+  void embracing_algorihtm(SolverData &solver_data);
 
   unsigned int solve_linearized_system();
 

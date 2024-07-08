@@ -20,55 +20,44 @@ namespace gCP
         discrete_time.get_previous_step_size();
     }
 
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_trial_solution =
+        fe_field->get_distributed_vector_instance(
+          fe_field->old_solution);
+
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_old_solution =
+        fe_field->get_distributed_vector_instance(
+          fe_field->old_old_solution);;
+
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_newton_update =
+        fe_field->get_distributed_vector_instance(
+          fe_field->old_solution);;
+
+    if (!flag_skip_extrapolation)
     {
-      dealii::LinearAlgebraTrilinos::MPI::BlockVector
-        distributed_trial_block_solution;
+      distributed_trial_solution.sadd(
+        1.0 + step_size_ratio,
+        -step_size_ratio,
+        distributed_old_solution);
 
-      dealii::LinearAlgebraTrilinos::MPI::BlockVector
-        distributed_old_block_solution;
-
-      dealii::LinearAlgebraTrilinos::MPI::BlockVector
-        distributed_block_newton_update;
-
-      distributed_trial_block_solution.reinit(
-        fe_field->distributed_vector);
-
-      distributed_old_block_solution.reinit(
-        fe_field->distributed_vector);
-
-      distributed_block_newton_update.reinit(
-        fe_field->distributed_vector);
-
-      distributed_trial_block_solution = fe_field->old_solution;
-
-      distributed_old_block_solution = fe_field->old_old_solution;
-
-      distributed_block_newton_update = fe_field->old_solution;
-
-      if (!flag_skip_extrapolation)
-      {
-        distributed_trial_block_solution.sadd(
-          1.0 + step_size_ratio,
-          -step_size_ratio,
-          distributed_old_block_solution);
-
-        distributed_block_newton_update.sadd(
-          -1.0,
-          1.0,
-          distributed_trial_block_solution);
-      }
-
-      //fe_field->get_affine_constraints().distribute(
-      fe_field->get_hanging_node_constraints().distribute(
-        distributed_trial_block_solution);
-
-      fe_field->get_newton_method_constraints().distribute(
-        distributed_block_newton_update);
-
-      trial_solution = distributed_trial_block_solution;
-
-      newton_update = distributed_block_newton_update;
+      distributed_newton_update.sadd(
+        -1.0,
+        1.0,
+        distributed_trial_solution);
     }
+
+    //fe_field->get_affine_constraints().distribute(
+    fe_field->get_hanging_node_constraints().distribute(
+      distributed_trial_solution);
+
+    fe_field->get_newton_method_constraints().distribute(
+      distributed_newton_update);
+
+    trial_solution = distributed_trial_solution;
+
+    newton_update = distributed_newton_update;
   }
 
 
@@ -86,18 +75,7 @@ namespace gCP
     nonlinear_solver_logger.log_headers_to_terminal();
 
     // Initialize local variables
-    bool flag_successful_convergence  = false;
-
-    bool flag_compute_active_set      = true;
-
-    unsigned int nonlinear_iteration  = 0;
-
-    double old_residual_norm          = 0.0;
-
-    std::vector<double> residual_l2_norms(3, 0.);
-
-    const RunTimeParameters::NewtonRaphsonParameters
-      &newton_parameters = parameters.newton_parameters;
+    gCP::GradientCrystalPlasticitySolver<dim>::SolverData  solver_data;
 
     // Internal variables' values at the previous step are stored
     prepare_quadrature_point_history();
@@ -110,23 +88,71 @@ namespace gCP
     // Active set
     reset_internal_newton_method_constraints();
 
+    switch (parameters.solution_algorithm)
+    {
+      case RunTimeParameters::SolutionAlgorithm::Monolithic:
+      {
+        monolithic_algorithm(solver_data);
+      }
+      break;
+
+      case RunTimeParameters::SolutionAlgorithm::Bouncing:
+      {
+        bouncing_algorithm(solver_data);
+      }
+      break;
+
+      case RunTimeParameters::SolutionAlgorithm::Embracing:
+      {
+        embracing_algorihtm(solver_data);
+      }
+      break;
+
+      default:
+      {
+        Assert(false, dealii::ExcMessage(
+          "Unexpected identifier for the solution algorithm."));
+      }
+      break;
+    }
+
+    store_effective_opening_displacement_in_quadrature_history();
+
+    fe_field->solution = trial_solution;
+
+    *pcout << std::endl;
+
+    return (std::make_tuple(
+              solver_data.flag_successful_convergence,
+              solver_data.nonlinear_iteration));
+  }
+
+
+
+  template <int dim>
+  void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm(
+    SolverData &solver_data)
+  {
     // Newton-Raphson loop
     do
     {
       // Increment iteration count
-      nonlinear_iteration++;
+      (solver_data.nonlinear_iteration)++;
+      //nonlinear_iteration++;
 
       AssertThrow(
-        nonlinear_iteration <= newton_parameters.n_max_iterations,
+        solver_data.nonlinear_iteration <=
+          parameters.newton_parameters.n_max_iterations,
         dealii::ExcMessage(
           "The nonlinear solver has reach the given maximum number of "
           "iterations (" +
-          std::to_string(newton_parameters.n_max_iterations) + ")."));
+          std::to_string(
+            parameters.newton_parameters.n_max_iterations) + ")."));
 
       if (parameters.constitutive_laws_parameters.
             scalar_microstress_law_parameters.flag_rate_independent)
       {
-        if (flag_compute_active_set)
+        if (solver_data.flag_compute_active_set)
         {
           determine_active_set();
 
@@ -134,7 +160,7 @@ namespace gCP
 
           reset_inactive_set_values();
 
-          flag_compute_active_set = false;
+          solver_data.flag_compute_active_set = false;
         }
       }
       else
@@ -149,12 +175,8 @@ namespace gCP
       // start value for the active set determination) Temporary code
       {
         dealii::LinearAlgebraTrilinos::MPI::BlockVector
-          distributed_trial_solution;
-
-        distributed_trial_solution.reinit(
-          fe_field->distributed_vector);
-
-        distributed_trial_solution = trial_solution;
+          distributed_trial_solution =
+            fe_field->get_distributed_vector_instance(trial_solution);
 
         fe_field->get_affine_constraints().distribute(
           distributed_trial_solution);
@@ -175,27 +197,28 @@ namespace gCP
       assemble_jacobian();
 
       // Residuals
-      residual_l2_norms = fe_field->get_l2_norms(residual);
+      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
 
       const double initial_objective_function_value =
-        residual_l2_norms[0];
+        solver_data.residual_l2_norms[0];
 
       const std::vector<double> initial_objective_function_values =
         LineSearch::get_objective_function_values(
           std::vector<double>(
-            residual_l2_norms.begin() + 1,
-            residual_l2_norms.end()));
+            solver_data.residual_l2_norms.begin() + 1,
+            solver_data.residual_l2_norms.end()));
 
-      old_residual_norm = residual_norm;
+      solver_data.old_residual_l2_norms =
+        solver_data.residual_l2_norms;
 
       // Terminal and log output
-      if (nonlinear_iteration == 1)
+      if (solver_data.nonlinear_iteration == 1)
       {
-        const auto residual_l2_norms =
-            fe_field->get_l2_norms(residual);
+        solver_data.residual_l2_norms =
+          fe_field->get_l2_norms(residual);
 
         update_and_output_nonlinear_solver_logger(
-          residual_l2_norms);
+          solver_data.residual_l2_norms);
       }
 
       // Newton-Update
@@ -203,11 +226,11 @@ namespace gCP
         solve_linearized_system();
 
       double relaxation_parameter =
-        newton_parameters.relaxation_parameter;
+        parameters.newton_parameters.relaxation_parameter;
 
       std::vector<double> relaxation_parameters(
         2,
-        newton_parameters.relaxation_parameter);
+        parameters.newton_parameters.relaxation_parameter);
 
       update_trial_solution(relaxation_parameter);
 
@@ -217,25 +240,25 @@ namespace gCP
       // (and possibly Line-Search)
       assemble_residual();
 
-      residual_l2_norms = fe_field->get_l2_norms(residual);
+      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
 
       double objective_function_value =
         LineSearch::get_objective_function_value(
-          residual_l2_norms[0]);
+          solver_data.residual_l2_norms[0]);
 
       std::vector<double> objective_function_values =
         LineSearch::get_objective_function_values(
           std::vector<double>(
-            residual_l2_norms.begin() + 1,
-            residual_l2_norms.end()));
+            solver_data.residual_l2_norms.begin() + 1,
+            solver_data.residual_l2_norms.end()));
 
       // Line search algorithm
-      if (newton_parameters.flag_line_search)
+      if (parameters.newton_parameters.flag_line_search)
       {
         line_search.reinit(
           initial_objective_function_value,
           discrete_time.get_step_number() + 1,
-          nonlinear_iteration);
+          solver_data.nonlinear_iteration);
 
         while (!line_search.suficient_descent_condition(
             objective_function_value, relaxation_parameter))
@@ -301,34 +324,37 @@ namespace gCP
         const std::vector<double> newton_update_l2_norms =
           fe_field->get_l2_norms(newton_update);
 
-        const std::vector<double> residual_l2_norms =
+        solver_data.residual_l2_norms =
           fe_field->get_l2_norms(residual);
 
         const double order_of_convergence =
-          std::log(residual_norm) /std::log(old_residual_norm);
+          std::log(solver_data.residual_l2_norms[0]) /
+            std::log(solver_data.old_residual_l2_norms[0]);
 
         update_and_output_nonlinear_solver_logger(
-          nonlinear_iteration,
+          solver_data.nonlinear_iteration,
           n_krylov_iterations,
           line_search.get_n_iterations(),
           newton_update_l2_norms,
-          residual_l2_norms,
+          solver_data.residual_l2_norms,
           order_of_convergence,
           relaxation_parameter);
       }
 
-      residual_l2_norms = fe_field->get_l2_norms(residual);
+      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
 
       //slip_rate_output(false);
 
-      flag_successful_convergence =
-          residual_l2_norms[0] < newton_parameters.absolute_tolerance;
+      solver_data.flag_successful_convergence =
+        solver_data.residual_l2_norms[0] <
+          parameters.newton_parameters.absolute_tolerance;
 
-    if (flag_successful_convergence &&
+    if (solver_data.flag_successful_convergence &&
         parameters.constitutive_laws_parameters.
             scalar_microstress_law_parameters.flag_rate_independent)
     {
-      const dealii::IndexSet original_active_set = locally_owned_active_set;
+      const dealii::IndexSet original_active_set =
+        locally_owned_active_set;
 
       // Active set
       reset_internal_newton_method_constraints();
@@ -336,14 +362,11 @@ namespace gCP
       if (parameters.constitutive_laws_parameters.
             scalar_microstress_law_parameters.flag_rate_independent)
       {
-        if (nonlinear_iteration == 1)
-        {
-          determine_active_set();
+        determine_active_set();
 
-          determine_inactive_set();
+        determine_inactive_set();
 
-          reset_inactive_set_values();
-        }
+        reset_inactive_set_values();
       }
       else
       {
@@ -353,9 +376,9 @@ namespace gCP
 
       if (original_active_set != locally_owned_active_set)
       {
-        flag_successful_convergence = false;
+        solver_data.flag_successful_convergence = false;
 
-        nonlinear_iteration = 0;
+        solver_data.nonlinear_iteration = 0;
 
         reset_trial_solution(true);
 
@@ -366,16 +389,25 @@ namespace gCP
       }
     }
 
-    } while (!flag_successful_convergence);
+    } while (!solver_data.flag_successful_convergence);
+  }
 
-    store_effective_opening_displacement_in_quadrature_history();
 
-    fe_field->solution = trial_solution;
 
-    *pcout << std::endl;
+  template <int dim>
+  void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm(
+    SolverData &solver_data)
+  {
 
-    return (std::make_tuple(
-              flag_successful_convergence, nonlinear_iteration));
+  }
+
+
+
+  template <int dim>
+  void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm(
+    SolverData &solver_data)
+  {
+
   }
 
 
@@ -393,12 +425,8 @@ namespace gCP
     // of the pertinent vectors to be able to perform the solve()
     // operation.
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
-      distributed_block_newton_update;
-
-    distributed_block_newton_update.reinit(
-      fe_field->distributed_vector);
-
-    distributed_block_newton_update = newton_update;
+      distributed_newton_update =
+        fe_field->get_distributed_vector_instance(newton_update);
 
     const RunTimeParameters::KrylovParameters &krylov_parameters =
       parameters.krylov_parameters;
@@ -414,7 +442,7 @@ namespace gCP
 
     const auto &right_hand_side = residual.block(0);
 
-    auto &solution = distributed_block_newton_update.block(0);
+    auto &solution = distributed_newton_update.block(0);
 
     switch (krylov_parameters.solver_type)
     {
@@ -503,10 +531,10 @@ namespace gCP
     // Zero out the Dirichlet boundary conditions
     //fe_field->get_newton_method_constraints()
     internal_newton_method_constraints.distribute(
-      distributed_block_newton_update);
+      distributed_newton_update);
 
     // Pass the distributed vectors to their ghosted counterpart
-    newton_update = distributed_block_newton_update;
+    newton_update = distributed_newton_update;
 
     if (parameters.verbose)
       *pcout << " done!" << std::endl;
@@ -521,26 +549,20 @@ namespace gCP
       const double relaxation_parameter)
   {
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
-      distributed_block_trial_solution,
-      distributed_block_newton_update;
+      distributed_trial_solution =
+        fe_field->get_distributed_vector_instance(trial_solution);
 
-    distributed_block_trial_solution.reinit(
-      fe_field->distributed_vector);
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_newton_update =
+        fe_field->get_distributed_vector_instance(newton_update);
 
-    distributed_block_newton_update.reinit(
-      fe_field->distributed_vector);
-
-    distributed_block_trial_solution  = trial_solution;
-
-    distributed_block_newton_update   = newton_update;
-
-    distributed_block_trial_solution.add(
-      relaxation_parameter, distributed_block_newton_update);
+    distributed_trial_solution.add(
+      relaxation_parameter, distributed_newton_update);
 
     fe_field->get_affine_constraints().distribute(
-      distributed_block_trial_solution);
+      distributed_trial_solution);
 
-    trial_solution = distributed_block_trial_solution;
+    trial_solution = distributed_trial_solution;
   }
 
 
@@ -549,17 +571,13 @@ namespace gCP
   void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
       const std::vector<double> relaxation_parameters)
   {
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_trial_solution;
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_trial_solution =
+        fe_field->get_distributed_vector_instance(trial_solution);
 
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_newton_update;
-
-    distributed_trial_solution.reinit(fe_field->distributed_vector);
-
-    distributed_newton_update.reinit(fe_field->distributed_vector);
-
-    distributed_trial_solution = trial_solution;
-
-    distributed_newton_update = newton_update;
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_newton_update =
+        fe_field->get_distributed_vector_instance(newton_update);
 
     for (const auto &locally_owned_dof :
           fe_field->get_locally_owned_dofs())
@@ -597,23 +615,16 @@ namespace gCP
     const bool flag_store_initial_trial_solution)
   {
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
-      distributed_block_trial_solution;
-
-    distributed_block_trial_solution.reinit(
-      fe_field->distributed_vector);
-
-    distributed_block_trial_solution = trial_solution;
-
-    fe_field->get_affine_constraints().distribute(
-      distributed_block_trial_solution);
+      distributed_trial_solution =
+        fe_field->get_distributed_vector_instance(trial_solution);
 
     if (flag_store_initial_trial_solution)
     {
-      initial_trial_solution = distributed_block_trial_solution;
+      initial_trial_solution = distributed_trial_solution;
     }
     else
     {
-      tmp_trial_solution = distributed_block_trial_solution;
+      tmp_trial_solution = distributed_trial_solution;
     }
   }
 
