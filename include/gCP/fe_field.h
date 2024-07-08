@@ -13,6 +13,9 @@
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <gCP/utilities.h>
+
+
+
 namespace gCP
 {
 
@@ -278,6 +281,11 @@ const std::pair<
   std::vector<dealii::FEValuesExtractors::Vector>,
   std::vector<std::vector<dealii::FEValuesExtractors::Scalar>>>
     get_extractors() const;
+
+dealii::LinearAlgebraTrilinos::MPI::BlockVector
+  get_distributed_vector_instance(
+    const dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      &vector) const;
 
 /*!
   * @brief

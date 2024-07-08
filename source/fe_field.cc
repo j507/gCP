@@ -525,6 +525,22 @@ void FEField<dim>::setup_vectors()
 
 
 template <int dim>
+dealii::LinearAlgebraTrilinos::MPI::BlockVector
+FEField<dim>::get_distributed_vector_instance(
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
+{
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector tmp;
+
+  tmp.reinit(distributed_vector);
+
+  tmp = vector;
+
+  return tmp;
+}
+
+
+
+template <int dim>
 void FEField<dim>::prepare_for_serialization_of_active_fe_indices()
 {
   AssertThrow(flag_setup_dofs_was_called,
