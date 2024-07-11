@@ -629,6 +629,78 @@ namespace gCP
 
 
   template <int dim>
+  double GradientCrystalPlasticitySolver<dim>::
+  line_search_algorithm()
+  {
+    double relaxation_parameter = 1.0,
+           objective_function_value =
+              LineSearch::get_objective_function_value(
+                fe_field->get_l2_norm(residual));
+
+    while (!line_search->suficient_descent_condition(
+              objective_function_value, relaxation_parameter))
+    {
+      relaxation_parameter =
+        line_search->get_lambda(objective_function_value,
+                                relaxation_parameter);
+
+      reset_trial_solution();
+
+      update_trial_solution(relaxation_parameter, 0);
+
+      reset_and_update_quadrature_point_history();
+
+      assemble_residual();
+
+      objective_function_value =
+        LineSearch::get_objective_function_value(
+          fe_field->get_l2_norm(residual));
+    }
+
+    return relaxation_parameter;
+  }
+
+
+
+  template <int dim>
+  double GradientCrystalPlasticitySolver<dim>::
+  line_search_algorithm(
+    dealii::Vector<double> residual_l2_norms,
+    const unsigned int block_id)
+  {
+    double relaxation_parameter = 1.0,
+           objective_function_value =
+              LineSearch::get_objective_function_value(
+                residual_l2_norms[block_id]);
+
+    while (!line_search->suficient_descent_condition(
+              objective_function_value, relaxation_parameter))
+    {
+      relaxation_parameter =
+        line_search->get_lambda(objective_function_value,
+                                relaxation_parameter);
+
+      reset_trial_solution();
+
+      update_trial_solution(relaxation_parameter, block_id);
+
+      reset_and_update_quadrature_point_history();
+
+      assemble_residual();
+
+      residual_l2_norms = fe_field->get_sub_l2_norms(residual);
+
+      objective_function_value =
+        LineSearch::get_objective_function_value(
+          residual_l2_norms[block_id]);
+    }
+
+    return relaxation_parameter;
+  }
+
+
+
+  template <int dim>
   void GradientCrystalPlasticitySolver<dim>::store_trial_solution(
     const bool flag_store_initial_trial_solution)
   {

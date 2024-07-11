@@ -264,6 +264,11 @@ private:
   void update_trial_solution(const std::vector<double>
     relaxation_parameter);
 
+  double line_search_algorithm();
+
+  double line_search_algorithm(
+    dealii::Vector<double> residual_l2_norms,
+    const unsigned int block_id);
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
 
