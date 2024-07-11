@@ -8,6 +8,35 @@ namespace gCP
 
 
 template<int dim>
+void GradientCrystalPlasticitySolver<dim>::active_set_algorithm(
+  bool &flag_compute_active_set)
+{
+  if (parameters.constitutive_laws_parameters.
+        scalar_microstress_law_parameters.flag_rate_independent)
+  {
+    if (flag_compute_active_set)
+    {
+      // Reset inactive set (on the constraints level)
+      reset_internal_newton_method_constraints();
+
+      determine_active_set();
+
+      determine_inactive_set();
+
+      reset_inactive_set_values();
+
+      flag_compute_active_set = false;
+    }
+  }
+  else
+  {
+    locally_owned_active_set =
+      fe_field->get_locally_owned_plastic_slip_dofs();
+  }
+}
+
+
+template<int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 {
   dealii::TimerOutput::Scope  t(*timer_output,
@@ -258,6 +287,13 @@ void GradientCrystalPlasticitySolver<dim>::compute_trial_microstress()
 
 } // namespace gCP
 
+
+// Explicit instantiations
+template void gCP::GradientCrystalPlasticitySolver<2>::
+active_set_algorithm(bool &);
+
+template void gCP::GradientCrystalPlasticitySolver<3>::
+active_set_algorithm(bool &);
 
 // Explicit instantiations
 template void gCP::GradientCrystalPlasticitySolver<2>::

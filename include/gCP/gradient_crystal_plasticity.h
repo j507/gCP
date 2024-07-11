@@ -346,6 +346,8 @@ private:
 
   void compute_trial_microstress();
 
+  void active_set_algorithm(bool &flag_compute_active_set);
+
   void determine_active_set();
 
   void determine_inactive_set();
