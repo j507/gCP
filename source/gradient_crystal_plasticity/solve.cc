@@ -63,19 +63,34 @@ namespace gCP
 
 
   template <int dim>
-  std::tuple<bool, unsigned int> GradientCrystalPlasticitySolver<dim>::
+  void GradientCrystalPlasticitySolver<dim>::
+  distribute_affine_constraints_to_trial_solution()
+  {
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector
+      distributed_trial_solution =
+        fe_field->get_distributed_vector_instance(trial_solution);
+
+    fe_field->get_affine_constraints().distribute(
+      distributed_trial_solution);
+
+    trial_solution = distributed_trial_solution;
+  }
+
+
+
+  template <int dim>
+  void GradientCrystalPlasticitySolver<dim>::
   solve_nonlinear_system(const bool flag_skip_extrapolation)
   {
     // Terminal and log output
     nonlinear_solver_logger.add_break(
       "Step " + std::to_string(discrete_time.get_step_number() + 1) +
-      ": Solving for t = " + std::to_string(discrete_time.get_next_time()) +
-      " with dt = " + std::to_string(discrete_time.get_next_step_size()));
+      ": Solving for t = " +
+      std::to_string(discrete_time.get_next_time()) +
+      " with dt = " +
+      std::to_string(discrete_time.get_next_step_size()));
 
     nonlinear_solver_logger.log_headers_to_terminal();
-
-    // Initialize local variables
-    gCP::GradientCrystalPlasticitySolver<dim>::SolverData  solver_data;
 
     // Internal variables' values at the previous step are stored
     prepare_quadrature_point_history();
@@ -88,23 +103,24 @@ namespace gCP
     // Active set
     reset_internal_newton_method_constraints();
 
+    // Solution algorithm
     switch (parameters.solution_algorithm)
     {
       case RunTimeParameters::SolutionAlgorithm::Monolithic:
       {
-        monolithic_algorithm(solver_data);
+        monolithic_algorithm();
       }
       break;
 
       case RunTimeParameters::SolutionAlgorithm::Bouncing:
       {
-        bouncing_algorithm(solver_data);
+        bouncing_algorithm();
       }
       break;
 
       case RunTimeParameters::SolutionAlgorithm::Embracing:
       {
-        embracing_algorihtm(solver_data);
+        embracing_algorihtm();
       }
       break;
 
@@ -116,23 +132,34 @@ namespace gCP
       break;
     }
 
+    // Compute and store the opening displacement at the quadrature
+    // points based on the converged solution
     store_effective_opening_displacement_in_quadrature_history();
 
+    // Update the actual solution vector
     fe_field->solution = trial_solution;
 
     *pcout << std::endl;
-
-    return (std::make_tuple(
-              solver_data.flag_successful_convergence,
-              solver_data.nonlinear_iteration));
   }
 
 
 
   template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm(
-    SolverData &solver_data)
+  void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm()
   {
+    // Instance local variables and references
+    unsigned int nonlinear_iteration = 0;
+
+    bool flag_successful_convergence = false,
+         flag_compute_active_set = true;
+
+    dealii::Vector<double> residual_l2_norms, old_residual_l2_norms;
+
+    line_search =
+      std::make_unique<gCP::LineSearch>(
+        parameters.monolithic_algorithm_parameters.
+          monolithic_system_solver_parameters.line_search_parameters);
+
     const RunTimeParameters::NewtonRaphsonParameters
       &newton_parameters = parameters.monolithic_algorithm_parameters.
         monolithic_system_solver_parameters.newton_parameters;
@@ -141,20 +168,14 @@ namespace gCP
       &krylov_parameters = parameters.monolithic_algorithm_parameters.
         monolithic_system_solver_parameters.krylov_parameters;
 
-    line_search =
-      std::make_unique<gCP::LineSearch>(
-        parameters.monolithic_algorithm_parameters.
-          monolithic_system_solver_parameters.line_search_parameters);
-
     // Newton-Raphson loop
     do
     {
-      // Increment iteration count
-      (solver_data.nonlinear_iteration)++;
-      //nonlinear_iteration++;
+      // Increase iteration counter
+      nonlinear_iteration++;
 
       AssertThrow(
-        solver_data.nonlinear_iteration <=
+        nonlinear_iteration <=
           newton_parameters.n_max_iterations,
         dealii::ExcMessage(
           "The nonlinear solver has reach the given maximum number of "
@@ -162,88 +183,53 @@ namespace gCP
           std::to_string(
             newton_parameters.n_max_iterations) + ")."));
 
-      if (parameters.constitutive_laws_parameters.
-            scalar_microstress_law_parameters.flag_rate_independent)
-      {
-        if (solver_data.flag_compute_active_set)
-        {
-          determine_active_set();
+      // Determine the active (and also inactive) set
+      active_set_algorithm(flag_compute_active_set);
 
-          determine_inactive_set();
-
-          reset_inactive_set_values();
-
-          solver_data.flag_compute_active_set = false;
-        }
-      }
-      else
-      {
-        locally_owned_active_set =
-          fe_field->get_locally_owned_plastic_slip_dofs();
-      }
-
+      // Output for debugging purposes
       debug_output();
 
       // Constraints distribution (Done later to obtain a continous
       // start value for the active set determination) Temporary code
-      {
-        dealii::LinearAlgebraTrilinos::MPI::BlockVector
-          distributed_trial_solution =
-            fe_field->get_distributed_vector_instance(trial_solution);
-
-        fe_field->get_affine_constraints().distribute(
-          distributed_trial_solution);
-
-        trial_solution = distributed_trial_solution;
-      }
+      distribute_affine_constraints_to_trial_solution();
 
       // Preparations for the Newton-Update and Line-Search
-      {
-        store_trial_solution();
+      store_trial_solution();
 
-        reset_and_update_quadrature_point_history();
-      }
+      reset_and_update_quadrature_point_history();
 
       // Assemble linear system
-      assemble_residual();
-
       assemble_jacobian();
 
-      // Residuals
-      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
+      assemble_residual();
 
-      const double initial_objective_function_value =
-        solver_data.residual_l2_norms[0];
+      // Store current l2-norm values and initial objective
+      // function
+      residual_l2_norms = fe_field->get_sub_l2_norms(residual);
 
-      const std::vector<double> initial_objective_function_values =
-        LineSearch::get_objective_function_values(
-          std::vector<double>(
-            solver_data.residual_l2_norms.begin() + 1,
-            solver_data.residual_l2_norms.end()));
+      old_residual_l2_norms = residual_l2_norms;
 
-      solver_data.old_residual_l2_norms =
-        solver_data.residual_l2_norms;
+      line_search->reinit(
+        LineSearch::get_objective_function_value(
+          residual_l2_norms.l2_norm()),
+        discrete_time.get_step_number() + 1,
+        nonlinear_iteration);
 
       // Terminal and log output
-      if (solver_data.nonlinear_iteration == 1)
+      if (nonlinear_iteration == 1)
       {
         update_and_output_nonlinear_solver_logger(
-          solver_data.residual_l2_norms);
+          residual_l2_norms);
       }
 
-      // Newton-Update
+      // Newton-Raphson update
       const unsigned int n_krylov_iterations =
         solve_linearized_system(
           krylov_parameters,
           0,
-          solver_data.residual_l2_norms[0]);
+          residual_l2_norms.l2_norm());
 
-      double relaxation_parameter =
-        newton_parameters.relaxation_parameter;
-
-      std::vector<double> relaxation_parameters(
-        2,
-        newton_parameters.relaxation_parameter);
+      double relaxation_parameter = 1.0;
 
       update_trial_solution(relaxation_parameter);
 
@@ -253,172 +239,291 @@ namespace gCP
       // (and possibly Line-Search)
       assemble_residual();
 
-      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
-
-      double objective_function_value =
-        LineSearch::get_objective_function_value(
-          solver_data.residual_l2_norms[0]);
-
-      std::vector<double> objective_function_values =
-        LineSearch::get_objective_function_values(
-          std::vector<double>(
-            solver_data.residual_l2_norms.begin() + 1,
-            solver_data.residual_l2_norms.end()));
+      residual_l2_norms = fe_field->get_sub_l2_norms(residual);
 
       // Line search algorithm
       if (newton_parameters.flag_line_search)
       {
-        line_search->reinit(
-          initial_objective_function_value,
-          discrete_time.get_step_number() + 1,
-          solver_data.nonlinear_iteration);
+        relaxation_parameter = line_search_algorithm();
 
-        while (!line_search->suficient_descent_condition(
-            objective_function_value, relaxation_parameter))
-        {
-          relaxation_parameter =
-              line_search->get_lambda(objective_function_value,
-                                     relaxation_parameter);
-
-          reset_trial_solution();
-
-          update_trial_solution(relaxation_parameter);
-
-          reset_and_update_quadrature_point_history();
-
-          objective_function_value = assemble_residual();
-        }
-
-        /*
-        line_search->reinit(
-          initial_objective_function_values,
-          discrete_time.get_step_number() + 1,
-          nonlinear_iteration);
-
-        while (!line_search->suficient_descent_condition(
-                  objective_function_values,
-                  relaxation_parameters))
-        {
-          std::cout << "Before: "
-                    << relaxation_parameters[0] << ", "
-                    << relaxation_parameters[1] << std::endl;
-
-          relaxation_parameters =
-              line_search->get_lambdas(
-                objective_function_values,
-                relaxation_parameters);
-
-          std::cout << "After: "
-                    << relaxation_parameters[0] << ", "
-                    << relaxation_parameters[1] << std::endl;
-
-          reset_trial_solution();
-
-          update_trial_solution(std::min(relaxation_parameters[0],
-                                         relaxation_parameters[1]));
-
-          reset_and_update_quadrature_point_history();
-
-          assemble_residual();
-
-          residual_l2_norms =
-            compute_residual_l2_norms();
-
-          objective_function_values =
-            LineSearch::get_objective_function_values(
-              std::vector<double>(
-                residual_l2_norms.begin() + 1,
-                residual_l2_norms.end()));
-        } */
+        residual_l2_norms = fe_field->get_sub_l2_norms(residual);
       }
 
       // Terminal and log output
       {
-        const std::vector<double> newton_update_l2_norms =
-          fe_field->get_l2_norms(newton_update);
-
-        solver_data.residual_l2_norms =
-          fe_field->get_l2_norms(residual);
+        const dealii::Vector<double> newton_update_l2_norms =
+          fe_field->get_sub_l2_norms(newton_update);
 
         const double order_of_convergence =
-          std::log(solver_data.residual_l2_norms[0]) /
-            std::log(solver_data.old_residual_l2_norms[0]);
+          std::log(residual_l2_norms.l2_norm()) /
+            std::log(old_residual_l2_norms.l2_norm());
 
         update_and_output_nonlinear_solver_logger(
-          solver_data.nonlinear_iteration,
+          nonlinear_iteration,
           n_krylov_iterations,
           line_search->get_n_iterations(),
           newton_update_l2_norms,
-          solver_data.residual_l2_norms,
+          residual_l2_norms,
           order_of_convergence,
           relaxation_parameter);
       }
 
-      solver_data.residual_l2_norms = fe_field->get_l2_norms(residual);
-
       //slip_rate_output(false);
 
-      solver_data.flag_successful_convergence =
-        solver_data.residual_l2_norms[0] <
+      // Convergence check
+      flag_successful_convergence =
+        residual_l2_norms.l2_norm() <
           newton_parameters.absolute_tolerance;
 
-    if (solver_data.flag_successful_convergence &&
-        parameters.constitutive_laws_parameters.
-            scalar_microstress_law_parameters.flag_rate_independent)
-    {
-      const dealii::IndexSet original_active_set =
-        locally_owned_active_set;
-
-      // Active set
-      reset_internal_newton_method_constraints();
-
-      if (parameters.constitutive_laws_parameters.
-            scalar_microstress_law_parameters.flag_rate_independent)
+      // Check if the active set changed
+      if (flag_successful_convergence &&
+          parameters.constitutive_laws_parameters.
+              scalar_microstress_law_parameters.flag_rate_independent)
       {
-        determine_active_set();
+        const dealii::IndexSet original_active_set =
+          locally_owned_active_set;
 
-        determine_inactive_set();
+        flag_compute_active_set = true;
 
-        reset_inactive_set_values();
+        active_set_algorithm(flag_compute_active_set);
+
+        if (original_active_set != locally_owned_active_set)
+        {
+          flag_successful_convergence = false;
+
+          nonlinear_iteration = 0;
+
+          reset_trial_solution(true);
+
+          *pcout
+            << std::endl
+            << "Active set mismatch. Restarting Newton-loop with the "
+            << "new active set..." << std::endl << std::endl;
+        }
+      }
+    } while (!flag_successful_convergence);
+  }
+
+
+
+  template <int dim>
+  void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
+  {
+    // Declare and initilize local variables and references
+    unsigned int macro_nonlinear_iteration = 0,
+                 micro_nonlinear_iteration = 0;
+
+    bool flag_successful_convergence = false,
+         flag_successful_macro_convergence = false,
+         flag_successful_micro_convergence = false,
+         flag_compute_active_set = true;
+
+    dealii::Vector<double> residual_l2_norms, old_residual_l2_norms;
+
+    line_search =
+      std::make_unique<gCP::LineSearch>(
+        parameters.staggered_algorithm_parameters.
+          linear_momentum_solver_parameters.line_search_parameters);
+
+    const RunTimeParameters::NewtonRaphsonParameters
+      &macro_newton_parameters = parameters.
+        staggered_algorithm_parameters.
+          linear_momentum_solver_parameters.newton_parameters,
+      &micro_newton_parameters = parameters.
+        staggered_algorithm_parameters.pseudo_balance_solver_parameters.
+          newton_parameters;
+
+    const RunTimeParameters::KrylovParameters
+      &macro_krylov_parameters = parameters.
+        staggered_algorithm_parameters.
+          linear_momentum_solver_parameters.krylov_parameters,
+      &micro_krylov_parameters = parameters.
+        staggered_algorithm_parameters.pseudo_balance_solver_parameters.
+          krylov_parameters;
+
+    // The distribution corresponds to another method for the sake of
+    // the monolithic algorithm
+    distribute_affine_constraints_to_trial_solution();
+
+    // Macro-Newton-Raphson loop
+    do
+    {
+      // Convergence check
+      residual_l2_norms = fe_field->get_sub_l2_norms(residual);
+
+      flag_successful_macro_convergence =
+        residual_l2_norms[0] <
+          macro_newton_parameters.absolute_tolerance;
+
+      if (flag_successful_macro_convergence)
+      {
+        // If the linear momentum balance converges with the plastic
+        // slips values of the lattest converged micro Newton-Raphson
+        // loop, the solution is considered as found.
+        if (flag_successful_micro_convergence)
+        {
+          flag_successful_convergence = true;
+
+          continue;
+        }
+        // Otherwise compute a new trial solution for the plastic slips
+        else
+        {
+          // Determine the active (and also inactive) set
+          active_set_algorithm(flag_compute_active_set);
+
+          // Micro-Newton-Raphson loop
+          do
+          {
+            // Increase iteration counter
+            micro_nonlinear_iteration++;
+
+            // Preparations for the Newton-Update and Line-Search
+            store_trial_solution();
+
+            reset_and_update_quadrature_point_history();
+
+            // Assemble linear system;
+            assemble_jacobian();
+
+            assemble_residual();
+
+            // Store current l2-norm values and initial objective
+            // function
+            residual_l2_norms = fe_field->get_sub_l2_norms(residual);
+
+            old_residual_l2_norms = residual_l2_norms;
+
+            line_search->reinit(
+              LineSearch::get_objective_function_value(
+                residual_l2_norms[1]),
+              discrete_time.get_step_number() + 1,
+              micro_nonlinear_iteration);
+
+            // Terminal and log output
+            {
+
+            }
+
+            // Newton-Raphson update
+            const unsigned int n_krylov_iterations =
+              solve_linearized_system(
+                micro_krylov_parameters,
+                1,
+                residual_l2_norms[1]);
+
+            double relaxation_parameter = 1.0;
+
+            update_trial_solution(relaxation_parameter, 1);
+
+            reset_and_update_quadrature_point_history();
+
+            // Evaluate new trial solution
+            assemble_residual();
+
+            residual_l2_norms =
+              fe_field->get_sub_l2_norms(residual);
+
+            // Line search
+            if (micro_newton_parameters.flag_line_search)
+            {
+
+            }
+
+            // Terminal and log output
+            {
+              (void)n_krylov_iterations;
+            }
+
+            // Convergence check
+            flag_successful_micro_convergence =
+              residual_l2_norms[1] <
+                micro_newton_parameters.absolute_tolerance;
+
+          } while (!flag_successful_micro_convergence);
+        }
       }
       else
       {
-        locally_owned_active_set =
-          fe_field->get_locally_owned_plastic_slip_dofs();
+        // Increase iteration counter
+        macro_nonlinear_iteration++;
+
+        // Preparations for the Newton-Update and Line-Search
+        store_trial_solution();
+
+        reset_and_update_quadrature_point_history();
+
+        // Assemble linear system
+        if (macro_nonlinear_iteration == 1)
+        {
+          // The submatrix at (0,0) is a constant, therefore it only
+          // needs to be assembled once
+          assemble_jacobian();
+        }
+
+        assemble_residual();
+
+        // Store current l2-norm values and initial objective function
+        residual_l2_norms = fe_field->get_sub_l2_norms(residual);
+
+        old_residual_l2_norms = residual_l2_norms;
+
+        line_search->reinit(
+          LineSearch::get_objective_function_value(
+            residual_l2_norms[0]),
+          discrete_time.get_step_number() + 1,
+          macro_nonlinear_iteration);
+
+        // Terminal and log output ()
+        {
+
+        }
+
+        // Newton-Raphson update
+        const unsigned int n_krylov_iterations =
+          solve_linearized_system(
+            macro_krylov_parameters,
+            0,
+            residual_l2_norms[0]);
+
+        double relaxation_parameter = 1.0;
+
+        update_trial_solution(relaxation_parameter, 0);
+
+        reset_and_update_quadrature_point_history();
+
+        // Evaluate new trial solution
+        assemble_residual();
+
+        residual_l2_norms =
+          fe_field->get_sub_l2_norms(residual);
+
+        // Line search algorithm
+        if (macro_newton_parameters.flag_line_search)
+        {
+
+        }
+
+        // Terminal and log output
+        {
+          (void)n_krylov_iterations;
+        }
+
+        // Convergence check
+
+        flag_successful_macro_convergence =
+          residual_l2_norms[0] <
+            macro_newton_parameters.absolute_tolerance;
+
+        flag_successful_micro_convergence = false;
       }
-
-      if (original_active_set != locally_owned_active_set)
-      {
-        solver_data.flag_successful_convergence = false;
-
-        solver_data.nonlinear_iteration = 0;
-
-        reset_trial_solution(true);
-
-        *pcout
-          << std::endl
-          << "Active set mismatch. Restarting Newton-loop with the "
-          << "new active set..." << std::endl << std::endl;
-      }
-    }
-
-    } while (!solver_data.flag_successful_convergence);
+    } while (!flag_successful_convergence);
   }
 
 
 
   template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm(
-    SolverData &solver_data)
-  {
-
-  }
-
-
-
-  template <int dim>
-  void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm(
-    SolverData &solver_data)
+  void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
   {
 
   }
@@ -564,7 +669,8 @@ namespace gCP
 
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
-      const double relaxation_parameter)
+      const double relaxation_parameter,
+      const unsigned int block_id)
   {
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
       distributed_trial_solution =
@@ -574,13 +680,14 @@ namespace gCP
       distributed_newton_update =
         fe_field->get_distributed_vector_instance(newton_update);
 
-    distributed_trial_solution.add(
-      relaxation_parameter, distributed_newton_update);
+    distributed_trial_solution.block(block_id).add(
+      relaxation_parameter, distributed_newton_update.block(block_id));
 
     fe_field->get_affine_constraints().distribute(
       distributed_trial_solution);
 
-    trial_solution = distributed_trial_solution;
+    trial_solution.block(block_id) =
+      distributed_trial_solution.block(block_id);
   }
 
 
@@ -750,7 +857,7 @@ namespace gCP
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::
   update_and_output_nonlinear_solver_logger(
-    const std::vector<double>  residual_l2_norms)
+    const dealii::Vector<double>  residual_l2_norms)
   {
     nonlinear_solver_logger.update_value("N-Itr",
                                         0);
@@ -765,11 +872,11 @@ namespace gCP
     nonlinear_solver_logger.update_value("(NS_G)_L2",
                                         0);
     nonlinear_solver_logger.update_value("(R)_L2",
-                                        residual_l2_norms[0]);
+                                        residual_l2_norms.l2_norm());
     nonlinear_solver_logger.update_value("(R_U)_L2",
-                                        residual_l2_norms[1]);
+                                        residual_l2_norms[0]);
     nonlinear_solver_logger.update_value("(R_G)_L2",
-                                        residual_l2_norms[2]);
+                                        residual_l2_norms[1]);
     nonlinear_solver_logger.update_value("C-Rate",
                                         0);
 
@@ -783,13 +890,13 @@ namespace gCP
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::
   update_and_output_nonlinear_solver_logger(
-    const unsigned int        nonlinear_iteration,
-    const unsigned int        n_krylov_iterations,
-    const unsigned int        n_line_search_iterations,
-    const std::vector<double> newton_update_l2_norms,
-    const std::vector<double> residual_l2_norms,
-    const double              order_of_convergence,
-    const double              relaxation_parameter)
+    const unsigned int           nonlinear_iteration,
+    const unsigned int           n_krylov_iterations,
+    const unsigned int           n_line_search_iterations,
+    const dealii::Vector<double> newton_update_l2_norms,
+    const dealii::Vector<double> residual_l2_norms,
+    const double                 order_of_convergence,
+    const double                 relaxation_parameter)
   {
     nonlinear_solver_logger.update_value("N-Itr",
                                         nonlinear_iteration);
@@ -799,19 +906,19 @@ namespace gCP
                                         n_line_search_iterations);
     nonlinear_solver_logger.update_value("(NS)_L2",
                                         relaxation_parameter *
-                                        newton_update_l2_norms[0]);
+                                        newton_update_l2_norms.l2_norm());
     nonlinear_solver_logger.update_value("(NS_U)_L2",
                                         relaxation_parameter *
-                                        newton_update_l2_norms[1]);
+                                        newton_update_l2_norms[0]);
     nonlinear_solver_logger.update_value("(NS_G)_L2",
                                         relaxation_parameter *
-                                        newton_update_l2_norms[2]);
+                                        newton_update_l2_norms[1]);
     nonlinear_solver_logger.update_value("(R)_L2",
-                                        residual_l2_norms[0]);
+                                        residual_l2_norms.l2_norm());
     nonlinear_solver_logger.update_value("(R_U)_L2",
-                                        residual_l2_norms[1]);
+                                        residual_l2_norms[0]);
     nonlinear_solver_logger.update_value("(R_G)_L2",
-                                        residual_l2_norms[2]);
+                                        residual_l2_norms[1]);
     nonlinear_solver_logger.update_value("C-Rate",
                                         order_of_convergence);
 
@@ -826,11 +933,15 @@ namespace gCP
 
 
 
-template void gCP::GradientCrystalPlasticitySolver<2>::extrapolate_initial_trial_solution(const bool);
-template void gCP::GradientCrystalPlasticitySolver<3>::extrapolate_initial_trial_solution(const bool);
+template void gCP::GradientCrystalPlasticitySolver<2>::
+extrapolate_initial_trial_solution(const bool);
+template void gCP::GradientCrystalPlasticitySolver<3>::
+extrapolate_initial_trial_solution(const bool);
 
-template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<2>::solve_nonlinear_system(const bool);
-template std::tuple<bool,unsigned int> gCP::GradientCrystalPlasticitySolver<3>::solve_nonlinear_system(const bool);
+template void gCP::GradientCrystalPlasticitySolver<2>::
+solve_nonlinear_system(const bool);
+template void gCP::GradientCrystalPlasticitySolver<3>::
+solve_nonlinear_system(const bool);
 
 template unsigned int gCP::GradientCrystalPlasticitySolver<2>::
 solve_linearized_system(
@@ -843,8 +954,14 @@ solve_linearized_system(
     const unsigned int,
     const double);
 
-template void gCP::GradientCrystalPlasticitySolver<2>::update_trial_solution(const double);
-template void gCP::GradientCrystalPlasticitySolver<3>::update_trial_solution(const double);
+template void gCP::GradientCrystalPlasticitySolver<2>::
+update_trial_solution(
+  const double,
+  const unsigned int);
+template void gCP::GradientCrystalPlasticitySolver<3>::
+update_trial_solution(
+  const double,
+  const unsigned int);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::
   update_trial_solution(const std::vector<double>);

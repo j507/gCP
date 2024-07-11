@@ -57,7 +57,7 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  std::tuple<bool,unsigned int> solve_nonlinear_system(
+  void solve_nonlinear_system(
     const bool flag_skip_extrapolation = false);
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
@@ -88,28 +88,6 @@ public:
   void output_data_to_file(std::ostream &file) const;
 
 private:
-
-  struct SolverData
-  {
-    SolverData()
-    :
-    flag_successful_convergence(false),
-    flag_compute_active_set(true),
-    nonlinear_iteration(0),
-    residual_l2_norms(3,0.),
-    old_residual_l2_norms(3,0.)
-    {};
-
-    bool flag_successful_convergence;
-
-    bool flag_compute_active_set;
-
-    unsigned int nonlinear_iteration;
-
-    std::vector<double> residual_l2_norms;
-
-    std::vector<double> old_residual_l2_norms;
-  };
 
   const RunTimeParameters::SolverParameters         &parameters;
 
@@ -248,18 +226,20 @@ private:
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
-  void monolithic_algorithm(SolverData &solver_data);
+  void monolithic_algorithm();
 
-  void bouncing_algorithm(SolverData &solver_data);
+  void bouncing_algorithm();
 
-  void embracing_algorihtm(SolverData &solver_data);
+  void embracing_algorihtm();
 
   unsigned int solve_linearized_system(
     const RunTimeParameters::KrylovParameters &krylov_parameters,
     const unsigned int block_id,
     const double right_hand_side_l2_norm);
 
-  void update_trial_solution(const double relaxation_parameter);
+  void update_trial_solution(
+    const double relaxation_parameter,
+    const unsigned int block_id = 0);
 
   void update_trial_solution(const std::vector<double>
     relaxation_parameter);
@@ -269,6 +249,7 @@ private:
   double line_search_algorithm(
     dealii::Vector<double> residual_l2_norms,
     const unsigned int block_id);
+
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
 
@@ -278,17 +259,19 @@ private:
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
-  void update_and_output_nonlinear_solver_logger(
-    const std::vector<double>  residual_l2_norms);
+  void distribute_affine_constraints_to_trial_solution();
 
   void update_and_output_nonlinear_solver_logger(
-    const unsigned int          nonlinear_iteration,
-    const unsigned int          n_krylov_iterations,
-    const unsigned int          n_line_search_iterations,
-    const std::vector<double>   newton_update_l2_norms,
-    const std::vector<double>   residual_l2_norms,
-    const double                order_of_convergence,
-    const double                relaxation_parameter = 1.0);
+    const dealii::Vector<double>  residual_l2_norms);
+
+  void update_and_output_nonlinear_solver_logger(
+    const unsigned int           nonlinear_iteration,
+    const unsigned int           n_krylov_iterations,
+    const unsigned int           n_line_search_iterations,
+    const dealii::Vector<double> newton_update_l2_norms,
+    const dealii::Vector<double> residual_l2_norms,
+    const double                 order_of_convergence,
+    const double                 relaxation_parameter = 1.0);
 
   /*!
    * @note Only for debugging purposes

@@ -584,7 +584,26 @@ void FEField<dim>::reset_all_affine_constraints()
 
 
 template <int dim>
-std::vector<double> FEField<dim>::get_l2_norms(
+double FEField<dim>::get_l2_norm(
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
+{
+  if (vector.has_ghost_elements())
+  {
+    dealii::LinearAlgebraTrilinos::MPI::BlockVector tmp =
+      get_distributed_vector_instance(vector);
+
+    return (tmp.l2_norm());
+  }
+  else
+  {
+    return (vector.l2_norm());
+  }
+}
+
+
+
+template <int dim>
+dealii::Vector<double> FEField<dim>::get_sub_l2_norms(
   const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
 {
   dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vector_tmp;
@@ -593,9 +612,9 @@ std::vector<double> FEField<dim>::get_l2_norms(
 
   distributed_vector_tmp = vector;
 
-  std::vector<double> l2_norms(3, 0.);
+  dealii::Vector<double> l2_norms(2);
 
-  l2_norms[0] = distributed_vector_tmp.l2_norm();
+  const double l2_norm = distributed_vector_tmp.l2_norm();
 
   if (flag_use_single_block)
   {
@@ -636,41 +655,36 @@ std::vector<double> FEField<dim>::get_l2_norms(
           scalar_squared_entries,
           MPI_COMM_WORLD);
 
-    const double control_l2_norm =
-        std::sqrt(vector_squared_entries + scalar_squared_entries);
+    l2_norms[0] = std::sqrt(vector_squared_entries);
 
-    auto to_string =
-        [](const double number)
-    {
-      std::ostringstream out;
-      out.precision(10);
-      out << std::scientific << number;
-      return std::move(out).str();
-    };
-
-    const double factor = 1e4;
-
-    Assert(
-      std::fabs(l2_norms[0] - control_l2_norm) <
-        std::numeric_limits<double>::epsilon() * factor,
-      dealii::ExcMessage("The norms do not match (" +
-        to_string(l2_norms[0]) + ", " + to_string(control_l2_norm) +
-          ")"));
-
-    (void)control_l2_norm;
-
-    (void)to_string;
-
-    l2_norms[1] = std::sqrt(vector_squared_entries);
-
-    l2_norms[2] = std::sqrt(scalar_squared_entries);
+    l2_norms[1] = std::sqrt(scalar_squared_entries);
   }
   else
   {
-    l2_norms[1] = distributed_vector_tmp.block(0).l2_norm();
+    l2_norms[0] = distributed_vector_tmp.block(0).l2_norm();
 
-    l2_norms[2] = distributed_vector_tmp.block(1).l2_norm();
+    l2_norms[1] = distributed_vector_tmp.block(1).l2_norm();
   }
+
+  auto to_string =
+      [](const double number)
+  {
+    std::ostringstream out;
+    out.precision(10);
+    out << std::scientific << number;
+    return std::move(out).str();
+  };
+
+  const double factor = 1e4;
+
+  Assert(
+    std::fabs(l2_norm - l2_norms.l2_norm()) <
+      std::numeric_limits<double>::epsilon() * factor,
+    dealii::ExcMessage("The norms do not match (" +
+      to_string(l2_norm) + ", " + to_string(l2_norms.l2_norm()) +
+        ")"));
+
+  (void)to_string;
 
   return l2_norms;
 }
