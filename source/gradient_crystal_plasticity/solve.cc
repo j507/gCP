@@ -190,7 +190,7 @@ namespace gCP
       debug_output();
 
       // Constraints distribution (Done later to obtain a continous
-      // start value for the active set determination) Temporary code
+      // start value for the active set determination). Temporary code
       distribute_affine_constraints_to_trial_solution();
 
       // Preparations for the Newton-Update and Line-Search
@@ -311,7 +311,9 @@ namespace gCP
   {
     // Declare and initilize local variables and references
     unsigned int macro_nonlinear_iteration = 0,
-                 micro_nonlinear_iteration = 0;
+                 micro_nonlinear_iteration = 0,
+                 macro_loop_counter = 0,
+                 micro_loop_counter = 0;
 
     bool flag_successful_convergence = false,
          flag_successful_macro_convergence = false,
@@ -345,6 +347,9 @@ namespace gCP
     // the monolithic algorithm
     distribute_affine_constraints_to_trial_solution();
 
+    nonlinear_solver_logger.log_to_all(
+      " Linear momentum balance: Starting a new solution loop...");
+
     // Macro-Newton-Raphson loop
     do
     {
@@ -369,8 +374,18 @@ namespace gCP
         // Otherwise compute a new trial solution for the plastic slips
         else
         {
+          nonlinear_solver_logger.log_to_all(
+            " Pseudo-balance: Starting a new solution loop...");
+          micro_loop_counter++;
+
+          micro_nonlinear_iteration = 0;
+
           // Determine the active (and also inactive) set
           active_set_algorithm(flag_compute_active_set);
+
+          // Revert the plastic slips to the initial trial solution
+          // values
+          reset_trial_solution(true, 1);
 
           // Micro-Newton-Raphson loop
           do
@@ -401,8 +416,10 @@ namespace gCP
               micro_nonlinear_iteration);
 
             // Terminal and log output
+            if (micro_nonlinear_iteration == 1)
             {
-
+              update_and_output_nonlinear_solver_logger(
+                residual_l2_norms);
             }
 
             // Newton-Raphson update
@@ -432,7 +449,21 @@ namespace gCP
 
             // Terminal and log output
             {
-              (void)n_krylov_iterations;
+              const dealii::Vector<double> newton_update_l2_norms =
+                fe_field->get_sub_l2_norms(newton_update);
+
+              const double order_of_convergence =
+                std::log(residual_l2_norms[1]) /
+                  std::log(old_residual_l2_norms[1]);
+
+              update_and_output_nonlinear_solver_logger(
+                micro_nonlinear_iteration,
+                n_krylov_iterations,
+                line_search->get_n_iterations(),
+                newton_update_l2_norms,
+                residual_l2_norms,
+                order_of_convergence,
+                relaxation_parameter);
             }
 
             // Convergence check
@@ -441,6 +472,13 @@ namespace gCP
                 micro_newton_parameters.absolute_tolerance;
 
           } while (!flag_successful_micro_convergence);
+
+          nonlinear_solver_logger.log_to_all(
+            " Linear momentum balance: Starting a new solution loop...");
+
+          macro_nonlinear_iteration = 0;
+
+          macro_loop_counter++;
         }
       }
       else
@@ -474,9 +512,10 @@ namespace gCP
           discrete_time.get_step_number() + 1,
           macro_nonlinear_iteration);
 
-        // Terminal and log output ()
+        if (macro_nonlinear_iteration == 1)
         {
-
+          update_and_output_nonlinear_solver_logger(
+            residual_l2_norms);
         }
 
         // Newton-Raphson update
@@ -506,7 +545,21 @@ namespace gCP
 
         // Terminal and log output
         {
-          (void)n_krylov_iterations;
+          const dealii::Vector<double> newton_update_l2_norms =
+            fe_field->get_sub_l2_norms(newton_update);
+
+          const double order_of_convergence =
+            std::log(residual_l2_norms[0]) /
+              std::log(old_residual_l2_norms[0]);
+
+          update_and_output_nonlinear_solver_logger(
+            macro_nonlinear_iteration,
+            n_krylov_iterations,
+            line_search->get_n_iterations(),
+            newton_update_l2_norms,
+            residual_l2_norms,
+            order_of_convergence,
+            relaxation_parameter);
         }
 
         // Convergence check
