@@ -1074,9 +1074,6 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     }
     else if (string_solution_algorithm == std::string("bouncing"))
     {
-      Assert(false, dealii::ExcMessage(
-        "The embracing staggered approach is yet to be implemented."));
-
       solution_algorithm = SolutionAlgorithm::Bouncing;
 
       staggered_algorithm_parameters.parse_parameters(prm);
