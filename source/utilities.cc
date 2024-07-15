@@ -168,9 +168,9 @@ void Logger::log_values_to_terminal()
 
 void Logger::log_to_all(const std::string message)
 {
-  output_filepath << "\n" << message << "\n\n";
+  output_filepath <<  message << "\n";
 
-  pcout << "\n" << message << "\n\n";
+  pcout << message << "\n";
 }
 
 
