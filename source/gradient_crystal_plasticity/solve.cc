@@ -90,8 +90,6 @@ namespace gCP
       " with dt = " +
       std::to_string(discrete_time.get_next_step_size()));
 
-    nonlinear_solver_logger.log_headers_to_terminal();
-
     // Internal variables' values at the previous step are stored
     prepare_quadrature_point_history();
 
@@ -167,6 +165,8 @@ namespace gCP
     const RunTimeParameters::KrylovParameters
       &krylov_parameters = parameters.monolithic_algorithm_parameters.
         monolithic_system_solver_parameters.krylov_parameters;
+
+    nonlinear_solver_logger.log_headers_to_terminal();
 
     // Newton-Raphson loop
     do
@@ -312,7 +312,7 @@ namespace gCP
     // Declare and initilize local variables and references
     unsigned int macro_nonlinear_iteration = 0,
                  micro_nonlinear_iteration = 0,
-                 macro_loop_counter = 0,
+                 macro_loop_counter = 1,
                  micro_loop_counter = 0;
 
     bool flag_successful_convergence = false,
@@ -348,7 +348,10 @@ namespace gCP
     distribute_affine_constraints_to_trial_solution();
 
     nonlinear_solver_logger.log_to_all(
-      " Linear momentum balance: Starting a new solution loop...");
+      " Linear momentum balance: Starting solution loop #" +
+            std::to_string(macro_loop_counter));
+
+    nonlinear_solver_logger.log_headers_to_terminal();
 
     // Macro-Newton-Raphson loop
     do
@@ -369,14 +372,22 @@ namespace gCP
         {
           flag_successful_convergence = true;
 
+          nonlinear_solver_logger.log_to_all("  Solution converges!");
+
           continue;
         }
         // Otherwise compute a new trial solution for the plastic slips
         else
         {
-          nonlinear_solver_logger.log_to_all(
-            " Pseudo-balance: Starting a new solution loop...");
+          nonlinear_solver_logger.log_to_all("  Solution converges!\n");
+
           micro_loop_counter++;
+
+          nonlinear_solver_logger.log_to_all(
+            " Pseudo-balance: Starting solution loop #" +
+            std::to_string(micro_loop_counter));
+
+          nonlinear_solver_logger.log_headers_to_terminal();
 
           micro_nonlinear_iteration = 0;
 
@@ -473,12 +484,17 @@ namespace gCP
 
           } while (!flag_successful_micro_convergence);
 
-          nonlinear_solver_logger.log_to_all(
-            " Linear momentum balance: Starting a new solution loop...");
-
           macro_nonlinear_iteration = 0;
 
           macro_loop_counter++;
+
+          nonlinear_solver_logger.log_to_all("  Solution converges!\n");
+
+          nonlinear_solver_logger.log_to_all(
+            " Linear momentum balance: Starting solution loop #" +
+                  std::to_string(macro_loop_counter));
+
+          nonlinear_solver_logger.log_headers_to_terminal();
         }
       }
       else
