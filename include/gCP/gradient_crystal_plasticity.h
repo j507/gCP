@@ -254,7 +254,8 @@ private:
     const bool flag_store_initial_trial_solution = false);
 
   void reset_trial_solution(
-    const bool flag_reset_to_initial_trial_solution = false);
+    const bool flag_reset_to_initial_trial_solution = false,
+    const unsigned int block_id = 0);
 
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);

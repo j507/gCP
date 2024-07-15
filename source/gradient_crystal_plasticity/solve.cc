@@ -829,7 +829,8 @@ namespace gCP
 
   template <int dim>
   void GradientCrystalPlasticitySolver<dim>::reset_trial_solution(
-    const bool flag_reset_to_initial_trial_solution)
+    const bool flag_reset_to_initial_trial_solution,
+    const unsigned int block_id)
   {
     dealii::LinearAlgebraTrilinos::MPI::BlockVector
       distributed_trial_solution;
@@ -839,7 +840,7 @@ namespace gCP
 
     if (flag_reset_to_initial_trial_solution)
     {
-      distributed_trial_solution = fe_field->old_solution;
+      distributed_trial_solution = initial_trial_solution;
     }
     else
     {
@@ -849,7 +850,8 @@ namespace gCP
     fe_field->get_affine_constraints().distribute(
       distributed_trial_solution);
 
-    trial_solution = distributed_trial_solution;
+    trial_solution.block(block_id) =
+      distributed_trial_solution.block(block_id);
   }
 
 
