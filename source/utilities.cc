@@ -166,6 +166,15 @@ void Logger::log_values_to_terminal()
 
 
 
+void Logger::log_to_all(const std::string message)
+{
+  output_filepath << "\n" << message << "\n\n";
+
+  pcout << "\n" << message << "\n\n";
+}
+
+
+
 void Logger::add_break(const std::string message)
 {
   output_filepath << std::endl

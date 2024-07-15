@@ -97,6 +97,8 @@ public:
 
   void log_values_to_terminal();
 
+  void log_to_all(const std::string message);
+
   void add_break(const std::string message);
 
 private:
