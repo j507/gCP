@@ -343,10 +343,6 @@ namespace gCP
         staggered_algorithm_parameters.pseudo_balance_solver_parameters.
           krylov_parameters;
 
-    // The distribution corresponds to another method for the sake of
-    // the monolithic algorithm
-    distribute_affine_constraints_to_trial_solution();
-
     nonlinear_solver_logger.log_to_all(
       " Linear momentum balance: Starting solution loop #" +
             std::to_string(macro_loop_counter));
@@ -394,6 +390,32 @@ namespace gCP
           // Determine the active (and also inactive) set
           active_set_algorithm(flag_compute_active_set);
 
+          // The distribution corresponds to another method for the
+          // sake of the monolithic algorithm
+          distribute_affine_constraints_to_trial_solution();
+
+          /*!
+           * @todo Exit the micro loop if all locally owned active sets
+           * are empty
+           */
+          /*
+          int n_processors;
+
+          MPI_Comm_size(MPI_COMM_WORLD, &n_processors);
+
+          int flag_active_set_is_empty =
+            locally_owned_active_set.is_empty();
+
+          if (dealii::Utilities::MPI::sum(flag_active_set_is_empty,
+              MPI_COMM_WORLD) == n_processors)
+          {
+            flag_successful_micro_convergence = true;
+
+            continue;
+          }*/
+
+          debug_output();
+
           // Revert the plastic slips to the initial trial solution
           // values
           reset_trial_solution(true, 1);
@@ -403,6 +425,15 @@ namespace gCP
           {
             // Increase iteration counter
             micro_nonlinear_iteration++;
+
+            AssertThrow(
+              micro_nonlinear_iteration <=
+                micro_newton_parameters.n_max_iterations,
+              dealii::ExcMessage(
+                "The nonlinear solver has reach the given maximum "
+                "number of iterations (" +
+                std::to_string(
+                  micro_newton_parameters.n_max_iterations) + ")."));
 
             // Preparations for the Newton-Update and Line-Search
             store_trial_solution();
@@ -464,8 +495,9 @@ namespace gCP
                 fe_field->get_sub_l2_norms(newton_update);
 
               const double order_of_convergence =
+                old_residual_l2_norms[1] != 0. ?
                 std::log(residual_l2_norms[1]) /
-                  std::log(old_residual_l2_norms[1]);
+                  std::log(old_residual_l2_norms[1]) : 0.0;
 
               update_and_output_nonlinear_solver_logger(
                 micro_nonlinear_iteration,
@@ -513,6 +545,16 @@ namespace gCP
       {
         // Increase iteration counter
         macro_nonlinear_iteration++;
+
+        AssertThrow(
+          macro_nonlinear_iteration <=
+            macro_newton_parameters.n_max_iterations,
+          dealii::ExcMessage(
+            "The nonlinear solver has reach the given maximum "
+            "number of iterations (" +
+            std::to_string(
+              macro_newton_parameters.n_max_iterations) + ")."));
+
 
         // Preparations for the Newton-Update and Line-Search
         store_trial_solution();
