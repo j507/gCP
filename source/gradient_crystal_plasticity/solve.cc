@@ -488,6 +488,18 @@ namespace gCP
 
           macro_loop_counter++;
 
+          AssertThrow(
+            macro_loop_counter <=
+              parameters.staggered_algorithm_parameters.
+                max_n_solution_loops,
+            dealii::ExcMessage(
+              "The algorithm has reached the given maximum number of "
+              "solution loops (" +
+              std::to_string(
+                parameters.staggered_algorithm_parameters.
+                  max_n_solution_loops)
+              + ")."));
+
           nonlinear_solver_logger.log_to_all("  Solution converges!\n");
 
           nonlinear_solver_logger.log_to_all(
