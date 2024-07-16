@@ -949,7 +949,10 @@ void MonolithicAlgorithmParameters::parse_parameters(
 
 
 
-StaggeredAlgorithmParameters::StaggeredAlgorithmParameters(){}
+StaggeredAlgorithmParameters::StaggeredAlgorithmParameters()
+:
+max_n_solution_loops(15)
+{}
 
 
 
@@ -969,6 +972,10 @@ void StaggeredAlgorithmParameters::declare_parameters(
       NonlinearSystemSolverParameters::declare_parameters(prm);
     }
     prm.leave_subsection();
+
+    prm.declare_entry("Maximum number of solution loops",
+                      "15",
+                      dealii::Patterns::Integer(2));
   }
   prm.leave_subsection();
 }
@@ -991,6 +998,9 @@ void StaggeredAlgorithmParameters::parse_parameters(
       pseudo_balance_solver_parameters.parse_parameters(prm);
     }
     prm.leave_subsection();
+
+    max_n_solution_loops =
+      prm.get_integer("Maximum number of solution loops");
   }
   prm.leave_subsection();
 }

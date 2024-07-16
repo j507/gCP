@@ -980,6 +980,13 @@ struct StaggeredAlgorithmParameters
    * @todo Docu
    */
   NonlinearSystemSolverParameters pseudo_balance_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int max_n_solution_loops;
 };
 
 
