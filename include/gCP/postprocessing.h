@@ -34,6 +34,7 @@ public:
   Postprocessor(
     std::shared_ptr<FEField<dim>>       &fe_field,
     std::shared_ptr<CrystalsData<dim>>  &crystals_data,
+    const bool                          flag_light_output = false,
     const bool                          flag_output_fluctuations = false);
 
   virtual void evaluate_vector_field(
@@ -69,6 +70,8 @@ private:
   const dealii::SymmetricTensor<4,dim>                    deviatoric_projector;
 
   const dealii::SymmetricTensor<4,3>                      deviatoric_projector_3d;
+
+  bool                                                    flag_light_output;
 
   bool                                                    flag_output_fluctuations;
 
