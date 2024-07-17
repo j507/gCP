@@ -1069,6 +1069,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                          flag_output_debug_fields;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                          print_sparsity_pattern;
 
   /*!

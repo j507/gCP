@@ -482,47 +482,50 @@ reset_internal_newton_method_constraints()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::debug_output()
 {
-  std::vector<dealii::DataOut<dim>> data_outs(3);
-
-  std::vector<std::string> file_names{
-    "Debugging_", "Residual_", "Newton_Update_"};
-
-  data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                           trial_solution,
-                           postprocessor);
-
-  data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                           trial_microstress->solution,
-                           trial_postprocessor);
-
-  data_outs[1].add_data_vector(fe_field->get_dof_handler(),
-                               residual,
-                               postprocessor);
-
-  data_outs[2].add_data_vector(fe_field->get_dof_handler(),
-                               newton_update,
-                               postprocessor);
-
-  for (auto &data_out : data_outs)
+  if (parameters.flag_output_debug_fields)
   {
-    data_out.build_patches(*mapping);
+    std::vector<dealii::DataOut<dim>> data_outs(3);
+
+    std::vector<std::string> file_names{
+      "Debugging_", "Residual_", "Newton_Update_"};
+
+    data_outs[0].add_data_vector(fe_field->get_dof_handler(),
+                            trial_solution,
+                            postprocessor);
+
+    data_outs[0].add_data_vector(fe_field->get_dof_handler(),
+                            trial_microstress->solution,
+                            trial_postprocessor);
+
+    data_outs[1].add_data_vector(fe_field->get_dof_handler(),
+                                residual,
+                                postprocessor);
+
+    data_outs[2].add_data_vector(fe_field->get_dof_handler(),
+                                newton_update,
+                                postprocessor);
+
+    for (auto &data_out : data_outs)
+    {
+      data_out.build_patches(*mapping);
+    }
+
+    static int out_index = 0;
+
+    for (unsigned int id = 0; id < data_outs.size(); ++id)
+    {
+      file_names[id] += std::to_string(discrete_time.get_step_number());
+
+      data_outs[id].write_vtu_with_pvtu_record(
+        parameters.logger_output_directory + "paraview/",
+        file_names[id],
+        out_index,
+        MPI_COMM_WORLD,
+        5);
+    }
+
+    out_index++;
   }
-
-  static int out_index = 0;
-
-  for (unsigned int id = 0; id < data_outs.size(); ++id)
-  {
-    file_names[id] += std::to_string(discrete_time.get_step_number());
-
-    data_outs[id].write_vtu_with_pvtu_record(
-      parameters.logger_output_directory + "paraview/",
-      file_names[id],
-      out_index,
-      MPI_COMM_WORLD,
-      5);
-  }
-
-  out_index++;
 }
 
 

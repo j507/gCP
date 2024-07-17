@@ -1016,6 +1016,7 @@ boundary_conditions_at_grain_boundaries(
 logger_output_directory("results/default/"),
 flag_skip_extrapolation_at_extrema(false),
 flag_zero_damage_during_loading_and_unloading(false),
+flag_output_debug_fields(false),
 print_sparsity_pattern(false),
 verbose(false)
 {}
@@ -1055,6 +1056,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Bool());
 
     prm.declare_entry("Print sparsity pattern",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Output debug fields",
                       "false",
                       dealii::Patterns::Bool());
 
@@ -1141,6 +1146,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       prm.get_bool("Zero damage evolution during un- and loading");
 
     print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
+
+    flag_output_debug_fields = prm.get_bool("Output debug fields");
 
     verbose = prm.get_bool("Verbose");
   }
