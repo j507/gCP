@@ -59,7 +59,8 @@ nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
 postprocessor(
   fe_field,
-  crystals_data),
+  crystals_data,
+  true),
 flag_init_was_called(false)
 {
   Assert(fe_field.get() != nullptr,
