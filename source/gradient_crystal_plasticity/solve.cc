@@ -2,6 +2,11 @@
 
 #include <deal.II/numerics/data_out.h>
 
+#include <deal.II/lac/trilinos_linear_operator.h>
+#include <deal.II/lac/packaged_operation.h>
+
+
+
 namespace gCP
 {
 
@@ -544,7 +549,6 @@ namespace gCP
             std::to_string(
               macro_newton_parameters.n_max_iterations) + ")."));
 
-
         // Preparations for the Newton-Update and Line-Search
         store_trial_solution();
 
@@ -622,7 +626,6 @@ namespace gCP
         }
 
         // Convergence check
-
         flag_successful_macro_convergence =
           residual_l2_norms[0] <
             macro_newton_parameters.absolute_tolerance;
