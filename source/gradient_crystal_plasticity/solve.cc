@@ -398,27 +398,16 @@ namespace gCP
            * @todo Exit the micro loop if all locally owned active sets
            * are empty
            */
-          /*
-          int n_processors;
-
-          MPI_Comm_size(MPI_COMM_WORLD, &n_processors);
-
-          int flag_active_set_is_empty =
-            locally_owned_active_set.is_empty();
-
-          if (dealii::Utilities::MPI::sum(flag_active_set_is_empty,
-              MPI_COMM_WORLD) == n_processors)
-          {
-            flag_successful_micro_convergence = true;
-
-            continue;
-          }*/
 
           debug_output();
 
           // Revert the plastic slips to the initial trial solution
           // values
-          reset_trial_solution(true, 1);
+          if (parameters.staggered_algorithm_parameters.
+                flag_reset_trial_solution_at_micro_loop)
+          {
+            reset_trial_solution(true, 1);
+          }
 
           // Micro-Newton-Raphson loop
           do

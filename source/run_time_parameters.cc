@@ -951,7 +951,8 @@ void MonolithicAlgorithmParameters::parse_parameters(
 
 StaggeredAlgorithmParameters::StaggeredAlgorithmParameters()
 :
-max_n_solution_loops(15)
+max_n_solution_loops(15),
+flag_reset_trial_solution_at_micro_loop(true)
 {}
 
 
@@ -976,6 +977,10 @@ void StaggeredAlgorithmParameters::declare_parameters(
     prm.declare_entry("Maximum number of solution loops",
                       "15",
                       dealii::Patterns::Integer(2));
+
+    prm.declare_entry("Reset trial solution at each micro loop",
+                      "true",
+                      dealii::Patterns::Bool());
   }
   prm.leave_subsection();
 }
@@ -1001,6 +1006,9 @@ void StaggeredAlgorithmParameters::parse_parameters(
 
     max_n_solution_loops =
       prm.get_integer("Maximum number of solution loops");
+
+    flag_reset_trial_solution_at_micro_loop =
+      prm.get_bool("Reset trial solution at each micro loop");
   }
   prm.leave_subsection();
 }

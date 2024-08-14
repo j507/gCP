@@ -987,6 +987,13 @@ struct StaggeredAlgorithmParameters
    * @todo Docu
    */
   unsigned int max_n_solution_loops;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool flag_reset_trial_solution_at_micro_loop;
 };
 
 
