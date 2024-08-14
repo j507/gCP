@@ -237,6 +237,10 @@ private:
     const unsigned int block_id,
     const double right_hand_side_l2_norm);
 
+  unsigned int solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &krylov_parameters,
+    const unsigned int block_id);
+
   void update_trial_solution(
     const double relaxation_parameter,
     const unsigned int block_id = 0);
