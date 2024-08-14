@@ -48,6 +48,11 @@ flag_output_fluctuations(flag_output_fluctuations)
   voigt_indices[3] = std::make_pair<unsigned int, unsigned int>(1,2);
   voigt_indices[4] = std::make_pair<unsigned int, unsigned int>(0,2);
   voigt_indices[5] = std::make_pair<unsigned int, unsigned int>(0,1);
+
+  if (flag_light_output)
+  {
+    flag_init_was_called = true;
+  }
 }
 
 
