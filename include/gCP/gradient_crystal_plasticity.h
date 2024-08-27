@@ -232,6 +232,8 @@ private:
 
   void embracing_algorihtm();
 
+  unsigned int solve_linearized_system();
+
   unsigned int solve_linearized_system(
     const RunTimeParameters::KrylovParameters &krylov_parameters,
     const unsigned int block_id,
@@ -333,7 +335,18 @@ private:
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
     trial_microstress_right_hand_side;
 
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    slip_resistance;
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    tmp_slip_resistance;
+
   gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
+
+  using DoFInfo = std::pair<std::vector<
+    dealii::types::global_dof_index>, unsigned int>;
+
+  std::map<dealii::types::global_dof_index, DoFInfo>  dof_to_info;
 
   void reset_internal_newton_method_constraints();
 
@@ -366,6 +379,12 @@ private:
 
   void copy_local_to_global_trial_microstress_right_hand_side(
     const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy  &data);
+
+  void init_dof_to_info_map();
+
+  void store_slip_resistances();
+
+  void reset_and_update_slip_resistances();
 };
 
 

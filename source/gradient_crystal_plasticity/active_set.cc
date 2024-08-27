@@ -80,7 +80,7 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
       }
       else
       {
-        AssertThrow(false, dealii::ExcNotImplemented())
+        local_yield_stress = slip_resistance(locally_owned_dof);
       }
 
       //const dealii::types::global_dof_index dof =
