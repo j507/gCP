@@ -99,7 +99,8 @@ solve_nonlinear_system(const bool flag_skip_extrapolation)
   store_slip_resistances();
 
   // Compute and store starting point
-  extrapolate_initial_trial_solution(flag_skip_extrapolation);
+  extrapolate_initial_trial_solution(flag_skip_extrapolation ||
+    parameters.flag_skip_extrapolation);
 
   store_trial_solution(true);
 
@@ -760,7 +761,10 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
 
     unsigned int n_krylov_iterations = 0.;
 
-    // Newton-Raphson update
+    // Newton-Raphson update:
+    // During the first load step the sub-matrix G leads a bad Shur
+    // complement if the rate-dependent case with a small regularization
+    // parameter is chosen
     if (discrete_time.get_step_number() == 0 &&
           macro_nonlinear_iteration == 1)
     {
@@ -805,13 +809,16 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
     // Determine the active (and also inactive) set
     active_set_algorithm(flag_compute_active_set);
 
+    debug_output();
+
     // The distribution corresponds to another method for the
     // sake of the monolithic algorithm
     //distribute_affine_constraints_to_trial_solution();
 
     // Revert the plastic slips to the initial trial solution
     // values
-    if (false)//parameters.staggered_algorithm_parameters.flag_reset_trial_solution_at_micro_loop)
+    if (parameters.staggered_algorithm_parameters.
+          flag_reset_trial_solution_at_micro_loop)
     {
       reset_trial_solution(true, 1);
     }
@@ -946,8 +953,6 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
         order_of_convergence,
         relaxation_parameter);
     }
-
-    debug_output();
 
     // Convergence check
     flag_successful_macro_convergence =
@@ -1339,6 +1344,7 @@ solve_linearized_system(
 
   const auto system_matrix =
     A - B * inv_D * C;
+    //A;
 
   const auto inversed_system_matrix =
     dealii::inverse_operator(
