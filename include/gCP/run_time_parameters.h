@@ -758,13 +758,6 @@ struct KrylovParameters
    *
    * @todo Docu
    */
-  double        tolerance_relaxation_factor;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
   unsigned int  n_max_iterations;
 };
 
@@ -817,9 +810,11 @@ struct NewtonRaphsonParameters
    */
   unsigned int  n_max_iterations;
 
-
-  double        relaxation_parameter;
-
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool          flag_line_search;
 };
 
@@ -1024,8 +1019,18 @@ struct SolverParameters
    */
   SolutionAlgorithm             solution_algorithm;
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   MonolithicAlgorithmParameters monolithic_algorithm_parameters;
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   StaggeredAlgorithmParameters staggered_algorithm_parameters;
 
   /*!
@@ -1347,8 +1352,6 @@ struct Output
   unsigned int  homogenization_output_frequency;
 
   bool          flag_output_damage_variable;
-
-  bool          flag_output_residual;
 
   bool          flag_output_fluctuations;
 

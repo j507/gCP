@@ -627,7 +627,6 @@ KrylovParameters::KrylovParameters()
 solver_type(SolverType::CG),
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
-tolerance_relaxation_factor(1.0),
 n_max_iterations(1000)
 {}
 
@@ -649,10 +648,6 @@ void KrylovParameters::declare_parameters(
     prm.declare_entry("Absolute tolerance",
                       "1e-8",
                       dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Relaxation factor of the tolerances",
-                      "1.0",
-                      dealii::Patterns::Double());
 
     prm.declare_entry("Maximum number of iterations",
                       "1000",
@@ -692,9 +687,6 @@ void KrylovParameters::parse_parameters(
 
     absolute_tolerance  = prm.get_double("Absolute tolerance");
 
-    tolerance_relaxation_factor =
-      prm.get_double("Relaxation factor of the tolerances");
-
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
@@ -721,7 +713,6 @@ relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
 step_tolerance(1e-8),
 n_max_iterations(15),
-relaxation_parameter(1.0),
 flag_line_search(true)
 {}
 
@@ -748,10 +739,6 @@ void NewtonRaphsonParameters::declare_parameters(
                       "15",
                       dealii::Patterns::Integer(1));
 
-    prm.declare_entry("Relaxation parameter",
-                      "1.0",
-                      dealii::Patterns::Double(0.,1.));
-
     prm.declare_entry("Line search algorithm",
                       "true",
                       dealii::Patterns::Bool());
@@ -777,9 +764,6 @@ void NewtonRaphsonParameters::parse_parameters(
 
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
-
-    relaxation_parameter =
-      prm.get_double("Relaxation parameter");
 
     flag_line_search =
       prm.get_bool("Line search algorithm");
@@ -1642,7 +1626,6 @@ graphical_output_frequency(1),
 terminal_output_frequency(1),
 homogenization_output_frequency(1),
 flag_output_damage_variable(false),
-flag_output_residual(false),
 flag_output_fluctuations(false),
 flag_store_checkpoint(false)
 {}
@@ -1667,10 +1650,6 @@ void Output::declare_parameters(
                       dealii::Patterns::Integer(0));
 
     prm.declare_entry("Output damage variable field",
-                      "false",
-                      dealii::Patterns::Bool());
-
-    prm.declare_entry("Output residual field",
                       "false",
                       dealii::Patterns::Bool());
 
@@ -1744,9 +1723,6 @@ void Output::parse_parameters(
 
     flag_output_damage_variable =
       prm.get_bool("Output damage variable field");
-
-    flag_output_residual =
-      prm.get_bool("Output residual field");
 
     flag_output_fluctuations =
       prm.get_bool("Output fluctuations fields");
