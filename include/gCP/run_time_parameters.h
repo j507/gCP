@@ -1062,6 +1062,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                          flag_skip_extrapolation;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                          flag_skip_extrapolation_at_extrema;
 
   /*!

@@ -1022,6 +1022,7 @@ allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
+flag_skip_extrapolation(false),
 flag_skip_extrapolation_at_extrema(false),
 flag_zero_damage_during_loading_and_unloading(false),
 flag_output_debug_fields(false),
@@ -1054,6 +1055,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                       "microfree",
                       dealii::Patterns::Selection(
                         "microhard|microfree|microtraction"));
+
+    prm.declare_entry("Skip extrapolation of start value",
+                      "false",
+                      dealii::Patterns::Bool());
 
     prm.declare_entry("Skip extrapolation of start value at extrema",
                       "false",
@@ -1143,6 +1148,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
           "Unexpected identifier for the boundary conditions at grain "
           "boundaries."));
     }
+
+    flag_skip_extrapolation =
+      prm.get_bool("Skip extrapolation of start value");
 
     flag_skip_extrapolation_at_extrema =
       prm.get_bool("Skip extrapolation of start value at extrema");
