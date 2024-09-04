@@ -16,9 +16,13 @@ namespace Kinematics
 
 template <int dim>
 ElasticStrain<dim>::ElasticStrain(
-  std::shared_ptr<CrystalsData<dim>>  crystals_data)
+  std::shared_ptr<CrystalsData<dim>>  crystals_data,
+  const double reference_length_value,
+  const double reference_displacement_value)
 :
-crystals_data(crystals_data)
+crystals_data(crystals_data),
+dimensionless_number(
+  reference_length_value / reference_displacement_value)
 {}
 
 
@@ -39,11 +43,11 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
   dealii::SymmetricTensor<2,dim> elastic_strain_tensor_value(
                                   strain_tensor_value);
 
-  for (unsigned int slip_id = 0;
-       slip_id < crystals_data->get_n_slips();
-       ++slip_id)
+  for (unsigned int slip_id = 0; slip_id < crystals_data->get_n_slips();
+        ++slip_id)
   {
     elastic_strain_tensor_value -=
+      dimensionless_number *
       slip_values[slip_id][q_point] *
       crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
   }
@@ -92,12 +96,14 @@ namespace ConstitutiveLaws
 
 template<int dim>
 HookeLaw<dim>::HookeLaw(
-  const RunTimeParameters::HookeLawParameters  parameters)
+  const RunTimeParameters::HookeLawParameters  parameters,
+  const double reference_stiffness_value)
 :
 crystallite(Crystallite::Monocrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
+reference_stiffness_value(reference_stiffness_value),
 flag_init_was_called(false)
 {
   crystals_data = nullptr;
@@ -108,13 +114,15 @@ flag_init_was_called(false)
 template<int dim>
 HookeLaw<dim>::HookeLaw(
   const std::shared_ptr<CrystalsData<dim>>    &crystals_data,
-  const RunTimeParameters::HookeLawParameters parameters)
+  const RunTimeParameters::HookeLawParameters parameters,
+  const double reference_stiffness_value)
 :
 crystals_data(crystals_data),
 crystallite(Crystallite::Polycrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
+reference_stiffness_value(reference_stiffness_value),
 flag_init_was_called(false)
 {}
 
@@ -128,11 +136,14 @@ void HookeLaw<dim>::init()
       for (unsigned int k = 0; k < dim; k++)
         for (unsigned int l = 0; l < dim; l++)
           if (i == j && j == k && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1111;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1111 / reference_stiffness_value;
           else if (i == k && j == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1212;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1212 / reference_stiffness_value;
           else if (i == j && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1122;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1122 / reference_stiffness_value;
 
   if constexpr(dim == 3)
     reference_stiffness_tetrad_3d = reference_stiffness_tetrad;
@@ -143,11 +154,14 @@ void HookeLaw<dim>::init()
         for (unsigned int k = 0; k < 3; k++)
           for (unsigned int l = 0; l < 3; l++)
             if (i == j && j == k && k == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1111;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1111 / reference_stiffness_value;
             else if (i == k && j == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1212;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1212 / reference_stiffness_value;
             else if (i == j && k == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1122;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1122 / reference_stiffness_value;
   }
   else
     Assert(false, dealii::ExcNotImplemented());
@@ -574,12 +588,18 @@ flag_init_was_called(false)
 
 
 template<int dim>
-void VectorialMicrostressLaw<dim>::init()
+void VectorialMicrostressLaw<dim>::init(
+  const bool flag_dimensionless_formulation)
 {
   AssertThrow(crystals_data->is_initialized(),
               dealii::ExcMessage("The underlying CrystalsData<dim>"
                                   " instance has not been "
                                   " initialized."));
+
+  factor = flag_dimensionless_formulation ?
+              1.0 :
+              initial_slip_resistance *
+                std::pow(energetic_length_scale, defect_energy_index);
 
   for (unsigned int crystal_id = 0;
         crystal_id < crystals_data->get_n_crystals();
@@ -661,8 +681,7 @@ get_vectorial_microstress(
                                  "instance has not been initialized."));
 
   return (
-    initial_slip_resistance *
-    std::pow(energetic_length_scale, defect_energy_index) *
+    factor *
     (
       std::pow(
         std::abs(-crystals_data->get_slip_direction(crystal_id, slip_id) *
@@ -696,8 +715,7 @@ get_jacobian(
                                  "instance has not been initialized."));
 
   return (
-    initial_slip_resistance *
-    std::pow(energetic_length_scale, defect_energy_index) *
+    factor *
     (defect_energy_index - 1.0) *
     (
       std::pow(

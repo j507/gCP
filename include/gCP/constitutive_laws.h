@@ -26,7 +26,9 @@ template <int dim>
 class ElasticStrain
 {
 public:
-  ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data);
+  ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data,
+  const double reference_length_value = 1.0,
+  const double reference_displacement_value = 1.0);
 
   const dealii::SymmetricTensor<2,dim> get_elastic_strain_tensor(
     const unsigned int                      crystal_id,
@@ -41,6 +43,8 @@ public:
 
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
+
+  double                                      dimensionless_number;
 };
 
 
@@ -57,10 +61,12 @@ template<int dim>
 class HookeLaw
 {
 public:
-  HookeLaw(const RunTimeParameters::HookeLawParameters  parameters);
+  HookeLaw(const RunTimeParameters::HookeLawParameters  parameters,
+           const double reference_stiffness_value = 1.0);
 
   HookeLaw(const std::shared_ptr<CrystalsData<dim>>     &crystals_data,
-           const RunTimeParameters::HookeLawParameters  parameters);
+           const RunTimeParameters::HookeLawParameters  parameters,
+           const double reference_stiffness_value = 1.0);
 
   void init();
 
@@ -106,6 +112,7 @@ private:
 
   std::vector<dealii::SymmetricTensor<4,3>>   stiffness_tetrads_3d;
 
+  double                                      reference_stiffness_value;
 
   bool                                        flag_init_was_called;
 };
@@ -310,10 +317,10 @@ class VectorialMicrostressLaw
 {
 public:
   VectorialMicrostressLaw(
-    const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
+    const std::shared_ptr<CrystalsData<dim>> &crystals_data,
     const RunTimeParameters::VectorialMicrostressLawParameters parameters);
 
-  void init();
+  void init(const bool flag_dimensionless_formulation = false);
 
   dealii::Tensor<1,dim> get_vectorial_microstress(
     const unsigned int          crystal_id,
@@ -338,6 +345,8 @@ private:
   const double                                initial_slip_resistance;
 
   const double                                defect_energy_index;
+
+  double                                      factor;
 
   std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
                                               slip_direction_dyads;

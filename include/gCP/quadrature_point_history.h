@@ -291,7 +291,8 @@ public:
    */
   void init(
     const RunTimeParameters::HardeningLaw &parameters,
-    const unsigned int                    n_slips);
+    const unsigned int                    n_slips,
+    const double reference_slip_resistance_value = 1.0);
 
   /*!
    * @brief Stores the values of @ref slip_resistances in @ref
@@ -345,6 +346,8 @@ private:
   double              linear_hardening_modulus;
 
   double              hardening_parameter;
+
+  double              reference_slip_resistance_value;
 
   bool                flag_perfect_plasticity;
 

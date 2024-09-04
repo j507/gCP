@@ -111,6 +111,8 @@ private:
 
   std::shared_ptr<dealii::TensorFunction<1,dim>>    supply_term;
 
+  std::vector<double>                               dimensionless_numbers;
+
   std::shared_ptr<Kinematics::ElasticStrain<dim>>   elastic_strain;
 
   std::shared_ptr<ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
