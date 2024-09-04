@@ -625,6 +625,39 @@ struct ContactLawParameters
 
 
 
+struct ReferenceParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  ReferenceParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  double reference_length_value;
+
+  double reference_time_value;
+
+  double reference_displacement_value;
+
+  double reference_stress_value;
+
+  double reference_slip_resistance_value;
+};
+
+
+
+
 struct ConstitutiveLawsParameters
 {
   /*

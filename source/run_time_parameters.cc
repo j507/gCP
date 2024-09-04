@@ -562,6 +562,69 @@ void ContactLawParameters::parse_parameters(
 
 
 
+ReferenceParameters::ReferenceParameters()
+:
+reference_length_value(1.0),
+reference_time_value(1.0),
+reference_displacement_value(1.0),
+reference_stress_value(1.0),
+reference_slip_resistance_value(1.0)
+{}
+
+
+
+void ReferenceParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Reference parameters");
+  {
+    prm.declare_entry("Reference length value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference time value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference displacement value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference stress value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference slip resistance value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void ReferenceParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Reference parameters");
+  {
+    reference_length_value = prm.get_double("Reference length value");
+
+    reference_time_value = prm.get_double("Reference time value");
+
+    reference_displacement_value =
+      prm.get_double("Reference displacement value");
+
+    reference_stress_value = prm.get_double("Reference stress value");
+
+    reference_slip_resistance_value =
+      prm.get_double("Reference slip resistance value");
+  }
+  prm.leave_subsection();
+}
+
+
+
 ConstitutiveLawsParameters::ConstitutiveLawsParameters()
 {}
 
