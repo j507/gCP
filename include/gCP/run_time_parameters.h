@@ -1078,6 +1078,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  ReferenceParameters reference_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                          allow_decohesion;
 
   /*!

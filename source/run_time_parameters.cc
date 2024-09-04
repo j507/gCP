@@ -1089,6 +1089,8 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
     StaggeredAlgorithmParameters::declare_parameters(prm);
 
+    ReferenceParameters::declare_parameters(prm);
+
     prm.declare_entry("Solution algorithm",
                       "monolithic",
                       dealii::Patterns::Selection(
@@ -1164,6 +1166,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       AssertThrow(false, dealii::ExcMessage(
         "Unexpected identifier for the solution algorithm."));
     }
+
+    reference_parameters.parse_parameters(prm);
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
