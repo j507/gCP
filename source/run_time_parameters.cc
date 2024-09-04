@@ -567,7 +567,7 @@ ReferenceParameters::ReferenceParameters()
 reference_length_value(1.0),
 reference_time_value(1.0),
 reference_displacement_value(1.0),
-reference_stress_value(1.0),
+reference_stiffness_value(1.0),
 reference_slip_resistance_value(1.0)
 {}
 
@@ -590,7 +590,7 @@ void ReferenceParameters::declare_parameters(
                       "1.0",
                       dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Reference stress value",
+    prm.declare_entry("Reference stiffness value",
                       "1.0",
                       dealii::Patterns::Double(0.0));
 
@@ -615,7 +615,8 @@ void ReferenceParameters::parse_parameters(
     reference_displacement_value =
       prm.get_double("Reference displacement value");
 
-    reference_stress_value = prm.get_double("Reference stress value");
+    reference_stiffness_value =
+      prm.get_double("Reference stiffness value");
 
     reference_slip_resistance_value =
       prm.get_double("Reference slip resistance value");

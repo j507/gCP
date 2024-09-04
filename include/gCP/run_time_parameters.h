@@ -650,7 +650,7 @@ struct ReferenceParameters
 
   double reference_displacement_value;
 
-  double reference_stress_value;
+  double reference_stiffness_value;
 
   double reference_slip_resistance_value;
 };
