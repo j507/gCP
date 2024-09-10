@@ -17,12 +17,10 @@ namespace Kinematics
 template <int dim>
 ElasticStrain<dim>::ElasticStrain(
   std::shared_ptr<CrystalsData<dim>>  crystals_data,
-  const double reference_length_value,
-  const double reference_displacement_value)
+  const double dimensionless_number)
 :
 crystals_data(crystals_data),
-dimensionless_number(
-  reference_length_value / reference_displacement_value)
+dimensionless_number(dimensionless_number)
 {}
 
 
@@ -97,13 +95,13 @@ namespace ConstitutiveLaws
 template<int dim>
 HookeLaw<dim>::HookeLaw(
   const RunTimeParameters::HookeLawParameters  parameters,
-  const double reference_stiffness_value)
+  const double characteristic_stiffness)
 :
 crystallite(Crystallite::Monocrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
-reference_stiffness_value(reference_stiffness_value),
+characteristic_stiffness(characteristic_stiffness),
 flag_init_was_called(false)
 {
   crystals_data = nullptr;
@@ -115,14 +113,14 @@ template<int dim>
 HookeLaw<dim>::HookeLaw(
   const std::shared_ptr<CrystalsData<dim>>    &crystals_data,
   const RunTimeParameters::HookeLawParameters parameters,
-  const double reference_stiffness_value)
+  const double characteristic_stiffness)
 :
 crystals_data(crystals_data),
 crystallite(Crystallite::Polycrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
-reference_stiffness_value(reference_stiffness_value),
+characteristic_stiffness(characteristic_stiffness),
 flag_init_was_called(false)
 {}
 
@@ -137,13 +135,13 @@ void HookeLaw<dim>::init()
         for (unsigned int l = 0; l < dim; l++)
           if (i == j && j == k && k == l)
             reference_stiffness_tetrad[i][j][k][l] =
-              C1111 / reference_stiffness_value;
+              C1111 / characteristic_stiffness;
           else if (i == k && j == l)
             reference_stiffness_tetrad[i][j][k][l] =
-              C1212 / reference_stiffness_value;
+              C1212 / characteristic_stiffness;
           else if (i == j && k == l)
             reference_stiffness_tetrad[i][j][k][l] =
-              C1122 / reference_stiffness_value;
+              C1122 / characteristic_stiffness;
 
   if constexpr(dim == 3)
     reference_stiffness_tetrad_3d = reference_stiffness_tetrad;
@@ -155,13 +153,13 @@ void HookeLaw<dim>::init()
           for (unsigned int l = 0; l < 3; l++)
             if (i == j && j == k && k == l)
               reference_stiffness_tetrad_3d[i][j][k][l] =
-                C1111 / reference_stiffness_value;
+                C1111 / characteristic_stiffness;
             else if (i == k && j == l)
               reference_stiffness_tetrad_3d[i][j][k][l] =
-                C1212 / reference_stiffness_value;
+                C1212 / characteristic_stiffness;
             else if (i == j && k == l)
               reference_stiffness_tetrad_3d[i][j][k][l] =
-                C1122 / reference_stiffness_value;
+                C1122 / characteristic_stiffness;
   }
   else
     Assert(false, dealii::ExcNotImplemented());
@@ -737,7 +735,7 @@ get_jacobian(
 template<int dim>
 MicrotractionLaw<dim>::MicrotractionLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const RunTimeParameters::MicrotractionLawParameters parameters)
+  const RunTimeParameters::MicrotractionLawParameters &parameters)
 :
 crystals_data(crystals_data),
 grain_boundary_modulus(parameters.grain_boundary_modulus)

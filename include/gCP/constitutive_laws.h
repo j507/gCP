@@ -27,8 +27,7 @@ class ElasticStrain
 {
 public:
   ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data,
-  const double reference_length_value = 1.0,
-  const double reference_displacement_value = 1.0);
+  const double dimensionless_number = 1.0);
 
   const dealii::SymmetricTensor<2,dim> get_elastic_strain_tensor(
     const unsigned int                      crystal_id,
@@ -62,11 +61,11 @@ class HookeLaw
 {
 public:
   HookeLaw(const RunTimeParameters::HookeLawParameters  parameters,
-           const double reference_stiffness_value = 1.0);
+           const double characteristic_stiffness = 1.0);
 
   HookeLaw(const std::shared_ptr<CrystalsData<dim>>     &crystals_data,
            const RunTimeParameters::HookeLawParameters  parameters,
-           const double reference_stiffness_value = 1.0);
+           const double characteristic_stiffness = 1.0);
 
   void init();
 
@@ -112,7 +111,7 @@ private:
 
   std::vector<dealii::SymmetricTensor<4,3>>   stiffness_tetrads_3d;
 
-  double                                      reference_stiffness_value;
+  double                                      characteristic_stiffness;
 
   bool                                        flag_init_was_called;
 };
@@ -364,8 +363,8 @@ class MicrotractionLaw
 {
 public:
   MicrotractionLaw(
-    const std::shared_ptr<CrystalsData<dim>>                  &crystals_data,
-    const RunTimeParameters::MicrotractionLawParameters parameters);
+    const std::shared_ptr<CrystalsData<dim>> &crystals_data,
+    const RunTimeParameters::MicrotractionLawParameters &parameters);
 
   using GrainInteractionModuli =
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
