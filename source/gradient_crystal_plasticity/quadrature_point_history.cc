@@ -286,8 +286,8 @@ flag_init_was_called(false)
 template <int dim>
 void QuadraturePointHistory<dim>::init(
   const RunTimeParameters::HardeningLaw &parameters,
-  const unsigned int                    n_slips,
-  const double reference_slip_resistance_value)
+  const unsigned int n_slips,
+  const double characteristic_slip_resistance)
 {
   this->n_slips             = n_slips;
 
@@ -302,12 +302,12 @@ void QuadraturePointHistory<dim>::init(
   slip_resistances          = std::vector<double>(
                                 n_slips,
                                 initial_slip_resistance /
-                                  reference_slip_resistance_value);
+                                  characteristic_slip_resistance);
 
   tmp_slip_resistances      = slip_resistances;
 
-  this->reference_slip_resistance_value =
-    reference_slip_resistance_value;
+  this->characteristic_slip_resistance =
+    characteristic_slip_resistance;
 
   flag_init_was_called      = true;
 }
@@ -365,7 +365,7 @@ void QuadraturePointHistory<dim>::update_values(
     {
       slip_resistances[slip_id_alpha] +=
         get_hardening_matrix_entry(slip_id_alpha == slip_id_beta) /
-        reference_slip_resistance_value *
+        characteristic_slip_resistance *
         std::fabs(slips[slip_id_beta][q_point] -
                   old_slips[slip_id_beta][q_point]);
     }
