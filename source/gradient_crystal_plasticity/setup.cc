@@ -102,32 +102,12 @@ void GradientCrystalPlasticitySolver<dim>::init()
     jacobian.reinit(sparsity_pattern);
   }
 
-  // Compute reference parameters
-  dimensionless_numbers[0] =
-    parameters.reference_parameters.reference_length_value /
-      parameters.reference_parameters.reference_displacement_value;
-
-  dimensionless_numbers[1] =
-    parameters.constitutive_laws_parameters.hardening_law_parameters.
-      linear_hardening_modulus / parameters.reference_parameters.
-        reference_slip_resistance_value;
-
-  dimensionless_numbers[2] =
-    std::pow(parameters.constitutive_laws_parameters.
-      vectorial_microstress_law_parameters.energetic_length_scale /
-        parameters.reference_parameters.reference_length_value,
-          parameters.constitutive_laws_parameters.
-            vectorial_microstress_law_parameters.defect_energy_index);
-
-  dimensionless_numbers[3] =
-    parameters.reference_parameters.reference_stiffness_value /
-      parameters.reference_parameters.reference_slip_resistance_value /
-        dimensionless_numbers[0];
-
   // Initiate constitutive laws
   hooke_law->init();
 
-  vectorial_microstress_law->init(dimensionless_numbers[3] != 1.0);
+  vectorial_microstress_law->init(
+    parameters.dimensionless_formulation_parameters.
+      get_dimensionless_numbers()[3] != 1.0);
 
   init_quadrature_point_history();
 
@@ -454,8 +434,8 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
         local_quadrature_point_history[q_point]->init(
           parameters.constitutive_laws_parameters.hardening_law_parameters,
           crystals_data->get_n_slips(),
-          parameters.reference_parameters.
-            reference_slip_resistance_value);
+          parameters.dimensionless_formulation_parameters.
+            get_characteristic_quantities().slip_resistance);
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
