@@ -770,32 +770,10 @@ struct DimensionlessFormulationParameters
    */
   void init(const RunTimeParameters::ConstitutiveLawsParameters &prm);
 
-  const CharacteristicQuantities get_characteristic_quantities() const;
-
-  const std::vector<double> get_dimensionless_numbers() const;
-
-private:
-
   CharacteristicQuantities characteristic_quantities;
 
   std::vector<double> dimensionless_numbers;
 };
-
-
-
-inline const CharacteristicQuantities DimensionlessFormulationParameters
-::get_characteristic_quantities() const
-{
-  return (characteristic_quantities);
-}
-
-
-
-inline const std::vector<double> DimensionlessFormulationParameters
-::get_dimensionless_numbers() const
-{
-  return (dimensionless_numbers);
-}
 
 
 

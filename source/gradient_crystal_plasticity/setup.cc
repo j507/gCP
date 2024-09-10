@@ -107,7 +107,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   vectorial_microstress_law->init(
     parameters.dimensionless_formulation_parameters.
-      get_dimensionless_numbers()[3] != 1.0);
+      dimensionless_numbers[3] != 1.0);
 
   init_quadrature_point_history();
 
@@ -435,7 +435,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
           parameters.constitutive_laws_parameters.hardening_law_parameters,
           crystals_data->get_n_slips(),
           parameters.dimensionless_formulation_parameters.
-            get_characteristic_quantities().slip_resistance);
+            characteristic_quantities.slip_resistance);
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
