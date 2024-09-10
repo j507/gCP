@@ -19,6 +19,7 @@ DisplacementControl<dim>::DisplacementControl(
   const unsigned int                      n_crystals,
   const double                            strip_height,
   const bool                              flag_is_decohesion_allowed,
+  const double                            characteristic_displacement,
   const unsigned int                      component)
 :
 dealii::Function<dim>(n_components, parameters.start_time),
@@ -31,6 +32,7 @@ component(component),
 period(parameters.period),
 start_of_cyclic_phase(parameters.start_of_cyclic_phase),
 start_of_unloading(parameters.start_of_unloading_phase),
+characteristic_displacement(characteristic_displacement),
 flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {
   Assert(
@@ -96,7 +98,8 @@ void DisplacementControl<dim>::vector_value(
   {
     for (unsigned int i = 1; i < n_crystals; ++i)
     {
-      return_vector[component + i*dim] = displacement_load;
+      return_vector[component + i*dim] =
+        displacement_load / characteristic_displacement;
     }
   }
 }
@@ -105,8 +108,9 @@ void DisplacementControl<dim>::vector_value(
 
 template<int dim>
 LoadControl<dim>::LoadControl(
-    const RunTimeParameters::SimpleLoading  &parameters,
-    const bool                              flag_is_decohesion_allowed)
+  const RunTimeParameters::SimpleLoading &parameters,
+  const bool flag_is_decohesion_allowed,
+  const double characteristic_traction)
 :
 dealii::TensorFunction<1, dim>(parameters.start_time),
 loading_type(RunTimeParameters::LoadingType::Monotonic),
@@ -117,6 +121,7 @@ duration_of_loading_and_unloading_phase(0.),
 period(0.),
 start_of_cyclic_phase(0.),
 start_of_unloading(0.),
+characteristic_traction(characteristic_traction),
 flag_is_decohesion_allowed(flag_is_decohesion_allowed)
 {
   Assert(
@@ -175,7 +180,7 @@ dealii::Tensor<1, dim> LoadControl<dim>::value(
       Assert(false, dealii::ExcNotImplemented());
   }
 
-  return_vector[component] = traction_load;
+  return_vector[component] = traction_load / characteristic_traction;
 
   return return_vector;
 }
