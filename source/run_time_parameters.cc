@@ -562,70 +562,6 @@ void ContactLawParameters::parse_parameters(
 
 
 
-ReferenceParameters::ReferenceParameters()
-:
-reference_length_value(1.0),
-reference_time_value(1.0),
-reference_displacement_value(1.0),
-reference_stiffness_value(1.0),
-reference_slip_resistance_value(1.0)
-{}
-
-
-
-void ReferenceParameters::declare_parameters(
-  dealii::ParameterHandler &prm)
-{
-  prm.enter_subsection("Reference parameters");
-  {
-    prm.declare_entry("Reference length value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Reference time value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Reference displacement value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Reference stiffness value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-
-    prm.declare_entry("Reference slip resistance value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
-  }
-  prm.leave_subsection();
-}
-
-
-
-void ReferenceParameters::parse_parameters(
-  dealii::ParameterHandler &prm)
-{
-  prm.enter_subsection("Reference parameters");
-  {
-    reference_length_value = prm.get_double("Reference length value");
-
-    reference_time_value = prm.get_double("Reference time value");
-
-    reference_displacement_value =
-      prm.get_double("Reference displacement value");
-
-    reference_stiffness_value =
-      prm.get_double("Reference stiffness value");
-
-    reference_slip_resistance_value =
-      prm.get_double("Reference slip resistance value");
-  }
-  prm.leave_subsection();
-}
-
-
-
 ConstitutiveLawsParameters::ConstitutiveLawsParameters()
 {}
 
@@ -682,6 +618,140 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
     damage_evolution_parameters.parse_parameters(prm);
   }
   prm.leave_subsection();
+}
+
+
+
+CharacteristicQuantities::CharacteristicQuantities()
+:
+length(1.0),
+time(1.0),
+displacement(1.0),
+stiffness(1.0),
+slip_resistance(1.0),
+strain(1.0),
+stress(1.0),
+micro_traction(1.0),
+body_force(1.0),
+dislocation_density(1.0)
+{}
+
+
+
+DimensionlessFormulationParameters::DimensionlessFormulationParameters()
+:
+dimensionless_numbers(4, 1.0)
+{}
+
+
+
+void DimensionlessFormulationParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Reference parameters");
+  {
+    prm.declare_entry("Reference length value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference time value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference displacement value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference stiffness value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Reference slip resistance value",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DimensionlessFormulationParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Reference parameters");
+  {
+    characteristic_quantities.length =
+      prm.get_double("Reference length value");
+
+    characteristic_quantities.time =
+      prm.get_double("Reference time value");
+
+    characteristic_quantities.displacement =
+      prm.get_double("Reference displacement value");
+
+    characteristic_quantities.stiffness =
+      prm.get_double("Reference stiffness value");
+
+    characteristic_quantities.slip_resistance =
+      prm.get_double("Reference slip resistance value");
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DimensionlessFormulationParameters::init(
+  const RunTimeParameters::ConstitutiveLawsParameters &prm)
+{
+  const double &initial_slip_resistance =
+    prm.vectorial_microstress_law_parameters.initial_slip_resistance;
+
+  const double &defect_energy_index =
+    prm.vectorial_microstress_law_parameters.defect_energy_index;
+
+  const double &energetic_length_scale =
+    prm.vectorial_microstress_law_parameters.energetic_length_scale;
+
+  const double &linear_hardening_modulus =
+    prm.hardening_law_parameters.linear_hardening_modulus;
+
+  characteristic_quantities.strain =
+    characteristic_quantities.displacement /
+      characteristic_quantities.length;
+
+  characteristic_quantities.stress =
+    characteristic_quantities.stiffness *
+      characteristic_quantities.strain;
+
+  characteristic_quantities.micro_traction =
+    initial_slip_resistance *
+    std::pow(energetic_length_scale, defect_energy_index) /
+    std::pow(characteristic_quantities.length,
+             defect_energy_index - 1.0);
+
+  characteristic_quantities.body_force =
+    characteristic_quantities.stress /
+      characteristic_quantities.length;
+
+  characteristic_quantities.dislocation_density =
+    1.0 / characteristic_quantities.length;
+
+  dimensionless_numbers[0] =
+    characteristic_quantities.length /
+      characteristic_quantities.displacement;
+
+  dimensionless_numbers[1] =
+    linear_hardening_modulus /
+      characteristic_quantities.slip_resistance;
+
+  dimensionless_numbers[2] =
+    std::pow(energetic_length_scale / characteristic_quantities.length,
+             defect_energy_index);
+
+  dimensionless_numbers[3] =
+    characteristic_quantities.stiffness /
+      characteristic_quantities.slip_resistance /
+        dimensionless_numbers[0];
 }
 
 
@@ -1090,7 +1160,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
     StaggeredAlgorithmParameters::declare_parameters(prm);
 
-    ReferenceParameters::declare_parameters(prm);
+    DimensionlessFormulationParameters::declare_parameters(prm);
 
     prm.declare_entry("Solution algorithm",
                       "monolithic",
@@ -1168,7 +1238,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
         "Unexpected identifier for the solution algorithm."));
     }
 
-    reference_parameters.parse_parameters(prm);
+    dimensionless_formulation_parameters.parse_parameters(prm);
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 

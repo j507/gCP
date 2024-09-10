@@ -624,40 +624,6 @@ struct ContactLawParameters
 };
 
 
-
-struct ReferenceParameters
-{
-  /*
-   * @brief Constructor which sets up the parameters with default values.
-   */
-  ReferenceParameters();
-
-  /*!
-   * @brief Static method which declares the associated parameter to the
-   * ParameterHandler object @p prm.
-   */
-  static void declare_parameters(dealii::ParameterHandler &prm);
-
-  /*!
-   * @brief Method which parses the parameters from the ParameterHandler
-   * object @p prm.
-   */
-  void parse_parameters(dealii::ParameterHandler &prm);
-
-  double reference_length_value;
-
-  double reference_time_value;
-
-  double reference_displacement_value;
-
-  double reference_stiffness_value;
-
-  double reference_slip_resistance_value;
-};
-
-
-
-
 struct ConstitutiveLawsParameters
 {
   /*
@@ -743,6 +709,93 @@ struct ConstitutiveLawsParameters
    */
   DamageEvolution       damage_evolution_parameters;
 };
+
+
+
+struct CharacteristicQuantities
+{
+  CharacteristicQuantities();
+
+  double length;
+
+  double time;
+
+  double displacement;
+
+  double stiffness;
+
+  double slip_resistance;
+
+  double strain;
+
+  double stress;
+
+  const double &resolved_shear_stress = stress;
+
+  const double &macro_traction = stress;
+
+  double micro_traction;
+
+  double body_force;
+
+  double dislocation_density;
+};
+
+
+
+struct DimensionlessFormulationParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DimensionlessFormulationParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @param prm
+   * @todo Docu
+   */
+  void init(const RunTimeParameters::ConstitutiveLawsParameters &prm);
+
+  const CharacteristicQuantities get_characteristic_quantities() const;
+
+  const std::vector<double> get_dimensionless_numbers() const;
+
+private:
+
+  CharacteristicQuantities characteristic_quantities;
+
+  std::vector<double> dimensionless_numbers;
+};
+
+
+
+inline const CharacteristicQuantities DimensionlessFormulationParameters
+::get_characteristic_quantities() const
+{
+  return (characteristic_quantities);
+}
+
+
+
+inline const std::vector<double> DimensionlessFormulationParameters
+::get_dimensionless_numbers() const
+{
+  return (dimensionless_numbers);
+}
 
 
 
@@ -1078,7 +1131,8 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  ReferenceParameters reference_parameters;
+  DimensionlessFormulationParameters
+                                dimensionless_formulation_parameters;
 
   /*!
    * @brief
