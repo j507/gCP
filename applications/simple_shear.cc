@@ -325,7 +325,9 @@ void SimpleShearProblem<dim>::setup()
       fe_field->get_n_components(),
       crystals_data->get_n_crystals(),
       parameters.height,
-      fe_field->is_decohesion_allowed());
+      fe_field->is_decohesion_allowed(),
+      parameters.solver_parameters.dimensionless_formulation_parameters.
+        characteristic_quantities.displacement);
 
   // Sets up the problem's constraints
   setup_constraints();
