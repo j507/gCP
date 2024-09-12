@@ -92,7 +92,8 @@ void DisplacementControl<dim>::vector_value(
       Assert(false, dealii::ExcNotImplemented());
   }
 
-  return_vector[component] = displacement_load;
+  return_vector[component] = displacement_load /
+    characteristic_displacement;
 
   if (flag_is_decohesion_allowed)
   {

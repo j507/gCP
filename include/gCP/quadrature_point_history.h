@@ -394,7 +394,8 @@ QuadraturePointHistory<dim>::get_hardening_matrix_entry(
               dealii::ExcMessage("The QuadraturePointHistory<dim> "
                                  "instance has not been initialized."));
 
-  return (linear_hardening_modulus *
+  return (linear_hardening_modulus /
+          characteristic_slip_resistance *
           (hardening_parameter +
            ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }

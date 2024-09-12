@@ -310,13 +310,15 @@ template<int dim>
 ScalarMicrostressLaw<dim>::ScalarMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>>                &crystals_data,
   const RunTimeParameters::ScalarMicrostressLawParameters parameters,
-  const RunTimeParameters::HardeningLaw                   hardening_law_prm)
+  const RunTimeParameters::HardeningLaw                   hardening_law_prm,
+  const double characteristic_slip_resistance)
 :
 crystals_data(crystals_data),
 regularization_function(parameters.regularization_function),
 regularization_parameter(parameters.regularization_parameter),
 linear_hardening_modulus(hardening_law_prm.linear_hardening_modulus),
 hardening_parameter(hardening_law_prm.hardening_parameter),
+characteristic_slip_resistance(characteristic_slip_resistance),
 flag_perfect_plasticity(hardening_law_prm.flag_perfect_plasticity),
 flag_rate_independent(parameters.flag_rate_independent)
 {}
