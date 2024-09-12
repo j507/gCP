@@ -313,7 +313,8 @@ double get_l2_norm(
   const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const;
 
 dealii::Vector<double> get_sub_l2_norms(
-  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const;
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector,
+  const double factor = 1.0) const;
 
 /*!
   * @brief
