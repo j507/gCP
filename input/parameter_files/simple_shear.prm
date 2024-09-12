@@ -23,7 +23,7 @@ subsection 1. Spatial discretization parameters
   subsection Problem specific parameters
     set Height of the strip                             = 1.0
     set Number of elements in y-direction               = 100
-    set Number of equally sized crystals in y-direction = 2
+    set Number of equally sized crystals in y-direction = 1
   end
 
 end
@@ -37,7 +37,7 @@ subsection 2. Temporal discretization parameters
 
   subsection Simple loading
     set Loading type = monotonic
-    set Maximum load = 0.2
+    set Maximum load = 0.01
     set Minimum load = 0.0
 
 
@@ -52,7 +52,7 @@ subsection 2. Temporal discretization parameters
 
     subsection Monotonic load parameters
       set Duration of monotonic load            = 1.0
-      set Number of steps during monotonic load = 2000
+      set Number of steps during monotonic load = 100
     end
 
   end
@@ -61,7 +61,7 @@ end
 
 
 subsection 3. Input parameters
-  set Euler angles path name    = input/crystal_orientation/2d/euler_angles_02C_30_0
+  set Euler angles path name    = input/crystal_orientation/2d/euler_angles_0
   set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
   set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
 end
@@ -72,7 +72,6 @@ subsection 4. Output parameters
   set Graphical output frequency   = 1
   set Output damage variable field = false
   set Output fluctuations fields   = false
-  set Output residual field        = false
   set Store checkpoints            = false
   set Terminal output frequency    = 1
 end
@@ -88,13 +87,22 @@ end
 
 
 subsection 6. Solver parameters
-  set Allow decohesion at grain boundaries         = true
+  set Allow decohesion at grain boundaries         = false
   set Boundary conditions at grain boundaries      = microtraction
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = false
+  set Solution algorithm                           = monolithic
+  set Output debug fields                          = false
   set Verbose                                      = false
   set Zero damage evolution during un- and loading = false
 
+  subsection Reference parameters
+    set Reference displacement value    = 0.01
+    set Reference length value          = 1.0
+    set Reference slip resistance value = 60.0
+    set Reference stiffness value       = 28500.0
+    set Reference time value            = 1.0
+  end
 
   subsection Constitutive laws' parameters
     subsection Cohesive law's parameters
@@ -125,15 +133,15 @@ subsection 6. Solver parameters
 
     subsection Hardening law's parameters
       set Hardening parameter      = 1.4
-      set Initial slip resistance  = 490
-      set Linear hardening modulus = 550
+      set Initial slip resistance  = 60
+      set Linear hardening modulus = 100
       set Perfect plasticity       = false
     end
 
     subsection Hooke-Law's parameters
-      set C1111 = 235467.76549434732
-      set C1122 = 147905.34667489285
-      set C1212 = 107212
+      set C1111 = 107942.28436442571
+      set C1122 = 61246.24912213496
+      set C1212 = 28500
     end
 
     subsection Microtraction law's parameters
@@ -142,37 +150,44 @@ subsection 6. Solver parameters
 
     subsection Scalar microstress law's parameters
       set Rate-independent behavior = false
-      set Regularization function   = tanh
-      set Regularization parameter  = 7.5e-4
+      set Regularization function   = erf
+      set Regularization parameter  = 1e-11
     end
 
     subsection Vectorial microstress law's parameters
       set Defect energy index      = 2.0
       set Energetic length scale   = 0.2
-      set Initial slip resistance  = 490
+      set Initial slip resistance  = 60
       set Regularization parameter = 1e-16
     end
 
   end
 
-  subsection Krylov parameters
-    set Absolute tolerance                  = 1e-9
-    set Maximum number of iterations        = 1000
-    set Relative tolerance                  = 1e-8
-    set Relaxation factor of the tolerances = 1.0
-    set Solver type                         = cg
-  end
+  subsection Monolithic algorithm
+    set Monolithic preconditioner = built-in
 
-  subsection Line search parameters
-    set Armijo condition constant    = 1e-4
-    set Maximum number of iterations = 30
-  end
 
-  subsection Newton-Raphson parameters
-    set Absolute tolerance of the residual = 1e-8
-    set Absolute tolerance of the step     = 1e-15
-    set Maximum number of iterations       = 500
-    set Relative tolerance of the residual = 1e-7
+    subsection Krylov parameters
+      set Absolute tolerance                  = 1e-9
+      set Maximum number of iterations        = 3000
+      set Relative tolerance                  = 1e-8
+      set Solver type                         = cg
+    end
+
+    subsection Line search parameters
+      set Alpha condition constant     = 1e-4
+      set Beta condition constant      = 0.9
+      set Maximum number of iterations = 100
+    end
+
+    subsection Newton-Raphson parameters
+      set Absolute tolerance of the residual = 1e-8
+      set Absolute tolerance of the step     = 1e-15
+      set Line search algorithm              = false
+      set Maximum number of iterations       = 100
+      set Relative tolerance of the residual = 1e-7
+    end
+
   end
 
 end
