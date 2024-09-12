@@ -1293,6 +1293,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     logger_output_directory = prm.get("Graphical output directory");
   }
   prm.leave_subsection();
+
+  dimensionless_formulation_parameters.init(
+    constitutive_laws_parameters);
 }
 
 
