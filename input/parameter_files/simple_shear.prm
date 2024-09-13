@@ -96,12 +96,16 @@ subsection 6. Solver parameters
   set Verbose                                      = false
   set Zero damage evolution during un- and loading = false
 
-  subsection Reference parameters
-    set Reference displacement value    = 0.01
-    set Reference length value          = 1.0
-    set Reference slip resistance value = 60.0
-    set Reference stiffness value       = 28500.0
-    set Reference time value            = 1.0
+  subsection Dimensionless formulation parameters
+    set Solve the dimensionless problem = false
+
+    subsection Reference parameters
+      set Reference displacement value    = 0.01
+      set Reference length value          = 1.0
+      set Reference slip resistance value = 60.0
+      set Reference stiffness value       = 28500.0
+      set Reference time value            = 1.0
+    end
   end
 
   subsection Constitutive laws' parameters

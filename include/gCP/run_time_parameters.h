@@ -773,6 +773,8 @@ struct DimensionlessFormulationParameters
   CharacteristicQuantities characteristic_quantities;
 
   std::vector<double> dimensionless_numbers;
+
+  bool flag_solve_dimensionless_problem;
 };
 
 
@@ -1426,6 +1428,8 @@ struct Output
   bool          flag_output_damage_variable;
 
   bool          flag_output_fluctuations;
+
+  bool          flag_output_dimensionless_quantities;
 
   bool          flag_store_checkpoint;
 };

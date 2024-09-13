@@ -640,7 +640,8 @@ dislocation_density(1.0)
 
 DimensionlessFormulationParameters::DimensionlessFormulationParameters()
 :
-dimensionless_numbers(4, 1.0)
+dimensionless_numbers(4, 1.0),
+flag_solve_dimensionless_problem(false)
 {}
 
 
@@ -648,27 +649,35 @@ dimensionless_numbers(4, 1.0)
 void DimensionlessFormulationParameters::declare_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Reference parameters");
+  prm.enter_subsection("Dimensionless formulation parameters");
   {
-    prm.declare_entry("Reference length value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
+    prm.declare_entry("Solve the dimensionless problem",
+                      "false",
+                      dealii::Patterns::Bool());
 
-    prm.declare_entry("Reference time value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
+    prm.enter_subsection("Reference parameters");
+    {
+      prm.declare_entry("Reference length value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Reference displacement value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
+      prm.declare_entry("Reference time value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Reference stiffness value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
+      prm.declare_entry("Reference displacement value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Reference slip resistance value",
-                      "1.0",
-                      dealii::Patterns::Double(0.0));
+      prm.declare_entry("Reference stiffness value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+
+      prm.declare_entry("Reference slip resistance value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+    }
+    prm.leave_subsection();
   }
   prm.leave_subsection();
 }
@@ -678,22 +687,32 @@ void DimensionlessFormulationParameters::declare_parameters(
 void DimensionlessFormulationParameters::parse_parameters(
   dealii::ParameterHandler &prm)
 {
-  prm.enter_subsection("Reference parameters");
+  prm.enter_subsection("Dimensionless formulation parameters");
   {
-    characteristic_quantities.length =
-      prm.get_double("Reference length value");
+    flag_solve_dimensionless_problem =
+      prm.get_bool("Solve the dimensionless problem");
 
-    characteristic_quantities.time =
-      prm.get_double("Reference time value");
+    if (flag_solve_dimensionless_problem)
+    {
+      prm.enter_subsection("Reference parameters");
+      {
+        characteristic_quantities.length =
+          prm.get_double("Reference length value");
 
-    characteristic_quantities.displacement =
-      prm.get_double("Reference displacement value");
+        characteristic_quantities.time =
+          prm.get_double("Reference time value");
 
-    characteristic_quantities.stiffness =
-      prm.get_double("Reference stiffness value");
+        characteristic_quantities.displacement =
+          prm.get_double("Reference displacement value");
 
-    characteristic_quantities.slip_resistance =
-      prm.get_double("Reference slip resistance value");
+        characteristic_quantities.stiffness =
+          prm.get_double("Reference stiffness value");
+
+        characteristic_quantities.slip_resistance =
+          prm.get_double("Reference slip resistance value");
+      }
+      prm.leave_subsection();
+    }
   }
   prm.leave_subsection();
 }
@@ -703,6 +722,11 @@ void DimensionlessFormulationParameters::parse_parameters(
 void DimensionlessFormulationParameters::init(
   const RunTimeParameters::ConstitutiveLawsParameters &prm)
 {
+  if (!flag_solve_dimensionless_problem)
+  {
+    return;
+  }
+
   const double &initial_slip_resistance =
     prm.vectorial_microstress_law_parameters.initial_slip_resistance;
 
@@ -745,13 +769,14 @@ void DimensionlessFormulationParameters::init(
       characteristic_quantities.slip_resistance;
 
   dimensionless_numbers[2] =
+    initial_slip_resistance /
+    characteristic_quantities.slip_resistance *
     std::pow(energetic_length_scale / characteristic_quantities.length,
              defect_energy_index);
 
   dimensionless_numbers[3] =
-    characteristic_quantities.stiffness /
-      characteristic_quantities.slip_resistance /
-        dimensionless_numbers[0];
+    characteristic_quantities.stress /
+      characteristic_quantities.slip_resistance;
 }
 
 
@@ -1768,6 +1793,7 @@ terminal_output_frequency(1),
 homogenization_output_frequency(1),
 flag_output_damage_variable(false),
 flag_output_fluctuations(false),
+flag_output_dimensionless_quantities(false),
 flag_store_checkpoint(false)
 {}
 
@@ -1791,6 +1817,10 @@ void Output::declare_parameters(
                       dealii::Patterns::Integer(0));
 
     prm.declare_entry("Output damage variable field",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Output dimensionless quantities",
                       "false",
                       dealii::Patterns::Bool());
 
@@ -1867,6 +1897,9 @@ void Output::parse_parameters(
 
     flag_output_fluctuations =
       prm.get_bool("Output fluctuations fields");
+
+    flag_output_dimensionless_quantities =
+      prm.get_bool("Output dimensionless quantities");
 
     flag_store_checkpoint =
       prm.get_bool("Store checkpoints");
