@@ -78,8 +78,6 @@ private:
 
   Postprocessing::Postprocessor<dim>                postprocessor;
 
-  Postprocessing::ResidualPostprocessor<dim>        residual_postprocessor;
-
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
@@ -164,9 +162,6 @@ homogenization(
   fe_field,
   mapping),
 postprocessor(
-  fe_field,
-  crystals_data),
-residual_postprocessor(
   fe_field,
   crystals_data),
 simple_shear(
