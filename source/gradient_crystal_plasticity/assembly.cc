@@ -194,9 +194,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
         if (fe_field->get_global_component(crystal_id, i) < dim)
         {
           const double factor =
-            parameters.dimensionless_formulation_parameters.
+            parameters.dimensionless_form_parameters.
               dimensionless_numbers[3] /
-                parameters.dimensionless_formulation_parameters.
+                parameters.dimensionless_form_parameters.
                   dimensionless_numbers[0];
 
           if (fe_field->get_global_component(crystal_id, j) < dim)
@@ -216,7 +216,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               fe_field->get_global_component(crystal_id, j) - dim;
 
             const double &dimensionless_number =
-              parameters.dimensionless_formulation_parameters.
+              parameters.dimensionless_form_parameters.
                 dimensionless_numbers[0];
 
             data.local_matrix(i,j) -=
@@ -239,7 +239,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
             const double &dimensionless_number =
-              parameters.dimensionless_formulation_parameters.
+              parameters.dimensionless_form_parameters.
                 dimensionless_numbers[3];
 
             data.local_matrix(i,j) -=
@@ -260,7 +260,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             if (slip_id_alpha == slip_id_beta)
             {
               const double &dimensionless_number =
-                parameters.dimensionless_formulation_parameters.
+                parameters.dimensionless_form_parameters.
                   dimensionless_numbers[2];
 
               data.local_matrix(i,j) +=
@@ -274,11 +274,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             AssertIsFinite(data.local_matrix(i,j));
 
               const double &first_dimensionless_number =
-                parameters.dimensionless_formulation_parameters.
+                parameters.dimensionless_form_parameters.
                   dimensionless_numbers[0];
 
               const double &fourth_dimensionless_number =
-                parameters.dimensionless_formulation_parameters.
+                parameters.dimensionless_form_parameters.
                   dimensionless_numbers[3];
 
 
@@ -478,9 +478,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                 if (fe_field->is_decohesion_allowed())
                 {
                   const double factor =
-                    parameters.dimensionless_formulation_parameters.
+                    parameters.dimensionless_form_parameters.
                       dimensionless_numbers[3] /
-                        parameters.dimensionless_formulation_parameters.
+                        parameters.dimensionless_form_parameters.
                           dimensionless_numbers[0];
 
                   data.local_matrix(i,j) -=
@@ -530,7 +530,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     - dim;
 
                   const double &dimensionless_number =
-                    parameters.dimensionless_formulation_parameters.
+                    parameters.dimensionless_form_parameters.
                       dimensionless_numbers[2];
 
                   data.local_matrix(i,j) -=
@@ -831,9 +831,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
       if (fe_field->get_global_component(crystal_id, i) < dim)
       {
         const double factor =
-          parameters.dimensionless_formulation_parameters.
+          parameters.dimensionless_form_parameters.
             dimensionless_numbers[3] /
-              parameters.dimensionless_formulation_parameters.
+              parameters.dimensionless_form_parameters.
                 dimensionless_numbers[0];
 
         data.local_rhs(i) -=
@@ -851,11 +851,11 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                 fe_field->get_global_component(crystal_id, i) - dim;
 
         const double &third_dimensionless_number =
-          parameters.dimensionless_formulation_parameters.
+          parameters.dimensionless_form_parameters.
             dimensionless_numbers[2];
 
         const double &fourth_dimensionless_number =
-          parameters.dimensionless_formulation_parameters.
+          parameters.dimensionless_form_parameters.
             dimensionless_numbers[3];
 
         data.local_rhs(i) -=
@@ -1040,9 +1040,9 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               if (fe_field->is_decohesion_allowed())
               {
                 const double factor =
-                  parameters.dimensionless_formulation_parameters.
+                  parameters.dimensionless_form_parameters.
                     dimensionless_numbers[3] /
-                      parameters.dimensionless_formulation_parameters.
+                      parameters.dimensionless_form_parameters.
                         dimensionless_numbers[0];
 
                 data.local_rhs(i) +=
@@ -1068,7 +1068,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                   fe_field->get_global_component(crystal_id, i) - dim;
 
                 const double &dimensionless_number =
-                  parameters.dimensionless_formulation_parameters.
+                  parameters.dimensionless_form_parameters.
                     dimensionless_numbers[2];
 
                 data.local_rhs(i) +=

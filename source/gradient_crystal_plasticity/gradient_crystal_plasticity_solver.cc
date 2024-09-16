@@ -24,13 +24,13 @@ crystals_data(crystals_data),
 elastic_strain(
   std::make_shared<Kinematics::ElasticStrain<dim>>(
     crystals_data,
-    parameters.dimensionless_formulation_parameters.
+    parameters.dimensionless_form_parameters.
       dimensionless_numbers[0])),
 hooke_law(
   std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
     crystals_data,
     parameters.constitutive_laws_parameters.hooke_law_parameters,
-    parameters.dimensionless_formulation_parameters.
+    parameters.dimensionless_form_parameters.
       characteristic_quantities.stiffness)),
 resolved_shear_stress_law(
   std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
@@ -40,7 +40,7 @@ scalar_microstress_law(
     crystals_data,
     parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
     parameters.constitutive_laws_parameters.hardening_law_parameters,
-    parameters.dimensionless_formulation_parameters.
+    parameters.dimensionless_form_parameters.
       characteristic_quantities.slip_resistance)),
 vectorial_microstress_law(
   std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(

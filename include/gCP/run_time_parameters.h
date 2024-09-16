@@ -730,9 +730,9 @@ struct CharacteristicQuantities
 
   double stress;
 
-  const double &resolved_shear_stress = stress;
+  double resolved_shear_stress;
 
-  const double &macro_traction = stress;
+  double macro_traction;
 
   double micro_traction;
 
@@ -743,12 +743,12 @@ struct CharacteristicQuantities
 
 
 
-struct DimensionlessFormulationParameters
+struct DimensionlessForm
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  DimensionlessFormulationParameters();
+  DimensionlessForm();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -1111,8 +1111,8 @@ struct SolverParameters
    *
    * @todo Docu
    */
-  DimensionlessFormulationParameters
-                                dimensionless_formulation_parameters;
+  DimensionlessForm
+                                dimensionless_form_parameters;
 
   /*!
    * @brief

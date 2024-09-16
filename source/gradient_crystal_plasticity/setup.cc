@@ -106,7 +106,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
   hooke_law->init();
 
   vectorial_microstress_law->init(
-    parameters.dimensionless_formulation_parameters.
+    parameters.dimensionless_form_parameters.
       dimensionless_numbers[3] != 1.0);
 
   init_quadrature_point_history();
@@ -434,7 +434,7 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
         local_quadrature_point_history[q_point]->init(
           parameters.constitutive_laws_parameters.hardening_law_parameters,
           crystals_data->get_n_slips(),
-          parameters.dimensionless_formulation_parameters.
+          parameters.dimensionless_form_parameters.
             characteristic_quantities.slip_resistance);
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&

@@ -631,6 +631,8 @@ stiffness(1.0),
 slip_resistance(1.0),
 strain(1.0),
 stress(1.0),
+resolved_shear_stress(stress),
+macro_traction(stress),
 micro_traction(1.0),
 body_force(1.0),
 dislocation_density(1.0)
@@ -638,7 +640,7 @@ dislocation_density(1.0)
 
 
 
-DimensionlessFormulationParameters::DimensionlessFormulationParameters()
+DimensionlessForm::DimensionlessForm()
 :
 dimensionless_numbers(4, 1.0),
 flag_solve_dimensionless_problem(false)
@@ -646,7 +648,7 @@ flag_solve_dimensionless_problem(false)
 
 
 
-void DimensionlessFormulationParameters::declare_parameters(
+void DimensionlessForm::declare_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Dimensionless formulation parameters");
@@ -684,7 +686,7 @@ void DimensionlessFormulationParameters::declare_parameters(
 
 
 
-void DimensionlessFormulationParameters::parse_parameters(
+void DimensionlessForm::parse_parameters(
   dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("Dimensionless formulation parameters");
@@ -719,7 +721,7 @@ void DimensionlessFormulationParameters::parse_parameters(
 
 
 
-void DimensionlessFormulationParameters::init(
+void DimensionlessForm::init(
   const RunTimeParameters::ConstitutiveLawsParameters &prm)
 {
   if (!flag_solve_dimensionless_problem)
@@ -746,6 +748,12 @@ void DimensionlessFormulationParameters::init(
   characteristic_quantities.stress =
     characteristic_quantities.stiffness *
       characteristic_quantities.strain;
+
+  characteristic_quantities.resolved_shear_stress =
+    characteristic_quantities.stress;
+
+  characteristic_quantities.macro_traction =
+    characteristic_quantities.stress;
 
   characteristic_quantities.micro_traction =
     initial_slip_resistance *
@@ -1185,7 +1193,7 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
     StaggeredAlgorithmParameters::declare_parameters(prm);
 
-    DimensionlessFormulationParameters::declare_parameters(prm);
+    DimensionlessForm::declare_parameters(prm);
 
     prm.declare_entry("Solution algorithm",
                       "monolithic",
@@ -1263,7 +1271,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
         "Unexpected identifier for the solution algorithm."));
     }
 
-    dimensionless_formulation_parameters.parse_parameters(prm);
+    dimensionless_form_parameters.parse_parameters(prm);
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
@@ -1319,7 +1327,7 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
   }
   prm.leave_subsection();
 
-  dimensionless_formulation_parameters.init(
+  dimensionless_form_parameters.init(
     constitutive_laws_parameters);
 }
 
