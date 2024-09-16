@@ -163,7 +163,10 @@ homogenization(
   mapping),
 postprocessor(
   fe_field,
-  crystals_data),
+  crystals_data,
+  parameters.solver_parameters.dimensionless_form_parameters,
+  false,
+  parameters.output.flag_output_dimensionless_quantities),
 simple_shear(
   fe_field,
   mapping,

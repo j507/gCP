@@ -66,6 +66,8 @@ nonlinear_solver_logger(
 postprocessor(
   fe_field,
   crystals_data,
+  parameters.dimensionless_form_parameters,
+  true,
   true),
 flag_init_was_called(false)
 {
