@@ -20,6 +20,8 @@
 #include <memory>
 #include <fstream>
 
+
+
 namespace gCP
 {
 
@@ -55,7 +57,7 @@ public:
   void set_macroscopic_strain(
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
-  std::tuple<bool,unsigned int> solve_nonlinear_system(
+  void solve_nonlinear_system(
     const bool flag_skip_extrapolation = false);
 
   std::shared_ptr<const Kinematics::ElasticStrain<dim>>
@@ -76,8 +78,6 @@ public:
 
   const dealii::Vector<float> &get_cell_is_at_grain_boundary_vector() const;
 
-  const dealii::LinearAlgebraTrilinos::MPI::Vector &get_residual() const;
-
   double get_macroscopic_damage();
 
   /*!
@@ -88,6 +88,7 @@ public:
   void output_data_to_file(std::ostream &file) const;
 
 private:
+
   const RunTimeParameters::SolverParameters         &parameters;
 
   const dealii::DiscreteTime                        &discrete_time;
@@ -145,25 +146,23 @@ private:
 
   dealii::Vector<float>                             cell_is_at_grain_boundary;
 
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix  jacobian;
+  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix jacobian;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        initial_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   initial_trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        tmp_trial_solution;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   tmp_trial_solution;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        newton_update;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   newton_update;
 
-  dealii::LinearAlgebraTrilinos::MPI::Vector        residual;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector        ghost_residual;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector   residual;
 
   double                                            residual_norm;
 
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
-  gCP::LineSearch                                   line_search;
+  std::unique_ptr<gCP::LineSearch>                  line_search;
 
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
@@ -183,8 +182,8 @@ private:
 
   void init_quadrature_point_history();
 
-  void make_sparsity_pattern(
-    dealii::TrilinosWrappers::SparsityPattern &sparsity_pattern);
+  template <typename SparsityPatternType>
+  void make_sparsity_pattern(SparsityPatternType &sparsity_pattern);
 
   void assemble_jacobian();
 
@@ -227,35 +226,59 @@ private:
   void copy_local_to_global_quadrature_point_history(
     const gCP::AssemblyData::QuadraturePointHistory::Copy &){};
 
+  void monolithic_algorithm();
+
+  void bouncing_algorithm();
+
+  void embracing_algorihtm();
+
   unsigned int solve_linearized_system();
 
-  void update_trial_solution(const double relaxation_parameter);
+  unsigned int solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &krylov_parameters,
+    const unsigned int block_id,
+    const double right_hand_side_l2_norm);
+
+  unsigned int solve_linearized_system(
+    const RunTimeParameters::KrylovParameters &krylov_parameters,
+    const unsigned int block_id);
+
+  void update_trial_solution(
+    const double relaxation_parameter,
+    const unsigned int block_id = 0);
 
   void update_trial_solution(const std::vector<double>
     relaxation_parameter);
+
+  double line_search_algorithm();
+
+  double line_search_algorithm(
+    dealii::Vector<double> residual_l2_norms,
+    const unsigned int block_id);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
 
   void reset_trial_solution(
-    const bool flag_reset_to_initial_trial_solution = false);
+    const bool flag_reset_to_initial_trial_solution = false,
+    const unsigned int block_id = 0);
 
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);
 
-  std::vector<double> compute_residual_l2_norms();
+  void distribute_affine_constraints_to_trial_solution();
 
   void update_and_output_nonlinear_solver_logger(
-    const std::tuple<double, double, double>  residual_l2_norms);
+    const dealii::Vector<double>  residual_l2_norms);
 
   void update_and_output_nonlinear_solver_logger(
-    const unsigned int                        nonlinear_iteration,
-    const unsigned int                        n_krylov_iterations,
-    const unsigned int                        n_line_search_iterations,
-    const std::tuple<double, double, double>  newton_update_l2_norms,
-    const std::tuple<double, double, double>  residual_l2_norms,
-    const double                              order_of_convergence,
-    const double                              relaxation_parameter = 1.0);
+    const unsigned int           nonlinear_iteration,
+    const unsigned int           n_krylov_iterations,
+    const unsigned int           n_line_search_iterations,
+    const dealii::Vector<double> newton_update_l2_norms,
+    const dealii::Vector<double> residual_l2_norms,
+    const double                 order_of_convergence,
+    const double                 relaxation_parameter = 1.0);
 
   /*!
    * @note Only for debugging purposes
@@ -297,34 +320,39 @@ private:
     const gCP::AssemblyData::Postprocessing::ProjectionRHS::Copy &data);
 
   // Members and methods related to the trial microstress
+  std::shared_ptr<FEField<dim>> trial_microstress;
 
-  std::shared_ptr<TrialMicrostress<dim>>      trial_microstress;
+  dealii::IndexSet                            locally_owned_active_set;
 
-  std::map<dealii::types::global_dof_index,
-           dealii::types::global_dof_index>   dof_mapping;
+  dealii::IndexSet                            locally_owned_inactive_set;
 
-  dealii::IndexSet                            active_set;
+  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix
+    trial_microstress_matrix;
 
-  dealii::IndexSet                            inactive_set;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    trial_microstress_lumped_matrix;
 
-  dealii::IndexSet                            displacement_dofs_set;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    trial_microstress_right_hand_side;
 
-  dealii::IndexSet                            plastic_slip_dofs_set;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    slip_resistance;
 
-  dealii::LinearAlgebraTrilinos::MPI::SparseMatrix
-                                              trial_microstress_matrix;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_lumped_matrix;
-
-  dealii::LinearAlgebraTrilinos::MPI::Vector  trial_microstress_right_hand_side;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    tmp_slip_resistance;
 
   gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
 
-  void initialize_dof_mapping();
+  using DoFInfo = std::pair<std::vector<
+    dealii::types::global_dof_index>, unsigned int>;
+
+  std::map<dealii::types::global_dof_index, DoFInfo>  dof_to_info;
 
   void reset_internal_newton_method_constraints();
 
   void compute_trial_microstress();
+
+  void active_set_algorithm(bool &flag_compute_active_set);
 
   void determine_active_set();
 
@@ -351,6 +379,12 @@ private:
 
   void copy_local_to_global_trial_microstress_right_hand_side(
     const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy  &data);
+
+  void init_dof_to_info_map();
+
+  void store_slip_resistances();
+
+  void reset_and_update_slip_resistances();
 };
 
 
@@ -396,15 +430,6 @@ inline const dealii::Vector<float> &
 GradientCrystalPlasticitySolver<dim>::get_cell_is_at_grain_boundary_vector() const
 {
   return (cell_is_at_grain_boundary);
-}
-
-
-
-template <int dim>
-inline const dealii::LinearAlgebraTrilinos::MPI::Vector &
-GradientCrystalPlasticitySolver<dim>::get_residual() const
-{
-  return (ghost_residual);
 }
 
 

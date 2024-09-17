@@ -546,12 +546,14 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_jacobian(
         data.local_coupling_matrices.size(), 0));
 
     for (unsigned int i = 0; i < data.local_coupling_matrices.size(); ++i)
+    {
       //fe_field->get_newton_method_constraints()
       internal_newton_method_constraints.distribute_local_to_global(
         data.local_coupling_matrices[i],
         data.local_dof_indices,
         data.neighbour_cells_local_dof_indices[i],
         jacobian);
+    }
   }
 }
 
@@ -1058,11 +1060,16 @@ void GradientCrystalPlasticitySolver<dim>::copy_local_to_global_residual(
   const gCP::AssemblyData::Residual::Copy &data)
 {
   //fe_field->get_newton_method_constraints()
-  internal_newton_method_constraints.distribute_local_to_global(
+  /*internal_newton_method_constraints.distribute_local_to_global(
     data.local_rhs,
     data.local_dof_indices,
     residual,
-    data.local_matrix_for_inhomogeneous_bcs);
+    data.local_matrix_for_inhomogeneous_bcs);*/
+
+  internal_newton_method_constraints.distribute_local_to_global(
+    data.local_rhs,
+    data.local_dof_indices,
+    residual);
 }
 
 
@@ -1999,11 +2006,9 @@ assemble_trial_microstress_lumped_matrix()
   // Reset data
   trial_microstress_lumped_matrix = 0.0;
 
-  trial_microstress_matrix = 0.0;
-
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
-    const CellIterator                                                      &cell,
+    const CellIterator                                        &cell,
     gCP::AssemblyData::TrialMicrostress::Matrix::Scratch<dim> &scratch,
     gCP::AssemblyData::TrialMicrostress::Matrix::Copy         &data)
   {
@@ -2025,10 +2030,12 @@ assemble_trial_microstress_lumped_matrix()
 
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress->get_dof_handler().begin_active()),
-    CellFilter(dealii::IteratorFilters::LocallyOwnedCell(),
-               trial_microstress->get_dof_handler().end()),
+    CellFilter(
+      dealii::IteratorFilters::LocallyOwnedCell(),
+      trial_microstress->get_dof_handler().begin_active()),
+    CellFilter(
+      dealii::IteratorFilters::LocallyOwnedCell(),
+      trial_microstress->get_dof_handler().end()),
     worker,
     copier,
     gCP::AssemblyData::TrialMicrostress::Matrix::Scratch<dim>(
@@ -2041,9 +2048,8 @@ assemble_trial_microstress_lumped_matrix()
       trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  trial_microstress_lumped_matrix.compress(dealii::VectorOperation::add);
-
-  trial_microstress_matrix.compress(dealii::VectorOperation::add);
+  trial_microstress_lumped_matrix.compress(
+    dealii::VectorOperation::add);
 }
 
 
@@ -2091,8 +2097,9 @@ assemble_local_trial_microstress_lumped_matrix(
           local_dof_id++)
       {
         scratch.test_function_values[slip_id][local_dof_id] =
-          fe_values[trial_microstress->get_extractor(crystal_id, slip_id)].
-            value(local_dof_id, quadrature_point_id);
+          fe_values[trial_microstress->get_slip_extractor(
+            crystal_id, slip_id)].value(
+              local_dof_id, quadrature_point_id);
       } // Loop over local degrees of freedom
     } // Loop over slip identifiers
 
@@ -2101,40 +2108,48 @@ assemble_local_trial_microstress_lumped_matrix(
          row_local_dof_id < scratch.dofs_per_cell;
          row_local_dof_id++)
     {
-      const unsigned int row_slip_id =
-        trial_microstress->get_global_component(
-          crystal_id,
-          row_local_dof_id);
-
-      for (unsigned int column_local_dof_id = 0;
-           column_local_dof_id < scratch.dofs_per_cell;
-           column_local_dof_id++)
+      if (trial_microstress->get_global_component(
+            crystal_id, row_local_dof_id) >= dim)
       {
-        const unsigned int column_slip_id =
+        const unsigned int row_slip_id =
           trial_microstress->get_global_component(
             crystal_id,
-            column_local_dof_id);
+            row_local_dof_id) - dim;
 
-        if (row_slip_id != column_slip_id)
+        for (unsigned int column_local_dof_id = 0;
+            column_local_dof_id < scratch.dofs_per_cell;
+            column_local_dof_id++)
         {
-          continue;
-        }
+          if (trial_microstress->get_global_component(
+            crystal_id, column_local_dof_id) >= dim)
+          {
+            const unsigned int column_slip_id =
+              trial_microstress->get_global_component(
+                crystal_id,
+                column_local_dof_id) - dim;
 
-        data.local_matrix(row_local_dof_id, column_local_dof_id) +=
-          scratch.test_function_values[row_slip_id][row_local_dof_id] *
-          scratch.test_function_values[column_slip_id][column_local_dof_id] *
-          scratch.JxW_values[quadrature_point_id];
+            if (row_slip_id != column_slip_id)
+            {
+              continue;
+            }
 
-        data.local_lumped_matrix(row_local_dof_id) +=
-          scratch.test_function_values[row_slip_id][row_local_dof_id] *
-          scratch.test_function_values[column_slip_id][column_local_dof_id] *
-          scratch.JxW_values[quadrature_point_id];
+            data.local_matrix(row_local_dof_id, column_local_dof_id) +=
+              scratch.test_function_values[row_slip_id][row_local_dof_id] *
+              scratch.test_function_values[column_slip_id][column_local_dof_id] *
+              scratch.JxW_values[quadrature_point_id];
 
-        AssertIsFinite(data.local_matrix(row_local_dof_id,
-          column_local_dof_id));
+            data.local_lumped_matrix(row_local_dof_id) +=
+              scratch.test_function_values[row_slip_id][row_local_dof_id] *
+              scratch.test_function_values[column_slip_id][column_local_dof_id] *
+              scratch.JxW_values[quadrature_point_id];
 
-        AssertIsFinite(data.local_lumped_matrix(row_local_dof_id));
-      } // Loop over local degrees of freedom (column)
+            AssertIsFinite(data.local_matrix(row_local_dof_id,
+              column_local_dof_id));
+
+            AssertIsFinite(data.local_lumped_matrix(row_local_dof_id));
+          }
+        } // Loop over local degrees of freedom (column)
+      }
     } // Loop over local degrees of freedom (row)
   } // Loop over quadrature points
 }
@@ -2151,12 +2166,6 @@ copy_local_to_global_trial_microstress_lumped_matrix(
       data.local_lumped_matrix,
       data.local_dof_indices,
       trial_microstress_lumped_matrix);
-
-  trial_microstress->get_hanging_node_constraints().
-    distribute_local_to_global(
-      data.local_matrix,
-      data.local_dof_indices,
-      trial_microstress_matrix);
 }
 
 
@@ -2178,7 +2187,7 @@ assemble_trial_microstress_right_hand_side()
 
   // Set up the lambda function for the local assembly operation
   auto worker = [this](
-    const CellIterator                                                      &cell,
+    const CellIterator                                               &cell,
     gCP::AssemblyData::TrialMicrostress::RightHandSide::Scratch<dim> &scratch,
     gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy         &data)
   {
@@ -2194,22 +2203,16 @@ assemble_trial_microstress_right_hand_side()
   };
 
   // Define the update flags for the FEValues instances
-  const dealii::UpdateFlags trial_microstress_update_flags =
+  const dealii::UpdateFlags update_flags =
     dealii::update_JxW_values |
     dealii::update_values |
     dealii::update_gradients;
 
-  const dealii::UpdateFlags slips_update_flags =
-    dealii::update_values |
-    dealii::update_gradients;
-
-  const dealii::UpdateFlags trial_microstress_face_update_flags =
+  const dealii::UpdateFlags face_update_flags =
     dealii::update_JxW_values |
     dealii::update_values |
+    dealii::update_gradients |
     dealii::update_normal_vectors;
-
-  const dealii::UpdateFlags slips_face_update_flags =
-    dealii::update_gradients;
 
   // Assemble using the WorkStream approach
   dealii::WorkStream::run(
@@ -2224,17 +2227,15 @@ assemble_trial_microstress_right_hand_side()
       quadrature_collection,
       face_quadrature_collection,
       trial_microstress->get_fe_collection(),
-      fe_field->get_fe_collection(),
-      trial_microstress_update_flags,
-      slips_update_flags,
-      trial_microstress_face_update_flags,
-      slips_face_update_flags,
+      update_flags,
+      face_update_flags,
       fe_field->get_n_slips()),
     gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy(
       trial_microstress->get_fe_collection().max_dofs_per_cell()));
 
   // Compress global data
-  trial_microstress_right_hand_side.compress(dealii::VectorOperation::add);
+  trial_microstress_right_hand_side.compress(
+    dealii::VectorOperation::add);
 }
 
 
@@ -2257,27 +2258,16 @@ assemble_local_trial_microstress_right_hand_side(
 
   // Update the hp::FEFaceValues instance to the values of the
   // current face
-  scratch.trial_microstress_hp_fe_values.reinit(cell);
+  scratch.hp_fe_values.reinit(cell);
 
-  const dealii::FEValues<dim> &trial_microstress_fe_values =
-    scratch.trial_microstress_hp_fe_values.get_present_fe_values();
-
-  typename dealii::DoFHandler<dim>::active_cell_iterator
-    fe_field_cell(&fe_field->get_triangulation(),
-                  cell->level(),
-                  cell->index(),
-                  &fe_field->get_dof_handler());
-
-  scratch.fe_field_hp_fe_values.reinit(fe_field_cell);
-
-  const dealii::FEValues<dim> &fe_field_fe_values =
-    scratch.fe_field_hp_fe_values.get_present_fe_values();
+  const dealii::FEValues<dim> &fe_values =
+    scratch.hp_fe_values.get_present_fe_values();
 
   // Get JxW values at the face quadrature points
-  scratch.JxW_values = trial_microstress_fe_values.get_JxW_values();
+  scratch.JxW_values = fe_values.get_JxW_values();
 
   // Get the linear strain tensor values at the quadrature points
-  fe_field_fe_values[fe_field->get_displacement_extractor(crystal_id)].
+  fe_values[fe_field->get_displacement_extractor(crystal_id)].
     get_function_symmetric_gradients(
       trial_solution,
       scratch.linear_strain_values);
@@ -2287,12 +2277,12 @@ assemble_local_trial_microstress_right_hand_side(
       slip_id < crystals_data->get_n_slips();
       ++slip_id)
   {
-    fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
+    fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_values(
         fe_field->old_solution,
         scratch.slip_values[slip_id]);
 
-    fe_field_fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
+    fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
       get_function_gradients(
         fe_field->old_solution,
         scratch.slip_gradient_values[slip_id]);
@@ -2340,13 +2330,13 @@ assemble_local_trial_microstress_right_hand_side(
           local_dof_id++)
       {
         scratch.test_function_values[slip_id][local_dof_id] =
-          trial_microstress_fe_values[trial_microstress->
-            get_extractor(crystal_id, slip_id)].
+          fe_values[trial_microstress->
+            get_slip_extractor(crystal_id, slip_id)].
               value(local_dof_id, quadrature_point_id);
 
         scratch.test_function_gradient_values[slip_id][local_dof_id] =
-          trial_microstress_fe_values[trial_microstress->
-            get_extractor(crystal_id, slip_id)].
+          fe_values[trial_microstress->
+            get_slip_extractor(crystal_id, slip_id)].
               gradient(local_dof_id, quadrature_point_id);
       } // Loop over local degrees of freedom
     } // Loop over slip identifiers
@@ -2356,19 +2346,23 @@ assemble_local_trial_microstress_right_hand_side(
          local_dof_id < scratch.dofs_per_cell;
          local_dof_id++)
     {
-      const unsigned int slip_id =
-        trial_microstress->get_global_component(
-          crystal_id,
-          local_dof_id);
+      if (fe_field->get_global_component(
+            crystal_id, local_dof_id) >= dim)
+      {
+        const unsigned int slip_id =
+          trial_microstress->get_global_component(
+            crystal_id,
+            local_dof_id) - dim;
 
-      data.local_right_hand_side(local_dof_id) +=
-        -1.0 *
-        (scratch.test_function_gradient_values[slip_id][local_dof_id] *
-          scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
-          -
-          scratch.test_function_values[slip_id][local_dof_id] *
-          scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
-        scratch.JxW_values[quadrature_point_id];
+        data.local_right_hand_side(local_dof_id) +=
+          -1.0 *
+          (scratch.test_function_gradient_values[slip_id][local_dof_id] *
+            scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
+            -
+            scratch.test_function_values[slip_id][local_dof_id] *
+            scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
+          scratch.JxW_values[quadrature_point_id];
+      }
     } // Loop over local degrees of freedom
   } // Loop over quadrature points
 
@@ -2378,34 +2372,24 @@ assemble_local_trial_microstress_right_hand_side(
     {
       // Update the hp::FEFaceValues instance to the values of the
       // current face
-      scratch.trial_microstress_hp_fe_face_values.reinit(
+      scratch.hp_fe_face_values.reinit(
         cell,
         cell->face(face_index));
 
-      const dealii::FEFaceValues<dim> &trial_microstress_fe_face_values =
-        scratch.trial_microstress_hp_fe_face_values.
-          get_present_fe_values();
-
-      scratch.fe_field_hp_fe_face_values.reinit(
-        fe_field_cell,
-        fe_field_cell->face(face_index));
-
-      const dealii::FEFaceValues<dim> &fe_field_fe_face_values =
-        scratch.fe_field_hp_fe_face_values.get_present_fe_values();
+      const dealii::FEFaceValues<dim> &fe_face_values =
+        scratch.hp_fe_face_values.get_present_fe_values();
 
       // Get JxW values at the quadrature points
-      scratch.JxW_face_values =
-        trial_microstress_fe_face_values.get_JxW_values();
+      scratch.JxW_face_values = fe_face_values.get_JxW_values();
 
       // Get normal vector values values at the quadrature points
-      scratch.normal_vector_values =
-        trial_microstress_fe_face_values.get_normal_vectors();
+      scratch.normal_vector_values = fe_face_values.get_normal_vectors();
 
       for (unsigned int slip_id = 0;
           slip_id < crystals_data->get_n_slips();
           ++slip_id)
       {
-        fe_field_fe_face_values[fe_field->get_slip_extractor(
+        fe_face_values[fe_field->get_slip_extractor(
             crystal_id, slip_id)].get_function_gradients(
               fe_field->old_solution,
               scratch.slip_gradient_face_values[slip_id]);
@@ -2434,8 +2418,8 @@ assemble_local_trial_microstress_right_hand_side(
                ++local_dof_id)
           {
             scratch.test_function_face_values[slip_id][local_dof_id] =
-              trial_microstress_fe_face_values[
-                trial_microstress->get_extractor(crystal_id, slip_id)].
+              fe_face_values[trial_microstress->
+                get_slip_extractor(crystal_id, slip_id)].
                   value(local_dof_id, quadrature_point_id);
           }
         }
@@ -2445,19 +2429,23 @@ assemble_local_trial_microstress_right_hand_side(
              local_dof_id < scratch.dofs_per_cell;
              ++local_dof_id)
         {
-          const unsigned int slip_id =
-            trial_microstress->get_global_component(
-              crystal_id,
-              local_dof_id);
+          if (fe_field->get_global_component(
+                crystal_id, local_dof_id) >= dim)
+          {
+            const unsigned int slip_id =
+              trial_microstress->get_global_component(
+                crystal_id,
+                local_dof_id) - dim;
 
-          data.local_right_hand_side(local_dof_id) +=
-            scratch.test_function_face_values[slip_id][local_dof_id] *
-            scratch.vectorial_microstress_face_values
-              [slip_id][quadrature_point_id] *
-            scratch.normal_vector_values[quadrature_point_id] *
-            scratch.JxW_face_values[quadrature_point_id];
+            data.local_right_hand_side(local_dof_id) +=
+              scratch.test_function_face_values[slip_id][local_dof_id] *
+              scratch.vectorial_microstress_face_values
+                [slip_id][quadrature_point_id] *
+              scratch.normal_vector_values[quadrature_point_id] *
+              scratch.JxW_face_values[quadrature_point_id];
 
-          AssertIsFinite(data.local_right_hand_side(local_dof_id));
+            AssertIsFinite(data.local_right_hand_side(local_dof_id));
+          }
         }
       }
     }

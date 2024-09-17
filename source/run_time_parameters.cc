@@ -864,14 +864,168 @@ void LineSearchParameters::parse_parameters(
 
 
 
+NonlinearSystemSolverParameters::NonlinearSystemSolverParameters(){}
+
+
+
+void NonlinearSystemSolverParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  NewtonRaphsonParameters::declare_parameters(prm);
+
+  LineSearchParameters::declare_parameters(prm);
+
+  KrylovParameters::declare_parameters(prm);
+}
+
+
+
+void NonlinearSystemSolverParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  krylov_parameters.parse_parameters(prm);
+
+  newton_parameters.parse_parameters(prm);
+
+  line_search_parameters.parse_parameters(prm);
+}
+
+
+
+MonolithicAlgorithmParameters::MonolithicAlgorithmParameters()
+:
+monolithic_preconditioner(MonolithicPreconditioner::BuiltIn)
+{}
+
+
+
+void MonolithicAlgorithmParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Monolithic algorithm");
+  {
+    NonlinearSystemSolverParameters::declare_parameters(prm);
+
+    prm.declare_entry("Monolithic preconditioner",
+                      "built-in",
+                      dealii::Patterns::Selection(
+                        "built-in|block"));
+  }
+  prm.leave_subsection();
+}
+
+
+
+void MonolithicAlgorithmParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Monolithic algorithm");
+  {
+    monolithic_system_solver_parameters.parse_parameters(prm);
+
+    const std::string string_monolithic_preconditioner(
+                      prm.get("Monolithic preconditioner"));
+
+    if (string_monolithic_preconditioner == std::string("built-in"))
+    {
+      monolithic_preconditioner = MonolithicPreconditioner::BuiltIn;
+    }
+    else if (string_monolithic_preconditioner == std::string("block"))
+    {
+      Assert(false, dealii::ExcMessage(
+        "Block preconditioner has not been implemented"));
+
+      monolithic_preconditioner = MonolithicPreconditioner::Block;
+    }
+    else
+    {
+      AssertThrow(false,
+        dealii::ExcMessage(
+          "Unexpected identifier for the monolithic preconditioner."));
+    }
+  }
+  prm.leave_subsection();
+}
+
+
+
+StaggeredAlgorithmParameters::StaggeredAlgorithmParameters()
+:
+max_n_solution_loops(15),
+flag_reset_trial_solution_at_micro_loop(true)
+{}
+
+
+
+void StaggeredAlgorithmParameters::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Staggered algorithm");
+  {
+    prm.enter_subsection("Linear momentum balance");
+    {
+      NonlinearSystemSolverParameters::declare_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("Pseudo-balance");
+    {
+      NonlinearSystemSolverParameters::declare_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    prm.declare_entry("Maximum number of solution loops",
+                      "15",
+                      dealii::Patterns::Integer(2));
+
+    prm.declare_entry("Reset trial solution at each micro loop",
+                      "true",
+                      dealii::Patterns::Bool());
+  }
+  prm.leave_subsection();
+}
+
+
+
+void StaggeredAlgorithmParameters::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Staggered algorithm");
+  {
+    prm.enter_subsection("Linear momentum balance");
+    {
+      linear_momentum_solver_parameters.parse_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("Pseudo-balance");
+    {
+      pseudo_balance_solver_parameters.parse_parameters(prm);
+    }
+    prm.leave_subsection();
+
+    max_n_solution_loops =
+      prm.get_integer("Maximum number of solution loops");
+
+    flag_reset_trial_solution_at_micro_loop =
+      prm.get_bool("Reset trial solution at each micro loop");
+  }
+  prm.leave_subsection();
+}
+
+
+
 SolverParameters::SolverParameters()
 :
+solution_algorithm(SolutionAlgorithm::Monolithic),
 allow_decohesion(false),
 boundary_conditions_at_grain_boundaries(
   BoundaryConditionsAtGrainBoundaries::Microfree),
 logger_output_directory("results/default/"),
+flag_skip_extrapolation(false),
 flag_skip_extrapolation_at_extrema(false),
 flag_zero_damage_during_loading_and_unloading(false),
+flag_output_debug_fields(false),
 print_sparsity_pattern(false),
 verbose(false)
 {}
@@ -882,13 +1036,16 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("6. Solver parameters");
   {
-    KrylovParameters::declare_parameters(prm);
-
-    NewtonRaphsonParameters::declare_parameters(prm);
-
-    LineSearchParameters::declare_parameters(prm);
-
     ConstitutiveLawsParameters::declare_parameters(prm);
+
+    MonolithicAlgorithmParameters::declare_parameters(prm);
+
+    StaggeredAlgorithmParameters::declare_parameters(prm);
+
+    prm.declare_entry("Solution algorithm",
+                      "monolithic",
+                      dealii::Patterns::Selection(
+                        "monolithic|bouncing|embracing"));
 
     prm.declare_entry("Allow decohesion at grain boundaries",
                       "false",
@@ -899,6 +1056,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Selection(
                         "microhard|microfree|microtraction"));
 
+    prm.declare_entry("Skip extrapolation of start value",
+                      "false",
+                      dealii::Patterns::Bool());
+
     prm.declare_entry("Skip extrapolation of start value at extrema",
                       "false",
                       dealii::Patterns::Bool());
@@ -908,6 +1069,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
                       dealii::Patterns::Bool());
 
     prm.declare_entry("Print sparsity pattern",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.declare_entry("Output debug fields",
                       "false",
                       dealii::Patterns::Bool());
 
@@ -924,13 +1089,34 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 {
   prm.enter_subsection("6. Solver parameters");
   {
-    krylov_parameters.parse_parameters(prm);
-
-    newton_parameters.parse_parameters(prm);
-
-    line_search_parameters.parse_parameters(prm);
-
     constitutive_laws_parameters.parse_parameters(prm);
+
+    const std::string string_solution_algorithm(
+                      prm.get("Solution algorithm"));
+
+    if (string_solution_algorithm == std::string("monolithic"))
+    {
+      solution_algorithm = SolutionAlgorithm::Monolithic;
+
+      monolithic_algorithm_parameters.parse_parameters(prm);
+    }
+    else if (string_solution_algorithm == std::string("bouncing"))
+    {
+      solution_algorithm = SolutionAlgorithm::Bouncing;
+
+      staggered_algorithm_parameters.parse_parameters(prm);
+    }
+    else if (string_solution_algorithm == std::string("embracing"))
+    {
+      solution_algorithm = SolutionAlgorithm::Embracing;
+
+      staggered_algorithm_parameters.parse_parameters(prm);
+    }
+    else
+    {
+      AssertThrow(false, dealii::ExcMessage(
+        "Unexpected identifier for the solution algorithm."));
+    }
 
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
@@ -963,6 +1149,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
           "boundaries."));
     }
 
+    flag_skip_extrapolation =
+      prm.get_bool("Skip extrapolation of start value");
+
     flag_skip_extrapolation_at_extrema =
       prm.get_bool("Skip extrapolation of start value at extrema");
 
@@ -970,6 +1159,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
       prm.get_bool("Zero damage evolution during un- and loading");
 
     print_sparsity_pattern = prm.get_bool("Print sparsity pattern");
+
+    flag_output_debug_fields = prm.get_bool("Output debug fields");
 
     verbose = prm.get_bool("Verbose");
   }

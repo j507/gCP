@@ -34,6 +34,7 @@ public:
   Postprocessor(
     std::shared_ptr<FEField<dim>>       &fe_field,
     std::shared_ptr<CrystalsData<dim>>  &crystals_data,
+    const bool                          flag_light_output = false,
     const bool                          flag_output_fluctuations = false);
 
   virtual void evaluate_vector_field(
@@ -69,6 +70,8 @@ private:
   const dealii::SymmetricTensor<4,dim>                    deviatoric_projector;
 
   const dealii::SymmetricTensor<4,3>                      deviatoric_projector_3d;
+
+  bool                                                    flag_light_output;
 
   bool                                                    flag_output_fluctuations;
 
@@ -153,9 +156,9 @@ template <int dim>
 class TrialstressPostprocessor :  public dealii::DataPostprocessor<dim>
 {
 public:
-  TrialstressPostprocessor(
-    std::shared_ptr<TrialMicrostress<dim>>  &trial_microstress,
-    std::shared_ptr<CrystalsData<dim>>      &crystals_data);
+  void reinit(
+    std::shared_ptr<FEField<dim>> &trial_microstress,
+    std::shared_ptr<const CrystalsData<dim>> &crystals_data);
 
   virtual void evaluate_vector_field(
     const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
@@ -171,9 +174,9 @@ public:
   virtual dealii::UpdateFlags get_needed_update_flags() const override;
 
 private:
-  std::shared_ptr<const TrialMicrostress<dim>>  trial_microstress;
+  std::shared_ptr<const FEField<dim>> trial_microstress;
 
-  std::shared_ptr<const CrystalsData<dim>>      crystals_data;
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 };
 
 

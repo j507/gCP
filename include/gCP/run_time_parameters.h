@@ -93,6 +93,26 @@ enum class SolverType
 
 
 
+enum class SolutionAlgorithm
+{
+  Monolithic,
+
+  Bouncing,
+
+  Embracing
+};
+
+
+
+enum class MonolithicPreconditioner
+{
+  BuiltIn,
+
+  Block
+};
+
+
+
 /*!
  * @brief Enum listing all the implemented regularizations of the sign
  * function
@@ -848,12 +868,12 @@ struct LineSearchParameters
 
 
 
-struct SolverParameters
+struct NonlinearSystemSolverParameters
 {
   /*
    * @brief Constructor which sets up the parameters with default values.
    */
-  SolverParameters();
+  NonlinearSystemSolverParameters();
 
   /*!
    * @brief Static method which declares the associated parameter to the
@@ -887,10 +907,130 @@ struct SolverParameters
    * @todo Docu
    */
   LineSearchParameters          line_search_parameters;
+};
+
+
+
+
+struct MonolithicAlgorithmParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  MonolithicAlgorithmParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
 
   /*!
    * @brief
    *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters monolithic_system_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  MonolithicPreconditioner monolithic_preconditioner;
+};
+
+
+
+struct StaggeredAlgorithmParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  StaggeredAlgorithmParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters linear_momentum_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  NonlinearSystemSolverParameters pseudo_balance_solver_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  unsigned int max_n_solution_loops;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool flag_reset_trial_solution_at_micro_loop;
+};
+
+
+
+struct SolverParameters
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  SolverParameters();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  SolutionAlgorithm             solution_algorithm;
+
+  MonolithicAlgorithmParameters monolithic_algorithm_parameters;
+
+  StaggeredAlgorithmParameters staggered_algorithm_parameters;
+
+  /*!
+   * @brief
+   *f
    * @todo Docu
    */
   ConstitutiveLawsParameters    constitutive_laws_parameters;
@@ -922,6 +1062,13 @@ struct SolverParameters
    *
    * @todo Docu
    */
+  bool                          flag_skip_extrapolation;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool                          flag_skip_extrapolation_at_extrema;
 
   /*!
@@ -930,6 +1077,13 @@ struct SolverParameters
    * @todo Docu
    */
   bool                          flag_zero_damage_during_loading_and_unloading;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  bool                          flag_output_debug_fields;
 
   /*!
    * @brief

@@ -417,21 +417,16 @@ Scratch(
   const dealii::hp::MappingCollection<dim>  &mapping_collection,
   const dealii::hp::QCollection<dim>        &quadrature_collection,
   const dealii::hp::QCollection<dim-1>      &face_quadrature_collection,
-  const dealii::hp::FECollection<dim>       &trial_microstress_finite_element_collection,
-  const dealii::hp::FECollection<dim>       &slips_finite_element_collection,
-  const dealii::UpdateFlags                 trial_microstress_update_flags,
-  const dealii::UpdateFlags                 slips_update_flags,
-  const dealii::UpdateFlags                 trial_microstress_face_update_flags,
-  const dealii::UpdateFlags                 slips_face_update_flags,
+  const dealii::hp::FECollection<dim>       &finite_element_collection,
+  const dealii::UpdateFlags                 update_flags,
+  const dealii::UpdateFlags                 face_update_flags,
   const unsigned int                        n_slips);
 
 Scratch(const Scratch<dim>  &data);
 
 const unsigned int                n_slips;
 
-dealii::hp::FEValues<dim>         trial_microstress_hp_fe_values;
-
-dealii::hp::FEValues<dim>         fe_field_hp_fe_values;
+dealii::hp::FEValues<dim>         hp_fe_values;
 
 std::vector<std::vector<double>>  test_function_values;
 
@@ -459,9 +454,7 @@ std::vector<std::vector<dealii::Tensor<1,dim>>>
 
 std::vector<double>               JxW_values;
 
-dealii::hp::FEFaceValues<dim>     trial_microstress_hp_fe_face_values;
-
-dealii::hp::FEFaceValues<dim>     fe_field_hp_fe_face_values;
+dealii::hp::FEFaceValues<dim>     hp_fe_face_values;
 
 const unsigned int                n_face_quadrature_points;
 

@@ -22,6 +22,27 @@ namespace gCP
 
 
 
+namespace internal
+{
+
+
+
+void handle_std_excepction(
+  const std::exception  &exception,
+  const std::string     string = "solve method");
+
+
+
+void handle_unknown_exception(
+  const std::string string = "solve method");
+
+
+
+} // internal
+
+
+
+
 namespace Utilities
 {
 
@@ -75,6 +96,8 @@ public:
   void log_headers_to_terminal();
 
   void log_values_to_terminal();
+
+  void log_to_all(const std::string message);
 
   void add_break(const std::string message);
 
