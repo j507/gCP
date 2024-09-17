@@ -96,16 +96,18 @@ private:
 
 
 template <int dim>
-class TrialstressPostprocessor :  public dealii::DataPostprocessor<dim>
+class SlipBasedPostprocessor :  public dealii::DataPostprocessor<dim>
 {
 public:
   void reinit(
-    std::shared_ptr<FEField<dim>> &trial_microstress,
-    std::shared_ptr<const CrystalsData<dim>> &crystals_data);
+    std::shared_ptr<const CrystalsData<dim>> &crystals_data,
+    const std::string output_name,
+    const unsigned int n_components,
+    const bool flag_allow_decohesion);
 
   virtual void evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-    std::vector<dealii::Vector<double>>                 &computed_quantities)
+    const dealii::DataPostprocessorInputs::Vector<dim> &inputs,
+    std::vector<dealii::Vector<double>> &computed_quantities)
     const override;
 
   virtual std::vector<std::string> get_names() const override;
@@ -117,9 +119,13 @@ public:
   virtual dealii::UpdateFlags get_needed_update_flags() const override;
 
 private:
-  std::shared_ptr<const FEField<dim>> trial_microstress;
-
   std::shared_ptr<const CrystalsData<dim>> crystals_data;
+
+  std::string output_name;
+
+  unsigned int n_components;
+
+  bool flag_allow_decohesion;
 };
 
 

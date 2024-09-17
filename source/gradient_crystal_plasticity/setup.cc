@@ -193,9 +193,18 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     trial_microstress->setup_vectors();
 
-    trial_postprocessor.reinit(
-      trial_microstress,
-      crystals_data);
+    trial_microstress_postprocessor.reinit(
+      crystals_data,
+      "TrialMicrostress",
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed());
+
+    slip_resistance_postprocessor.reinit(
+      crystals_data,
+      "SlipResistance",
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed());
+
     // Initiate trial_microstress_matrix matrix
     {
       trial_microstress_matrix.clear();
@@ -670,24 +679,33 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
     std::vector<std::string> file_names{
       "Debugging_", "Residual_", "Newton_Update_"};
 
-    data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                            trial_solution,
-                            postprocessor);
+    data_outs[0].add_data_vector(
+      fe_field->get_dof_handler(),
+      trial_solution,
+      postprocessor);
 
     if (crystals_data->get_n_slips() > 0)
     {
-      data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                              trial_microstress->solution,
-                              trial_postprocessor);
+      data_outs[0].add_data_vector(
+        fe_field->get_dof_handler(),
+        trial_microstress->solution,
+        trial_microstress_postprocessor);
+
+      data_outs[0].add_data_vector(
+        fe_field->get_dof_handler(),
+        slip_resistance,
+        slip_resistance_postprocessor);
     }
 
-    data_outs[1].add_data_vector(fe_field->get_dof_handler(),
-                                residual,
-                                postprocessor);
+    data_outs[1].add_data_vector(
+      fe_field->get_dof_handler(),
+      residual,
+      postprocessor);
 
-    data_outs[2].add_data_vector(fe_field->get_dof_handler(),
-                                newton_update,
-                                postprocessor);
+    data_outs[2].add_data_vector(
+      fe_field->get_dof_handler(),
+      newton_update,
+      postprocessor);
 
     for (auto &data_out : data_outs)
     {

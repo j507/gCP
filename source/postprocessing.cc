@@ -563,20 +563,26 @@ double Postprocessor<dim>::get_von_mises_plastic_strain(
 
 
 template <int dim>
-void TrialstressPostprocessor<dim>::reinit(
-  std::shared_ptr<FEField<dim>> &trial_microstress,
-  std::shared_ptr<const CrystalsData<dim>> &crystals_data)
+void SlipBasedPostprocessor<dim>::reinit(
+  std::shared_ptr<const CrystalsData<dim>> &crystals_data,
+  const std::string output_name,
+  const unsigned int n_components,
+  const bool flag_allow_decohesion)
 {
-  this->trial_microstress = trial_microstress;
-
   this->crystals_data = crystals_data;
+
+  this->output_name = output_name;
+
+  this->n_components = n_components;
+
+  this->flag_allow_decohesion = flag_allow_decohesion;
 }
 
 
 
 template <int dim>
 std::vector<std::string>
-TrialstressPostprocessor<dim>::get_names() const
+SlipBasedPostprocessor<dim>::get_names() const
 {
   std::vector<std::string> solution_names;
 
@@ -584,13 +590,7 @@ TrialstressPostprocessor<dim>::get_names() const
       slip_id < crystals_data->get_n_slips();
       ++slip_id)
     solution_names.emplace_back(
-      "TrialMicrostress_" + std::to_string(slip_id));
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    solution_names.emplace_back(
-      "ActiveDomain_" + std::to_string(slip_id));
+      output_name + std::to_string(slip_id));
 
   return solution_names;
 }
@@ -598,18 +598,12 @@ TrialstressPostprocessor<dim>::get_names() const
 
 template <int dim>
 std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-TrialstressPostprocessor<dim>::get_data_component_interpretation()
+SlipBasedPostprocessor<dim>::get_data_component_interpretation()
   const
 {
   std::vector<
     dealii::DataComponentInterpretation::DataComponentInterpretation>
       interpretation;
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    interpretation.push_back(
-      dealii::DataComponentInterpretation::component_is_scalar);
 
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
@@ -623,7 +617,7 @@ TrialstressPostprocessor<dim>::get_data_component_interpretation()
 
 template <int dim>
 dealii::UpdateFlags
-TrialstressPostprocessor<dim>::get_needed_update_flags() const
+SlipBasedPostprocessor<dim>::get_needed_update_flags() const
 {
   return dealii::update_values |
          dealii::update_quadrature_points;
@@ -632,13 +626,11 @@ TrialstressPostprocessor<dim>::get_needed_update_flags() const
 
 
 template <int dim>
-void TrialstressPostprocessor<dim>::evaluate_vector_field(
+void SlipBasedPostprocessor<dim>::evaluate_vector_field(
   const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
   std::vector<dealii::Vector<double>>                 &computed_quantities) const
 {
   const unsigned int n_q_points   = inputs.solution_values.size();
-
-  const unsigned int n_components = trial_microstress->get_n_components();
 
   const unsigned int n_slips      = crystals_data->get_n_slips();
 
@@ -655,6 +647,10 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
   Assert(inputs.solution_values[0].size() == n_components,
          dealii::ExcInternalError());
 
+  const unsigned int index_offset =
+    flag_allow_decohesion ? dim * n_crystals : dim;
+
+
   // Reset
   for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
     for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
@@ -669,13 +665,8 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
           crystal_id < n_crystals; ++crystal_id)
       {
         computed_quantities[q_point](slip_id) +=
-            inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id);
-
-        computed_quantities[q_point](n_slips + slip_id) +=
             std::abs(inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id))
-                > 60.0;
+              index_offset + slip_id + n_slips * crystal_id));
       }
     }
   }
@@ -1401,8 +1392,8 @@ void Homogenization<dim>::compute_macroscopic_stiffness_tetrad()
 template class gCP::Postprocessing::Postprocessor<2>;
 template class gCP::Postprocessing::Postprocessor<3>;
 
-template class gCP::Postprocessing::TrialstressPostprocessor<2>;
-template class gCP::Postprocessing::TrialstressPostprocessor<3>;
+template class gCP::Postprocessing::SlipBasedPostprocessor<2>;
+template class gCP::Postprocessing::SlipBasedPostprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;
