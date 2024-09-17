@@ -691,7 +691,9 @@ dealii::Vector<double> FEField<dim>::get_sub_l2_norms(
         to_string(l2_norm) + ", " + to_string(l2_norms.l2_norm()) +
           ")"));
 
+    (void)l2_norm;
     (void)to_string;
+    (void)tolerance_relaxation_factor;
   }
 
   return l2_norms;
