@@ -50,9 +50,6 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
   const RunTimeParameters::HardeningLaw &prm =
     parameters.constitutive_laws_parameters.hardening_law_parameters;
 
-  //Assert(dof_mapping.size() != 0,
-  //       dealii::ExcMessage("The degree of freedom mapping is empty"));
-
   assemble_trial_microstress_right_hand_side();
 
   compute_trial_microstress();
@@ -76,7 +73,10 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
       if (prm.flag_perfect_plasticity)
       {
-        local_yield_stress = prm.initial_slip_resistance;
+        local_yield_stress =
+          prm.initial_slip_resistance /
+            parameters.dimensionless_form_parameters.
+              characteristic_quantities.slip_resistance;
       }
       else
       {
@@ -172,7 +172,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 
   distributed_trial_solution.reinit(fe_field->distributed_vector);
 
-  //distributed_trial_solution = trial_solution;
+  distributed_trial_solution = trial_solution;
 
   for (const auto &locally_owned_dof : locally_owned_inactive_set)
   {
@@ -183,7 +183,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
   fe_field->get_affine_constraints().distribute(
     distributed_trial_solution);
 
-  //trial_solution = distributed_trial_solution;
+  trial_solution = distributed_trial_solution;
 }
 
 

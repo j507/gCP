@@ -243,8 +243,11 @@ void GradientCrystalPlasticitySolver<dim>::init()
         trial_microstress->distributed_vector);
     }
 
-    slip_resistance = parameters.constitutive_laws_parameters.
-      hardening_law_parameters.initial_slip_resistance;
+    slip_resistance =
+      parameters.constitutive_laws_parameters.
+        hardening_law_parameters.initial_slip_resistance /
+          parameters.dimensionless_form_parameters.
+            characteristic_quantities.slip_resistance;
 
     assemble_trial_microstress_lumped_matrix();
 
@@ -615,12 +618,19 @@ reset_and_update_slip_resistances()
     parameters.constitutive_laws_parameters.hardening_law_parameters.
       hardening_parameter;
 
+  const double &characteristic_slip_resistance =
+    parameters.dimensionless_form_parameters.characteristic_quantities.
+      slip_resistance;
+
   auto get_hardening_modulus =
-    [&linear_hardening_modulus, &hardening_parameter]
+    [&linear_hardening_modulus,
+     &hardening_parameter,
+     &characteristic_slip_resistance]
     (bool self_hardening)
     {
-      return (linear_hardening_modulus * (hardening_parameter +
-        (1.0 - hardening_parameter)*(self_hardening ? 1.0 : 0.0)));
+      return (linear_hardening_modulus / characteristic_slip_resistance *
+        (hardening_parameter +
+          (1.0 - hardening_parameter)*(self_hardening ? 1.0 : 0.0)));
     };
 
   for (const auto locally_owned_inelastic_dof :

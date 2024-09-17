@@ -2353,6 +2353,15 @@ assemble_local_trial_microstress_right_hand_side(
       trial_solution,
       scratch.linear_strain_values);
 
+  // Dimensionless numbers
+  const double &third_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[2];
+
+  const double &fourth_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[3];
+
   // Get the slips and their gradients values at the quadrature points
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
@@ -2437,11 +2446,13 @@ assemble_local_trial_microstress_right_hand_side(
 
         data.local_right_hand_side(local_dof_id) +=
           -1.0 *
-          (scratch.test_function_gradient_values[slip_id][local_dof_id] *
-            scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
-            -
-            scratch.test_function_values[slip_id][local_dof_id] *
-            scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
+          (third_dimensionless_number *
+           scratch.test_function_gradient_values[slip_id][local_dof_id] *
+           scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
+           -
+           fourth_dimensionless_number *
+           scratch.test_function_values[slip_id][local_dof_id] *
+           scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
           scratch.JxW_values[quadrature_point_id];
       }
     } // Loop over local degrees of freedom
@@ -2519,6 +2530,7 @@ assemble_local_trial_microstress_right_hand_side(
                 local_dof_id) - dim;
 
             data.local_right_hand_side(local_dof_id) +=
+              third_dimensionless_number *
               scratch.test_function_face_values[slip_id][local_dof_id] *
               scratch.vectorial_microstress_face_values
                 [slip_id][quadrature_point_id] *
