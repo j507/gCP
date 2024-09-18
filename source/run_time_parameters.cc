@@ -622,12 +622,178 @@ void ConstitutiveLawsParameters::parse_parameters(dealii::ParameterHandler &prm)
 
 
 
+CharacteristicQuantities::CharacteristicQuantities()
+:
+length(1.0),
+time(1.0),
+displacement(1.0),
+stiffness(1.0),
+slip_resistance(1.0),
+strain(1.0),
+stress(1.0),
+resolved_shear_stress(stress),
+macro_traction(stress),
+micro_traction(1.0),
+body_force(1.0),
+dislocation_density(1.0)
+{}
+
+
+
+DimensionlessForm::DimensionlessForm()
+:
+dimensionless_numbers(4, 1.0),
+flag_solve_dimensionless_problem(false)
+{}
+
+
+
+void DimensionlessForm::declare_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Dimensionless formulation parameters");
+  {
+    prm.declare_entry("Solve the dimensionless problem",
+                      "false",
+                      dealii::Patterns::Bool());
+
+    prm.enter_subsection("Reference parameters");
+    {
+      prm.declare_entry("Reference length value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+
+      prm.declare_entry("Reference time value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+
+      prm.declare_entry("Reference displacement value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+
+      prm.declare_entry("Reference stiffness value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+
+      prm.declare_entry("Reference slip resistance value",
+                        "1.0",
+                        dealii::Patterns::Double(0.0));
+    }
+    prm.leave_subsection();
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DimensionlessForm::parse_parameters(
+  dealii::ParameterHandler &prm)
+{
+  prm.enter_subsection("Dimensionless formulation parameters");
+  {
+    flag_solve_dimensionless_problem =
+      prm.get_bool("Solve the dimensionless problem");
+
+    if (flag_solve_dimensionless_problem)
+    {
+      prm.enter_subsection("Reference parameters");
+      {
+        characteristic_quantities.length =
+          prm.get_double("Reference length value");
+
+        characteristic_quantities.time =
+          prm.get_double("Reference time value");
+
+        characteristic_quantities.displacement =
+          prm.get_double("Reference displacement value");
+
+        characteristic_quantities.stiffness =
+          prm.get_double("Reference stiffness value");
+
+        characteristic_quantities.slip_resistance =
+          prm.get_double("Reference slip resistance value");
+      }
+      prm.leave_subsection();
+    }
+  }
+  prm.leave_subsection();
+}
+
+
+
+void DimensionlessForm::init(
+  const RunTimeParameters::ConstitutiveLawsParameters &prm)
+{
+  if (!flag_solve_dimensionless_problem)
+  {
+    return;
+  }
+
+  const double &initial_slip_resistance =
+    prm.vectorial_microstress_law_parameters.initial_slip_resistance;
+
+  const double &defect_energy_index =
+    prm.vectorial_microstress_law_parameters.defect_energy_index;
+
+  const double &energetic_length_scale =
+    prm.vectorial_microstress_law_parameters.energetic_length_scale;
+
+  const double &linear_hardening_modulus =
+    prm.hardening_law_parameters.linear_hardening_modulus;
+
+  characteristic_quantities.strain =
+    characteristic_quantities.displacement /
+      characteristic_quantities.length;
+
+  characteristic_quantities.stress =
+    characteristic_quantities.stiffness *
+      characteristic_quantities.strain;
+
+  characteristic_quantities.resolved_shear_stress =
+    characteristic_quantities.stress;
+
+  characteristic_quantities.macro_traction =
+    characteristic_quantities.stress;
+
+  characteristic_quantities.micro_traction =
+    initial_slip_resistance *
+    std::pow(energetic_length_scale, defect_energy_index) /
+    std::pow(characteristic_quantities.length,
+             defect_energy_index - 1.0);
+
+  characteristic_quantities.body_force =
+    characteristic_quantities.stress /
+      characteristic_quantities.length;
+
+  characteristic_quantities.dislocation_density =
+    1.0 / characteristic_quantities.length;
+
+  dimensionless_numbers[0] =
+    characteristic_quantities.length /
+      characteristic_quantities.displacement;
+
+  dimensionless_numbers[1] =
+    linear_hardening_modulus /
+      characteristic_quantities.slip_resistance;
+
+  dimensionless_numbers[2] =
+    initial_slip_resistance /
+    characteristic_quantities.slip_resistance *
+    std::pow(energetic_length_scale / characteristic_quantities.length,
+             defect_energy_index);
+
+  dimensionless_numbers[3] =
+    characteristic_quantities.stress /
+      characteristic_quantities.slip_resistance;
+}
+
+
+
 KrylovParameters::KrylovParameters()
 :
 solver_type(SolverType::CG),
 relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
-tolerance_relaxation_factor(1.0),
 n_max_iterations(1000)
 {}
 
@@ -649,10 +815,6 @@ void KrylovParameters::declare_parameters(
     prm.declare_entry("Absolute tolerance",
                       "1e-8",
                       dealii::Patterns::Double(0.));
-
-    prm.declare_entry("Relaxation factor of the tolerances",
-                      "1.0",
-                      dealii::Patterns::Double());
 
     prm.declare_entry("Maximum number of iterations",
                       "1000",
@@ -692,9 +854,6 @@ void KrylovParameters::parse_parameters(
 
     absolute_tolerance  = prm.get_double("Absolute tolerance");
 
-    tolerance_relaxation_factor =
-      prm.get_double("Relaxation factor of the tolerances");
-
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
 
@@ -721,7 +880,6 @@ relative_tolerance(1e-6),
 absolute_tolerance(1e-8),
 step_tolerance(1e-8),
 n_max_iterations(15),
-relaxation_parameter(1.0),
 flag_line_search(true)
 {}
 
@@ -748,10 +906,6 @@ void NewtonRaphsonParameters::declare_parameters(
                       "15",
                       dealii::Patterns::Integer(1));
 
-    prm.declare_entry("Relaxation parameter",
-                      "1.0",
-                      dealii::Patterns::Double(0.,1.));
-
     prm.declare_entry("Line search algorithm",
                       "true",
                       dealii::Patterns::Bool());
@@ -777,9 +931,6 @@ void NewtonRaphsonParameters::parse_parameters(
 
     n_max_iterations =
       prm.get_integer("Maximum number of iterations");
-
-    relaxation_parameter =
-      prm.get_double("Relaxation parameter");
 
     flag_line_search =
       prm.get_bool("Line search algorithm");
@@ -1042,6 +1193,8 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
 
     StaggeredAlgorithmParameters::declare_parameters(prm);
 
+    DimensionlessForm::declare_parameters(prm);
+
     prm.declare_entry("Solution algorithm",
                       "monolithic",
                       dealii::Patterns::Selection(
@@ -1118,6 +1271,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
         "Unexpected identifier for the solution algorithm."));
     }
 
+    dimensionless_form_parameters.parse_parameters(prm);
+
     allow_decohesion = prm.get_bool("Allow decohesion at grain boundaries");
 
     const std::string string_boundary_conditions_at_grain_boundaries(
@@ -1171,6 +1326,9 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
     logger_output_directory = prm.get("Graphical output directory");
   }
   prm.leave_subsection();
+
+  dimensionless_form_parameters.init(
+    constitutive_laws_parameters);
 }
 
 
@@ -1642,8 +1800,8 @@ graphical_output_frequency(1),
 terminal_output_frequency(1),
 homogenization_output_frequency(1),
 flag_output_damage_variable(false),
-flag_output_residual(false),
 flag_output_fluctuations(false),
+flag_output_dimensionless_quantities(false),
 flag_store_checkpoint(false)
 {}
 
@@ -1670,7 +1828,7 @@ void Output::declare_parameters(
                       "false",
                       dealii::Patterns::Bool());
 
-    prm.declare_entry("Output residual field",
+    prm.declare_entry("Output dimensionless quantities",
                       "false",
                       dealii::Patterns::Bool());
 
@@ -1745,11 +1903,11 @@ void Output::parse_parameters(
     flag_output_damage_variable =
       prm.get_bool("Output damage variable field");
 
-    flag_output_residual =
-      prm.get_bool("Output residual field");
-
     flag_output_fluctuations =
       prm.get_bool("Output fluctuations fields");
+
+    flag_output_dimensionless_quantities =
+      prm.get_bool("Output dimensionless quantities");
 
     flag_store_checkpoint =
       prm.get_bool("Store checkpoints");

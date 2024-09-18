@@ -291,7 +291,8 @@ public:
    */
   void init(
     const RunTimeParameters::HardeningLaw &parameters,
-    const unsigned int                    n_slips);
+    const unsigned int                    n_slips,
+    const double characteristic_slip_resistance = 1.0);
 
   /*!
    * @brief Stores the values of @ref slip_resistances in @ref
@@ -346,6 +347,8 @@ private:
 
   double              hardening_parameter;
 
+  double              characteristic_slip_resistance;
+
   bool                flag_perfect_plasticity;
 
   bool                flag_init_was_called;
@@ -391,7 +394,8 @@ QuadraturePointHistory<dim>::get_hardening_matrix_entry(
               dealii::ExcMessage("The QuadraturePointHistory<dim> "
                                  "instance has not been initialized."));
 
-  return (linear_hardening_modulus *
+  return (linear_hardening_modulus /
+          characteristic_slip_resistance *
           (hardening_parameter +
            ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }

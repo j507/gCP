@@ -604,8 +604,11 @@ double FEField<dim>::get_l2_norm(
 
 template <int dim>
 dealii::Vector<double> FEField<dim>::get_sub_l2_norms(
-  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector) const
+  const dealii::LinearAlgebraTrilinos::MPI::BlockVector &vector,
+  const double factor) const
 {
+  AssertIsFinite(factor);
+
   dealii::LinearAlgebraTrilinos::MPI::BlockVector distributed_vector_tmp;
 
   distributed_vector_tmp.reinit(distributed_vector);
@@ -666,6 +669,8 @@ dealii::Vector<double> FEField<dim>::get_sub_l2_norms(
     l2_norms[1] = distributed_vector_tmp.block(1).l2_norm();
   }
 
+  l2_norms[0] /= factor;
+
   auto to_string =
       [](const double number)
   {
@@ -675,16 +680,21 @@ dealii::Vector<double> FEField<dim>::get_sub_l2_norms(
     return std::move(out).str();
   };
 
-  const double factor = 1e4;
+  {
+    const double tolerance_relaxation_factor = 1e4;
 
-  Assert(
-    std::fabs(l2_norm - l2_norms.l2_norm()) <
-      std::numeric_limits<double>::epsilon() * factor,
-    dealii::ExcMessage("The norms do not match (" +
-      to_string(l2_norm) + ", " + to_string(l2_norms.l2_norm()) +
-        ")"));
+    Assert(
+      std::fabs(l2_norm - l2_norms.l2_norm()) <
+        std::numeric_limits<double>::epsilon() *
+          tolerance_relaxation_factor,
+      dealii::ExcMessage("The norms do not match (" +
+        to_string(l2_norm) + ", " + to_string(l2_norms.l2_norm()) +
+          ")"));
 
-  (void)to_string;
+    (void)l2_norm;
+    (void)to_string;
+    (void)tolerance_relaxation_factor;
+  }
 
   return l2_norms;
 }

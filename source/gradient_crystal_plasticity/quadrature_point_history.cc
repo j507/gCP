@@ -286,7 +286,8 @@ flag_init_was_called(false)
 template <int dim>
 void QuadraturePointHistory<dim>::init(
   const RunTimeParameters::HardeningLaw &parameters,
-  const unsigned int                    n_slips)
+  const unsigned int n_slips,
+  const double characteristic_slip_resistance)
 {
   this->n_slips             = n_slips;
 
@@ -300,9 +301,13 @@ void QuadraturePointHistory<dim>::init(
 
   slip_resistances          = std::vector<double>(
                                 n_slips,
-                                initial_slip_resistance);
+                                initial_slip_resistance /
+                                  characteristic_slip_resistance);
 
   tmp_slip_resistances      = slip_resistances;
+
+  this->characteristic_slip_resistance =
+    characteristic_slip_resistance;
 
   flag_init_was_called      = true;
 }

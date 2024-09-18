@@ -624,7 +624,6 @@ struct ContactLawParameters
 };
 
 
-
 struct ConstitutiveLawsParameters
 {
   /*
@@ -713,6 +712,73 @@ struct ConstitutiveLawsParameters
 
 
 
+struct CharacteristicQuantities
+{
+  CharacteristicQuantities();
+
+  double length;
+
+  double time;
+
+  double displacement;
+
+  double stiffness;
+
+  double slip_resistance;
+
+  double strain;
+
+  double stress;
+
+  double resolved_shear_stress;
+
+  double macro_traction;
+
+  double micro_traction;
+
+  double body_force;
+
+  double dislocation_density;
+};
+
+
+
+struct DimensionlessForm
+{
+  /*
+   * @brief Constructor which sets up the parameters with default values.
+   */
+  DimensionlessForm();
+
+  /*!
+   * @brief Static method which declares the associated parameter to the
+   * ParameterHandler object @p prm.
+   */
+  static void declare_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief Method which parses the parameters from the ParameterHandler
+   * object @p prm.
+   */
+  void parse_parameters(dealii::ParameterHandler &prm);
+
+  /*!
+   * @brief
+   *
+   * @param prm
+   * @todo Docu
+   */
+  void init(const RunTimeParameters::ConstitutiveLawsParameters &prm);
+
+  CharacteristicQuantities characteristic_quantities;
+
+  std::vector<double> dimensionless_numbers;
+
+  bool flag_solve_dimensionless_problem;
+};
+
+
+
 struct KrylovParameters
 {
   /*
@@ -752,13 +818,6 @@ struct KrylovParameters
    * @todo Docu
    */
   double        absolute_tolerance;
-
-  /*!
-   * @brief
-   *
-   * @todo Docu
-   */
-  double        tolerance_relaxation_factor;
 
   /*!
    * @brief
@@ -817,9 +876,11 @@ struct NewtonRaphsonParameters
    */
   unsigned int  n_max_iterations;
 
-
-  double        relaxation_parameter;
-
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   bool          flag_line_search;
 };
 
@@ -1024,8 +1085,18 @@ struct SolverParameters
    */
   SolutionAlgorithm             solution_algorithm;
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   MonolithicAlgorithmParameters monolithic_algorithm_parameters;
 
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
   StaggeredAlgorithmParameters staggered_algorithm_parameters;
 
   /*!
@@ -1034,6 +1105,14 @@ struct SolverParameters
    * @todo Docu
    */
   ConstitutiveLawsParameters    constitutive_laws_parameters;
+
+  /*!
+   * @brief
+   *
+   * @todo Docu
+   */
+  DimensionlessForm
+                                dimensionless_form_parameters;
 
   /*!
    * @brief
@@ -1348,9 +1427,9 @@ struct Output
 
   bool          flag_output_damage_variable;
 
-  bool          flag_output_residual;
-
   bool          flag_output_fluctuations;
+
+  bool          flag_output_dimensionless_quantities;
 
   bool          flag_store_checkpoint;
 };

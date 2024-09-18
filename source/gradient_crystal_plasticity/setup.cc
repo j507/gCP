@@ -105,7 +105,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
   // Initiate constitutive laws
   hooke_law->init();
 
-  vectorial_microstress_law->init();
+  vectorial_microstress_law->init(
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[3] != 1.0);
 
   init_quadrature_point_history();
 
@@ -191,9 +193,18 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
     trial_microstress->setup_vectors();
 
-    trial_postprocessor.reinit(
-      trial_microstress,
-      crystals_data);
+    trial_microstress_postprocessor.reinit(
+      crystals_data,
+      "TrialMicrostress",
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed());
+
+    slip_resistance_postprocessor.reinit(
+      crystals_data,
+      "SlipResistance",
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed());
+
     // Initiate trial_microstress_matrix matrix
     {
       trial_microstress_matrix.clear();
@@ -232,8 +243,11 @@ void GradientCrystalPlasticitySolver<dim>::init()
         trial_microstress->distributed_vector);
     }
 
-    slip_resistance = parameters.constitutive_laws_parameters.
-      hardening_law_parameters.initial_slip_resistance;
+    slip_resistance =
+      parameters.constitutive_laws_parameters.
+        hardening_law_parameters.initial_slip_resistance /
+          parameters.dimensionless_form_parameters.
+            characteristic_quantities.slip_resistance;
 
     assemble_trial_microstress_lumped_matrix();
 
@@ -431,7 +445,9 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             ++q_point)
         local_quadrature_point_history[q_point]->init(
           parameters.constitutive_laws_parameters.hardening_law_parameters,
-          crystals_data->get_n_slips());
+          crystals_data->get_n_slips(),
+          parameters.dimensionless_form_parameters.
+            characteristic_quantities.slip_resistance);
 
       if (cell_is_at_grain_boundary(cell->active_cell_index()) &&
           fe_field->is_decohesion_allowed())
@@ -602,12 +618,19 @@ reset_and_update_slip_resistances()
     parameters.constitutive_laws_parameters.hardening_law_parameters.
       hardening_parameter;
 
+  const double &characteristic_slip_resistance =
+    parameters.dimensionless_form_parameters.characteristic_quantities.
+      slip_resistance;
+
   auto get_hardening_modulus =
-    [&linear_hardening_modulus, &hardening_parameter]
+    [&linear_hardening_modulus,
+     &hardening_parameter,
+     &characteristic_slip_resistance]
     (bool self_hardening)
     {
-      return (linear_hardening_modulus * (hardening_parameter +
-        (1.0 - hardening_parameter)*(self_hardening ? 1.0 : 0.0)));
+      return (linear_hardening_modulus / characteristic_slip_resistance *
+        (hardening_parameter +
+          (1.0 - hardening_parameter)*(self_hardening ? 1.0 : 0.0)));
     };
 
   for (const auto locally_owned_inelastic_dof :
@@ -666,24 +689,33 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
     std::vector<std::string> file_names{
       "Debugging_", "Residual_", "Newton_Update_"};
 
-    data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                            trial_solution,
-                            postprocessor);
+    data_outs[0].add_data_vector(
+      fe_field->get_dof_handler(),
+      trial_solution,
+      postprocessor);
 
     if (crystals_data->get_n_slips() > 0)
     {
-      data_outs[0].add_data_vector(fe_field->get_dof_handler(),
-                              trial_microstress->solution,
-                              trial_postprocessor);
+      data_outs[0].add_data_vector(
+        fe_field->get_dof_handler(),
+        trial_microstress->solution,
+        trial_microstress_postprocessor);
+
+      data_outs[0].add_data_vector(
+        fe_field->get_dof_handler(),
+        slip_resistance,
+        slip_resistance_postprocessor);
     }
 
-    data_outs[1].add_data_vector(fe_field->get_dof_handler(),
-                                residual,
-                                postprocessor);
+    data_outs[1].add_data_vector(
+      fe_field->get_dof_handler(),
+      residual,
+      postprocessor);
 
-    data_outs[2].add_data_vector(fe_field->get_dof_handler(),
-                                newton_update,
-                                postprocessor);
+    data_outs[2].add_data_vector(
+      fe_field->get_dof_handler(),
+      newton_update,
+      postprocessor);
 
     for (auto &data_out : data_outs)
     {
