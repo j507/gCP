@@ -78,6 +78,38 @@ flag_init_was_called(false)
          dealii::ExcMessage("The CrystalsData<dim>'s shared pointer "
                             "contains a nullptr."));
 
+  const bool &flag_dimensionless_formulation =
+    parameters.dimensionless_form_parameters.
+      flag_solve_dimensionless_problem;
+
+  const bool &flag_microtraction_boundary_conditions =
+    parameters.boundary_conditions_at_grain_boundaries ==
+      RunTimeParameters::BoundaryConditionsAtGrainBoundaries::
+        Microtraction;
+
+  const bool &flag_rate_independent =
+    parameters.constitutive_laws_parameters.
+      scalar_microstress_law_parameters.flag_rate_independent;
+
+  const bool flag_decohesion = parameters.allow_decohesion;
+
+  if (flag_dimensionless_formulation && (flag_decohesion ||
+        flag_microtraction_boundary_conditions))
+  {
+    Assert(false, dealii::ExcMessage(
+      "The dimensionless formulation has not been implemented for the "
+      "polycrystalline case of grain boundaries enhanced by a "
+      "constitutive boundary condition and a cohesive law"));
+  }
+
+  if (flag_rate_independent && flag_microtraction_boundary_conditions)
+  {
+    Assert(false, dealii::ExcMessage(
+      "The rate-independent formulation has not been implemented for "
+      "the case of grain boundaries enhanced by a constitutive "
+      "boundary condition"));
+  }
+
   // Set macroscopic strain to zero
   macroscopic_strain = 0.;
 
@@ -164,8 +196,8 @@ flag_init_was_called(false)
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::~GradientCrystalPlasticitySolver()
 {
-  line_search->write_to_file(
-    parameters.logger_output_directory + "line_search_log.txt");
+  /*line_search->write_to_file(
+    parameters.logger_output_directory + "line_search_log.txt");*/
 }
 
 
