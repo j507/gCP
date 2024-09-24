@@ -205,6 +205,12 @@ void GradientCrystalPlasticitySolver<dim>::init()
       fe_field->get_n_components(),
       fe_field->is_decohesion_allowed());
 
+    active_set_postprocessor.reinit(
+      crystals_data,
+      "ActiveSet",
+      fe_field->get_n_components(),
+      fe_field->is_decohesion_allowed());
+
     // Initiate trial_microstress_matrix matrix
     {
       trial_microstress_matrix.clear();
@@ -240,6 +246,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
         trial_microstress->distributed_vector);
 
       tmp_slip_resistance.reinit(
+        trial_microstress->distributed_vector);
+
+      active_set.reinit(
         trial_microstress->distributed_vector);
     }
 
@@ -705,6 +714,11 @@ void GradientCrystalPlasticitySolver<dim>::debug_output()
         fe_field->get_dof_handler(),
         slip_resistance,
         slip_resistance_postprocessor);
+
+      data_outs[0].add_data_vector(
+        fe_field->get_dof_handler(),
+        active_set,
+        active_set_postprocessor);
     }
 
     data_outs[1].add_data_vector(

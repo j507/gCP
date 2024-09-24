@@ -123,10 +123,28 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
         dealii::AffineConstraints<double>::
           MergeConflictBehavior::right_object_wins);
   }
-
   inactive_set_affine_constraints.close();
 
   locally_owned_active_set.compress();
+
+  if (parameters.flag_output_debug_fields)
+  {
+    active_set =
+      trial_microstress->get_distributed_vector_instance(
+        trial_microstress->solution);
+
+    for (unsigned int entry_id = 0; entry_id < active_set.size();
+          entry_id++)
+    {
+      if (trial_microstress->get_locally_owned_plastic_slip_dofs().
+            is_element(entry_id))
+      {
+        active_set(entry_id) =
+          std::abs(active_set(entry_id)) >
+                slip_resistance(entry_id);
+      }
+    }
+  }
 }
 
 
