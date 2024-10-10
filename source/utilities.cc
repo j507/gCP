@@ -128,7 +128,7 @@ void Logger::log_headers_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 3;
+    const unsigned int precision = 2;
 
     pcout
       << std::setw( (data_map[key].second) ? (precision + 6) : key.length())
@@ -154,7 +154,7 @@ void Logger::log_values_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 3;
+    const unsigned int precision = 2;
 
     pcout << std::setw(key.length()) << std::right
           << std::setprecision(precision)
