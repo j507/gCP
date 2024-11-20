@@ -691,6 +691,9 @@ reset_internal_newton_method_constraints()
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::debug_output()
 {
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Output debug data");
+
   if (parameters.flag_output_debug_fields)
   {
     std::vector<dealii::DataOut<dim>> data_outs(3);

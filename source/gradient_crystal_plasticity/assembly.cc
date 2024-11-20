@@ -17,7 +17,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
            << "  Solver: Assembling jacobian...";
 
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Jacobian assembly");
+                                "Solver: Assemble Jacobian");
 
   // Set up local aliases
   using CellIterator =
@@ -615,7 +615,7 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
            << "  Solver: Assembling residual...";
 
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Residual assembly");
+                                "Solver: Assemble residual");
 
   // Set up local aliases
   using CellIterator =

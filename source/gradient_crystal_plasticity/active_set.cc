@@ -11,6 +11,9 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::active_set_algorithm(
   bool &flag_compute_active_set)
 {
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Active set algorithm");
+
   if (parameters.constitutive_laws_parameters.
         scalar_microstress_law_parameters.flag_rate_independent)
   {
@@ -39,9 +42,6 @@ void GradientCrystalPlasticitySolver<dim>::active_set_algorithm(
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 {
-  dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Active set determination");
-
   if (crystals_data->get_n_slips() == 0)
   {
     return;
