@@ -154,7 +154,7 @@ void Logger::log_values_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 2;
+    const unsigned int precision = 1;
 
     pcout << std::setw(key.length()) << std::right
           << std::setprecision(precision)
