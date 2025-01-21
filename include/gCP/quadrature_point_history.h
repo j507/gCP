@@ -274,6 +274,16 @@ public:
   double get_slip_resistance(const unsigned int slip_id) const;
 
   /*!
+   * @brief Get the old slip resistance value at the quadrature point
+   * of a slip system
+   *
+   * @param slip_id The id number of the slip system
+   * @return double The slip resistance value corresponding to
+   * @ref slip_id
+   */
+  double get_old_slip_resistance(const unsigned int slip_id) const;
+
+  /*!
    * @brief Get the slip resistance value at the quadrature point
    * of all slip systems
    *
@@ -281,6 +291,14 @@ public:
    * slip systems
    */
   std::vector<double> get_slip_resistances() const;
+  /*!
+   * @brief Get the old_slip resistance value at the quadrature point
+   * of all slip systems
+   *
+   * @return std::vector<double> The slip resistance value of all
+   * slip systems
+   */
+  std::vector<double> get_old_slip_resistances() const;
 
   /*!
    * @brief Initiates the @ref QuadraturePointHistory instance
@@ -371,6 +389,19 @@ QuadraturePointHistory<dim>::get_slip_resistance(
 }
 
 
+template <int dim>
+inline double
+QuadraturePointHistory<dim>::get_old_slip_resistance(
+  const unsigned int slip_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (tmp_slip_resistances[slip_id]);
+}
+
+
 
 template <int dim>
 inline std::vector<double>
@@ -381,6 +412,19 @@ QuadraturePointHistory<dim>::get_slip_resistances() const
                                  "instance has not been initialized."));
 
   return (slip_resistances);
+}
+
+
+
+template <int dim>
+inline std::vector<double>
+QuadraturePointHistory<dim>::get_old_slip_resistances() const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (tmp_slip_resistances);
 }
 
 
