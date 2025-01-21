@@ -1,6 +1,8 @@
 #ifndef INCLUDE_UTILITIES_H_
 #define INCLUDE_UTILITIES_H_
 
+#include <gCP/run_time_parameters.h>
+
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
 #include <deal.II/base/conditional_ostream.h>
@@ -13,8 +15,11 @@
 #include <deal.II/lac/full_matrix.h>
 
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <string>
+#include <algorithm>
+
 
 
 namespace gCP
@@ -48,6 +53,28 @@ namespace Utilities
 
 
 
+double macaulay_brackets(const double value);
+
+
+
+double signum_function(const double value);
+
+
+
+double sigmoid_function(
+  const double value,
+  const double parameter,
+  const RunTimeParameters::RegularizationFunction function_type);
+
+
+
+double sigmoid_function_derivative(
+  const double value,
+  const double parameter,
+  const RunTimeParameters::RegularizationFunction function_type);
+
+
+
 template<int dim>
 void update_ghost_material_ids(dealii::DoFHandler<dim> &dof_handler)
 {
@@ -75,6 +102,12 @@ void update_ghost_material_ids(dealii::DoFHandler<dim> &dof_handler)
       pack,
       unpack);
 }
+
+
+
+bool files_are_identical(
+  const std::string& first_filename,
+  const std::string& second_filename);
 
 
 
