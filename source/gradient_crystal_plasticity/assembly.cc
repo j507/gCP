@@ -1483,6 +1483,8 @@ update_local_quadrature_point_history(
                     local_interface_quadrature_point_history[face_q_point]->
                       get_damage_variable(), true) *
                 (cohesive_law->get_free_energy_density(
+                  parameters.dimensionless_form_parameters.
+                    characteristic_quantities.displacement *
                   scratch.effective_opening_displacement[face_q_point])
                   +
                  microtraction_law->get_free_energy_density(
@@ -1496,6 +1498,8 @@ update_local_quadrature_point_history(
               local_interface_quadrature_point_history[face_q_point]->
                 update_values(
                   scratch.effective_opening_displacement[face_q_point],
+                  parameters.dimensionless_form_parameters.
+                    characteristic_quantities.displacement,
                   scratch.thermodynamic_force_values[face_q_point]);
             }
             break;

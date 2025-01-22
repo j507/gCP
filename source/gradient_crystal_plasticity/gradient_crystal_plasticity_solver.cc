@@ -58,7 +58,9 @@ degradation_function(
     parameters.constitutive_laws_parameters.degradation_function_parameters)),
 contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
-    parameters.constitutive_laws_parameters.contact_law_parameters)),
+    parameters.constitutive_laws_parameters.contact_law_parameters,
+    parameters.dimensionless_form_parameters.characteristic_quantities.stress,
+    parameters.dimensionless_form_parameters.characteristic_quantities.displacement)),
 residual_norm(std::numeric_limits<double>::max()),
 //line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(

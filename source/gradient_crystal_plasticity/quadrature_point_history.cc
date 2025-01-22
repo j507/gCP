@@ -152,8 +152,9 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
-  const double  effective_opening_displacement,
-  const double  thermodynamic_force)
+  const double effective_opening_displacement,
+  const double characteristic_displacement,
+  const double thermodynamic_force)
 {
   damage_variable                     = tmp_scalar_values[0];
   max_effective_opening_displacement  = tmp_scalar_values[1];
@@ -164,6 +165,7 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
   damage_variable +=
     damage_accumulation_constant *
+    characteristic_displacement *
     macaulay_brackets(effective_opening_displacement -
                       old_effective_opening_displacement) *
     std::pow(1.0 - damage_variable + damage_decay_constant,

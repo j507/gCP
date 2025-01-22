@@ -83,8 +83,9 @@ public:
   void reset_values();
 
   void update_values(
-    const double  effective_opening_displacement,
-    const double  thermodynamic_force);
+    const double effective_opening_displacement,
+    const double characterstic_displacement,
+    const double thermodynamic_force);
 
   void update_values(
     const double  effective_opening_displacement);

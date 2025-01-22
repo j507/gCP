@@ -368,7 +368,8 @@ class MicrotractionLaw
 public:
   MicrotractionLaw(
     const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-    const RunTimeParameters::MicrotractionLawParameters &parameters);
+    const RunTimeParameters::MicrotractionLawParameters &parameters,
+    const double characteristic_vectorial_microstress = 1.0);
 
   using GrainInteractionModuli =
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
@@ -403,9 +404,11 @@ public:
     const std::vector<std::vector<double>>  current_cell_slip_values) const;
 
 private:
-  std::shared_ptr<const CrystalsData<dim>>    crystals_data;
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 
-  const double                                grain_boundary_modulus;
+  const double grain_boundary_modulus;
+
+  const double characteristic_vectorial_microstress;
 };
 
 
@@ -439,7 +442,9 @@ private:
 
 public:
   CohesiveLaw(
-    const RunTimeParameters::CohesiveLawParameters parameters);
+    const RunTimeParameters::CohesiveLawParameters parameters,
+    const double characteristic_stress = 1.0,
+    const double characteristic_displacement = 1.0);
 
   dealii::Tensor<1,dim> get_cohesive_traction(
     const dealii::Tensor<1,dim> opening_displacement,
@@ -475,6 +480,10 @@ private:
 
   double tangential_to_normal_stiffness_ratio;
 
+  double characteristic_stress;
+
+  double characteristic_displacement;
+
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(
@@ -508,8 +517,9 @@ CohesiveLaw<dim>::get_effective_cohesive_traction(
   return (critical_cohesive_traction *
           effective_opening_displacement /
           critical_opening_displacement *
-          std::exp(1.0 - effective_opening_displacement /
-                         critical_opening_displacement));
+          std::exp(1.0 -
+            effective_opening_displacement /
+            critical_opening_displacement));
 }
 
 
@@ -604,7 +614,9 @@ public:
    * @param parameters The constitutive law's parameters
    */
   ContactLaw(
-    const RunTimeParameters::ContactLawParameters parameters);
+    const RunTimeParameters::ContactLawParameters parameters,
+    const double characteristic_stress = 1.0,
+    const double characteristic_displacement = 1.0);
 
   /*!
    * @brief Method returning the contact traction
@@ -654,6 +666,18 @@ private:
    * leading to the effective stiffness
    */
   double penalty_coefficient;
+
+  /**
+   * @brief
+   *
+   */
+  double characteristic_stress;
+
+  /**
+   * @brief
+   *
+   */
+  double characteristic_displacement;
 
   /*!
   * @brief A method returning the result of applying the Macaulay
