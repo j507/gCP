@@ -32,10 +32,12 @@ class Postprocessor : public dealii::DataPostprocessor<dim>
 {
 public:
   Postprocessor(
-    std::shared_ptr<FEField<dim>>       &fe_field,
-    std::shared_ptr<CrystalsData<dim>>  &crystals_data,
-    const bool                          flag_light_output = false,
-    const bool                          flag_output_fluctuations = false);
+    std::shared_ptr<FEField<dim>> &fe_field,
+    std::shared_ptr<CrystalsData<dim>> &crystals_data,
+    const RunTimeParameters::DimensionlessForm &parameters,
+    const bool flag_light_output = false,
+    const bool flag_output_dimensionless_quantities = false,
+    const bool flag_output_fluctuations = false);
 
   virtual void evaluate_vector_field(
     const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
@@ -57,25 +59,29 @@ public:
     const dealii::SymmetricTensor<2,dim> macroscopic_strain);
 
 private:
-  std::shared_ptr<const FEField<dim>>                     fe_field;
+  std::shared_ptr<const FEField<dim>> fe_field;
 
-  std::shared_ptr<const CrystalsData<dim>>                crystals_data;
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 
-  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
+  std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>> hooke_law;
 
-  std::vector<std::pair<unsigned int, unsigned int>>      voigt_indices;
+  std::vector<std::pair<unsigned int, unsigned int>> voigt_indices;
 
-  dealii::SymmetricTensor<2,dim>                          macroscopic_strain;
+  dealii::SymmetricTensor<2,dim> macroscopic_strain;
 
-  const dealii::SymmetricTensor<4,dim>                    deviatoric_projector;
+  const dealii::SymmetricTensor<4,dim> deviatoric_projector;
 
-  const dealii::SymmetricTensor<4,3>                      deviatoric_projector_3d;
+  const dealii::SymmetricTensor<4,3> deviatoric_projector_3d;
 
-  bool                                                    flag_light_output;
+  RunTimeParameters::DimensionlessForm parameters;
 
-  bool                                                    flag_output_fluctuations;
+  bool flag_light_output;
 
-  bool                                                    flag_init_was_called;
+  bool flag_output_dimensionless_quantities;
+
+  bool flag_output_fluctuations;
+
+  bool flag_init_was_called;
 
   dealii::SymmetricTensor<2,3> convert_2d_to_3d(
     dealii::SymmetricTensor<2,dim> symmetric_tensor) const;
@@ -90,79 +96,18 @@ private:
 
 
 template <int dim>
-class ResidualPostprocessor : public dealii::DataPostprocessor<dim>
-{
-public:
-  ResidualPostprocessor(
-    std::shared_ptr<FEField<dim>>       &fe_field,
-    std::shared_ptr<CrystalsData<dim>>  &crystals_data);
-
-  virtual void evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-    std::vector<dealii::Vector<double>>                 &computed_quantities)
-    const override;
-
-  virtual std::vector<std::string> get_names() const override;
-
-  virtual std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-      get_data_component_interpretation() const override;
-
-  virtual dealii::UpdateFlags get_needed_update_flags() const override;
-
-private:
-  std::shared_ptr<const FEField<dim>>                     fe_field;
-
-  std::shared_ptr<const CrystalsData<dim>>                crystals_data;
-};
-
-
-/*!
-  * @note Only for debugging purposes
-  */
-template <int dim>
-class RatePostprocessor : public dealii::DataPostprocessor<dim>
-{
-public:
-  RatePostprocessor(
-    const dealii::DiscreteTime          &discrete_time,
-    std::shared_ptr<FEField<dim>>       &fe_field,
-    std::shared_ptr<CrystalsData<dim>>  &crystals_data);
-
-  virtual void evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-    std::vector<dealii::Vector<double>>                 &computed_quantities)
-    const override;
-
-  virtual std::vector<std::string> get_names() const override;
-
-  virtual std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-      get_data_component_interpretation() const override;
-
-  virtual dealii::UpdateFlags get_needed_update_flags() const override;
-
-private:
-  const dealii::DiscreteTime                              &discrete_time;
-
-  std::shared_ptr<const FEField<dim>>                     fe_field;
-
-  std::shared_ptr<const CrystalsData<dim>>                crystals_data;
-};
-
-
-
-template <int dim>
-class TrialstressPostprocessor :  public dealii::DataPostprocessor<dim>
+class SlipBasedPostprocessor :  public dealii::DataPostprocessor<dim>
 {
 public:
   void reinit(
-    std::shared_ptr<FEField<dim>> &trial_microstress,
-    std::shared_ptr<const CrystalsData<dim>> &crystals_data);
+    std::shared_ptr<const CrystalsData<dim>> &crystals_data,
+    const std::string output_name,
+    const unsigned int n_components,
+    const bool flag_allow_decohesion);
 
   virtual void evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-    std::vector<dealii::Vector<double>>                 &computed_quantities)
+    const dealii::DataPostprocessorInputs::Vector<dim> &inputs,
+    std::vector<dealii::Vector<double>> &computed_quantities)
     const override;
 
   virtual std::vector<std::string> get_names() const override;
@@ -174,9 +119,13 @@ public:
   virtual dealii::UpdateFlags get_needed_update_flags() const override;
 
 private:
-  std::shared_ptr<const FEField<dim>> trial_microstress;
-
   std::shared_ptr<const CrystalsData<dim>> crystals_data;
+
+  std::string output_name;
+
+  unsigned int n_components;
+
+  bool flag_allow_decohesion;
 };
 
 

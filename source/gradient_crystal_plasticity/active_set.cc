@@ -11,6 +11,9 @@ template<int dim>
 void GradientCrystalPlasticitySolver<dim>::active_set_algorithm(
   bool &flag_compute_active_set)
 {
+  dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Active set algorithm");
+
   if (parameters.constitutive_laws_parameters.
         scalar_microstress_law_parameters.flag_rate_independent)
   {
@@ -39,9 +42,6 @@ void GradientCrystalPlasticitySolver<dim>::active_set_algorithm(
 template<int dim>
 void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 {
-  dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Active set determination");
-
   if (crystals_data->get_n_slips() == 0)
   {
     return;
@@ -49,9 +49,6 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
   const RunTimeParameters::HardeningLaw &prm =
     parameters.constitutive_laws_parameters.hardening_law_parameters;
-
-  //Assert(dof_mapping.size() != 0,
-  //       dealii::ExcMessage("The degree of freedom mapping is empty"));
 
   assemble_trial_microstress_right_hand_side();
 
@@ -76,7 +73,10 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
 
       if (prm.flag_perfect_plasticity)
       {
-        local_yield_stress = prm.initial_slip_resistance;
+        local_yield_stress =
+          prm.initial_slip_resistance /
+            parameters.dimensionless_form_parameters.
+              characteristic_quantities.slip_resistance;
       }
       else
       {
@@ -123,10 +123,28 @@ void GradientCrystalPlasticitySolver<dim>::determine_active_set()
         dealii::AffineConstraints<double>::
           MergeConflictBehavior::right_object_wins);
   }
-
   inactive_set_affine_constraints.close();
 
   locally_owned_active_set.compress();
+
+  if (parameters.flag_output_debug_fields)
+  {
+    active_set =
+      trial_microstress->get_distributed_vector_instance(
+        trial_microstress->solution);
+
+    for (unsigned int entry_id = 0; entry_id < active_set.size();
+          entry_id++)
+    {
+      if (trial_microstress->get_locally_owned_plastic_slip_dofs().
+            is_element(entry_id))
+      {
+        active_set(entry_id) =
+          std::abs(active_set(entry_id)) >
+                slip_resistance(entry_id);
+      }
+    }
+  }
 }
 
 
@@ -172,7 +190,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
 
   distributed_trial_solution.reinit(fe_field->distributed_vector);
 
-  //distributed_trial_solution = trial_solution;
+  distributed_trial_solution = trial_solution;
 
   for (const auto &locally_owned_dof : locally_owned_inactive_set)
   {
@@ -183,7 +201,7 @@ void GradientCrystalPlasticitySolver<dim>::reset_inactive_set_values()
   fe_field->get_affine_constraints().distribute(
     distributed_trial_solution);
 
-  //trial_solution = distributed_trial_solution;
+  trial_solution = distributed_trial_solution;
 }
 
 

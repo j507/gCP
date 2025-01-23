@@ -17,7 +17,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
            << "  Solver: Assembling jacobian...";
 
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Jacobian assembly");
+                                "Solver: Assemble Jacobian");
 
   // Set up local aliases
   using CellIterator =
@@ -193,9 +193,16 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
       {
         if (fe_field->get_global_component(crystal_id, i) < dim)
         {
+          const double factor =
+            parameters.dimensionless_form_parameters.
+              dimensionless_numbers[3] /
+                parameters.dimensionless_form_parameters.
+                  dimensionless_numbers[0];
+
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
             data.local_matrix(i,j) +=
+              factor *
               scratch.sym_grad_vector_phi[i] *
               scratch.stiffness_tetrad *
               scratch.sym_grad_vector_phi[j] *
@@ -208,7 +215,13 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
             const unsigned int slip_id_beta =
               fe_field->get_global_component(crystal_id, j) - dim;
 
+            const double &dimensionless_number =
+              parameters.dimensionless_form_parameters.
+                dimensionless_numbers[0];
+
             data.local_matrix(i,j) -=
+              factor *
+              dimensionless_number *
               scratch.sym_grad_vector_phi[i] *
               scratch.stiffness_tetrad *
               scratch.symmetrized_schmid_tensors[slip_id_beta] *
@@ -225,7 +238,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
           if (fe_field->get_global_component(crystal_id, j) < dim)
           {
+            const double &dimensionless_number =
+              parameters.dimensionless_form_parameters.
+                dimensionless_numbers[3];
+
             data.local_matrix(i,j) -=
+              dimensionless_number *
               scratch.scalar_phi[slip_id_alpha][i] *
               scratch.symmetrized_schmid_tensors[slip_id_alpha] *
               scratch.stiffness_tetrad *
@@ -241,7 +259,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
             if (slip_id_alpha == slip_id_beta)
             {
+              const double &dimensionless_number =
+                parameters.dimensionless_form_parameters.
+                  dimensionless_numbers[2];
+
               data.local_matrix(i,j) +=
+                dimensionless_number *
                 scratch.grad_scalar_phi[slip_id_alpha][i] *
                 scratch.vectorial_microstress_law_jacobian_values[q_point][slip_id_alpha] *
                 scratch.grad_scalar_phi[slip_id_beta][j] *
@@ -250,9 +273,20 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
 
             AssertIsFinite(data.local_matrix(i,j));
 
+              const double &first_dimensionless_number =
+                parameters.dimensionless_form_parameters.
+                  dimensionless_numbers[0];
+
+              const double &fourth_dimensionless_number =
+                parameters.dimensionless_form_parameters.
+                  dimensionless_numbers[3];
+
+
             data.local_matrix(i,j) -=
               scratch.scalar_phi[slip_id_alpha][i] *
               (-1.0 *
+               first_dimensionless_number *
+               fourth_dimensionless_number *
                scratch.symmetrized_schmid_tensors[slip_id_alpha] *
                scratch.stiffness_tetrad *
                scratch.symmetrized_schmid_tensors[slip_id_beta]
@@ -443,7 +477,14 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               {
                 if (fe_field->is_decohesion_allowed())
                 {
+                  const double factor =
+                    parameters.dimensionless_form_parameters.
+                      dimensionless_numbers[3] /
+                        parameters.dimensionless_form_parameters.
+                          dimensionless_numbers[0];
+
                   data.local_matrix(i,j) -=
+                    factor *
                     scratch.face_vector_phi[i] *
                     (degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -456,6 +497,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     scratch.face_JxW_values[face_q_point];
 
                   data.local_coupling_matrix(i,j) -=
+                    factor *
                     scratch.face_vector_phi[i] *
                     (degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -487,7 +529,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     fe_field->get_global_component(neighbour_crystal_id, j)
                     - dim;
 
+                  const double &dimensionless_number =
+                    parameters.dimensionless_form_parameters.
+                      dimensionless_numbers[2];
+
                   data.local_matrix(i,j) -=
+                    dimensionless_number *
                     scratch.face_scalar_phi[slip_id_alpha][i] *
                     degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -497,6 +544,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
                     scratch.face_JxW_values[face_q_point];
 
                   data.local_coupling_matrix(i,j) -=
+                    dimensionless_number *
                     scratch.face_scalar_phi[slip_id_alpha][i] *
                     degradation_function->get_degradation_function_value(
                       scratch.damage_variable_values[face_q_point],
@@ -567,7 +615,7 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
            << "  Solver: Assembling residual...";
 
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Residual assembly");
+                                "Solver: Assemble residual");
 
   // Set up local aliases
   using CellIterator =
@@ -782,7 +830,14 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
     {
       if (fe_field->get_global_component(crystal_id, i) < dim)
       {
+        const double factor =
+          parameters.dimensionless_form_parameters.
+            dimensionless_numbers[3] /
+              parameters.dimensionless_form_parameters.
+                dimensionless_numbers[0];
+
         data.local_rhs(i) -=
+          factor *
           (scratch.sym_grad_vector_phi[i] *
            scratch.stress_tensor_values[q_point]
            -
@@ -795,12 +850,22 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
         const unsigned int slip_id =
                 fe_field->get_global_component(crystal_id, i) - dim;
 
+        const double &third_dimensionless_number =
+          parameters.dimensionless_form_parameters.
+            dimensionless_numbers[2];
+
+        const double &fourth_dimensionless_number =
+          parameters.dimensionless_form_parameters.
+            dimensionless_numbers[3];
+
         data.local_rhs(i) -=
-          (scratch.grad_scalar_phi[slip_id][i] *
+          (third_dimensionless_number *
+           scratch.grad_scalar_phi[slip_id][i] *
            scratch.vectorial_microstress_values[slip_id][q_point]
            -
            scratch.scalar_phi[slip_id][i] *
-           (scratch.resolved_stress_values[slip_id][q_point]
+           (fourth_dimensionless_number *
+            scratch.resolved_stress_values[slip_id][q_point]
             -
             scratch.scalar_microstress_values[slip_id][q_point])) *
           scratch.JxW_values[q_point];
@@ -969,10 +1034,19 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
 
           // Loop over degrees of freedom
           for (unsigned int i = 0; i < scratch.dofs_per_cell; ++i)
+          {
             if (fe_field->get_global_component(crystal_id, i) < dim)
             {
               if (fe_field->is_decohesion_allowed())
+              {
+                const double factor =
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[3] /
+                      parameters.dimensionless_form_parameters.
+                        dimensionless_numbers[0];
+
                 data.local_rhs(i) +=
+                  factor *
                   scratch.face_vector_phi[i] *
                   (degradation_function->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
@@ -981,6 +1055,7 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                    +
                    scratch.contact_traction_values[face_q_point])*
                   scratch.face_JxW_values[face_q_point];
+              }
 
               AssertIsFinite(data.local_rhs(i));
             }
@@ -992,7 +1067,12 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
                 const unsigned int slip_id =
                   fe_field->get_global_component(crystal_id, i) - dim;
 
+                const double &dimensionless_number =
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[2];
+
                 data.local_rhs(i) +=
+                  dimensionless_number *
                   scratch.face_scalar_phi[slip_id][i] *
                   degradation_function->get_degradation_function_value(
                     scratch.damage_variable_values[face_q_point],
@@ -1002,7 +1082,8 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               }
 
               AssertIsFinite(data.local_rhs(i));
-            } // Loop over degrees of freedom
+            }
+          } // Loop over degrees of freedom
         } // Loop over face quadrature points
       } // Loop over cell's faces
 
@@ -1402,6 +1483,8 @@ update_local_quadrature_point_history(
                     local_interface_quadrature_point_history[face_q_point]->
                       get_damage_variable(), true) *
                 (cohesive_law->get_free_energy_density(
+                  parameters.dimensionless_form_parameters.
+                    characteristic_quantities.displacement *
                   scratch.effective_opening_displacement[face_q_point])
                   +
                  microtraction_law->get_free_energy_density(
@@ -1415,6 +1498,8 @@ update_local_quadrature_point_history(
               local_interface_quadrature_point_history[face_q_point]->
                 update_values(
                   scratch.effective_opening_displacement[face_q_point],
+                  parameters.dimensionless_form_parameters.
+                    characteristic_quantities.displacement,
                   scratch.thermodynamic_force_values[face_q_point]);
             }
             break;
@@ -2272,6 +2357,15 @@ assemble_local_trial_microstress_right_hand_side(
       trial_solution,
       scratch.linear_strain_values);
 
+  // Dimensionless numbers
+  const double &third_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[2];
+
+  const double &fourth_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[3];
+
   // Get the slips and their gradients values at the quadrature points
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
@@ -2356,11 +2450,13 @@ assemble_local_trial_microstress_right_hand_side(
 
         data.local_right_hand_side(local_dof_id) +=
           -1.0 *
-          (scratch.test_function_gradient_values[slip_id][local_dof_id] *
-            scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
-            -
-            scratch.test_function_values[slip_id][local_dof_id] *
-            scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
+          (third_dimensionless_number *
+           scratch.test_function_gradient_values[slip_id][local_dof_id] *
+           scratch.vectorial_microstress_values[slip_id][quadrature_point_id]
+           -
+           fourth_dimensionless_number *
+           scratch.test_function_values[slip_id][local_dof_id] *
+           scratch.resolved_shear_stress_values[slip_id][quadrature_point_id]) *
           scratch.JxW_values[quadrature_point_id];
       }
     } // Loop over local degrees of freedom
@@ -2438,6 +2534,7 @@ assemble_local_trial_microstress_right_hand_side(
                 local_dof_id) - dim;
 
             data.local_right_hand_side(local_dof_id) +=
+              third_dimensionless_number *
               scratch.test_function_face_values[slip_id][local_dof_id] *
               scratch.vectorial_microstress_face_values
                 [slip_id][quadrature_point_id] *

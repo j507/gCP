@@ -54,6 +54,178 @@ namespace Utilities
 
 
 
+double macaulay_brackets(const double value)
+{
+  AssertIsFinite(value);
+
+  return (value > 0) ? value : 0.0;
+}
+
+
+
+double signum_function(const double value)
+{
+  AssertIsFinite(value);
+
+  return (0.0 < value) - (value < 0.0);
+}
+
+
+
+double sigmoid_function(
+  const double value,
+  const double parameter,
+  const RunTimeParameters::RegularizationFunction function_type)
+{
+  AssertIsFinite(value);
+  AssertIsFinite(parameter);
+
+  double function_value = 0.;
+
+  switch (function_type)
+  {
+    case RunTimeParameters::RegularizationFunction::Atan:
+      {
+        function_value =
+          2.0 / M_PI * std::atan(M_PI / 2.0 * value / parameter);
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Sqrt:
+      {
+        function_value =
+          value / std::sqrt(value * value + parameter * parameter);
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Gd:
+      {
+        function_value =
+          2.0 / M_PI * std::atan(std::sinh(
+            M_PI / 2.0 * value / parameter));
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Tanh:
+      {
+        function_value = std::tanh(value / parameter);
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Erf:
+      {
+        function_value =
+          std::erf(std::sqrt(M_PI) / 2.0 * value / parameter);
+      }
+      break;
+    default:
+      {
+        AssertThrow(false,
+          dealii::ExcMessage(
+            "The given regularization function is not currently "
+            "implemented."));
+      }
+      break;
+  }
+
+  AssertIsFinite(function_value);
+
+  return function_value;
+}
+
+
+
+double sigmoid_function_derivative(
+  const double value,
+  const double parameter,
+  const RunTimeParameters::RegularizationFunction function_type)
+{
+  AssertIsFinite(value);
+  AssertIsFinite(parameter);
+
+  double derivative_value = 0.;
+
+  switch (function_type)
+  {
+    case RunTimeParameters::RegularizationFunction::Atan:
+      {
+        derivative_value =
+          parameter / (parameter * parameter +
+            M_PI * M_PI * value * value / 4.);
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Sqrt:
+      {
+        derivative_value =
+          parameter * parameter / std::pow(
+            value * value + parameter * parameter, 1.5);
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Gd:
+      {
+        derivative_value =
+          1.0 / std::cosh(M_PI / 2. * value / parameter) / parameter;
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Tanh:
+      {
+        derivative_value =
+          std::pow(1.0 / std::cosh(value / parameter), 2) / parameter;
+      }
+      break;
+    case RunTimeParameters::RegularizationFunction::Erf:
+      {
+        derivative_value =
+          1. / parameter * std::exp(
+            -M_PI * value * value / parameter / parameter / 4.);
+      }
+      break;
+    default:
+      {
+        AssertThrow(false,
+          dealii::ExcMessage(
+            "The given regularization function is not currently "
+            "implemented."));
+      }
+      break;
+  }
+
+  AssertIsFinite(derivative_value);
+
+  return derivative_value;
+}
+
+
+
+bool files_are_identical(
+  const std::string& first_filename,
+  const std::string& second_filename)
+{
+  std::ifstream first_file(
+    first_filename,
+    std::ifstream::binary | std::ifstream::ate);
+
+  std::ifstream second_file(
+    second_filename,
+    std::ifstream::binary | std::ifstream::ate);
+
+  if (first_file.fail() || second_file.fail())
+  {
+    return false; //file problem
+  }
+
+  if (first_file.tellg() != second_file.tellg())
+  {
+    return false; //size mismatch
+  }
+
+  //seek back to beginning and use std::equal to compare contents
+  first_file.seekg(0, std::ifstream::beg);
+  second_file.seekg(0, std::ifstream::beg);
+
+  return std::equal(
+    std::istreambuf_iterator<char>(first_file.rdbuf()),
+    std::istreambuf_iterator<char>(),
+    std::istreambuf_iterator<char>(second_file.rdbuf()));
+}
+
+
 Logger::Logger(const std::string output_filepath)
 :
 pcout(std::cout,
@@ -128,7 +300,7 @@ void Logger::log_headers_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 3;
+    const unsigned int precision = 2;
 
     pcout
       << std::setw( (data_map[key].second) ? (precision + 6) : key.length())
@@ -154,7 +326,7 @@ void Logger::log_values_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 3;
+    const unsigned int precision = 1;
 
     pcout << std::setw(key.length()) << std::right
           << std::setprecision(precision)

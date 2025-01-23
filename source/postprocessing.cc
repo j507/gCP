@@ -17,10 +17,12 @@ namespace Postprocessing
 
 template <int dim>
 Postprocessor<dim>::Postprocessor(
-  std::shared_ptr<FEField<dim>>       &fe_field,
-  std::shared_ptr<CrystalsData<dim>>  &crystals_data,
-  const bool                          flag_light_output,
-  const bool                          flag_output_fluctuations)
+  std::shared_ptr<FEField<dim>> &fe_field,
+  std::shared_ptr<CrystalsData<dim>> &crystals_data,
+  const RunTimeParameters::DimensionlessForm &parameters,
+  const bool flag_light_output,
+  const bool flag_output_dimensionless_quantities,
+  const bool flag_output_fluctuations)
 :
 fe_field(fe_field),
 crystals_data(crystals_data),
@@ -37,7 +39,10 @@ deviatoric_projector_3d(
   dealii::outer_product(
     dealii::unit_symmetric_tensor<3>(),
     dealii::unit_symmetric_tensor<3>())),
+parameters(parameters),
 flag_light_output(flag_light_output),
+flag_output_dimensionless_quantities(
+  flag_output_dimensionless_quantities),
 flag_output_fluctuations(flag_output_fluctuations)
 {
   macroscopic_strain = 0.;
@@ -48,6 +53,12 @@ flag_output_fluctuations(flag_output_fluctuations)
   voigt_indices[3] = std::make_pair<unsigned int, unsigned int>(1,2);
   voigt_indices[4] = std::make_pair<unsigned int, unsigned int>(0,2);
   voigt_indices[5] = std::make_pair<unsigned int, unsigned int>(0,1);
+
+  if (flag_output_dimensionless_quantities)
+  {
+    this->parameters.characteristic_quantities =
+      RunTimeParameters::CharacteristicQuantities();
+  }
 
   if (flag_light_output)
   {
@@ -247,50 +258,59 @@ void Postprocessor<dim>::evaluate_vector_field(
 {
   AssertThrow(flag_init_was_called,
               dealii::ExcMessage("The Postprocessor<dim> instance has"
-                                 " not been initialized."));
+                                  " not been initialized."));
 
+  // Get data
   const typename dealii::DoFHandler<dim>::cell_iterator current_cell =
     inputs.template get_cell<dim>();
-
-  const unsigned int material_id  = current_cell->material_id();
-
-  const unsigned int n_q_points   = inputs.solution_values.size();
-
+  const unsigned int material_id = current_cell->material_id();
+  const unsigned int n_quadrature_points =
+    inputs.solution_values.size();
   const unsigned int n_components = fe_field->get_n_components();
-
-  const unsigned int n_slips      = crystals_data->get_n_slips();
-
-  const unsigned int n_crystals   = crystals_data->get_n_crystals();
+  const unsigned int n_slips = crystals_data->get_n_slips();
+  const unsigned int n_crystals = crystals_data->get_n_crystals();
+  const double &dimensionless_number =
+    parameters.dimensionless_numbers[0];
 
   (void)n_components;
 
-  Assert(inputs.solution_gradients.size() == n_q_points,
-         dealii::ExcInternalError());
-
-  Assert(computed_quantities.size() == n_q_points,
-         dealii::ExcInternalError());
-
+  Assert(inputs.solution_gradients.size() == n_quadrature_points,
+          dealii::ExcInternalError());
+  Assert(computed_quantities.size() == n_quadrature_points,
+          dealii::ExcInternalError());
   Assert(inputs.solution_values[0].size() == n_components,
-         dealii::ExcInternalError());
+          dealii::ExcInternalError());
 
   // Reset
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
-      computed_quantities[q_point](d) = 0.0;
+  for (unsigned int quadrature_point_id = 0;
+        quadrature_point_id < n_quadrature_points;
+          ++quadrature_point_id)
+  {
+    for (unsigned int index = 0; index < computed_quantities[0].size();
+          ++index)
+    {
+      computed_quantities[quadrature_point_id](index) = 0.0;
+    }
+  }
 
+  // Local instances
+  dealii::Tensor<2,dim> displacement_gradient;
+  dealii::SymmetricTensor<2,dim> strain_tensor;
+  dealii::SymmetricTensor<2,dim> elastic_strain_tensor;
+  dealii::SymmetricTensor<2,dim> plastic_strain_tensor;
+  dealii::SymmetricTensor<2,3> strain_tensor_3d;
+  dealii::SymmetricTensor<2,3> plastic_strain_tensor_3d;
+  dealii::SymmetricTensor<2,3> elastic_strain_tensor_3d;
+  dealii::SymmetricTensor<2,3> stress_tensor;
+  double equivalent_edge_dislocation_density;
+  double equivalent_screw_dislocation_density;
 
-  dealii::Tensor<2,dim>           displacement_gradient;
-  dealii::SymmetricTensor<2,dim>  strain_tensor;
-  dealii::SymmetricTensor<2,3>    strain_tensor_3d;
-  dealii::SymmetricTensor<2,dim>  plastic_strain_tensor;
-  dealii::SymmetricTensor<2,3>    plastic_strain_tensor_3d;
-  dealii::SymmetricTensor<2,dim>  elastic_strain_tensor;
-  dealii::SymmetricTensor<2,3>    elastic_strain_tensor_3d;
-  dealii::SymmetricTensor<2,3>    stress_tensor;
-  double                          equivalent_edge_dislocation_density;
-  double                          equivalent_screw_dislocation_density;
+  const unsigned int index_offset =
+    fe_field->is_decohesion_allowed() ? dim * n_crystals : dim;
 
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+  for (unsigned int quadrature_point_index = 0;
+        quadrature_point_index < n_quadrature_points;
+          ++quadrature_point_index)
   {
     // Reset
     displacement_gradient                 = 0.0;
@@ -304,305 +324,183 @@ void Postprocessor<dim>::evaluate_vector_field(
     equivalent_edge_dislocation_density   = 0.0;
     equivalent_screw_dislocation_density  = 0.0;
 
-    /*!
-     * @note This if-else can probably be done in a way more elegant
-     * manner
-     */
-    if (fe_field->is_decohesion_allowed())
+    // Displacement
+    for (unsigned int index = 0; index < dim; ++index)
     {
-      // Displacement
-      for (unsigned int d = 0; d < dim; ++d)
+      if (fe_field->is_decohesion_allowed())
       {
         for (unsigned int crystal_id = 0;
               crystal_id < n_crystals; ++crystal_id)
         {
-          computed_quantities[q_point](d) +=
-              inputs.solution_values[q_point](d + dim * crystal_id);
+          computed_quantities[quadrature_point_index](index) +=
+              parameters.characteristic_quantities.displacement *
+              inputs.solution_values[quadrature_point_index](
+                index + dim * crystal_id);
 
           if (!flag_light_output)
           {
-            displacement_gradient[d] +=
-              inputs.solution_gradients[q_point][d + dim * crystal_id];
+            displacement_gradient[index] +=
+              inputs.solution_gradients[quadrature_point_index][
+                index + dim * crystal_id];
           }
         }
       }
-
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
+      else
       {
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
-          // Slips
-          computed_quantities[q_point](dim + slip_id) +=
-            inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id);
-
-          if (!flag_light_output)
-          {
-            // Equivalent plastic strain
-            computed_quantities[q_point](dim + n_slips) +=
-              inputs.solution_values[q_point](
-                dim * n_crystals + slip_id + n_slips * crystal_id);
-
-            // Equivalent absolute plastic strain
-            computed_quantities[q_point](dim + n_slips + 1) +=
-              std::abs(inputs.solution_values[q_point](
-                dim * n_crystals + slip_id + n_slips * crystal_id));
-
-            // Equivalent edge dislocation density
-            equivalent_edge_dislocation_density +=
-              std::pow(inputs.solution_gradients[q_point][
-                  dim * n_crystals + slip_id + n_slips * crystal_id] *
-              crystals_data->get_slip_direction(crystal_id, slip_id), 2);
-
-            // Equivalent screw dislocation density
-            equivalent_screw_dislocation_density +=
-              std::pow(inputs.solution_gradients[q_point][
-                  dim * n_crystals + slip_id + n_slips * crystal_id] *
-              crystals_data->get_slip_orthogonal(crystal_id, slip_id), 2);
-
-            // Plastic strain tensor
-            plastic_strain_tensor +=
-              inputs.solution_values[q_point](
-                  dim * n_crystals + slip_id + n_slips * crystal_id) *
-              crystals_data->get_symmetrized_schmid_tensor(
-                crystal_id, slip_id);
-          }
-        }
-      }
-
-      if (!flag_light_output)
-      {
-        strain_tensor = dealii::symmetrize(displacement_gradient) +
-                            macroscopic_strain;
-
-        strain_tensor_3d = convert_2d_to_3d(strain_tensor);
-
-        plastic_strain_tensor_3d =
-          convert_2d_to_3d(plastic_strain_tensor);
-
-        computed_quantities[q_point](dim + n_slips + 2) =
-          std::sqrt(equivalent_edge_dislocation_density);
-
-        computed_quantities[q_point](dim + n_slips + 3) =
-          std::sqrt(equivalent_screw_dislocation_density);
-
-        elastic_strain_tensor =
-          strain_tensor - plastic_strain_tensor;
-
-        elastic_strain_tensor_3d =
-          convert_2d_to_3d(elastic_strain_tensor);
-
-        stress_tensor =
-          hooke_law->get_stiffness_tetrad_3d(material_id) *
-          convert_2d_to_3d(elastic_strain_tensor);
-
-        // Von-Mises stress
-        computed_quantities[q_point](dim + n_slips + 4) =
-          get_von_mises_stress(stress_tensor);
-
-        // Von-Mises plastic strain
-        computed_quantities[q_point](dim + n_slips + 5) =
-          get_von_mises_plastic_strain(plastic_strain_tensor);
-
-        // Stress components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 6 + i) =
-            stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
-
-        // Strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 12 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        // Elastic strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 18 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            elastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        // Plastic strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 24 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            plastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        if (flag_output_fluctuations)
-        {
-          strain_tensor     = dealii::symmetrize(displacement_gradient);
-
-          strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
-
-          elastic_strain_tensor =
-            strain_tensor - plastic_strain_tensor;
-
-          stress_tensor =
-            hooke_law->get_stiffness_tetrad_3d(material_id) *
-            convert_2d_to_3d(elastic_strain_tensor);
-
-          // Von-Mises stress
-          computed_quantities[q_point](dim + n_slips + 30) =
-            get_von_mises_stress(stress_tensor);
-
-          // Stress components
-          for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-            computed_quantities[q_point](dim + n_slips + 31 + i) =
-              stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
-
-          // Strain components
-          for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-            computed_quantities[q_point](dim + n_slips + 36 + i) =
-              (i < 3 ? 1.0 : 2.0) *
-              strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-        }
-      }
-    }
-    else
-    {
-      // Displacement
-      for (unsigned int d = 0; d < dim; ++d)
-      {
-        computed_quantities[q_point](d) =
-          inputs.solution_values[q_point](d);
+        computed_quantities[quadrature_point_index](index) =
+          parameters.characteristic_quantities.displacement *
+          inputs.solution_values[quadrature_point_index](index);
 
         if (!flag_light_output)
         {
-          displacement_gradient[d] =
-            inputs.solution_gradients[q_point][d];
+          displacement_gradient[index] =
+            inputs.solution_gradients[quadrature_point_index][index];
         }
       }
+    }
 
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
+    // Slips
+    for (unsigned int slip_id = 0;
+        slip_id < n_slips; ++slip_id)
+    {
+      for (unsigned int crystal_id = 0;
+          crystal_id < n_crystals; ++crystal_id)
       {
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
           // Slips
-          computed_quantities[q_point](dim + slip_id) +=
-              inputs.solution_values[q_point](
-                dim + slip_id + n_slips * crystal_id);
+          computed_quantities[quadrature_point_index](dim + slip_id) +=
+            inputs.solution_values[quadrature_point_index](
+              index_offset + slip_id + n_slips * crystal_id);
 
           if (!flag_light_output)
           {
             // Equivalent plastic strain
-            computed_quantities[q_point](dim + n_slips) +=
-                inputs.solution_values[q_point](
-                  dim + slip_id + n_slips * crystal_id);
+            computed_quantities[quadrature_point_index](dim + n_slips) +=
+                inputs.solution_values[quadrature_point_index](
+                  index_offset + slip_id + n_slips * crystal_id);
 
             // Equivalent absolute plastic strain
-            computed_quantities[q_point](dim + n_slips + 1) +=
-                std::abs(inputs.solution_values[q_point](
-                  dim + slip_id + n_slips * crystal_id));
+            computed_quantities[quadrature_point_index](
+              dim + n_slips + 1) +=
+                std::abs(inputs.solution_values[quadrature_point_index](
+                  index_offset + slip_id + n_slips * crystal_id));
 
             // Equivalent edge dislocation density
             equivalent_edge_dislocation_density +=
-              std::pow(inputs.solution_gradients[q_point][
-                  dim + slip_id + n_slips * crystal_id] *
+              std::pow(inputs.solution_gradients[quadrature_point_index][
+                  index_offset + slip_id + n_slips * crystal_id] *
               crystals_data->get_slip_direction(crystal_id, slip_id), 2);
 
             // Equivalent screw dislocation density
             equivalent_screw_dislocation_density +=
-              std::pow(inputs.solution_gradients[q_point][
-                  dim + slip_id + n_slips * crystal_id] *
+              std::pow(inputs.solution_gradients[quadrature_point_index][
+                  index_offset + slip_id + n_slips * crystal_id] *
               crystals_data->get_slip_orthogonal(crystal_id, slip_id), 2);
 
             // Plastic strain tensor
             plastic_strain_tensor +=
-              inputs.solution_values[q_point](
-                  dim + slip_id + n_slips * crystal_id) *
+              inputs.solution_values[quadrature_point_index](
+                  index_offset + slip_id + n_slips * crystal_id) *
               crystals_data->get_symmetrized_schmid_tensor(
                 crystal_id, slip_id);
           }
-        }
+      }
+    }
+
+    if (!flag_light_output)
+    {
+      computed_quantities[quadrature_point_index](dim + n_slips + 2) =
+        parameters.characteristic_quantities.dislocation_density *
+        std::sqrt(equivalent_edge_dislocation_density);
+
+      computed_quantities[quadrature_point_index](dim + n_slips + 3) =
+        parameters.characteristic_quantities.dislocation_density *
+        std::sqrt(equivalent_screw_dislocation_density);
+
+      strain_tensor =
+        dealii::symmetrize(displacement_gradient) +
+          macroscopic_strain;
+
+      elastic_strain_tensor =
+        strain_tensor - dimensionless_number * plastic_strain_tensor;
+
+      strain_tensor_3d = convert_2d_to_3d(strain_tensor);
+
+      plastic_strain_tensor_3d =
+        convert_2d_to_3d(plastic_strain_tensor);
+
+      elastic_strain_tensor_3d =
+        convert_2d_to_3d(elastic_strain_tensor);
+
+      stress_tensor =
+        hooke_law->get_stiffness_tetrad_3d(material_id) *
+        convert_2d_to_3d(elastic_strain_tensor);
+
+      // Von-Mises stress
+      computed_quantities[quadrature_point_index](dim + n_slips + 4) =
+        parameters.characteristic_quantities.stress *
+        get_von_mises_stress(stress_tensor);
+
+      // Von-Mises plastic strain
+      computed_quantities[quadrature_point_index](dim + n_slips + 5) =
+        get_von_mises_plastic_strain(plastic_strain_tensor);
+
+      for (unsigned int i = 0; i < voigt_indices.size(); ++i)
+      {
+        // Stress components
+        computed_quantities[quadrature_point_index](dim + n_slips + 6 + i) =
+            parameters.characteristic_quantities.stress *
+            stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
+
+        // Strain components
+        computed_quantities[quadrature_point_index](dim + n_slips + 12 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          parameters.characteristic_quantities.strain *
+          strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+
+        // Elastic strain components
+        computed_quantities[quadrature_point_index](dim + n_slips + 18 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          parameters.characteristic_quantities.strain *
+          elastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+
+        // Plastic strain components
+        computed_quantities[quadrature_point_index](dim + n_slips + 24 + i) =
+          (i < 3 ? 1.0 : 2.0) *
+          plastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
       }
 
-      if (!flag_light_output)
+      if (flag_output_fluctuations)
       {
-        strain_tensor = dealii::symmetrize(displacement_gradient) +
-                            macroscopic_strain;
+        strain_tensor = dealii::symmetrize(displacement_gradient);
 
         strain_tensor_3d = convert_2d_to_3d(strain_tensor);
 
-        plastic_strain_tensor_3d =
-          convert_2d_to_3d(plastic_strain_tensor);
-
-        computed_quantities[q_point](dim + n_slips + 2) =
-          std::sqrt(equivalent_edge_dislocation_density);
-
-        computed_quantities[q_point](dim + n_slips + 3) =
-          std::sqrt(equivalent_screw_dislocation_density);
-
         elastic_strain_tensor =
-          strain_tensor - plastic_strain_tensor;
-
-        elastic_strain_tensor_3d =
-          convert_2d_to_3d(elastic_strain_tensor);
+          strain_tensor - dimensionless_number *
+            plastic_strain_tensor;
 
         stress_tensor =
+          parameters.characteristic_quantities.stress *
           hooke_law->get_stiffness_tetrad_3d(material_id) *
           convert_2d_to_3d(elastic_strain_tensor);
 
         // Von-Mises stress
-        computed_quantities[q_point](dim + n_slips + 4) =
+        computed_quantities[quadrature_point_index](dim + n_slips + 30) =
+          parameters.characteristic_quantities.stress *
           get_von_mises_stress(stress_tensor);
 
-        // Von-Mises plastic strain
-        computed_quantities[q_point](dim + n_slips + 5) =
-          get_von_mises_plastic_strain(plastic_strain_tensor);
-
-        // Stress components
         for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 6 + i) =
+        {
+          // Stress components
+          computed_quantities[quadrature_point_index](dim + n_slips + 31 + i) =
+            parameters.characteristic_quantities.stress *
             stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
 
-        // Strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 12 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        // Elastic strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 18 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            elastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        // Plastic strain components
-        for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-          computed_quantities[q_point](dim + n_slips + 24 + i) =
-            (i < 3 ? 1.0 : 2.0) *
-            plastic_strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
-
-        if (flag_output_fluctuations)
-        {
-          strain_tensor     = dealii::symmetrize(displacement_gradient);
-
-          strain_tensor_3d  = convert_2d_to_3d(strain_tensor);
-
-          elastic_strain_tensor =
-            strain_tensor - plastic_strain_tensor;
-
-          stress_tensor =
-            hooke_law->get_stiffness_tetrad_3d(material_id) *
-            convert_2d_to_3d(elastic_strain_tensor);
-
-          // Von-Mises stress
-          computed_quantities[q_point](dim + n_slips + 30) =
-            get_von_mises_stress(stress_tensor);
-
-          // Stress components
-          for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-            computed_quantities[q_point](dim + n_slips + 31 + i) =
-              stress_tensor[voigt_indices[i].first][voigt_indices[i].second];
-
           // Strain components
-          for (unsigned int i = 0; i < voigt_indices.size(); ++i)
-            computed_quantities[q_point](dim + n_slips + 37 + i) =
-              (i < 3 ? 1.0 : 2.0) *
-              strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
+          computed_quantities[quadrature_point_index](dim + n_slips + 37 + i) =
+            (i < 3 ? 1.0 : 2.0) *
+            parameters.characteristic_quantities.strain *
+            strain_tensor_3d[voigt_indices[i].first][voigt_indices[i].second];
         }
       }
     }
@@ -665,286 +563,26 @@ double Postprocessor<dim>::get_von_mises_plastic_strain(
 
 
 template <int dim>
-ResidualPostprocessor<dim>::ResidualPostprocessor(
-  std::shared_ptr<FEField<dim>>       &fe_field,
-  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
-:
-fe_field(fe_field),
-crystals_data(crystals_data)
-{}
-
-
-
-template <int dim>
-std::vector<std::string>
-ResidualPostprocessor<dim>::get_names() const
+void SlipBasedPostprocessor<dim>::reinit(
+  std::shared_ptr<const CrystalsData<dim>> &crystals_data,
+  const std::string output_name,
+  const unsigned int n_components,
+  const bool flag_allow_decohesion)
 {
-  std::vector<std::string> solution_names(dim, "ResidualDisplacement");
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    solution_names.emplace_back(
-      "ResidualSlip_" + std::to_string(slip_id));
-
-  return solution_names;
-}
-
-
-template <int dim>
-std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-ResidualPostprocessor<dim>::get_data_component_interpretation()
-  const
-{
-  std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-      interpretation(
-        dim,
-        dealii::DataComponentInterpretation::component_is_part_of_vector);
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    interpretation.push_back(
-      dealii::DataComponentInterpretation::component_is_scalar);
-
-  return interpretation;
-}
-
-
-template <int dim>
-dealii::UpdateFlags
-ResidualPostprocessor<dim>::get_needed_update_flags() const
-{
-  return dealii::update_values |
-         dealii::update_quadrature_points;
-}
-
-
-
-template <int dim>
-void ResidualPostprocessor<dim>::evaluate_vector_field(
-  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-  std::vector<dealii::Vector<double>>                 &computed_quantities) const
-{
-  const unsigned int n_q_points   = inputs.solution_values.size();
-
-  const unsigned int n_components = fe_field->get_n_components();
-
-  const unsigned int n_slips      = crystals_data->get_n_slips();
-
-  const unsigned int n_crystals   = crystals_data->get_n_crystals();
-
-  (void)n_components;
-
-  Assert(inputs.solution_gradients.size() == n_q_points,
-         dealii::ExcInternalError());
-
-  Assert(computed_quantities.size() == n_q_points,
-         dealii::ExcInternalError());
-
-  Assert(inputs.solution_values[0].size() == n_components,
-         dealii::ExcInternalError());
-
-  // Reset
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
-      computed_quantities[q_point](d) = 0.0;
-
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-  {
-
-    /*!
-     * @note This if-else can probably be done in a way more elegant
-     * manner
-     */
-    if (fe_field->is_decohesion_allowed())
-    {
-      // Displacement
-      for (unsigned int d = 0; d < dim; ++d)
-        for (unsigned int crystal_id = 0;
-              crystal_id < n_crystals; ++crystal_id)
-      {
-        computed_quantities[q_point](d) +=
-            inputs.solution_values[q_point](d + dim * crystal_id);
-      }
-
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
-          // Slips
-          computed_quantities[q_point](dim + slip_id) +=
-            inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id);
-        }
-    }
-    else
-    {
-      // Displacement
-      for (unsigned int d = 0; d < dim; ++d)
-      {
-        computed_quantities[q_point](d) =
-          inputs.solution_values[q_point](d);
-      }
-
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
-          // Slips
-          computed_quantities[q_point](dim + slip_id) +=
-              inputs.solution_values[q_point](
-                dim + slip_id + n_slips * crystal_id);
-        }
-    }
-  }
-}
-
-
-
-template <int dim>
-RatePostprocessor<dim>::RatePostprocessor(
-  const dealii::DiscreteTime          &discrete_time,
-  std::shared_ptr<FEField<dim>>       &fe_field,
-  std::shared_ptr<CrystalsData<dim>>  &crystals_data)
-:
-discrete_time(discrete_time),
-fe_field(fe_field),
-crystals_data(crystals_data)
-{}
-
-
-
-template <int dim>
-std::vector<std::string>
-RatePostprocessor<dim>::get_names() const
-{
-  std::vector<std::string> solution_names;
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    solution_names.emplace_back(
-      "SlipRate" + std::to_string(slip_id));
-
-  return solution_names;
-}
-
-
-template <int dim>
-std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-RatePostprocessor<dim>::get_data_component_interpretation()
-  const
-{
-  std::vector<
-    dealii::DataComponentInterpretation::DataComponentInterpretation>
-      interpretation;
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    interpretation.push_back(
-      dealii::DataComponentInterpretation::component_is_scalar);
-
-  return interpretation;
-}
-
-
-template <int dim>
-dealii::UpdateFlags
-RatePostprocessor<dim>::get_needed_update_flags() const
-{
-  return dealii::update_values |
-         dealii::update_quadrature_points;
-}
-
-
-
-template <int dim>
-void RatePostprocessor<dim>::evaluate_vector_field(
-  const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
-  std::vector<dealii::Vector<double>>                 &computed_quantities) const
-{
-  const unsigned int n_q_points   = inputs.solution_values.size();
-
-  const unsigned int n_components = fe_field->get_n_components();
-
-  const unsigned int n_slips      = crystals_data->get_n_slips();
-
-  const unsigned int n_crystals   = crystals_data->get_n_crystals();
-
-  (void)n_components;
-
-  Assert(inputs.solution_gradients.size() == n_q_points,
-         dealii::ExcInternalError());
-
-  Assert(computed_quantities.size() == n_q_points,
-         dealii::ExcInternalError());
-
-  Assert(inputs.solution_values[0].size() == n_components,
-         dealii::ExcInternalError());
-
-  // Reset
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    for (unsigned int d = 0; d < computed_quantities[0].size(); ++d)
-      computed_quantities[q_point](d) = 0.0;
-
-  for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-  {
-
-    /*!
-     * @note This if-else can probably be done in a way more elegant
-     * manner
-     */
-    if (fe_field->is_decohesion_allowed())
-    {
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
-          // Slips
-          computed_quantities[q_point](slip_id) +=
-            inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id);
-        }
-    }
-    else
-    {
-      for (unsigned int slip_id = 0;
-          slip_id < n_slips; ++slip_id)
-        for (unsigned int crystal_id = 0;
-            crystal_id < n_crystals; ++crystal_id)
-        {
-          // Slips
-          computed_quantities[q_point](slip_id) +=
-              inputs.solution_values[q_point](
-                dim + slip_id + n_slips * crystal_id);
-        }
-    }
-  }
-}
-
-
-
-template <int dim>
-void TrialstressPostprocessor<dim>::reinit(
-  std::shared_ptr<FEField<dim>> &trial_microstress,
-  std::shared_ptr<const CrystalsData<dim>> &crystals_data)
-{
-  this->trial_microstress = trial_microstress;
-
   this->crystals_data = crystals_data;
+
+  this->output_name = output_name;
+
+  this->n_components = n_components;
+
+  this->flag_allow_decohesion = flag_allow_decohesion;
 }
 
 
 
 template <int dim>
 std::vector<std::string>
-TrialstressPostprocessor<dim>::get_names() const
+SlipBasedPostprocessor<dim>::get_names() const
 {
   std::vector<std::string> solution_names;
 
@@ -952,13 +590,7 @@ TrialstressPostprocessor<dim>::get_names() const
       slip_id < crystals_data->get_n_slips();
       ++slip_id)
     solution_names.emplace_back(
-      "TrialMicrostress_" + std::to_string(slip_id));
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    solution_names.emplace_back(
-      "ActiveDomain_" + std::to_string(slip_id));
+      output_name + std::to_string(slip_id));
 
   return solution_names;
 }
@@ -966,18 +598,12 @@ TrialstressPostprocessor<dim>::get_names() const
 
 template <int dim>
 std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation>
-TrialstressPostprocessor<dim>::get_data_component_interpretation()
+SlipBasedPostprocessor<dim>::get_data_component_interpretation()
   const
 {
   std::vector<
     dealii::DataComponentInterpretation::DataComponentInterpretation>
       interpretation;
-
-  for (unsigned int slip_id = 0;
-      slip_id < crystals_data->get_n_slips();
-      ++slip_id)
-    interpretation.push_back(
-      dealii::DataComponentInterpretation::component_is_scalar);
 
   for (unsigned int slip_id = 0;
       slip_id < crystals_data->get_n_slips();
@@ -991,7 +617,7 @@ TrialstressPostprocessor<dim>::get_data_component_interpretation()
 
 template <int dim>
 dealii::UpdateFlags
-TrialstressPostprocessor<dim>::get_needed_update_flags() const
+SlipBasedPostprocessor<dim>::get_needed_update_flags() const
 {
   return dealii::update_values |
          dealii::update_quadrature_points;
@@ -1000,13 +626,11 @@ TrialstressPostprocessor<dim>::get_needed_update_flags() const
 
 
 template <int dim>
-void TrialstressPostprocessor<dim>::evaluate_vector_field(
+void SlipBasedPostprocessor<dim>::evaluate_vector_field(
   const dealii::DataPostprocessorInputs::Vector<dim>  &inputs,
   std::vector<dealii::Vector<double>>                 &computed_quantities) const
 {
   const unsigned int n_q_points   = inputs.solution_values.size();
-
-  const unsigned int n_components = trial_microstress->get_n_components();
 
   const unsigned int n_slips      = crystals_data->get_n_slips();
 
@@ -1022,6 +646,10 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
 
   Assert(inputs.solution_values[0].size() == n_components,
          dealii::ExcInternalError());
+
+  const unsigned int index_offset =
+    flag_allow_decohesion ? dim * n_crystals : dim;
+
 
   // Reset
   for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
@@ -1037,13 +665,8 @@ void TrialstressPostprocessor<dim>::evaluate_vector_field(
           crystal_id < n_crystals; ++crystal_id)
       {
         computed_quantities[q_point](slip_id) +=
-            inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id);
-
-        computed_quantities[q_point](n_slips + slip_id) +=
             std::abs(inputs.solution_values[q_point](
-              dim * n_crystals + slip_id + n_slips * crystal_id))
-                > 60.0;
+              index_offset + slip_id + n_slips * crystal_id));
       }
     }
   }
@@ -1769,14 +1392,8 @@ void Homogenization<dim>::compute_macroscopic_stiffness_tetrad()
 template class gCP::Postprocessing::Postprocessor<2>;
 template class gCP::Postprocessing::Postprocessor<3>;
 
-template class gCP::Postprocessing::ResidualPostprocessor<2>;
-template class gCP::Postprocessing::ResidualPostprocessor<3>;
-
-template class gCP::Postprocessing::RatePostprocessor<2>;
-template class gCP::Postprocessing::RatePostprocessor<3>;
-
-template class gCP::Postprocessing::TrialstressPostprocessor<2>;
-template class gCP::Postprocessing::TrialstressPostprocessor<3>;
+template class gCP::Postprocessing::SlipBasedPostprocessor<2>;
+template class gCP::Postprocessing::SlipBasedPostprocessor<3>;
 
 template class gCP::Postprocessing::SimpleShear<2>;
 template class gCP::Postprocessing::SimpleShear<3>;

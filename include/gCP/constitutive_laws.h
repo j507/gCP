@@ -26,7 +26,8 @@ template <int dim>
 class ElasticStrain
 {
 public:
-  ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data);
+  ElasticStrain(std::shared_ptr<CrystalsData<dim>>  crystals_data,
+  const double dimensionless_number = 1.0);
 
   const dealii::SymmetricTensor<2,dim> get_elastic_strain_tensor(
     const unsigned int                      crystal_id,
@@ -41,6 +42,8 @@ public:
 
 private:
   std::shared_ptr<const CrystalsData<dim>>    crystals_data;
+
+  double                                      dimensionless_number;
 };
 
 
@@ -57,10 +60,12 @@ template<int dim>
 class HookeLaw
 {
 public:
-  HookeLaw(const RunTimeParameters::HookeLawParameters  parameters);
+  HookeLaw(const RunTimeParameters::HookeLawParameters  parameters,
+           const double characteristic_stiffness = 1.0);
 
   HookeLaw(const std::shared_ptr<CrystalsData<dim>>     &crystals_data,
-           const RunTimeParameters::HookeLawParameters  parameters);
+           const RunTimeParameters::HookeLawParameters  parameters,
+           const double characteristic_stiffness = 1.0);
 
   void init();
 
@@ -106,6 +111,7 @@ private:
 
   std::vector<dealii::SymmetricTensor<4,3>>   stiffness_tetrads_3d;
 
+  double                                      characteristic_stiffness;
 
   bool                                        flag_init_was_called;
 };
@@ -242,7 +248,8 @@ public:
   ScalarMicrostressLaw(
     const std::shared_ptr<CrystalsData<dim>>                &crystals_data,
     const RunTimeParameters::ScalarMicrostressLawParameters parameters,
-    const RunTimeParameters::HardeningLaw                   hardening_law_prm);
+    const RunTimeParameters::HardeningLaw                   hardening_law_prm,
+    const double characteristic_slip_resistance = 1.0);
 
   double get_scalar_microstress(
     const double slip_value,
@@ -268,6 +275,8 @@ private:
 
   const double                              hardening_parameter;
 
+  const double characteristic_slip_resistance;
+
   const bool                                flag_perfect_plasticity;
 
   const bool                                flag_rate_independent;
@@ -288,7 +297,8 @@ inline double
 ScalarMicrostressLaw<dim>::get_hardening_matrix_entry(
   const bool self_hardening) const
 {
-  return (linear_hardening_modulus *
+  return (linear_hardening_modulus /
+          characteristic_slip_resistance *
           (hardening_parameter +
            ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }
@@ -310,10 +320,10 @@ class VectorialMicrostressLaw
 {
 public:
   VectorialMicrostressLaw(
-    const std::shared_ptr<CrystalsData<dim>>                      &crystals_data,
+    const std::shared_ptr<CrystalsData<dim>> &crystals_data,
     const RunTimeParameters::VectorialMicrostressLawParameters parameters);
 
-  void init();
+  void init(const bool flag_dimensionless_formulation = false);
 
   dealii::Tensor<1,dim> get_vectorial_microstress(
     const unsigned int          crystal_id,
@@ -339,6 +349,8 @@ private:
 
   const double                                defect_energy_index;
 
+  double                                      factor;
+
   std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
                                               slip_direction_dyads;
 
@@ -355,8 +367,9 @@ class MicrotractionLaw
 {
 public:
   MicrotractionLaw(
-    const std::shared_ptr<CrystalsData<dim>>                  &crystals_data,
-    const RunTimeParameters::MicrotractionLawParameters parameters);
+    const std::shared_ptr<CrystalsData<dim>> &crystals_data,
+    const RunTimeParameters::MicrotractionLawParameters &parameters,
+    const double characteristic_vectorial_microstress = 1.0);
 
   using GrainInteractionModuli =
     typename std::pair<std::vector<dealii::FullMatrix<double>>,
@@ -391,9 +404,11 @@ public:
     const std::vector<std::vector<double>>  current_cell_slip_values) const;
 
 private:
-  std::shared_ptr<const CrystalsData<dim>>    crystals_data;
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 
-  const double                                grain_boundary_modulus;
+  const double grain_boundary_modulus;
+
+  const double characteristic_vectorial_microstress;
 };
 
 
@@ -427,7 +442,9 @@ private:
 
 public:
   CohesiveLaw(
-    const RunTimeParameters::CohesiveLawParameters parameters);
+    const RunTimeParameters::CohesiveLawParameters parameters,
+    const double characteristic_stress = 1.0,
+    const double characteristic_displacement = 1.0);
 
   dealii::Tensor<1,dim> get_cohesive_traction(
     const dealii::Tensor<1,dim> opening_displacement,
@@ -463,6 +480,10 @@ private:
 
   double tangential_to_normal_stiffness_ratio;
 
+  double characteristic_stress;
+
+  double characteristic_displacement;
+
   double macaulay_brackets(const double value) const;
 
   double get_effective_cohesive_traction(
@@ -496,8 +517,9 @@ CohesiveLaw<dim>::get_effective_cohesive_traction(
   return (critical_cohesive_traction *
           effective_opening_displacement /
           critical_opening_displacement *
-          std::exp(1.0 - effective_opening_displacement /
-                         critical_opening_displacement));
+          std::exp(1.0 -
+            effective_opening_displacement /
+            critical_opening_displacement));
 }
 
 
@@ -592,7 +614,9 @@ public:
    * @param parameters The constitutive law's parameters
    */
   ContactLaw(
-    const RunTimeParameters::ContactLawParameters parameters);
+    const RunTimeParameters::ContactLawParameters parameters,
+    const double characteristic_stress = 1.0,
+    const double characteristic_displacement = 1.0);
 
   /*!
    * @brief Method returning the contact traction
@@ -642,6 +666,18 @@ private:
    * leading to the effective stiffness
    */
   double penalty_coefficient;
+
+  /**
+   * @brief
+   *
+   */
+  double characteristic_stress;
+
+  /**
+   * @brief
+   *
+   */
+  double characteristic_displacement;
 
   /*!
   * @brief A method returning the result of applying the Macaulay

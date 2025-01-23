@@ -16,9 +16,11 @@ namespace Kinematics
 
 template <int dim>
 ElasticStrain<dim>::ElasticStrain(
-  std::shared_ptr<CrystalsData<dim>>  crystals_data)
+  std::shared_ptr<CrystalsData<dim>>  crystals_data,
+  const double dimensionless_number)
 :
-crystals_data(crystals_data)
+crystals_data(crystals_data),
+dimensionless_number(dimensionless_number)
 {}
 
 
@@ -39,11 +41,11 @@ ElasticStrain<dim>::get_elastic_strain_tensor(
   dealii::SymmetricTensor<2,dim> elastic_strain_tensor_value(
                                   strain_tensor_value);
 
-  for (unsigned int slip_id = 0;
-       slip_id < crystals_data->get_n_slips();
-       ++slip_id)
+  for (unsigned int slip_id = 0; slip_id < crystals_data->get_n_slips();
+        ++slip_id)
   {
     elastic_strain_tensor_value -=
+      dimensionless_number *
       slip_values[slip_id][q_point] *
       crystals_data->get_symmetrized_schmid_tensor(crystal_id, slip_id);
   }
@@ -92,12 +94,14 @@ namespace ConstitutiveLaws
 
 template<int dim>
 HookeLaw<dim>::HookeLaw(
-  const RunTimeParameters::HookeLawParameters  parameters)
+  const RunTimeParameters::HookeLawParameters  parameters,
+  const double characteristic_stiffness)
 :
 crystallite(Crystallite::Monocrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
+characteristic_stiffness(characteristic_stiffness),
 flag_init_was_called(false)
 {
   crystals_data = nullptr;
@@ -108,13 +112,15 @@ flag_init_was_called(false)
 template<int dim>
 HookeLaw<dim>::HookeLaw(
   const std::shared_ptr<CrystalsData<dim>>    &crystals_data,
-  const RunTimeParameters::HookeLawParameters parameters)
+  const RunTimeParameters::HookeLawParameters parameters,
+  const double characteristic_stiffness)
 :
 crystals_data(crystals_data),
 crystallite(Crystallite::Polycrystalline),
 C1111(parameters.C1111),
 C1122(parameters.C1122),
 C1212(parameters.C1212),
+characteristic_stiffness(characteristic_stiffness),
 flag_init_was_called(false)
 {}
 
@@ -128,11 +134,14 @@ void HookeLaw<dim>::init()
       for (unsigned int k = 0; k < dim; k++)
         for (unsigned int l = 0; l < dim; l++)
           if (i == j && j == k && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1111;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1111 / characteristic_stiffness;
           else if (i == k && j == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1212;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1212 / characteristic_stiffness;
           else if (i == j && k == l)
-            reference_stiffness_tetrad[i][j][k][l] = C1122;
+            reference_stiffness_tetrad[i][j][k][l] =
+              C1122 / characteristic_stiffness;
 
   if constexpr(dim == 3)
     reference_stiffness_tetrad_3d = reference_stiffness_tetrad;
@@ -143,11 +152,14 @@ void HookeLaw<dim>::init()
         for (unsigned int k = 0; k < 3; k++)
           for (unsigned int l = 0; l < 3; l++)
             if (i == j && j == k && k == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1111;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1111 / characteristic_stiffness;
             else if (i == k && j == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1212;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1212 / characteristic_stiffness;
             else if (i == j && k == l)
-              reference_stiffness_tetrad_3d[i][j][k][l] = C1122;
+              reference_stiffness_tetrad_3d[i][j][k][l] =
+                C1122 / characteristic_stiffness;
   }
   else
     Assert(false, dealii::ExcNotImplemented());
@@ -298,13 +310,15 @@ template<int dim>
 ScalarMicrostressLaw<dim>::ScalarMicrostressLaw(
   const std::shared_ptr<CrystalsData<dim>>                &crystals_data,
   const RunTimeParameters::ScalarMicrostressLawParameters parameters,
-  const RunTimeParameters::HardeningLaw                   hardening_law_prm)
+  const RunTimeParameters::HardeningLaw                   hardening_law_prm,
+  const double characteristic_slip_resistance)
 :
 crystals_data(crystals_data),
 regularization_function(parameters.regularization_function),
 regularization_parameter(parameters.regularization_parameter),
 linear_hardening_modulus(hardening_law_prm.linear_hardening_modulus),
 hardening_parameter(hardening_law_prm.hardening_parameter),
+characteristic_slip_resistance(characteristic_slip_resistance),
 flag_perfect_plasticity(hardening_law_prm.flag_perfect_plasticity),
 flag_rate_independent(parameters.flag_rate_independent)
 {}
@@ -574,12 +588,18 @@ flag_init_was_called(false)
 
 
 template<int dim>
-void VectorialMicrostressLaw<dim>::init()
+void VectorialMicrostressLaw<dim>::init(
+  const bool flag_dimensionless_formulation)
 {
   AssertThrow(crystals_data->is_initialized(),
               dealii::ExcMessage("The underlying CrystalsData<dim>"
                                   " instance has not been "
                                   " initialized."));
+
+  factor = flag_dimensionless_formulation ?
+              1.0 :
+              initial_slip_resistance *
+                std::pow(energetic_length_scale, defect_energy_index);
 
   for (unsigned int crystal_id = 0;
         crystal_id < crystals_data->get_n_crystals();
@@ -661,8 +681,7 @@ get_vectorial_microstress(
                                  "instance has not been initialized."));
 
   return (
-    initial_slip_resistance *
-    std::pow(energetic_length_scale, defect_energy_index) *
+    factor *
     (
       std::pow(
         std::abs(-crystals_data->get_slip_direction(crystal_id, slip_id) *
@@ -696,8 +715,7 @@ get_jacobian(
                                  "instance has not been initialized."));
 
   return (
-    initial_slip_resistance *
-    std::pow(energetic_length_scale, defect_energy_index) *
+    factor *
     (defect_energy_index - 1.0) *
     (
       std::pow(
@@ -719,10 +737,13 @@ get_jacobian(
 template<int dim>
 MicrotractionLaw<dim>::MicrotractionLaw(
   const std::shared_ptr<CrystalsData<dim>> &crystals_data,
-  const RunTimeParameters::MicrotractionLawParameters parameters)
+  const RunTimeParameters::MicrotractionLawParameters &parameters,
+  const double characteristic_vectorial_microstress)
 :
 crystals_data(crystals_data),
-grain_boundary_modulus(parameters.grain_boundary_modulus)
+grain_boundary_modulus(parameters.grain_boundary_modulus),
+characteristic_vectorial_microstress(
+  characteristic_vectorial_microstress)
 {}
 
 
@@ -976,7 +997,8 @@ double MicrotractionLaw<dim>::get_microtraction(
       slip_values_neighbour_cell[slip_id_beta][q_point];
   }
 
-  microtraction *= -grain_boundary_modulus;
+  microtraction *= -grain_boundary_modulus /
+                      characteristic_vectorial_microstress;
 
   return (microtraction);
 }
@@ -999,7 +1021,8 @@ MicrotractionLaw<dim>::
     dealii::ExcMessage(
       "The dealii::FullMatrix<double> is not square"));
 
-  intra_gateaux_derivative *= -grain_boundary_modulus;
+  intra_gateaux_derivative *= -grain_boundary_modulus /
+                                  characteristic_vectorial_microstress;
 
   return (intra_gateaux_derivative);
 }
@@ -1022,7 +1045,8 @@ MicrotractionLaw<dim>::
     dealii::ExcMessage(
       "The dealii::FullMatrix<double> is not square"));
 
-  inter_gateaux_derivative *= grain_boundary_modulus;
+  inter_gateaux_derivative *= grain_boundary_modulus /
+                                characteristic_vectorial_microstress;
 
   return (inter_gateaux_derivative);
 }
@@ -1150,11 +1174,15 @@ double MicrotractionLaw<3>::get_free_energy_density(
 
 template<int dim>
 CohesiveLaw<dim>::CohesiveLaw(
-  const RunTimeParameters::CohesiveLawParameters parameters)
+  const RunTimeParameters::CohesiveLawParameters parameters,
+  const double characteristic_stress,
+  const double characteristic_displacement)
 :
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
-tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio)
+tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
+characteristic_stress(characteristic_stress),
+characteristic_displacement(characteristic_displacement)
 {}
 
 
@@ -1205,6 +1233,7 @@ CohesiveLaw<dim>::get_cohesive_traction(
   {
     cohesive_traction *=
       get_effective_cohesive_traction(
+        characteristic_displacement *
         effective_quantities.opening_displacement);
   }
   // Unloading and reloading behavior
@@ -1215,17 +1244,23 @@ CohesiveLaw<dim>::get_cohesive_traction(
             effective_opening_displacement_rate < 0.0))
   {
     cohesive_traction *=
-      get_effective_cohesive_traction(max_effective_opening_displacement) *
+      get_effective_cohesive_traction(
+        characteristic_displacement *
+        max_effective_opening_displacement) *
       effective_quantities.opening_displacement /
       max_effective_opening_displacement;
   }
   else
+  {
     Assert(false, dealii::ExcInternalError());
+  }
 
   for (unsigned int i = 0; i < dim; ++i)
+  {
     AssertIsFinite(cohesive_traction[i]);
+  }
 
-  return (cohesive_traction);
+  return (cohesive_traction / characteristic_stress);
 }
 
 
@@ -1273,10 +1308,12 @@ CohesiveLaw<dim>::get_jacobian(
     jacobian =
       critical_cohesive_traction /
       critical_opening_displacement *
-      std::exp(1.0 - effective_quantities.opening_displacement /
+      std::exp(1.0 - characteristic_displacement *
+        effective_quantities.opening_displacement /
                      critical_opening_displacement) *
       (effective_quantities.identity_tensor
        -
+       characteristic_displacement *
        effective_quantities.opening_displacement /
        critical_opening_displacement *
        dealii::symmetrize(dealii::outer_product(
@@ -1291,7 +1328,10 @@ CohesiveLaw<dim>::get_jacobian(
             effective_opening_displacement_rate < 0.0))
   {
     jacobian =
-      get_effective_cohesive_traction(max_effective_opening_displacement) /
+      get_effective_cohesive_traction(
+        characteristic_displacement*
+        max_effective_opening_displacement) /
+      characteristic_displacement /
       max_effective_opening_displacement *
       effective_quantities.identity_tensor;
   }
@@ -1302,7 +1342,7 @@ CohesiveLaw<dim>::get_jacobian(
        i < jacobian.n_independent_components; ++i)
     AssertIsFinite(jacobian.access_raw_entry(i));
 
-  return (jacobian);
+  return (jacobian / characteristic_stress);
 }
 
 
@@ -1318,8 +1358,12 @@ double CohesiveLaw<dim>::get_free_energy_density(
     critical_opening_displacement *
     std::exp(1.0) *
     (1.0 -
-    (1.0 + effective_opening_displacement / critical_opening_displacement) *
-    std::exp(-effective_opening_displacement / critical_opening_displacement));
+    (1.0 +
+      effective_opening_displacement /
+      critical_opening_displacement) *
+     std::exp(
+      -effective_opening_displacement /
+      critical_opening_displacement));
 
   AssertIsFinite(free_energy_density);
 
@@ -1421,10 +1465,11 @@ CohesiveLaw<dim>::get_effective_quantities(
   AssertIsFinite(normal_opening_displacement);
   AssertIsFinite(effective_opening_displacement);
 
-  return EffectiveQuantities(effective_opening_displacement,
-                             effective_direction,
-                             effective_identity_tensor,
-                             normal_opening_displacement);
+  return EffectiveQuantities(
+    effective_opening_displacement,
+    effective_direction,
+    effective_identity_tensor,
+    normal_opening_displacement);
 }
 
 
@@ -1439,9 +1484,13 @@ degradation_exponent(parameters.degradation_exponent)
 
 template<int dim>
 ContactLaw<dim>::ContactLaw(
-  const RunTimeParameters::ContactLawParameters parameters)
+  const RunTimeParameters::ContactLawParameters parameters,
+  const double characteristic_stress,
+  const double characteristic_displacement)
 :
-penalty_coefficient(parameters.penalty_coefficient)
+penalty_coefficient(parameters.penalty_coefficient),
+characteristic_stress(characteristic_stress),
+characteristic_displacement(characteristic_displacement)
 {}
 
 
@@ -1461,11 +1510,15 @@ ContactLaw<dim>::get_contact_traction(
 
   // Compute cohesive traction
   contact_traction -=
-    penalty_coefficient *
+    penalty_coefficient /
+    characteristic_stress *
+    characteristic_displacement *
     macaulay_brackets(-normal_opening_displacement) * normal_vector;
 
   for (unsigned int i = 0; i < dim; ++i)
+  {
     AssertIsFinite(contact_traction[i]);
+  }
 
   return (contact_traction);
 }
@@ -1487,7 +1540,8 @@ ContactLaw<dim>::get_jacobian(
 
   // Compute Gateaux derivatice for the neighbor cell
   jacobian =
-    penalty_coefficient *
+    penalty_coefficient /
+    characteristic_stress *
     macaulay_brackets(-normal_opening_displacement /
                       std::abs(normal_opening_displacement)) *
     dealii::symmetrize(dealii::outer_product(normal_vector,
@@ -1495,7 +1549,9 @@ ContactLaw<dim>::get_jacobian(
 
   for (unsigned int i = 0;
        i < jacobian.n_independent_components; ++i)
+  {
     AssertIsFinite(jacobian.access_raw_entry(i));
+  }
 
   return (jacobian);
 }

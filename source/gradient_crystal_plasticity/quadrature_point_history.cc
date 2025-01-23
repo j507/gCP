@@ -152,8 +152,9 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::update_values(
-  const double  effective_opening_displacement,
-  const double  thermodynamic_force)
+  const double effective_opening_displacement,
+  const double characteristic_displacement,
+  const double thermodynamic_force)
 {
   damage_variable                     = tmp_scalar_values[0];
   max_effective_opening_displacement  = tmp_scalar_values[1];
@@ -164,6 +165,7 @@ void InterfaceQuadraturePointHistory<dim>::update_values(
 
   damage_variable +=
     damage_accumulation_constant *
+    characteristic_displacement *
     macaulay_brackets(effective_opening_displacement -
                       old_effective_opening_displacement) *
     std::pow(1.0 - damage_variable + damage_decay_constant,
@@ -286,7 +288,8 @@ flag_init_was_called(false)
 template <int dim>
 void QuadraturePointHistory<dim>::init(
   const RunTimeParameters::HardeningLaw &parameters,
-  const unsigned int                    n_slips)
+  const unsigned int n_slips,
+  const double characteristic_slip_resistance)
 {
   this->n_slips             = n_slips;
 
@@ -300,9 +303,13 @@ void QuadraturePointHistory<dim>::init(
 
   slip_resistances          = std::vector<double>(
                                 n_slips,
-                                initial_slip_resistance);
+                                initial_slip_resistance /
+                                  characteristic_slip_resistance);
 
   tmp_slip_resistances      = slip_resistances;
+
+  this->characteristic_slip_resistance =
+    characteristic_slip_resistance;
 
   flag_init_was_called      = true;
 }

@@ -976,7 +976,8 @@ solve_linearized_system()
             << "  Solver: Solving linearized system...";
   }
 
-  dealii::TimerOutput::Scope t(*timer_output, "Solver: Solve ");
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Solve linearized system");
 
   const RunTimeParameters::KrylovParameters
     &krylov_parameters = parameters.monolithic_algorithm_parameters.
@@ -1121,7 +1122,8 @@ solve_linearized_system(
             << "  Solver: Solving linearized system...";
   }
 
-  dealii::TimerOutput::Scope t(*timer_output, "Solver: Solve ");
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Solve linearized system");
 
   // In this method we create temporal non ghosted copies
   // of the pertinent vectors to be able to perform the solve()
@@ -1266,7 +1268,8 @@ solve_linearized_system(
            << "  Solver: Solving linearized system...";
   }
 
-  dealii::TimerOutput::Scope t(*timer_output, "Solver: Solve ");
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Solve linearized system");
 
   const unsigned int secondary_block_id =
     (primary_block_id == 0) ? 1 : 0;
@@ -1444,6 +1447,9 @@ template <int dim>
 double GradientCrystalPlasticitySolver<dim>::
   line_search_algorithm()
 {
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Line-search algorithm");
+
   double relaxation_parameter = 1.0,
          objective_function_value =
             LineSearch::get_objective_function_value(

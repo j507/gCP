@@ -1,9 +1,9 @@
 #ifndef INCLUDE_CRYSTAL_DATA_H_
 #define INCLUDE_CRYSTAL_DATA_H_
 
-#include <deal.II/base/tensor.h>
-
 #include <deal.II/base/conditional_ostream.h>
+#include <deal.II/base/mpi.h>
+#include <deal.II/base/tensor.h>
 
 #include <deal.II/distributed/tria.h>
 

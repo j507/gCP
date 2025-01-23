@@ -28,12 +28,13 @@ class DisplacementControl : public dealii::Function<dim>
 {
 public:
   DisplacementControl(
-    const RunTimeParameters::SimpleLoading  &parameters,
-    const unsigned int                      n_components,
-    const unsigned int                      n_crystals,
-    const double                            strip_height,
-    const bool                              flag_is_decohesion_allowed,
-    const unsigned int                      component = 0);
+    const RunTimeParameters::SimpleLoading &parameters,
+    const unsigned int n_components,
+    const unsigned int n_crystals,
+    const double strip_height,
+    const bool flag_is_decohesion_allowed,
+    const double characteristic_displacement = 1.0,
+    const unsigned int component = 0);
 
   virtual void vector_value(
     const dealii::Point<dim>  &point,
@@ -58,6 +59,8 @@ private:
 
   const double                          start_of_unloading;
 
+  const double                          characteristic_displacement;
+
   const bool                            flag_is_decohesion_allowed;
 };
 
@@ -69,8 +72,9 @@ class LoadControl : public dealii::TensorFunction<1,dim>
 {
 public:
   LoadControl(
-    const RunTimeParameters::SimpleLoading  &parameters,
-    const bool                              flag_is_decohesion_allowed);
+    const RunTimeParameters::SimpleLoading &parameters,
+    const bool flag_is_decohesion_allowed,
+    const double characteristic_traction = 1.0);
 
   virtual dealii::Tensor<1, dim> value(
     const dealii::Point<dim>  &point) const override;
@@ -92,6 +96,8 @@ private:
   const double                          start_of_cyclic_phase;
 
   const double                          start_of_unloading;
+
+  const double                          characteristic_traction;
 
   const bool                            flag_is_decohesion_allowed;
 };

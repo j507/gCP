@@ -78,8 +78,6 @@ private:
 
   Postprocessing::Postprocessor<dim>                postprocessor;
 
-  Postprocessing::ResidualPostprocessor<dim>        residual_postprocessor;
-
   Postprocessing::SimpleShear<dim>                  simple_shear;
 
   const double                                      string_width;
@@ -165,10 +163,10 @@ homogenization(
   mapping),
 postprocessor(
   fe_field,
-  crystals_data),
-residual_postprocessor(
-  fe_field,
-  crystals_data),
+  crystals_data,
+  parameters.solver_parameters.dimensionless_form_parameters,
+  false,
+  parameters.output.flag_output_dimensionless_quantities),
 simple_shear(
   fe_field,
   mapping,
@@ -325,7 +323,9 @@ void SimpleShearProblem<dim>::setup()
       fe_field->get_n_components(),
       crystals_data->get_n_crystals(),
       parameters.height,
-      fe_field->is_decohesion_allowed());
+      fe_field->is_decohesion_allowed(),
+      parameters.solver_parameters.dimensionless_form_parameters.
+        characteristic_quantities.displacement);
 
   // Sets up the problem's constraints
   setup_constraints();

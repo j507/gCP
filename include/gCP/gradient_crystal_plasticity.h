@@ -111,6 +111,8 @@ private:
 
   std::shared_ptr<dealii::TensorFunction<1,dim>>    supply_term;
 
+  std::vector<double>                               dimensionless_numbers;
+
   std::shared_ptr<Kinematics::ElasticStrain<dim>>   elastic_strain;
 
   std::shared_ptr<ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
@@ -341,7 +343,17 @@ private:
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
     tmp_slip_resistance;
 
-  gCP::Postprocessing::TrialstressPostprocessor<dim>  trial_postprocessor;
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    active_set;
+
+  gCP::Postprocessing::SlipBasedPostprocessor<dim>
+    trial_microstress_postprocessor;
+
+  gCP::Postprocessing::SlipBasedPostprocessor<dim>
+    slip_resistance_postprocessor;
+
+  gCP::Postprocessing::SlipBasedPostprocessor<dim>
+    active_set_postprocessor;
 
   using DoFInfo = std::pair<std::vector<
     dealii::types::global_dof_index>, unsigned int>;

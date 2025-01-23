@@ -83,8 +83,9 @@ public:
   void reset_values();
 
   void update_values(
-    const double  effective_opening_displacement,
-    const double  thermodynamic_force);
+    const double effective_opening_displacement,
+    const double characterstic_displacement,
+    const double thermodynamic_force);
 
   void update_values(
     const double  effective_opening_displacement);
@@ -274,6 +275,16 @@ public:
   double get_slip_resistance(const unsigned int slip_id) const;
 
   /*!
+   * @brief Get the old slip resistance value at the quadrature point
+   * of a slip system
+   *
+   * @param slip_id The id number of the slip system
+   * @return double The slip resistance value corresponding to
+   * @ref slip_id
+   */
+  double get_old_slip_resistance(const unsigned int slip_id) const;
+
+  /*!
    * @brief Get the slip resistance value at the quadrature point
    * of all slip systems
    *
@@ -281,6 +292,14 @@ public:
    * slip systems
    */
   std::vector<double> get_slip_resistances() const;
+  /*!
+   * @brief Get the old_slip resistance value at the quadrature point
+   * of all slip systems
+   *
+   * @return std::vector<double> The slip resistance value of all
+   * slip systems
+   */
+  std::vector<double> get_old_slip_resistances() const;
 
   /*!
    * @brief Initiates the @ref QuadraturePointHistory instance
@@ -291,7 +310,8 @@ public:
    */
   void init(
     const RunTimeParameters::HardeningLaw &parameters,
-    const unsigned int                    n_slips);
+    const unsigned int                    n_slips,
+    const double characteristic_slip_resistance = 1.0);
 
   /*!
    * @brief Stores the values of @ref slip_resistances in @ref
@@ -346,6 +366,8 @@ private:
 
   double              hardening_parameter;
 
+  double              characteristic_slip_resistance;
+
   bool                flag_perfect_plasticity;
 
   bool                flag_init_was_called;
@@ -368,6 +390,19 @@ QuadraturePointHistory<dim>::get_slip_resistance(
 }
 
 
+template <int dim>
+inline double
+QuadraturePointHistory<dim>::get_old_slip_resistance(
+  const unsigned int slip_id) const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (tmp_slip_resistances[slip_id]);
+}
+
+
 
 template <int dim>
 inline std::vector<double>
@@ -383,6 +418,19 @@ QuadraturePointHistory<dim>::get_slip_resistances() const
 
 
 template <int dim>
+inline std::vector<double>
+QuadraturePointHistory<dim>::get_old_slip_resistances() const
+{
+  AssertThrow(flag_init_was_called,
+              dealii::ExcMessage("The QuadraturePointHistory<dim> "
+                                 "instance has not been initialized."));
+
+  return (tmp_slip_resistances);
+}
+
+
+
+template <int dim>
 inline double
 QuadraturePointHistory<dim>::get_hardening_matrix_entry(
   const bool self_hardening) const
@@ -391,7 +439,8 @@ QuadraturePointHistory<dim>::get_hardening_matrix_entry(
               dealii::ExcMessage("The QuadraturePointHistory<dim> "
                                  "instance has not been initialized."));
 
-  return (linear_hardening_modulus *
+  return (linear_hardening_modulus /
+          characteristic_slip_resistance *
           (hardening_parameter +
            ((self_hardening) ? (1.0 - hardening_parameter) : 0.0)));
 }

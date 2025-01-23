@@ -23,11 +23,15 @@ fe_field(fe_field),
 crystals_data(crystals_data),
 elastic_strain(
   std::make_shared<Kinematics::ElasticStrain<dim>>(
-    crystals_data)),
+    crystals_data,
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[0])),
 hooke_law(
   std::make_shared<ConstitutiveLaws::HookeLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.hooke_law_parameters)),
+    parameters.constitutive_laws_parameters.hooke_law_parameters,
+    parameters.dimensionless_form_parameters.
+      characteristic_quantities.stiffness)),
 resolved_shear_stress_law(
   std::make_shared<ConstitutiveLaws::ResolvedShearStressLaw<dim>>(
     crystals_data)),
@@ -35,7 +39,9 @@ scalar_microstress_law(
   std::make_shared<ConstitutiveLaws::ScalarMicrostressLaw<dim>>(
     crystals_data,
     parameters.constitutive_laws_parameters.scalar_microstress_law_parameters,
-    parameters.constitutive_laws_parameters.hardening_law_parameters)),
+    parameters.constitutive_laws_parameters.hardening_law_parameters,
+    parameters.dimensionless_form_parameters.
+      characteristic_quantities.slip_resistance)),
 vectorial_microstress_law(
   std::make_shared<ConstitutiveLaws::VectorialMicrostressLaw<dim>>(
     crystals_data,
@@ -52,7 +58,9 @@ degradation_function(
     parameters.constitutive_laws_parameters.degradation_function_parameters)),
 contact_law(
   std::make_shared<ConstitutiveLaws::ContactLaw<dim>>(
-    parameters.constitutive_laws_parameters.contact_law_parameters)),
+    parameters.constitutive_laws_parameters.contact_law_parameters,
+    parameters.dimensionless_form_parameters.characteristic_quantities.stress,
+    parameters.dimensionless_form_parameters.characteristic_quantities.displacement)),
 residual_norm(std::numeric_limits<double>::max()),
 //line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
@@ -60,6 +68,8 @@ nonlinear_solver_logger(
 postprocessor(
   fe_field,
   crystals_data,
+  parameters.dimensionless_form_parameters,
+  true,
   true),
 flag_init_was_called(false)
 {
@@ -69,6 +79,38 @@ flag_init_was_called(false)
   Assert(crystals_data.get() != nullptr,
          dealii::ExcMessage("The CrystalsData<dim>'s shared pointer "
                             "contains a nullptr."));
+
+  const bool &flag_dimensionless_formulation =
+    parameters.dimensionless_form_parameters.
+      flag_solve_dimensionless_problem;
+
+  const bool &flag_microtraction_boundary_conditions =
+    parameters.boundary_conditions_at_grain_boundaries ==
+      RunTimeParameters::BoundaryConditionsAtGrainBoundaries::
+        Microtraction;
+
+  const bool &flag_rate_independent =
+    parameters.constitutive_laws_parameters.
+      scalar_microstress_law_parameters.flag_rate_independent;
+
+  const bool flag_decohesion = parameters.allow_decohesion;
+
+  if (flag_dimensionless_formulation && (flag_decohesion ||
+        flag_microtraction_boundary_conditions))
+  {
+    Assert(false, dealii::ExcMessage(
+      "The dimensionless formulation has not been implemented for the "
+      "polycrystalline case of grain boundaries enhanced by a "
+      "constitutive boundary condition and a cohesive law"));
+  }
+
+  if (flag_rate_independent && flag_microtraction_boundary_conditions)
+  {
+    Assert(false, dealii::ExcMessage(
+      "The rate-independent formulation has not been implemented for "
+      "the case of grain boundaries enhanced by a constitutive "
+      "boundary condition"));
+  }
 
   // Set macroscopic strain to zero
   macroscopic_strain = 0.;
@@ -156,8 +198,8 @@ flag_init_was_called(false)
 template <int dim>
 GradientCrystalPlasticitySolver<dim>::~GradientCrystalPlasticitySolver()
 {
-  line_search->write_to_file(
-    parameters.logger_output_directory + "line_search_log.txt");
+  /*line_search->write_to_file(
+    parameters.logger_output_directory + "line_search_log.txt");*/
 }
 
 
