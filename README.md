@@ -7,6 +7,3 @@ Solver for crystal plasticity problems based on the gradient-enhanced formulatio
 Known problems:
 - Problems considering polycrystals can only be run in serial (See issue #2)
 - Most parameter files have yet to be updated to the master branch. Default .prm files serve as reference
-
-Yet to be implemented:
-- Dimensionless formulation
