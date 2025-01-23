@@ -2565,6 +2565,613 @@ copy_local_to_global_trial_microstress_right_hand_side(
 
 
 
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+compute_difference_quotients_jacobian_approximation()
+{
+  reset_internal_newton_method_constraints();
+
+  prepare_quadrature_point_history();
+
+  reset_and_update_quadrature_point_history();
+
+  jacobian = 0.0;
+
+  const double step_length = parameters.constitutive_laws_parameters.
+    microtraction_law_parameters.grain_boundary_modulus;
+
+  const unsigned int max_dofs_per_cell =
+    fe_field->get_fe_collection().max_dofs_per_cell();
+
+  const unsigned int max_n_quadrature_points =
+    quadrature_collection.max_n_quadrature_points();
+
+  dealii::FullMatrix<double> local_matrix(max_dofs_per_cell);
+
+  dealii::SymmetricTensor<4,dim> stiffness_tetrad;
+
+  dealii::SymmetricTensor<2,dim>
+    pseudo_elastic_strain_tensor;
+
+  double pseudo_sigmoid_function;
+
+  const dealii::UpdateFlags update_flags =
+    dealii::update_JxW_values |
+    dealii::update_values |
+    dealii::update_gradients |
+    dealii::update_quadrature_points;
+
+  dealii::hp::FEValues<dim> hp_fe_values(
+    mapping_collection,
+    fe_field->get_fe_collection(),
+    quadrature_collection,
+    update_flags);
+
+  std::vector<dealii::SymmetricTensor<2,dim>>
+    vectorial_test_function_symmetric_gradients(max_dofs_per_cell),
+    linear_strain_tensor_values(max_n_quadrature_points),
+    elastic_strain_tensor_values(max_n_quadrature_points),
+    plastic_strain_tensor_values(max_n_quadrature_points),
+    stress_tensor_values(max_n_quadrature_points),
+    symmetrized_schmid_tensors(crystals_data->get_n_slips());
+
+  std::vector<std::vector<dealii::SymmetricTensor<2,dim>>>
+    gradient_hardening_tensor_values(
+      max_n_quadrature_points,
+      std::vector<dealii::SymmetricTensor<2,dim>>(
+        crystals_data->get_n_slips()));
+
+  std::vector<std::vector<dealii::Tensor<1,dim>>>
+    scalar_test_function_gradients(
+      crystals_data->get_n_slips(),
+      std::vector<dealii::Tensor<1,dim>>(max_dofs_per_cell)),
+    slip_gradients_values(
+      crystals_data->get_n_slips(),
+      std::vector<dealii::Tensor<1,dim>>(max_n_quadrature_points)),
+    vectorial_microstress_values(
+      crystals_data->get_n_slips(),
+      std::vector<dealii::Tensor<1,dim>>(max_n_quadrature_points));
+
+  std::vector<std::vector<double>>
+    scalar_test_function_values(
+      crystals_data->get_n_slips(),
+      std::vector<double>(max_dofs_per_cell)),
+    slip_values(
+      crystals_data->get_n_slips(),
+      std::vector<double>(max_n_quadrature_points)),
+    old_slip_values(
+      crystals_data->get_n_slips(),
+      std::vector<double>(max_n_quadrature_points)),
+    resolved_shear_stress_values(
+      crystals_data->get_n_slips(),
+      std::vector<double>(max_n_quadrature_points)),
+    scalar_microstress_values(
+      crystals_data->get_n_slips(),
+      std::vector<double>(max_n_quadrature_points));
+
+  std::vector<dealii::types::global_dof_index>
+    global_dof_indices(max_dofs_per_cell);
+
+  std::vector<double> JxW_values(max_n_quadrature_points);
+
+  const double factor =
+    parameters.dimensionless_form_parameters.dimensionless_numbers[3] /
+      parameters.dimensionless_form_parameters.dimensionless_numbers[0];
+
+  const double &third_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[2];
+
+  const double &fourth_dimensionless_number =
+    parameters.dimensionless_form_parameters.
+      dimensionless_numbers[3];
+
+  for (const auto &locally_owned_active_cell :
+        fe_field->get_dof_handler().active_cell_iterators())
+  {
+    if (locally_owned_active_cell->is_locally_owned())
+    {
+      local_matrix = 0.0;
+
+      locally_owned_active_cell->get_dof_indices(global_dof_indices);
+
+      const unsigned int crystal_id =
+        locally_owned_active_cell->material_id();
+
+      stiffness_tetrad =
+        hooke_law->get_stiffness_tetrad(crystal_id);
+
+      symmetrized_schmid_tensors =
+        crystals_data->get_symmetrized_schmid_tensors(crystal_id);
+
+      hp_fe_values.reinit(locally_owned_active_cell);
+
+      const dealii::FEValues<dim> &fe_values =
+        hp_fe_values.get_present_fe_values();
+
+      JxW_values = fe_values.get_JxW_values();
+
+      const std::vector<std::shared_ptr<QuadraturePointHistory<dim>>>
+        local_quadrature_point_history =
+          quadrature_point_history.get_data(locally_owned_active_cell);
+
+      fe_values[fe_field->get_displacement_extractor(crystal_id)].
+        get_function_symmetric_gradients(
+          trial_solution,
+          linear_strain_tensor_values);
+
+      for (unsigned int slip_id = 0;
+          slip_id < crystals_data->get_n_slips();
+          ++slip_id)
+      {
+        fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
+          get_function_values(
+            trial_solution,
+            slip_values[slip_id]);
+
+        fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
+          get_function_values(
+            fe_field->old_solution,
+            old_slip_values[slip_id]);
+
+        fe_values[fe_field->get_slip_extractor(crystal_id, slip_id)].
+          get_function_gradients(
+            trial_solution,
+            slip_gradients_values[slip_id]);
+      }
+
+      // Loop over quadrature points
+      for (const auto quadrature_point_id :
+            fe_values.quadrature_point_indices())
+      {
+        // Compute the elastic strain tensor at the quadrature point
+        elastic_strain_tensor_values[quadrature_point_id] =
+          macroscopic_strain +
+          elastic_strain->get_elastic_strain_tensor(
+            crystal_id,
+            quadrature_point_id,
+            linear_strain_tensor_values[quadrature_point_id],
+            slip_values);
+
+        plastic_strain_tensor_values[quadrature_point_id] =
+          elastic_strain->get_plastic_strain_tensor(
+            crystal_id,
+            quadrature_point_id,
+            slip_values);
+
+        stress_tensor_values[quadrature_point_id] =
+          hooke_law->get_stress_tensor(
+            crystal_id,
+            elastic_strain_tensor_values[quadrature_point_id]);
+
+        for (unsigned int slip_id = 0;
+            slip_id < crystals_data->get_n_slips();
+            ++slip_id)
+        {
+          vectorial_microstress_values[slip_id][quadrature_point_id] =
+            vectorial_microstress_law->get_vectorial_microstress(
+              crystal_id,
+              slip_id,
+              slip_gradients_values[slip_id][quadrature_point_id]);
+
+          resolved_shear_stress_values[slip_id][quadrature_point_id] =
+            resolved_shear_stress_law->get_resolved_shear_stress(
+              crystal_id,
+              slip_id,
+              stress_tensor_values[quadrature_point_id]);
+
+          scalar_microstress_values[slip_id][
+            quadrature_point_id] =
+              scalar_microstress_law->get_scalar_microstress(
+                slip_values[slip_id][quadrature_point_id],
+                old_slip_values[slip_id][quadrature_point_id],
+                local_quadrature_point_history[quadrature_point_id]->
+                  get_slip_resistance(slip_id),
+                discrete_time.get_next_step_size());
+        }
+
+        // Extract test function values at the quadrature points (Displacement)
+        for (const auto dof_id : fe_values.dof_indices())
+        {
+          vectorial_test_function_symmetric_gradients[dof_id] =
+            fe_values[fe_field->get_displacement_extractor(crystal_id)].
+              symmetric_gradient(dof_id, quadrature_point_id);
+        }
+
+        for (unsigned int slip_id = 0;
+            slip_id < crystals_data->get_n_slips();
+            ++slip_id)
+        {
+          gradient_hardening_tensor_values[quadrature_point_id][slip_id] =
+              vectorial_microstress_law->get_jacobian(
+                crystal_id,
+                slip_id,
+                slip_gradients_values[slip_id][quadrature_point_id]);
+
+          for (const auto dof_id : fe_values.dof_indices())
+          {
+            scalar_test_function_values[slip_id][dof_id] =
+              fe_values[fe_field->get_slip_extractor(
+                crystal_id, slip_id)].value(
+                  dof_id, quadrature_point_id);
+
+            scalar_test_function_gradients[slip_id][dof_id] =
+              fe_values[fe_field->get_slip_extractor(
+                crystal_id, slip_id)].gradient(
+                  dof_id, quadrature_point_id);
+          }
+        }
+
+        // Loop over local degrees of freedom
+        for (const auto row_dof_id : fe_values.dof_indices())
+        {
+          for (const auto column_dof_id : fe_values.dof_indices())
+          {
+            if (fe_field->get_global_component(
+                  crystal_id, row_dof_id) < dim)
+            {
+              if (fe_field->get_global_component(
+                    crystal_id, column_dof_id) < dim)
+              {
+                pseudo_elastic_strain_tensor =
+                  linear_strain_tensor_values[quadrature_point_id] +
+                  step_length *
+                  vectorial_test_function_symmetric_gradients[
+                    column_dof_id] -
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[0] *
+                  plastic_strain_tensor_values[quadrature_point_id];
+
+                local_matrix(row_dof_id,column_dof_id) +=
+                  factor *
+                  (vectorial_test_function_symmetric_gradients[
+                    row_dof_id] *
+                  stiffness_tetrad *
+                  pseudo_elastic_strain_tensor
+                  -
+                  vectorial_test_function_symmetric_gradients[
+                    row_dof_id] *
+                  stress_tensor_values[quadrature_point_id]) *
+                  JxW_values[quadrature_point_id] /
+                  step_length;
+
+                AssertIsFinite(local_matrix(row_dof_id,column_dof_id));
+              }
+              else
+              {
+                const unsigned int column_slip_id =
+                  fe_field->get_global_component(
+                    crystal_id, column_dof_id) - dim;
+
+                pseudo_elastic_strain_tensor =
+                  linear_strain_tensor_values[quadrature_point_id]
+                  -
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[0] *
+                  plastic_strain_tensor_values[quadrature_point_id]
+                  -
+                  step_length *
+                  scalar_test_function_values[column_slip_id][column_dof_id] *
+                  symmetrized_schmid_tensors[column_slip_id];
+
+                local_matrix(row_dof_id,column_dof_id) +=
+                  factor *
+                  (vectorial_test_function_symmetric_gradients[
+                    row_dof_id] *
+                  stiffness_tetrad *
+                  pseudo_elastic_strain_tensor
+                  -
+                  vectorial_test_function_symmetric_gradients[
+                    row_dof_id] *
+                  stress_tensor_values[quadrature_point_id]) *
+                  JxW_values[quadrature_point_id] /
+                  step_length;
+              }
+            }
+            else
+            {
+              if (fe_field->get_global_component(
+                    crystal_id, column_dof_id) < dim)
+              {
+                const unsigned int row_slip_id =
+                  fe_field->get_global_component(
+                    crystal_id, row_dof_id) - dim;
+
+                pseudo_elastic_strain_tensor =
+                  linear_strain_tensor_values[quadrature_point_id] +
+                  step_length *
+                  vectorial_test_function_symmetric_gradients[
+                    column_dof_id] -
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[0] *
+                  plastic_strain_tensor_values[quadrature_point_id];
+
+                local_matrix(row_dof_id, column_dof_id) +=
+                  (
+                    (
+                      -1.0 *
+                      scalar_test_function_values[row_slip_id][row_dof_id] *
+                      fourth_dimensionless_number *
+                      symmetrized_schmid_tensors[row_slip_id] *
+                      stiffness_tetrad *
+                      pseudo_elastic_strain_tensor
+                    )
+                    -
+                    (
+                      -1.0 *
+                      scalar_test_function_values[row_slip_id][row_dof_id] *
+                      fourth_dimensionless_number *
+                      resolved_shear_stress_values[row_slip_id][quadrature_point_id]
+                    )
+                  ) *
+                  JxW_values[quadrature_point_id] /
+                  step_length;
+              }
+              else
+              {
+                const unsigned int row_slip_id =
+                  fe_field->get_global_component(
+                    crystal_id, row_dof_id) - dim;
+
+                const unsigned int column_slip_id =
+                  fe_field->get_global_component(
+                    crystal_id, column_dof_id) - dim;
+
+                pseudo_elastic_strain_tensor =
+                  linear_strain_tensor_values[quadrature_point_id]
+                  -
+                  parameters.dimensionless_form_parameters.
+                    dimensionless_numbers[0] *
+                  plastic_strain_tensor_values[quadrature_point_id]
+                  -
+                  step_length *
+                  scalar_test_function_values[column_slip_id][column_dof_id] *
+                  symmetrized_schmid_tensors[column_slip_id];
+
+                double pseudo_slip_resistance =
+                  local_quadrature_point_history[
+                    quadrature_point_id]->
+                      get_old_slip_resistance(row_slip_id);
+
+                if (!parameters.constitutive_laws_parameters.
+                        hardening_law_parameters.
+                          flag_perfect_plasticity)
+                {
+                  for (unsigned int slip_id = 0;
+                        slip_id < crystals_data->get_n_slips(); slip_id++)
+                  {
+                    pseudo_slip_resistance +=
+                      parameters.constitutive_laws_parameters.
+                        hardening_law_parameters.linear_hardening_modulus /
+                      parameters.dimensionless_form_parameters.
+                        characteristic_quantities.slip_resistance *
+                      (
+                        parameters.constitutive_laws_parameters.
+                          hardening_law_parameters.hardening_parameter
+                        +
+                        (
+                          row_slip_id == slip_id ?
+                            1.0 - parameters.
+                              constitutive_laws_parameters.
+                                hardening_law_parameters.
+                                  hardening_parameter
+                            :
+                            0.0
+                        )
+                      ) *
+                      std::fabs(
+                        slip_values[slip_id][quadrature_point_id]
+                        +
+                        (column_slip_id ==  slip_id ? 1.0 : 0.0) *
+                        step_length *
+                        scalar_test_function_values[column_slip_id][column_dof_id]
+                        -
+                        old_slip_values[slip_id][quadrature_point_id]);
+                  }
+                }
+
+                const double slip_rate =
+                  (
+                    slip_values[row_slip_id][quadrature_point_id]
+                    +
+                    (parameters.constitutive_laws_parameters.
+                      scalar_microstress_law_parameters.
+                        flag_rate_independent ? 0.0 : 1.0) *
+                    (row_slip_id == column_slip_id ? 1.0 : 0.0) *
+                    step_length *
+                    scalar_test_function_values[column_slip_id][column_dof_id]
+                    -
+                    old_slip_values[row_slip_id][quadrature_point_id]
+                  ) /
+                  discrete_time.get_next_step_size();
+
+                pseudo_sigmoid_function =
+                  Utilities::sigmoid_function(
+                    slip_rate,
+                    parameters.constitutive_laws_parameters.
+                    scalar_microstress_law_parameters.
+                      regularization_parameter,
+                    parameters.constitutive_laws_parameters.
+                      scalar_microstress_law_parameters.
+                        regularization_function);
+
+                if (parameters.constitutive_laws_parameters.
+                      scalar_microstress_law_parameters.
+                        flag_rate_independent)
+                {
+                  pseudo_sigmoid_function =
+                    Utilities::signum_function(slip_rate);
+                }
+
+                local_matrix(row_dof_id, column_dof_id) +=
+                  (
+                    (
+                      third_dimensionless_number *
+                      scalar_test_function_gradients[row_slip_id][row_dof_id] *
+                      gradient_hardening_tensor_values[quadrature_point_id][row_slip_id] *
+                      (
+                        slip_gradients_values[row_slip_id][quadrature_point_id]
+                        +
+                        step_length *
+                        (row_slip_id == column_slip_id ? 1.0 : 0.0) *
+                        scalar_test_function_gradients[
+                          column_slip_id][column_dof_id]
+                      )
+                      -
+                      scalar_test_function_values[row_slip_id][row_dof_id] *
+                      (
+                        fourth_dimensionless_number *
+                        symmetrized_schmid_tensors[row_slip_id] *
+                        stiffness_tetrad *
+                        pseudo_elastic_strain_tensor
+                        -
+                        pseudo_slip_resistance *
+                        pseudo_sigmoid_function
+                      )
+                    )
+                    -
+                    (
+                      third_dimensionless_number *
+                      scalar_test_function_gradients[row_slip_id][row_dof_id] *
+                      vectorial_microstress_values[row_slip_id][quadrature_point_id]
+                      -
+                      scalar_test_function_values[row_slip_id][row_dof_id] *
+                      (
+                        fourth_dimensionless_number *
+                        resolved_shear_stress_values[row_slip_id][quadrature_point_id]
+                        -
+                        scalar_microstress_values[row_slip_id][quadrature_point_id]
+                      )
+                    )
+                  ) *
+                  JxW_values[quadrature_point_id] /
+                  step_length;
+              }
+            }
+          }
+        }
+      }
+
+      internal_newton_method_constraints.distribute_local_to_global(
+      local_matrix,
+      global_dof_indices,
+      jacobian);
+    }
+  }
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockSparseMatrix
+    quotients_jacobian;
+
+  {
+    quotients_jacobian.clear();
+
+    dealii::TrilinosWrappers::BlockSparsityPattern
+      sparsity_pattern(
+        fe_field->get_locally_owned_dofs_per_block(),
+        fe_field->get_locally_owned_dofs_per_block(),
+        fe_field->get_locally_relevant_dofs_per_block(),
+        MPI_COMM_WORLD);
+
+    make_sparsity_pattern(sparsity_pattern);
+
+    sparsity_pattern.compress();
+
+    quotients_jacobian.reinit(sparsity_pattern);
+  }
+
+  quotients_jacobian.copy_from(jacobian);
+
+  reset_internal_newton_method_constraints();
+
+  reset_and_update_quadrature_point_history();
+
+  assemble_jacobian();
+
+  dealii::FullMatrix<double> jacobian_submatrix,
+                             quotients_jacobian_submatrix;
+
+  for (unsigned int row_id = 0; row_id < 2; row_id++)
+  {
+    for (unsigned int column_id = 0; column_id < 2; column_id++)
+    {
+      quotients_jacobian_submatrix.copy_from(
+        quotients_jacobian.block(row_id, column_id));
+
+      jacobian_submatrix.copy_from(jacobian.block(row_id, column_id));
+
+      if (jacobian_submatrix == quotients_jacobian_submatrix)
+      {
+        std::cout <<
+          "Submatrices(" + std::to_string(row_id) + "," +
+          std::to_string(column_id) + "): Match"
+          << std::endl;
+      }
+      else
+      {
+        const unsigned int n_significant_figures = 8;
+
+        std::cout <<
+          "Submatrices(" + std::to_string(row_id) + "," +
+          std::to_string(column_id) + "): Mismatch. Checking " +
+          "in SCI with " + std::to_string(n_significant_figures) +
+          " sig figs... ";
+
+        std::ofstream jacobian_file, quotients_jacobian_file;
+
+        const std::string jacobian_filename =
+          "jacobian_submatrix_" + std::to_string(row_id) +
+          std::to_string(column_id) + ".txt";
+
+        const std::string quotients_jacobian_filename =
+          "quotients_jacobian_submatrix_" + std::to_string(row_id) +
+          std::to_string(column_id) + ".txt";
+
+        jacobian_file.open(jacobian_filename);
+
+        quotients_jacobian_file.open(quotients_jacobian_filename);
+
+
+        jacobian_submatrix.print_formatted(
+          jacobian_file,
+          n_significant_figures,
+          true,
+          0,
+          "0",
+          1.,
+          1e-11);
+
+        quotients_jacobian_submatrix.print_formatted(
+          quotients_jacobian_file,
+          n_significant_figures,
+          true,
+          0,
+          "0",
+          1.,
+          1e-11);
+
+        jacobian_file.close();
+
+        quotients_jacobian_file.close();
+
+        if (Utilities::files_are_identical(
+              jacobian_filename, quotients_jacobian_filename ))
+        {
+          std::cout << "Match" << std::endl;
+        }
+        else
+        {
+          std::cout << "Mismatch. Check output files" << std::endl;
+        }
+      }
+    }
+  }
+
+
+
+}
+
+
+
 } // namespace gCP
 
 
@@ -2721,3 +3328,8 @@ copy_local_to_global_trial_microstress_right_hand_side(
 template void gCP::GradientCrystalPlasticitySolver<3>::
 copy_local_to_global_trial_microstress_right_hand_side(
   const gCP::AssemblyData::TrialMicrostress::RightHandSide::Copy &);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::
+  compute_difference_quotients_jacobian_approximation();
+template void gCP::GradientCrystalPlasticitySolver<3>::
+  compute_difference_quotients_jacobian_approximation();

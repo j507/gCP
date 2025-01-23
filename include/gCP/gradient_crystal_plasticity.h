@@ -80,6 +80,9 @@ public:
 
   double get_macroscopic_damage();
 
+  // Debugging
+  void compute_difference_quotients_jacobian_approximation();
+
   /*!
    * @brief Temporary method
    *
