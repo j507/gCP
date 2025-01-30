@@ -307,7 +307,7 @@ void Logger::log_headers_to_terminal()
       << std::right
       << std::setprecision(precision)
       << key
-      << std::string(4, ' ');
+      << std::string(3, ' ');
   }
 
   pcout << std::endl;
@@ -326,11 +326,11 @@ void Logger::log_values_to_terminal()
     else
       pcout << std::defaultfloat;
 
-    const unsigned int precision = 1;
+    const unsigned int precision = 2;
 
     pcout << std::setw(key.length()) << std::right
           << std::setprecision(precision)
-          << data_map[key].first << std::string(4, ' ');
+          << data_map[key].first << std::string(3, ' ');
   }
 
   pcout << std::endl;
