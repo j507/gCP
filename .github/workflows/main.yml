@@ -21,11 +21,11 @@ jobs:
       fail-fast: false
       matrix:
         build_type: ["Release", "Debug"]
-        dealii_version: ["v9.3.0"]
+        dealii_version: ["v9.3.0-focal", "v9.5.1-jammy"]
     
     # Run steps inside dealii container
     container:
-      image: dealii/dealii:${{ matrix.dealii_version }}-focal
+      image: dealii/dealii:${{ matrix.dealii_version }}
       options: --user root
 
     # Steps represent a sequence of tasks that will be executed as part of the job
