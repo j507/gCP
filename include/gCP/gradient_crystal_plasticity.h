@@ -27,6 +27,29 @@ namespace gCP
 
 
 
+/**
+ * @brief Enum acting as row- or column-indicator in the block structure
+ * of non-linear system.
+ *
+ * @details This enum aims to improve the intelligibility of some
+ * methods' calls which only act on sub-entities of the block structure
+ * of the non-linear system.
+ *
+ * @enum BlockIndex
+ * @var BlockIndex::Macro
+ * @brief Represents the block which derives from the linear impulse
+ * balance.
+ * @var BlockIndex::Micro
+ * @brief Represents the block which derives from the pseudo-balance
+ */
+enum class BlockIndex: unsigned int
+{
+  Macro = 0,
+  Micro = 1
+};
+
+
+
 template<int dim>
 class GradientCrystalPlasticitySolver
 {
@@ -241,16 +264,45 @@ private:
 
   unsigned int solve_linearized_system(
     const RunTimeParameters::KrylovParameters &krylov_parameters,
-    const unsigned int block_id,
+    const BlockIndex block_index,
     const double right_hand_side_l2_norm);
 
   unsigned int solve_linearized_system(
     const RunTimeParameters::KrylovParameters &krylov_parameters,
-    const unsigned int block_id);
+    const BlockIndex block_index);
 
+  /**
+   * @brief Updates the trial solution with the given relaxation
+   * parameter.
+   *
+   * @details This function multiplies the increment by the
+   * given relaxation parameter and adds the result to the trial
+   * solution vector.
+   *
+   * @param relaxation_parameter The factor by which the increment is
+   * multiplied by
+   */
+  void update_trial_solution(
+    const double relaxation_parameter);
+
+
+
+  /**
+   * @brief Updates the trial solution with the given relaxation
+   * parameter
+   *
+   * @details This function multiplies the increment by the
+   * given relaxation parameter and adds the result to the trial
+   * solution vector but only in the sub-block as indicated by the
+   * second parameters
+   *
+   * @param relaxation_parameter The factor by which the increment is
+   * multiplied by.
+   * @param block The enum indicating which sub-vector should be updated
+   */
   void update_trial_solution(
     const double relaxation_parameter,
-    const unsigned int block_id = 0);
+    const BlockIndex block_index);
 
   void update_trial_solution(const std::vector<double>
     relaxation_parameter);
@@ -259,14 +311,33 @@ private:
 
   double line_search_algorithm(
     dealii::Vector<double> residual_l2_norms,
-    const unsigned int block_id);
+    const BlockIndex block_index);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
 
+
+  /**
+   * @brief Resets the trial solution back to known value.
+   *
+   * @details This function resets the trial solution vector to either
+   * the initial trial solution or the last accepted trial solution,
+   * depending on the provided flags. Additionally, the function allows
+   * for resetting only a specific sub-block of the trial solution,
+   * indicated by the `block` parameter. By default, the entire trial
+   * solution is reset.
+   *
+   * @param flag_reset_to_initial_trial_solution A flag indicating
+   * whether to reset the trial solution to the initial trial solution
+   * or the last accepted trial solution. Default value is false.
+   * @param block An enum indicating which sub-block of the trial
+   * solution should be reset. Default value is BlockIndex::Macro,
+   * indicating the entire trial solution when the linear system is
+   * solved monolithically.
+   */
   void reset_trial_solution(
     const bool flag_reset_to_initial_trial_solution = false,
-    const unsigned int block_id = 0);
+    const BlockIndex block_index = BlockIndex::Macro);
 
   void extrapolate_initial_trial_solution(
     const bool flag_skip_extrapolation = false);

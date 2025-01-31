@@ -425,7 +425,7 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
         if (parameters.staggered_algorithm_parameters.
               flag_reset_trial_solution_at_micro_loop)
         {
-          reset_trial_solution(true, 1);
+          reset_trial_solution(true, BlockIndex::Micro);
         }
 
         // Micro-Newton-Raphson loop
@@ -484,12 +484,12 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
           const unsigned int n_krylov_iterations =
             solve_linearized_system(
               micro_krylov_parameters,
-              1,
+              BlockIndex::Micro,
               residual_l2_norms[1]);
 
           double relaxation_parameter = 1.0;
 
-          update_trial_solution(relaxation_parameter, 1);
+          update_trial_solution(relaxation_parameter, BlockIndex::Micro);
 
           reset_and_update_quadrature_point_history();
 
@@ -611,12 +611,12 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
       const unsigned int n_krylov_iterations =
         solve_linearized_system(
           macro_krylov_parameters,
-          0,
+          BlockIndex::Macro,
           residual_l2_norms[0]);
 
       double relaxation_parameter = 1.0;
 
-      update_trial_solution(relaxation_parameter, 0);
+      update_trial_solution(relaxation_parameter, BlockIndex::Macro);
 
       reset_and_update_quadrature_point_history();
 
@@ -669,15 +669,18 @@ template <int dim>
 void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
 {
   // Declare and initilize local variables and references
-  unsigned int macro_nonlinear_iteration = 0,
+  unsigned int
+    macro_nonlinear_iteration = 0,
                micro_nonlinear_iteration = 0;
 
-  bool flag_successful_convergence = false,
+  bool
+    flag_successful_convergence = false,
        flag_successful_macro_convergence = false,
        flag_successful_micro_convergence = false,
        flag_compute_active_set = true;
 
-  dealii::Vector<double> residual_l2_norms,
+  dealii::Vector<double>
+    residual_l2_norms,
                          old_residual_l2_norms,
                          initial_residual_l2_norms,
                          tmp_residual_l2_norms,
@@ -771,7 +774,7 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
       n_krylov_iterations =
         solve_linearized_system(
           macro_krylov_parameters,
-          0,
+          BlockIndex::Macro,
           residual_l2_norms[0]);
     }
     else
@@ -779,12 +782,12 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
       n_krylov_iterations =
         solve_linearized_system(
           macro_krylov_parameters,
-          0);
+          BlockIndex::Macro);
     }
 
     double relaxation_parameter = 1.0;
 
-    update_trial_solution(relaxation_parameter, 0);
+    update_trial_solution(relaxation_parameter, BlockIndex::Macro);
 
     reset_and_update_quadrature_point_history();
 
@@ -820,7 +823,7 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
     if (parameters.staggered_algorithm_parameters.
           flag_reset_trial_solution_at_micro_loop)
     {
-      reset_trial_solution(true, 1);
+      reset_trial_solution(true, BlockIndex::Micro);
     }
 
     do
@@ -878,14 +881,14 @@ void GradientCrystalPlasticitySolver<dim>::embracing_algorihtm()
       const unsigned int n_krylov_iterations =
         solve_linearized_system(
           micro_krylov_parameters,
-          1, //);//,
+          BlockIndex::Micro, //);//,
           tmp_residual_l2_norms[1]);
 
       double relaxation_parameter = 1.0;
 
       debug_output();
 
-      update_trial_solution(relaxation_parameter, 1);
+      update_trial_solution(relaxation_parameter, BlockIndex::Micro);
 
       reset_and_update_quadrature_point_history();
 
@@ -1113,7 +1116,7 @@ template <int dim>
 unsigned int GradientCrystalPlasticitySolver<dim>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &krylov_parameters,
-  const unsigned int block_id,
+  const BlockIndex block_index,
   const double right_hand_side_l2_norm)
 {
   if (parameters.verbose)
@@ -1139,6 +1142,8 @@ solve_linearized_system(
     std::max(right_hand_side_l2_norm *
                krylov_parameters.relative_tolerance,
              krylov_parameters.absolute_tolerance));
+
+  const unsigned int block_id = static_cast<unsigned int>(block_index);
 
   const auto &system_matrix = jacobian.block(block_id, block_id);
 
@@ -1260,7 +1265,7 @@ template <int dim>
 unsigned int GradientCrystalPlasticitySolver<dim>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &krylov_parameters,
-  const unsigned int primary_block_id)
+  const BlockIndex block_index)
 {
   if (parameters.verbose)
   {
@@ -1270,6 +1275,9 @@ solve_linearized_system(
 
   dealii::TimerOutput::Scope t(
     *timer_output, "Solver: Solve linearized system");
+
+  const unsigned int primary_block_id =
+    static_cast<unsigned int>(block_index);
 
   const unsigned int secondary_block_id =
     (primary_block_id == 0) ? 1 : 0;
@@ -1380,7 +1388,7 @@ solve_linearized_system(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
   const double relaxation_parameter,
-  const unsigned int block_id)
+  const BlockIndex block_index)
 {
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
     distributed_trial_solution =
@@ -1389,6 +1397,35 @@ void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
     distributed_newton_update =
       fe_field->get_distributed_vector_instance(newton_update);
+
+  const unsigned int block_id = static_cast<unsigned int>(block_index);
+
+  distributed_trial_solution.block(block_id).add(
+    relaxation_parameter, distributed_newton_update.block(block_id));
+
+  fe_field->get_affine_constraints().distribute(
+    distributed_trial_solution);
+
+  trial_solution.block(block_id) =
+    distributed_trial_solution.block(block_id);
+}
+
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::update_trial_solution(
+  const double relaxation_parameter)
+{
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    distributed_trial_solution =
+      fe_field->get_distributed_vector_instance(trial_solution);
+
+  dealii::LinearAlgebraTrilinos::MPI::BlockVector
+    distributed_newton_update =
+      fe_field->get_distributed_vector_instance(newton_update);
+
+  const unsigned int block_id = 0;
 
   distributed_trial_solution.block(block_id).add(
     relaxation_parameter, distributed_newton_update.block(block_id));
@@ -1464,7 +1501,7 @@ double GradientCrystalPlasticitySolver<dim>::
 
     reset_trial_solution();
 
-    update_trial_solution(relaxation_parameter, 0);
+    update_trial_solution(relaxation_parameter, BlockIndex::Macro);
 
     reset_and_update_quadrature_point_history();
 
@@ -1486,8 +1523,10 @@ template <int dim>
 double GradientCrystalPlasticitySolver<dim>::
 line_search_algorithm(
   dealii::Vector<double> residual_l2_norms,
-  const unsigned int block_id)
+  const BlockIndex block_index)
 {
+  const unsigned int block_id = static_cast<unsigned int>(block_index);
+
   double relaxation_parameter = 1.0,
          objective_function_value =
             LineSearch::get_objective_function_value(
@@ -1545,7 +1584,7 @@ void GradientCrystalPlasticitySolver<dim>::store_trial_solution(
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::reset_trial_solution(
   const bool flag_reset_to_initial_trial_solution,
-  const unsigned int block_id)
+  const BlockIndex block_index)
 {
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
     distributed_trial_solution;
@@ -1564,6 +1603,9 @@ void GradientCrystalPlasticitySolver<dim>::reset_trial_solution(
 
   fe_field->get_affine_constraints().distribute(
     distributed_trial_solution);
+
+  const unsigned int block_id =
+    static_cast<unsigned int>(block_index);
 
   trial_solution.block(block_id) =
     distributed_trial_solution.block(block_id);
@@ -1664,31 +1706,38 @@ solve_linearized_system();
 template unsigned int gCP::GradientCrystalPlasticitySolver<2>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &,
-  const unsigned int,
+  const BlockIndex,
   const double);
 template unsigned int gCP::GradientCrystalPlasticitySolver<3>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &,
-  const unsigned int,
+  const BlockIndex,
   const double);
 
 template unsigned int gCP::GradientCrystalPlasticitySolver<2>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &,
-  const unsigned int);
+  const BlockIndex);
 template unsigned int gCP::GradientCrystalPlasticitySolver<3>::
 solve_linearized_system(
   const RunTimeParameters::KrylovParameters &,
-  const unsigned int);
+  const BlockIndex);
+
+template void gCP::GradientCrystalPlasticitySolver<2>::
+update_trial_solution(
+  const double);
+template void gCP::GradientCrystalPlasticitySolver<3>::
+update_trial_solution(
+  const double);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::
 update_trial_solution(
   const double,
-  const unsigned int);
+  const BlockIndex);
 template void gCP::GradientCrystalPlasticitySolver<3>::
 update_trial_solution(
   const double,
-  const unsigned int);
+  const BlockIndex);
 
 template void gCP::GradientCrystalPlasticitySolver<2>::
 update_trial_solution(const std::vector<double>);
