@@ -678,7 +678,7 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
   // Compress global data
   residual.compress(dealii::VectorOperation::add);
 
-  residual_norm = residual.l2_norm();
+  const double residual_norm = residual.l2_norm();
 
   std::ostringstream message;
 
@@ -686,8 +686,6 @@ double GradientCrystalPlasticitySolver<dim>::assemble_residual()
 
   AssertThrow(residual_norm >= 0,
               dealii::ExcMessage(message.str().c_str()))
-
-  //ghost_residual = residual;
 
   if (parameters.verbose)
     *pcout << " done!" << std::endl;

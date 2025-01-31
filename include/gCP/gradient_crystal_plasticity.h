@@ -186,8 +186,6 @@ private:
 
   dealii::LinearAlgebraTrilinos::MPI::BlockVector   residual;
 
-  double                                            residual_norm;
-
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
   std::unique_ptr<gCP::LineSearch>                  line_search;
@@ -285,8 +283,6 @@ private:
   void update_trial_solution(
     const double relaxation_parameter);
 
-
-
   /**
    * @brief Updates the trial solution with the given relaxation
    * parameter
@@ -308,10 +304,6 @@ private:
     relaxation_parameter);
 
   double line_search_algorithm();
-
-  double line_search_algorithm(
-    dealii::Vector<double> residual_l2_norms,
-    const BlockIndex block_index);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);

@@ -61,7 +61,6 @@ contact_law(
     parameters.constitutive_laws_parameters.contact_law_parameters,
     parameters.dimensionless_form_parameters.characteristic_quantities.stress,
     parameters.dimensionless_form_parameters.characteristic_quantities.displacement)),
-residual_norm(std::numeric_limits<double>::max()),
 //line_search(parameters.line_search_parameters),
 nonlinear_solver_logger(
   parameters.logger_output_directory + "nonlinear_solver_log.txt"),
