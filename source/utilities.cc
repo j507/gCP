@@ -1,7 +1,7 @@
 
 #include <gCP/utilities.h>
 
-
+#include <cmath>
 
 namespace gCP
 {
@@ -235,13 +235,18 @@ output_filepath(output_filepath)
 
 
 
-void Logger::declare_column(const std::string column_name)
+void Logger::declare_column(
+  const std::string column_name,
+  const Format format)
 {
   for (const auto& pair : data_map)
-      AssertThrow(pair.first != column_name,
-                  dealii::ExcMessage("This column was already defined!"))
+  {
+    AssertThrow(
+      pair.first != column_name,
+      dealii::ExcMessage("This column was already defined!"))
+  }
 
-  data_map[column_name] = std::make_pair(0.0, false);
+  data_map[column_name] = std::make_pair(0.0, format);
 
   keys_order.push_back(column_name);
 }
@@ -258,30 +263,41 @@ void Logger::update_value(const std::string column_name,
 
 
 
-void Logger::set_scientific(const std::string column_name,
-                            const bool boolean)
-{
-  data_map[column_name].second = boolean;
-}
-
-
-
 void Logger::log_to_file()
 {
   output_filepath << std::string(2, ' ');
 
   for (const auto& key : keys_order)
   {
-    if (data_map[key].second)
-      output_filepath << std::fixed << std::scientific;
-    else
-      output_filepath << std::defaultfloat;
+    const double value = data_map[key].first;
+
+    const Format format = data_map[key].second;
 
     const unsigned int precision = 6;
 
-    output_filepath << std::setw(key.length()) << std::right
-                    << std::setprecision(precision)
-                    << data_map[key].first << std::string(4, ' ');
+    switch (format)
+    {
+    case Format::Integer:
+      output_filepath << std::setw(key.length()) << std::right
+        << std::fixed << (unsigned int)value;
+      break;
+
+    case Format::Decimal:
+      output_filepath << std::setw(key.length()) << std::right
+        << std::fixed << std::setprecision(precision) << value;
+      break;
+
+    case Format::Scientific:
+      output_filepath << std::setw(key.length()) << std::right
+        << std::fixed << std::scientific << std::setprecision(precision)
+        << value;
+      break;
+
+    default:
+      break;
+    }
+
+    output_filepath << std::string(3, ' ');
   }
 
   output_filepath << std::endl;
@@ -293,19 +309,17 @@ void Logger::log_headers_to_terminal()
 {
   pcout << std::string(2, ' ');
 
+  const unsigned int precision = 2;
+
   for (const auto& key : keys_order)
   {
-    if (data_map[key].second)
-      pcout << std::fixed << std::scientific;
-    else
-      pcout << std::defaultfloat;
-
-    const unsigned int precision = 2;
+    const unsigned int width =
+      data_map[key].second == Format::Scientific ?
+        (precision + 6) : key.length();
 
     pcout
-      << std::setw( (data_map[key].second) ? (precision + 6) : key.length())
+      << std::setw(width)
       << std::right
-      << std::setprecision(precision)
       << key
       << std::string(3, ' ');
   }
@@ -321,16 +335,34 @@ void Logger::log_values_to_terminal()
 
   for (const auto& key : keys_order)
   {
-    if (data_map[key].second)
-      pcout << std::fixed << std::scientific;
-    else
-      pcout << std::defaultfloat;
+    const double value = data_map[key].first;
+
+    const Format format = data_map[key].second;
 
     const unsigned int precision = 2;
 
-    pcout << std::setw(key.length()) << std::right
-          << std::setprecision(precision)
-          << data_map[key].first << std::string(3, ' ');
+    switch (format)
+    {
+    case Format::Integer:
+      pcout << std::setw(key.length()) << std::right << std::fixed
+        << (unsigned int)value;
+      break;
+
+    case Format::Decimal:
+      pcout << std::setw(key.length()) << std::right << std::fixed
+        << std::setprecision(precision) << value;
+      break;
+
+    case Format::Scientific:
+      pcout << std::setw(key.length()) << std::right << std::fixed
+        << std::scientific << std::setprecision(precision) << value;
+      break;
+
+    default:
+      break;
+    }
+
+    pcout << std::string(3, ' ');
   }
 
   pcout << std::endl;

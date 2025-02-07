@@ -116,13 +116,17 @@ class Logger
 public:
   Logger(const std::string output_filepath);
 
-  void declare_column(const std::string column_name);
+  enum Format{
+    Integer,
+    Decimal,
+    Scientific
+  };
 
-  void set_scientific(const std::string column_name,
-                      const bool        boolean);
+  void declare_column(const std::string column_name,
+                      const Format format);
 
   void update_value(const std::string column_name,
-                    const double      value);
+                    const double value);
 
   void log_to_file();
 
@@ -135,13 +139,13 @@ public:
   void add_break(const std::string message);
 
 private:
-  dealii::ConditionalOStream                      pcout;
+  dealii::ConditionalOStream pcout;
 
-  std::ofstream                                   output_filepath;
+  std::ofstream output_filepath;
 
-  std::map<std::string, std::pair<double, bool>>  data_map;
+  std::map<std::string, std::pair<double, Format>> data_map;
 
-  std::vector<std::string>                        keys_order;
+  std::vector<std::string> keys_order;
 };
 
 

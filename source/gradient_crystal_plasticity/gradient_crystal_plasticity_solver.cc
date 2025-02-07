@@ -149,23 +149,19 @@ flag_init_was_called(false)
 
   face_quadrature_collection.push_back(face_quadrature_formula);
 
+  using Format = Utilities::Logger::Format;
+
   // Initialize logger
-  nonlinear_solver_logger.declare_column("N-Itr");
-  nonlinear_solver_logger.declare_column("K-Itr");
-  nonlinear_solver_logger.declare_column("L-Itr");
-  nonlinear_solver_logger.declare_column("(NS)_L2");
-  nonlinear_solver_logger.declare_column("(NS_U)_L2");
-  nonlinear_solver_logger.declare_column("(NS_G)_L2");
-  nonlinear_solver_logger.declare_column("(R)_L2");
-  nonlinear_solver_logger.declare_column("(R_U)_L2");
-  nonlinear_solver_logger.declare_column("(R_G)_L2");
-  nonlinear_solver_logger.declare_column("C-Rate");
-  nonlinear_solver_logger.set_scientific("(NS)_L2", true);
-  nonlinear_solver_logger.set_scientific("(NS_U)_L2", true);
-  nonlinear_solver_logger.set_scientific("(NS_G)_L2", true);
-  nonlinear_solver_logger.set_scientific("(R)_L2", true);
-  nonlinear_solver_logger.set_scientific("(R_U)_L2", true);
-  nonlinear_solver_logger.set_scientific("(R_G)_L2", true);
+  nonlinear_solver_logger.declare_column("N-Itr", Format::Integer);
+  nonlinear_solver_logger.declare_column("K-Itr", Format::Integer);
+  nonlinear_solver_logger.declare_column("L-Itr", Format::Integer);
+  nonlinear_solver_logger.declare_column("(NS)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("(NS_U)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("(NS_G)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("(R)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("(R_U)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("(R_G)_L2", Format::Scientific);
+  nonlinear_solver_logger.declare_column("C-Rate", Format::Decimal);
 
   /*!
    * @brief Code snippet only to be considered by bi-crystal simulations
