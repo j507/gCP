@@ -463,6 +463,12 @@ private:
   void store_slip_resistances();
 
   void reset_and_update_slip_resistances();
+
+  DeclException1(
+    ExcMaxIterations,
+    unsigned int,
+    << "The maximum number of iterations (" << arg1 << ") has been "
+    << "reached.");
 };
 
 
