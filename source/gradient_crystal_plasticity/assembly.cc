@@ -10,6 +10,16 @@ namespace gCP
 
 
 template <int dim>
+void GradientCrystalPlasticitySolver<dim>::assemble_linear_system()
+{
+  assemble_jacobian();
+
+  assemble_residual();
+}
+
+
+
+template <int dim>
 void GradientCrystalPlasticitySolver<dim>::assemble_jacobian()
 {
   if (parameters.verbose)
@@ -1265,6 +1275,17 @@ void GradientCrystalPlasticitySolver<dim>::reset_quadrature_point_history()
       }
     }
   }
+}
+
+
+
+template <int dim>
+void GradientCrystalPlasticitySolver<dim>::
+reset_and_update_internal_variables()
+{
+  reset_and_update_quadrature_point_history();
+
+  reset_and_update_slip_resistances();
 }
 
 
@@ -3174,6 +3195,11 @@ compute_difference_quotients_jacobian_approximation()
 
 
 
+template void gCP::GradientCrystalPlasticitySolver<2>::
+  assemble_linear_system();
+template void gCP::GradientCrystalPlasticitySolver<3>::
+  assemble_linear_system();
+
 template void gCP::GradientCrystalPlasticitySolver<2>::assemble_jacobian();
 template void gCP::GradientCrystalPlasticitySolver<3>::assemble_jacobian();
 
@@ -3213,6 +3239,11 @@ template void gCP::GradientCrystalPlasticitySolver<3>::prepare_quadrature_point_
 
 template void gCP::GradientCrystalPlasticitySolver<2>::reset_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::reset_quadrature_point_history();
+
+template void gCP::GradientCrystalPlasticitySolver<2>::
+reset_and_update_internal_variables();
+template void gCP::GradientCrystalPlasticitySolver<3>::
+reset_and_update_internal_variables();
 
 template void gCP::GradientCrystalPlasticitySolver<2>::reset_and_update_quadrature_point_history();
 template void gCP::GradientCrystalPlasticitySolver<3>::reset_and_update_quadrature_point_history();

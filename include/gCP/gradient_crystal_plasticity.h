@@ -211,6 +211,8 @@ private:
   template <typename SparsityPatternType>
   void make_sparsity_pattern(SparsityPatternType &sparsity_pattern);
 
+  void assemble_linear_system();
+
   void assemble_jacobian();
 
   void assemble_local_jacobian(
@@ -230,6 +232,8 @@ private:
 
   void copy_local_to_global_residual(
     const gCP::AssemblyData::Residual::Copy &data);
+
+  void reset_and_update_internal_variables();
 
   void prepare_quadrature_point_history();
 
@@ -280,8 +284,7 @@ private:
    * @param relaxation_parameter The factor by which the increment is
    * multiplied by
    */
-  void update_trial_solution(
-    const double relaxation_parameter);
+  void update_trial_solution(const double relaxation_parameter);
 
   /**
    * @brief Updates the trial solution with the given relaxation
