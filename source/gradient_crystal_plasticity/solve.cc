@@ -180,35 +180,32 @@ void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm()
     AssertThrow(
       nonlinear_iteration <=
         newton_parameters.n_max_iterations,
-      dealii::ExcMessage(
-        "The nonlinear solver has reach the given maximum number of "
-        "iterations (" +
-        std::to_string(
-          newton_parameters.n_max_iterations) +
-        ")."));
+      ExcMaxIterations(newton_parameters.n_max_iterations));
 
     // Determine the active (and also inactive) set
-    active_set_algorithm(flag_compute_active_set);
+    //active_set_algorithm(flag_compute_active_set);
 
     // Output for debugging purposes (Done at this stage to visualize
     // the computed active set)
-    debug_output();
+    //debug_output();
 
     // Constraints distribution (Done later to obtain a continous
     // start value for the active set determination). Temporary code
-    distribute_affine_constraints_to_trial_solution();
+    //distribute_affine_constraints_to_trial_solution();
 
     // Preparations for the Newton-Update and Line-Search
     store_trial_solution();
 
-    reset_and_update_quadrature_point_history();
+    reset_and_update_internal_variables();
 
-    reset_and_update_slip_resistances();
+    active_set_algorithm(flag_compute_active_set);
+
+    debug_output();
+
+    distribute_affine_constraints_to_trial_solution();
 
     // Assemble linear system
-    assemble_jacobian();
-
-    assemble_residual();
+    assemble_linear_system();
 
     // Store current l2-norm values and initial objective
     // function
@@ -242,9 +239,7 @@ void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm()
 
     update_trial_solution(relaxation_parameter);
 
-    reset_and_update_quadrature_point_history();
-
-    reset_and_update_slip_resistances();
+    reset_and_update_internal_variables();
 
     // Compute residuals for convergence-check
     // (and possibly Line-Search)
@@ -437,24 +432,16 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
           AssertThrow(
             micro_nonlinear_iteration <=
               micro_newton_parameters.n_max_iterations,
-            dealii::ExcMessage(
-              "The nonlinear solver has reach the given maximum "
-              "number of iterations (" +
-              std::to_string(
-                  micro_newton_parameters.n_max_iterations) +
-              ")."));
+            ExcMaxIterations(
+              micro_newton_parameters.n_max_iterations));
 
           // Preparations for the Newton-Update and Line-Search
           store_trial_solution();
 
-          reset_and_update_quadrature_point_history();
-
-          reset_and_update_slip_resistances();
+          reset_and_update_internal_variables();
 
           // Assemble linear system;
-          assemble_jacobian();
-
-          assemble_residual();
+          assemble_linear_system();
 
           // Store current l2-norm values and initial objective
           // function
@@ -491,9 +478,7 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
 
           update_trial_solution(relaxation_parameter, BlockIndex::Micro);
 
-          reset_and_update_quadrature_point_history();
-
-          reset_and_update_slip_resistances();
+          reset_and_update_internal_variables();
 
           // Evaluate new trial solution
           assemble_residual();
@@ -541,13 +526,11 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
 
         AssertThrow(
           macro_loop_counter <=
-            parameters.staggered_algorithm_parameters.max_n_solution_loops,
-          dealii::ExcMessage(
-            "The algorithm has reached the given maximum number of "
-            "solution loops (" +
-            std::to_string(
-                parameters.staggered_algorithm_parameters.max_n_solution_loops) +
-            ")."));
+            parameters.staggered_algorithm_parameters.
+              max_n_solution_loops,
+          ExcMaxIterations(
+            parameters.staggered_algorithm_parameters.
+              max_n_solution_loops));
 
         nonlinear_solver_logger.log_to_all("  Solution converges!\n");
 
@@ -566,19 +549,12 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
       AssertThrow(
         macro_nonlinear_iteration <=
           macro_newton_parameters.n_max_iterations,
-        dealii::ExcMessage(
-          "The nonlinear solver has reach the given maximum "
-          "number of iterations (" +
-          std::to_string(
-              macro_newton_parameters.n_max_iterations) +
-          ")."));
+        ExcMaxIterations(macro_newton_parameters.n_max_iterations));
 
       // Preparations for the Newton-Update and Line-Search
       store_trial_solution();
 
-      reset_and_update_quadrature_point_history();
-
-      reset_and_update_slip_resistances();
+      reset_and_update_internal_variables();
 
       // Assemble linear system
       if (macro_nonlinear_iteration == 1)
@@ -618,9 +594,7 @@ void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
 
       update_trial_solution(relaxation_parameter, BlockIndex::Macro);
 
-      reset_and_update_quadrature_point_history();
-
-      reset_and_update_slip_resistances();
+      reset_and_update_internal_variables();
 
       // Evaluate new trial solution
       assemble_residual();
@@ -1503,9 +1477,7 @@ double GradientCrystalPlasticitySolver<dim>::
 
     update_trial_solution(relaxation_parameter, BlockIndex::Macro);
 
-    reset_and_update_quadrature_point_history();
-
-    reset_and_update_slip_resistances();
+    reset_and_update_internal_variables();
 
     assemble_residual();
 
