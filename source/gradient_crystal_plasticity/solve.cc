@@ -19,6 +19,7 @@ extrapolate_initial_trial_solution(const bool flag_skip_extrapolation)
   if (discrete_time.get_step_number() > 0)
   {
     step_size_ratio =
+      parameters.extrapolation_factor *
       discrete_time.get_next_step_size() /
         discrete_time.get_previous_step_size();
   }

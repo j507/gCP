@@ -1175,6 +1175,7 @@ boundary_conditions_at_grain_boundaries(
 logger_output_directory("results/default/"),
 flag_skip_extrapolation(false),
 flag_skip_extrapolation_at_extrema(false),
+extrapolation_factor(1.0),
 flag_zero_damage_during_loading_and_unloading(false),
 flag_output_debug_fields(false),
 print_sparsity_pattern(false),
@@ -1216,6 +1217,10 @@ void SolverParameters::declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("Skip extrapolation of start value at extrema",
                       "false",
                       dealii::Patterns::Bool());
+
+    prm.declare_entry("Extrapolation factor",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
 
     prm.declare_entry("Zero damage evolution during un- and loading",
                       "false",
@@ -1309,6 +1314,8 @@ void SolverParameters::parse_parameters(dealii::ParameterHandler &prm)
 
     flag_skip_extrapolation_at_extrema =
       prm.get_bool("Skip extrapolation of start value at extrema");
+
+    extrapolation_factor = prm.get_double("Extrapolation factor");
 
     flag_zero_damage_during_loading_and_unloading =
       prm.get_bool("Zero damage evolution during un- and loading");
