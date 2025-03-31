@@ -44,16 +44,15 @@ void LineSearch::reinit(
   const unsigned int  step_id,
   const unsigned int  iteration_id)
 {
-  this->n_iterations                  = 0;
+  this->n_iterations = 0;
 
   this->initial_scalar_function_value = initial_scalar_function_value;
 
-  this->descent_direction             = - 2. *
-                                          initial_scalar_function_value;
+  this->descent_direction = -2. * initial_scalar_function_value;
 
-  this->step_id                       = step_id;
+  this->step_id = step_id;
 
-  this->iteration_id                  = iteration_id;
+  this->iteration_id = iteration_id;
 }
 
 
