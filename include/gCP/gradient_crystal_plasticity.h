@@ -188,8 +188,6 @@ private:
 
   dealii::SymmetricTensor<2,dim>                    macroscopic_strain;
 
-  std::unique_ptr<gCP::LineSearch>                  line_search;
-
   std::map<dealii::types::boundary_id,
            std::shared_ptr<dealii::TensorFunction<1,dim>>>
                                                     neumann_boundary_conditions;
@@ -264,14 +262,11 @@ private:
 
   unsigned int solve_linearized_system();
 
-  unsigned int solve_linearized_system(
-    const RunTimeParameters::KrylovParameters &krylov_parameters,
-    const BlockIndex block_index,
-    const double right_hand_side_l2_norm);
 
-  unsigned int solve_linearized_system(
-    const RunTimeParameters::KrylovParameters &krylov_parameters,
+  unsigned int solve_decoupled_linearized_subsystem(
     const BlockIndex block_index);
+
+  unsigned int solve_reduced_linearized_system();
 
   /**
    * @brief Updates the trial solution with the given relaxation
@@ -306,7 +301,12 @@ private:
   void update_trial_solution(const std::vector<double>
     relaxation_parameter);
 
-  double line_search_algorithm();
+  double line_search_algorithm(
+    const std::unique_ptr<gCP::LineSearch> &line_search);
+
+  double line_search_algorithm(
+    const std::unique_ptr<gCP::LineSearch> &line_search,
+    const BlockIndex block_index);
 
   void store_trial_solution(
     const bool flag_store_initial_trial_solution = false);
