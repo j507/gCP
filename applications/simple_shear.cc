@@ -675,7 +675,7 @@ void SimpleShearProblem<dim>::postprocessing()
 
   fs::path filename = path / "stress12_vs_shear_strain_at_boundary.txt";
 
-  fs::path filename_ = path / "effective_quantities.txt";
+  fs::path filename_ = path / "solution_algorithm_statistics.txt";
 
   try
   {

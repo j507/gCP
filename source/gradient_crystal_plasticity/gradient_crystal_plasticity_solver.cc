@@ -164,23 +164,19 @@ flag_init_was_called(false)
   nonlinear_solver_logger.declare_column("C-Rate", Format::Decimal);
 
   /*!
-   * @brief Code snippet only to be considered by bi-crystal simulations
-   *
-   * @todo Docu
+   * @todo Debug
    */
   {
-    table_handler.declare_column("effective_opening_displacement");
-    table_handler.declare_column("effective_traction_vector");
-    table_handler.declare_column("time");
-    table_handler.declare_column("damage_variable");
-    table_handler.set_scientific("effective_opening_displacement", true);
-    table_handler.set_scientific("effective_traction_vector", true);
-    table_handler.set_scientific("time", true);
-    table_handler.set_scientific("damage_variable", true);
-    table_handler.set_precision("effective_opening_displacement", 6);
-    table_handler.set_precision("effective_traction_vector", 6);
-    table_handler.set_precision("time", 6);
-    table_handler.set_precision("damage_variable", 6);
+    table_handler.declare_column("LoadStep");
+    table_handler.declare_column("Iterations");
+    table_handler.declare_column("MonoAverageConvergence");
+    table_handler.declare_column("MacroAverageConvergence");
+    table_handler.declare_column("ReducedMacroAverageConvergence");
+    table_handler.declare_column("MicroAverageConvergence");
+    table_handler.set_precision("MonoAverageConvergence", 2);
+    table_handler.set_precision("MacroAverageConvergence", 2);
+    table_handler.set_precision("ReducedMacroAverageConvergence", 2);
+    table_handler.set_precision("MicroAverageConvergence", 2);
   }
 
   postprocessor.init(hooke_law);
