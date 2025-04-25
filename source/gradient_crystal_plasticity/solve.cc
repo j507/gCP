@@ -5,8 +5,6 @@
 #include <deal.II/lac/trilinos_linear_operator.h>
 #include <deal.II/lac/packaged_operation.h>
 
-#include <random>
-
 namespace gCP
 {
 
@@ -23,7 +21,7 @@ extrapolate_initial_trial_solution(const bool flag_skip_extrapolation)
     step_size_ratio =
       parameters.extrapolation_factor *
       discrete_time.get_next_step_size() /
-      discrete_time.get_previous_step_size();
+        discrete_time.get_previous_step_size();
   }
 
   dealii::LinearAlgebraTrilinos::MPI::BlockVector
@@ -110,10 +108,6 @@ solve_nonlinear_system(const bool flag_skip_extrapolation)
   // Active set
   reset_internal_newton_method_constraints();
 
-  table_handler.add_value(
-    "LoadStep",
-    discrete_time.get_step_number() + 1);
-
   // Solution algorithm
   switch (parameters.solution_algorithm)
   {
@@ -149,156 +143,6 @@ solve_nonlinear_system(const bool flag_skip_extrapolation)
 
   // Update the actual solution vector
   fe_field->solution = trial_solution;
-
-  if (discrete_time.get_next_time() == 2.00)
-  {
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector v;
-    v.reinit(fe_field->distributed_vector);
-    v = 1.0;
-    const auto &d = v.block(0);
-    const auto &g = v.block(1);
-
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector w;
-    w.reinit(fe_field->distributed_vector);
-
-    std::random_device random_device;
-    std::mt19937 mersenne_twister_algorithm(random_device());
-    std::uniform_real_distribution<> uniform_real_distribution(-2.0, 2.0);
-
-    const dealii::IndexSet locally_owned_elements =
-      w.locally_owned_elements();
-
-    for (const auto& locally_owned_element : locally_owned_elements)
-    {
-      w(locally_owned_element) =
-        uniform_real_distribution(mersenne_twister_algorithm);
-    }
-
-    const auto &rd = w.block(0);
-    const auto &rg = w.block(1);
-
-    dealii::LinearAlgebraTrilinos::MPI::BlockVector tmp;
-    tmp.reinit(fe_field->distributed_vector);
-
-    const auto D = dealii::TrilinosWrappers::linear_operator<
-    dealii::LinearAlgebraTrilinos::MPI::Vector>(
-      jacobian.block(0, 0));
-    const auto E = dealii::TrilinosWrappers::linear_operator<
-    dealii::LinearAlgebraTrilinos::MPI::Vector>(
-      jacobian.block(0, 1));
-    const auto F = dealii::TrilinosWrappers::linear_operator<
-    dealii::LinearAlgebraTrilinos::MPI::Vector>(
-      jacobian.block(1, 0));
-    const auto G = dealii::TrilinosWrappers::linear_operator<
-    dealii::LinearAlgebraTrilinos::MPI::Vector>(
-      jacobian.block(1, 1));
-
-    std::cout << std::scientific << std::setprecision(8);
-    std::cout << "System matrix" << std::endl;
-    std::cout << "  F: " << jacobian.frobenius_norm() << std::endl;
-    jacobian.vmult(tmp, v);
-    std::cout << "  O: " << v * tmp << std::endl;
-    jacobian.vmult(tmp, w);
-    std::cout << "  S: " << w * tmp << std::endl;
-    std::cout << "Submatrix D" << std::endl;
-    std::cout << "  F: " << jacobian.block(0,0).frobenius_norm() << std::endl;
-    std::cout << "  O: " << d * (D * d) << std::endl;
-    std::cout << "  S: " << rd * (D * rd) << std::endl;
-    std::cout << "Submatrix E" << std::endl;
-    std::cout << "  F: " << jacobian.block(0,1).frobenius_norm() << std::endl;
-    std::cout << "  O: " << d * (E * g) << std::endl;
-    std::cout << "  S: " << rd * (E * rg) << std::endl;
-    std::cout << "Submatrix F" << std::endl;
-    std::cout << "  F: " << jacobian.block(1,0).frobenius_norm() << std::endl;
-    std::cout << "  O: " << g * (F * d) << std::endl;
-    std::cout << "  S: " << rg * (F * rd) << std::endl;
-    std::cout << "Submatrix G" << std::endl;
-    std::cout << "  F: " << jacobian.block(1,1).frobenius_norm() << std::endl;
-    std::cout << "  O: " << g * (G * g) << std::endl;
-    std::cout << "  S: " << rg * (G * rg) << std::endl;
-
-    const RunTimeParameters::KrylovParameters
-      &micro_krylov_parameters = parameters.
-        staggered_algorithm_parameters.pseudo_balance_solver_parameters.
-          krylov_parameters;
-
-    dealii::SolverControl inverse_solver_control(
-      micro_krylov_parameters.n_max_iterations,
-      std::max(
-        residual.block(1).l2_norm() *
-          micro_krylov_parameters.relative_tolerance,
-        micro_krylov_parameters.absolute_tolerance));
-
-    dealii::LinearAlgebraTrilinos::SolverCG
-      inverse_solver(inverse_solver_control);
-
-    dealii::LinearAlgebraTrilinos::MPI::PreconditionILU
-      inverse_preconditioner;
-
-    dealii::LinearAlgebraTrilinos::MPI::PreconditionILU::AdditionalData
-      inverse_additional_data;
-
-    inverse_preconditioner.initialize(
-      jacobian.block(
-        1, 1),
-        inverse_additional_data);
-
-    const auto inv_G =
-      dealii::inverse_operator(G, inverse_solver, inverse_preconditioner);
-
-    const auto schur_complement = D - E * inv_G * F;
-
-    const auto schur_matrix = E * inv_G * F;
-
-    std::cout << "Submatrix G inverse" << std::endl;
-    std::cout << "  O: " << g * (inv_G * g) << std::endl;
-    std::cout << "  S: " << rg * (inv_G * rg) << std::endl;
-    std::cout << "Schur matrix" << std::endl;
-    std::cout << "  O: " << d * (schur_matrix * d) << std::endl;
-    std::cout << "  S: " << rd * (schur_matrix * rd) << std::endl;
-    std::cout << "Schur complement" << std::endl;
-    std::cout << "  O: " << d * (schur_complement * d) << std::endl;
-    std::cout << "  S: " << rd * (schur_complement * rd) << std::endl;
-
-    dealii::Vector<double> d_(d);
-    dealii::Vector<double> tmp_vector(residual.block(0).size());
-
-
-    dealii::FullMatrix<double> E_;
-    E_.copy_from(jacobian.block(0,1));
-    dealii::FullMatrix<double> F_;
-    F_.copy_from(jacobian.block(1,0));
-    dealii::FullMatrix<double> G_;
-    G_.copy_from(jacobian.block(1,1));
-
-    dealii::FullMatrix<double> inv_G_;
-    inv_G_.invert(G_);
-
-    dealii::FullMatrix<double> tmp_matrix(residual.block(1).size(), residual.block(0).size());
-    dealii::FullMatrix<double> tmp_matrix_(residual.block(0).size(), residual.block(0).size());
-
-    inv_G_.mmult(tmp_matrix, F_);
-    E_.mmult(tmp_matrix_, tmp_matrix);
-
-    tmp_matrix_.vmult(tmp_vector, d_);
-
-    std::cout << tmp_vector * d_ << std::endl;
-
-    jacobian.block(0,1) = 0.;
-    jacobian.block(1,0) = 0.;
-
-    std::cout << "System matrix with no coupling" << std::endl;
-    std::cout << "  F: " << jacobian.frobenius_norm() << std::endl;
-    jacobian.vmult(tmp, v);
-    std::cout << "  O: " << v * tmp << std::endl;
-    jacobian.vmult(tmp, w);
-    std::cout << "  S: " << w * tmp << std::endl;
-
-    std::cout << jacobian.block(0,1).frobenius_norm() <<
-                 jacobian.block(1,0).frobenius_norm() << std::endl;
-
-    //AssertThrow(false, dealii::ExcMessage("Stop"));
-  }
 
   *pcout << std::endl;
 }
@@ -1577,55 +1421,6 @@ solve_reduced_linearized_system()
     dealii::inverse_operator(G, inverse_solver, inverse_preconditioner);
 
   const auto system_matrix = D - E * inv_G * F;
-  /*
-  const auto test = E * inv_G * F;
-
-  dealii::LinearAlgebraTrilinos::MPI::BlockVector
-    test_vector;
-
-  test_vector.reinit(fe_field->distributed_vector);
-
-  auto &vector_one = test_vector.block(0);
-  auto &vector_two = test_vector.block(1);
-
-  test_vector = 1.0;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_one * (D * vector_one)
-    << std::endl;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_one * (E * vector_two)
-    << std::endl;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_two * (F * vector_one)
-    << std::endl;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_two * (G * vector_two)
-    << std::endl;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_two * (inv_G * vector_two)
-    << std::endl;
-
-  std::cout
-    << std::scientific << std::setprecision(5)
-    << vector_one * (test * vector_one)
-    << std::endl;
-
-  std::cout
-    << jacobian.block(macro_block_id, macro_block_id).frobenius_norm() << ", "
-    << jacobian.block(macro_block_id, micro_block_id).frobenius_norm() << ", "
-    << jacobian.block(micro_block_id, macro_block_id).frobenius_norm() << ", "
-    << jacobian.block(micro_block_id, micro_block_id).frobenius_norm() << std::endl;
-  */
   // Solve operation
   dealii::SolverControl solver_control(
     macro_krylov_parameters.n_max_iterations,
@@ -1648,8 +1443,6 @@ solve_reduced_linearized_system()
   const auto inversed_system_matrix =
     dealii::inverse_operator(
     system_matrix, solver, preconditioner);
-
-  auto rhs = right_hand_side - E * inv_G * residual.block(micro_block_id);
 
   solution = inversed_system_matrix * right_hand_side;
 
