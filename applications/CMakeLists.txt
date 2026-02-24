@@ -1,6 +1,5 @@
 SET(SOURCE_FILES
     simple_shear.cc
-    jacobian.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
