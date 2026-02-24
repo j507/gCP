@@ -229,11 +229,13 @@ void SimpleShearProblem<dim>::make_grid()
     break;
   case 3:
     {
+      repetitions.push_back(1.0);
+
       dealii::GridGenerator::subdivided_hyper_rectangle(
         triangulation,
         repetitions,
         dealii::Point<dim>(0,0,0),
-        dealii::Point<dim>(1./parameters.n_elements_in_y_direction, 1./parameters.n_elements_in_y_direction),
+        dealii::Point<dim>(1./parameters.n_elements_in_y_direction, parameters.height, 1./parameters.n_elements_in_y_direction),
         true);
     }
     break;
@@ -251,7 +253,14 @@ void SimpleShearProblem<dim>::make_grid()
                                             1,
                                             0,
                                             periodicity_vector);
-
+  if (dim == 3)
+  {
+    dealii::GridTools::collect_periodic_faces(triangulation,
+                                              4,
+                                              5,
+                                              2,
+                                              periodicity_vector);
+  }
   this->triangulation.add_periodicity(periodicity_vector);
 
   triangulation.refine_global(
@@ -371,6 +380,16 @@ void SimpleShearProblem<dim>::setup_constraints()
     1,
     0,
     periodicity_vector);
+
+  if (dim == 3)
+  {
+    dealii::GridTools::collect_periodic_faces(
+      fe_field->get_dof_handler(),
+      4,
+      5,
+      2,
+      periodicity_vector);
+  }
 
   // Initiate the actual constraints – boundary conditions – of the problem
   dealii::AffineConstraints<double> affine_constraints;
