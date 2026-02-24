@@ -1808,8 +1808,7 @@ terminal_output_frequency(1),
 homogenization_output_frequency(1),
 flag_output_damage_variable(false),
 flag_output_fluctuations(false),
-flag_output_dimensionless_quantities(false),
-flag_store_checkpoint(false)
+flag_output_dimensionless_quantities(false)
 {}
 
 
@@ -1915,44 +1914,6 @@ void Output::parse_parameters(
 
     flag_output_dimensionless_quantities =
       prm.get_bool("Output dimensionless quantities");
-
-    flag_store_checkpoint =
-      prm.get_bool("Store checkpoints");
-
-    if ((dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) &&
-        !fs::exists(output_directory + "checkpoints/") &&
-        flag_store_checkpoint)
-    {
-      try
-      {
-        fs::create_directories(output_directory + "checkpoints/");
-      }
-      catch (std::exception &exc)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::cerr << "Exception in the creation of the output directory: "
-                  << std::endl
-                  << exc.what() << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-      catch (...)
-      {
-        std::cerr << std::endl << std::endl
-                  << "----------------------------------------------------"
-                    << std::endl;
-        std::cerr << "Unknown exception in the creation of the output directory!"
-                  << std::endl
-                  << "Aborting!" << std::endl
-                  << "----------------------------------------------------"
-                  << std::endl;
-        std::abort();
-      }
-    }
   }
   prm.leave_subsection();
 }
