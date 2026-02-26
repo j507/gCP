@@ -1437,8 +1437,6 @@ struct Output
   bool          flag_output_fluctuations;
 
   bool          flag_output_dimensionless_quantities;
-
-  bool          flag_store_checkpoint;
 };
 
 

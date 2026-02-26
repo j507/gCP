@@ -128,7 +128,6 @@ void CrystalsData<dim>::read_and_store_data(
                "Nonetheless, more than one angle is being read from "
                "the specified file.")));
         }
-
         else
         {
           AssertThrow(

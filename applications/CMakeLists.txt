@@ -1,6 +1,5 @@
 SET(SOURCE_FILES
     simple_shear.cc
-    jacobian.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})
@@ -9,4 +8,5 @@ FOREACH(sourcefile ${SOURCE_FILES})
   ADD_EXECUTABLE(${executablename} ${sourcefile})
   DEAL_II_SETUP_TARGET(${executablename})
   TARGET_LINK_LIBRARIES(${executablename} gCP stdc++fs)
+  TARGET_COMPILE_OPTIONS(${executablename} PRIVATE -g)
 ENDFOREACH(sourcefile ${APP_SOURCES})
