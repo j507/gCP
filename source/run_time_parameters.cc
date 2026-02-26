@@ -2051,6 +2051,16 @@ void BasicProblem::parse_parameters(dealii::ParameterHandler &prm)
   prm.leave_subsection();
 
   verbose = prm.get_bool("Verbose");
+
+  if (spatial_discretization.dim == 3 &&
+      fs::exists(input.slips_normals_pathname + "_3d.txt") &&
+      fs::exists(input.slips_directions_pathname + "_3d.txt") &&
+      fs::exists(input.euler_angles_pathname + "_3d.txt"))
+  {
+    input.slips_normals_pathname += "_3d";
+    input.slips_directions_pathname += "_3d";
+    input.euler_angles_pathname += "_3d";
+  }
 }
 
 

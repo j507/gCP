@@ -61,19 +61,19 @@ end
 
 
 subsection 3. Input parameters
-  set Euler angles path name    = input/crystal_orientation/2d/euler_angles_0
+  set Euler angles path name    = input/crystal_orientation/euler_angles_0
   set Slip directions path name = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_directions
   set Slip normals path name    = input/crystal_structure/symmetric_double_slip_system/60_degrees/slip_normals
 end
 
 
 subsection 4. Output parameters
-  set Graphical output directory   = results/default/
-  set Graphical output frequency   = 1
-  set Output damage variable field = false
-  set Output fluctuations fields   = false
-  set Store checkpoints            = false
-  set Terminal output frequency    = 1
+  set Graphical output directory      = results/default/
+  set Graphical output frequency      = 1
+  set Output damage variable field    = false
+  set Output dimensionless quantities = false
+  set Output fluctuations fields      = false
+  set Terminal output frequency       = 1
 end
 
 
@@ -88,16 +88,17 @@ end
 
 subsection 6. Solver parameters
   set Allow decohesion at grain boundaries         = false
-  set Boundary conditions at grain boundaries      = microtraction
+  set Boundary conditions at grain boundaries      = microfree
   set Print sparsity pattern                       = false
   set Skip extrapolation of start value at extrema = false
+  set Extrapolation factor                         = 0.00
   set Solution algorithm                           = monolithic
   set Output debug fields                          = false
   set Verbose                                      = false
   set Zero damage evolution during un- and loading = false
 
   subsection Dimensionless formulation parameters
-    set Solve the dimensionless problem = false
+    set Solve the dimensionless problem = true
 
     subsection Reference parameters
       set Reference displacement value    = 0.01
@@ -136,7 +137,7 @@ subsection 6. Solver parameters
     end
 
     subsection Hardening law's parameters
-      set Hardening parameter      = 1.4
+      set Hardening parameter      = 1.0
       set Initial slip resistance  = 60
       set Linear hardening modulus = 100
       set Perfect plasticity       = false
@@ -155,12 +156,12 @@ subsection 6. Solver parameters
     subsection Scalar microstress law's parameters
       set Rate-independent behavior = false
       set Regularization function   = erf
-      set Regularization parameter  = 1e-11
+      set Regularization parameter  = 1.0
     end
 
     subsection Vectorial microstress law's parameters
       set Defect energy index      = 2.0
-      set Energetic length scale   = 0.2
+      set Energetic length scale   = 1e-1
       set Initial slip resistance  = 60
       set Regularization parameter = 1e-16
     end
@@ -172,28 +173,84 @@ subsection 6. Solver parameters
 
 
     subsection Krylov parameters
-      set Absolute tolerance                  = 1e-9
-      set Maximum number of iterations        = 3000
-      set Relative tolerance                  = 1e-8
-      set Solver type                         = cg
+      set Absolute tolerance           = 1e-9
+      set Maximum number of iterations = 1000
+      set Relative tolerance           = 1e-8
+      set Solver type                  = directsolver
     end
 
     subsection Line search parameters
       set Alpha condition constant     = 1e-4
       set Beta condition constant      = 0.9
-      set Maximum number of iterations = 100
+      set Maximum number of iterations = 5
     end
 
     subsection Newton-Raphson parameters
       set Absolute tolerance of the residual = 1e-8
-      set Absolute tolerance of the step     = 1e-15
+      set Absolute tolerance of the step     = 1e-8
       set Line search algorithm              = false
-      set Maximum number of iterations       = 100
+      set Maximum number of iterations       = 20
       set Relative tolerance of the residual = 1e-7
     end
 
   end
 
+  subsection Staggered algorithm
+    set Maximum number of solution loops        = 100
+    set Reset trial solution at each micro loop = true
+
+
+    subsection Linear momentum balance
+      subsection Krylov parameters
+        set Absolute tolerance           = 1e-9
+        set Maximum number of iterations = 1000
+        set Relative tolerance           = 1e-8
+        set Solver type                  = directsolver
+      end
+
+      subsection Line search parameters
+        set Alpha condition constant     = 1e-4
+        set Beta condition constant      = 0.9
+        set Maximum number of iterations = 5
+      end
+
+      subsection Newton-Raphson parameters
+        set Absolute tolerance of the residual = 1e-8
+        set Absolute tolerance of the step     = 1e-8
+        set Line search algorithm              = false
+        set Maximum number of iterations       = 500
+        set Relative tolerance of the residual = 1e-7
+      end
+
+    end
+
+    subsection Pseudo-balance
+      subsection Krylov parameters
+        set Absolute tolerance           = 1e-9
+        set Maximum number of iterations = 1000
+        set Relative tolerance           = 1e-8
+        set Solver type                  = directsolver
+      end
+
+      subsection Line search parameters
+        set Alpha condition constant     = 1e-4
+        set Beta condition constant      = 0.9
+        set Maximum number of iterations = 5
+      end
+
+      subsection Newton-Raphson parameters
+        set Absolute tolerance of the residual = 1e-8
+        set Absolute tolerance of the step     = 1e-8
+        set Line search algorithm              = false
+        set Maximum number of iterations       = 15
+        set Relative tolerance of the residual = 1e-7
+      end
+
+    end
+
+  end
+
 end
+
 
 

@@ -989,9 +989,28 @@ int main(int argc, char *argv[])
 
     gCP::RunTimeParameters::InfiniteStripProblem parameters(parameters_filepath);
 
-    gCP::SimpleShearProblem<2> problem(parameters);
+    switch (parameters.spatial_discretization.dim)
+    {
+      case 2:
+      {
+        gCP::SimpleShearProblem<2> problem(parameters);
 
-    problem.run();
+        problem.run();
+      }
+      break;
+
+      case 3:
+      {
+        gCP::SimpleShearProblem<3> problem(parameters);
+
+        problem.run();
+      }
+      break;
+
+      default:
+        AssertThrow(false, dealii::ExcNotImplemented());
+      break;
+    };
   }
   catch (std::exception &exc)
   {
