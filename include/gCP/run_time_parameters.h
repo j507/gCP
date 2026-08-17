@@ -37,6 +37,8 @@ enum class DamageEvolutionModel
 enum class CohesiveLawModel
 {
   OrtizEtAl,
+
+  LaraEtAl
 };
 
 
@@ -403,6 +405,15 @@ struct CohesiveLawParameters
    * @todo Docu
    */
   CohesiveLawModel  cohesive_law_model;
+
+
+  double perpendicular_elastic_modulus;
+
+  double tangential_elastic_modulus;
+
+  double perpendicular_exponent;
+
+  double tangential_exponent;
 
   /*!
    * @brief

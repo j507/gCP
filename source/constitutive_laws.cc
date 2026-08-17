@@ -1178,12 +1178,72 @@ CohesiveLaw<dim>::CohesiveLaw(
   const double characteristic_stress,
   const double characteristic_displacement)
 :
+parameters(parameters),
 critical_cohesive_traction(parameters.critical_cohesive_traction),
 critical_opening_displacement(parameters.critical_opening_displacement),
 tangential_to_normal_stiffness_ratio(parameters.tangential_to_normal_stiffness_ratio),
 characteristic_stress(characteristic_stress),
 characteristic_displacement(characteristic_displacement)
 {}
+
+
+
+template <int dim>
+dealii::Tensor<1,dim>
+CohesiveLaw<dim>::get_value(
+  const std::vector<dealii::Tensor<1,dim>> opening_displacement,
+  const std::vector<double> elastic_moduli
+  ) const
+{
+  dealii::Tensor<1,dim> value =
+    characteristic_displacement /
+    characteristic_stress *
+    (elastic_moduli[0] *
+    opening_displacement[0] +
+    elastic_moduli[0] *
+    opening_displacement[1]);
+
+  return value;
+}
+
+
+
+template <int dim>
+dealii::SymmetricTensor<2,dim>
+CohesiveLaw<dim>::get_derivative(
+  const std::vector<double> elastic_moduli
+  ) const
+{
+  dealii::SymmetricTensor<2,dim> value =
+    characteristic_displacement /
+    characteristic_stress *
+    (elastic_moduli[0] +
+    elastic_moduli[0]) *
+    dealii::unit_symmetric_tensor<dim>();
+
+  return value;
+}
+
+
+
+template <int dim>
+double
+CohesiveLaw<dim>::get_free_energy_density(
+  const std::vector<dealii::Tensor<1,dim>> opening_displacement,
+  const std::vector<double> elastic_moduli
+  ) const
+{
+  double value =
+    0.5 *
+    characteristic_displacement * characteristic_displacement /
+    characteristic_stress *
+    (elastic_moduli[0] *
+    opening_displacement[0] * opening_displacement[0] +
+    elastic_moduli[0] *
+    opening_displacement[1] * opening_displacement[1]);
+
+  return value;
+}
 
 
 

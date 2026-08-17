@@ -446,6 +446,27 @@ public:
     const double characteristic_stress = 1.0,
     const double characteristic_displacement = 1.0);
 
+  dealii::Tensor<1,dim> get_value(
+    const std::vector<dealii::Tensor<1,dim>> opening_displacement,
+    const std::vector<double> elastic_moduli
+  ) const;
+
+  dealii::SymmetricTensor<2,dim> get_derivative(
+    const std::vector<double> elastic_moduli
+  ) const;
+
+  double get_free_energy_density(
+    const std::vector<dealii::Tensor<1,dim>> opening_displacement,
+    const std::vector<double> elastic_moduli) const;
+
+  double get_free_energy_density(
+    const double effective_opening_displacement) const;
+
+  static std::vector<dealii::Tensor<1,dim>>
+    get_opening_displacement_components(
+      const dealii::Tensor<1,dim> opening_displacement,
+      const dealii::Tensor<1,dim> normal_vector);
+
   dealii::Tensor<1,dim> get_cohesive_traction(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector,
@@ -460,9 +481,6 @@ public:
     const double                old_effective_opening_displacement,
     const double                time_step_size) const;
 
-  double get_free_energy_density(
-    const double effective_opening_displacement) const;
-
   double get_effective_opening_displacement(
     const dealii::Tensor<1,dim> opening_displacement,
     const dealii::Tensor<1,dim> normal_vector) const;
@@ -473,6 +491,8 @@ public:
       const dealii::Tensor<1,dim> normal_vector) const;
 
 private:
+
+  const RunTimeParameters::CohesiveLawParameters parameters;
 
   double critical_cohesive_traction;
 
