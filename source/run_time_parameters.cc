@@ -261,6 +261,10 @@ void MicrotractionLawParameters::parse_parameters(
 CohesiveLawParameters::CohesiveLawParameters()
 :
 cohesive_law_model(CohesiveLawModel::OrtizEtAl),
+perpendicular_elastic_modulus(1.0),
+tangential_elastic_modulus(1.0),
+perpendicular_exponent(1.0),
+tangential_exponent(1.0),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
 tangential_to_normal_stiffness_ratio(1.0)

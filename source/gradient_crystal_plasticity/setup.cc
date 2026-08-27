@@ -430,7 +430,8 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
     n_face_q_points);
 
   const dealii::UpdateFlags face_update_flags =
-    dealii::update_quadrature_points;
+    dealii::update_quadrature_points |
+    dealii::update_normal_vectors;
 
   // Finite element values
   dealii::hp::FEFaceValues<dim> hp_fe_face_values(
@@ -474,6 +475,10 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             const std::vector<dealii::Point<dim>> quadrature_points =
               fe_face_values.get_quadrature_points();
 
+            const std::vector<dealii::Tensor<1, dim>>
+              normal_vector_values =
+                fe_face_values.get_normal_vectors();
+
             const std::vector<std::shared_ptr<InterfaceQuadraturePointHistory<dim>>>
               local_interface_quadrature_point_history =
                 interface_quadrature_point_history.get_data(
@@ -487,9 +492,16 @@ void GradientCrystalPlasticitySolver<dim>::init_quadrature_point_history()
             for (unsigned int face_q_point = 0;
                   face_q_point < n_face_q_points; ++face_q_point)
             {
-              local_interface_quadrature_point_history[face_q_point]->init(
-                parameters.constitutive_laws_parameters.damage_evolution_parameters,
-                parameters.constitutive_laws_parameters.cohesive_law_parameters);
+              local_interface_quadrature_point_history[face_q_point]->
+                init(
+                  parameters.constitutive_laws_parameters.
+                    damage_evolution_parameters,
+                  parameters.constitutive_laws_parameters.
+                    cohesive_law_parameters,
+                  cohesive_law->get_local_elastic_moduli(
+                      cell->material_id(),
+                      cell->neighbor(face_index)->material_id(),
+                      normal_vector_values[face_q_point]));
             }
           }
 

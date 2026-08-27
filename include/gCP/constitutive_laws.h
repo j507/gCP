@@ -442,6 +442,7 @@ private:
 
 public:
   CohesiveLaw(
+    const std::shared_ptr<CrystalsData<dim>> &crystals_data,
     const RunTimeParameters::CohesiveLawParameters parameters,
     const double characteristic_stress = 1.0,
     const double characteristic_displacement = 1.0);
@@ -461,6 +462,12 @@ public:
 
   double get_free_energy_density(
     const double effective_opening_displacement) const;
+
+  std::vector<double> get_local_elastic_moduli(
+    const unsigned int current_crystal_id,
+    const unsigned int neighbor_crystal_id,
+    const dealii::Tensor<1,dim> normal_vector
+  ) const;
 
   static std::vector<dealii::Tensor<1,dim>>
     get_opening_displacement_components(
@@ -491,6 +498,8 @@ public:
       const dealii::Tensor<1,dim> normal_vector) const;
 
 private:
+
+  std::shared_ptr<const CrystalsData<dim>> crystals_data;
 
   const RunTimeParameters::CohesiveLawParameters parameters;
 

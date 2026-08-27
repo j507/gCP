@@ -72,9 +72,12 @@ public:
 
   double get_max_effective_opening_displacement() const;
 
+  std::vector<double> get_elastic_moduli() const;
+
   void init(
     const RunTimeParameters::DamageEvolution        &parameters,
-    const RunTimeParameters::CohesiveLawParameters  &prm);
+    const RunTimeParameters::CohesiveLawParameters  &prm,
+    const std::vector<double> &elastic_moduli);
 
   void set(const double damage_variable_value);
 
@@ -151,6 +154,8 @@ private:
 
   std::vector<double>       tmp_scalar_values;
 
+  std::vector<double>       elastic_moduli;
+
   // The variables
   double                    effective_opening_displacement;
 
@@ -190,6 +195,16 @@ inline double InterfaceQuadraturePointHistory<dim>::
 get_max_effective_opening_displacement() const
 {
   return (max_effective_opening_displacement);
+}
+
+
+
+template <int dim>
+inline std::vector<double>
+InterfaceQuadraturePointHistory<dim>::
+get_elastic_moduli() const
+{
+  return (elastic_moduli);
 }
 
 

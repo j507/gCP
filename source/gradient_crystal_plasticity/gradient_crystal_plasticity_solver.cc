@@ -52,6 +52,7 @@ microtraction_law(
     parameters.constitutive_laws_parameters.microtraction_law_parameters)),
 cohesive_law(
   std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
+    crystals_data,
     parameters.constitutive_laws_parameters.cohesive_law_parameters)),
 degradation_function(
   std::make_shared<ConstitutiveLaws::DegradationFunction>(

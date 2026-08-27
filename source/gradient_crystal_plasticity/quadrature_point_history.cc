@@ -53,6 +53,7 @@ damage_variable(0.0),
 max_effective_opening_displacement(0.0),
 old_effective_opening_displacement(0.0),
 tmp_scalar_values(2),
+elastic_moduli(std::vector<double>(2.0, 0.0)),
 effective_opening_displacement(0.0),
 normal_opening_displacement(0.0),
 tangential_opening_displacement(0.0),
@@ -65,7 +66,8 @@ flag_init_was_called(false)
 template <int dim>
 void InterfaceQuadraturePointHistory<dim>::init(
   const RunTimeParameters::DamageEvolution        &parameters,
-  const RunTimeParameters::CohesiveLawParameters  &prm)
+  const RunTimeParameters::CohesiveLawParameters  &prm,
+  const std::vector<double> &elastic_moduli)
 {
   if (flag_init_was_called)
     return;
@@ -89,6 +91,8 @@ void InterfaceQuadraturePointHistory<dim>::init(
   endurance_limit         = parameters.endurance_limit;
 
   flag_set_damage_to_zero = parameters.flag_set_damage_to_zero;
+
+  this->elastic_moduli = elastic_moduli;
 
   flag_init_was_called    = true;
 }
