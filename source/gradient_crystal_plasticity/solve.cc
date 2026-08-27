@@ -94,6 +94,9 @@ solve_nonlinear_system(const bool flag_skip_extrapolation)
     " with dt = " +
     std::to_string(discrete_time.get_next_step_size()));
 
+  table_handler.add_value(
+    "LoadStep", discrete_time.get_step_number() + 1);
+
   // Internal variables' values at the previous step are stored
   prepare_quadrature_point_history();
 
@@ -152,6 +155,9 @@ solve_nonlinear_system(const bool flag_skip_extrapolation)
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm()
 {
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Monolithic algorithm");
+
   // Instance local variables and references
   unsigned int nonlinear_iteration = 0;
 
@@ -339,6 +345,9 @@ void GradientCrystalPlasticitySolver<dim>::monolithic_algorithm()
 template <int dim>
 void GradientCrystalPlasticitySolver<dim>::bouncing_algorithm()
 {
+  dealii::TimerOutput::Scope t(
+    *timer_output, "Solver: Bouncing algorithm");
+
   // Declare and initilize local variables and references
   unsigned int macro_nonlinear_iteration = 0,
                micro_nonlinear_iteration = 0,
@@ -1191,11 +1200,11 @@ solve_decoupled_linearized_subsystem(
   if (parameters.verbose)
   {
     *pcout << std::setw(38) << std::left
-            << "  Solver: Solving linearized system...";
+            << "  Solver: Solving decoupled linearized system...";
   }
 
   dealii::TimerOutput::Scope t(
-    *timer_output, "Solver: Solve linearized system");
+    *timer_output, "Solver: Solve decoupled linearized system");
 
   // Declare and initialize local variables and references
   const unsigned int block_id = static_cast<unsigned int>(block_index);
@@ -1346,11 +1355,11 @@ solve_reduced_linearized_system()
   if (parameters.verbose)
   {
     *pcout << std::setw(38) << std::left
-           << "  Solver: Solving linearized system...";
+           << "  Solver: Solving coupled linearized system...";
   }
 
   dealii::TimerOutput::Scope t(
-    *timer_output, "Solver: Solve linearized system");
+    *timer_output, "Solver: Solve coupled linearized system");
 
   // Declare and initialize local variables and references
   const unsigned int macro_block_id = 0,
@@ -1765,7 +1774,11 @@ void GradientCrystalPlasticitySolver<dim>::
   nonlinear_solver_logger.log_values_to_terminal();
 }
 
+
+
 } // namespace gCP
+
+
 
 template void gCP::GradientCrystalPlasticitySolver<2>::
   extrapolate_initial_trial_solution(const bool);

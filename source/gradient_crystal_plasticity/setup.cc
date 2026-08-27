@@ -22,7 +22,7 @@ void GradientCrystalPlasticitySolver<dim>::init()
            << "  Solver: Initializing solver...";
 
   dealii::TimerOutput::Scope  t(*timer_output,
-                                "Solver: Initialize");
+                                "Solver: Initialize (Total)");
 
   AssertThrow(fe_field->is_initialized(),
               dealii::ExcMessage("The underlying FEField<dim> instance"
@@ -33,46 +33,58 @@ void GradientCrystalPlasticitySolver<dim>::init()
                                  " initialized."));
 
   // Initiate vectors
-  cell_is_at_grain_boundary.reinit(
-    fe_field->get_triangulation().n_active_cells());
+  {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Initialize vectors");
 
-  trial_solution.reinit(fe_field->solution);
+    cell_is_at_grain_boundary.reinit(
+      fe_field->get_triangulation().n_active_cells());
 
-  initial_trial_solution.reinit(fe_field->solution);
+    trial_solution.reinit(fe_field->solution);
 
-  tmp_trial_solution.reinit(fe_field->solution);
+    initial_trial_solution.reinit(fe_field->solution);
 
-  newton_update.reinit(fe_field->solution);
+    tmp_trial_solution.reinit(fe_field->solution);
 
-  residual.reinit(fe_field->distributed_vector);
+    newton_update.reinit(fe_field->solution);
 
-  cell_is_at_grain_boundary = 0.0;
+    residual.reinit(fe_field->distributed_vector);
 
-  trial_solution = 0.;
+    cell_is_at_grain_boundary = 0.0;
 
-  initial_trial_solution = 0.;
+    trial_solution = 0.;
 
-  tmp_trial_solution = 0.;
+    initial_trial_solution = 0.;
 
-  newton_update = 0.;
+    tmp_trial_solution = 0.;
 
-  residual = 0.;
+    newton_update = 0.;
 
-  // Identify which cells are located at a grain boundary
-  for (const auto &cell :
-       fe_field->get_dof_handler().active_cell_iterators())
-    if (cell->is_locally_owned())
-      for (const auto &face_index : cell->face_indices())
-        if (!cell->face(face_index)->at_boundary() &&
-            cell->material_id() !=
-              cell->neighbor(face_index)->material_id())
-        {
-          cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
-          break;
-        }
+    residual = 0.;
+  }
 
+  {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Initialize grain boundary id");
+
+    // Identify which cells are located at a grain boundary
+    for (const auto &cell :
+        fe_field->get_dof_handler().active_cell_iterators())
+      if (cell->is_locally_owned())
+        for (const auto &face_index : cell->face_indices())
+          if (!cell->face(face_index)->at_boundary() &&
+              cell->material_id() !=
+                cell->neighbor(face_index)->material_id())
+          {
+            cell_is_at_grain_boundary(cell->active_cell_index()) = 1.0;
+            break;
+          }
+  }
   // Initiate Jacobian matrix
   {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                                "Solver: Initialize jacobian");
+
     jacobian.clear();
 
     dealii::TrilinosWrappers::BlockSparsityPattern
@@ -103,13 +115,18 @@ void GradientCrystalPlasticitySolver<dim>::init()
   }
 
   // Initiate constitutive laws
-  hooke_law->init();
+  {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                            "Solver: Initialize material laws");
 
-  vectorial_microstress_law->init(
-    parameters.dimensionless_form_parameters.
-      dimensionless_numbers[3] != 1.0);
+    hooke_law->init();
 
-  init_quadrature_point_history();
+    vectorial_microstress_law->init(
+      parameters.dimensionless_form_parameters.
+        dimensionless_numbers[3] != 1.0);
+
+    init_quadrature_point_history();
+  }
 
   // Check boundary ids of the Neumann boundary conditions
   {
@@ -129,6 +146,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   // Set-up memberes related to the L2 projection of the damage variable
   {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                            "Solver: Initialize damage projection");
+
     // The FE collection consists of a single second order
     // Lagrange-Element
     projection_fe_collection.push_back(dealii::FE_Q<dim>(2));
@@ -188,6 +208,9 @@ void GradientCrystalPlasticitySolver<dim>::init()
 
   if (crystals_data->get_n_slips() > 0)
   {
+    dealii::TimerOutput::Scope  t(*timer_output,
+                            "Solver: Initialize rate dependence variables");
+
     trial_microstress =
       std::make_shared<FEField<dim>>(*fe_field);
 
@@ -257,10 +280,19 @@ void GradientCrystalPlasticitySolver<dim>::init()
         hardening_law_parameters.initial_slip_resistance /
           parameters.dimensionless_form_parameters.
             characteristic_quantities.slip_resistance;
+    {
+      dealii::TimerOutput::Scope  t(*timer_output,
+                      "Solver: Initialize Lumped matrix");
+      assemble_trial_microstress_lumped_matrix();
+    }
 
-    assemble_trial_microstress_lumped_matrix();
+    {
+      dealii::TimerOutput::Scope  t(*timer_output,
+                              "Solver: Initialize dof to info");
 
-    init_dof_to_info_map();
+      init_dof_to_info_map();
+    }
+
   } // End of set-up members related to the computation of the
     // trial microstress
 

@@ -115,7 +115,7 @@ timer_output(std::make_shared<dealii::TimerOutput>(
   MPI_COMM_WORLD,
   *pcout,
   dealii::TimerOutput::summary,
-  dealii::TimerOutput::wall_times)),
+  dealii::TimerOutput::cpu_and_wall_times)),
 mapping(std::make_shared<dealii::MappingQ<dim>>(
   parameters.spatial_discretization.mapping_degree)),
 discrete_time(
@@ -217,6 +217,11 @@ void SimpleShearProblem<dim>::make_grid()
   std::vector<unsigned int> repetitions(2, 1);
   repetitions[1] = parameters.n_elements_in_y_direction;
 
+  const double strip_height =
+    (parameters.solver_parameters.dimensionless_form_parameters.
+      flag_solve_dimensionless_problem) ? 1.0 :
+        parameters.height;
+
   switch (dim)
   {
   case 2:
@@ -224,7 +229,8 @@ void SimpleShearProblem<dim>::make_grid()
       triangulation,
       repetitions,
       dealii::Point<dim>(0,0),
-      dealii::Point<dim>(1. / parameters.n_elements_in_y_direction, parameters.height),
+      dealii::Point<dim>(1. / parameters.n_elements_in_y_direction,
+        strip_height),
       true);
     break;
   case 3:
@@ -235,7 +241,8 @@ void SimpleShearProblem<dim>::make_grid()
         triangulation,
         repetitions,
         dealii::Point<dim>(0,0,0),
-        dealii::Point<dim>(1./parameters.n_elements_in_y_direction, parameters.height, 1./parameters.n_elements_in_y_direction),
+        dealii::Point<dim>(1./parameters.n_elements_in_y_direction,
+          strip_height, 1./parameters.n_elements_in_y_direction),
         true);
     }
     break;
@@ -275,7 +282,7 @@ void SimpleShearProblem<dim>::make_grid()
            i <= parameters.n_equal_sized_crystals; ++i)
       {
         if (std::fabs(cell->center()[1]) <
-            i * parameters.height / parameters.n_equal_sized_crystals)
+            i * strip_height / parameters.n_equal_sized_crystals)
         {
           cell->set_material_id(i-1);
           break;
@@ -368,6 +375,12 @@ void SimpleShearProblem<dim>::setup_constraints()
 
   const unsigned int upper_boundary_id = 3;
 
+  /*dealii::ComponentMask component_mask(
+    fe_field->get_n_components(), false);
+
+  component_mask.set(1, true);
+  component_mask.set(2, true);*/
+
   // Initiate the entity needed for periodic boundary conditions
   std::vector<
     dealii::GridTools::
@@ -422,7 +435,27 @@ void SimpleShearProblem<dim>::setup_constraints()
           fe_field->get_fe_collection().component_mask(
             fe_field->get_displacement_extractor(crystal_id)));
       }
-    }
+      /*
+      if (dim == 3)
+      {
+        function_map.clear();
+
+        function_map[4] = &zero_function;
+        function_map[5] = &zero_function;
+
+        for (unsigned int crystal_id = 0;
+          crystal_id < crystals_data->get_n_crystals();
+          ++crystal_id)
+        {
+          dealii::VectorTools::interpolate_boundary_values(
+            *mapping,
+            fe_field->get_dof_handler(),
+            function_map,
+            affine_constraints,
+            component_mask);
+        }
+      }
+    }*/
 
     // Slips' Dirichlet boundary conditions
     {
@@ -551,6 +584,26 @@ void SimpleShearProblem<dim>::setup_constraints()
             fe_field->get_slip_extractor(crystal_id, slip_id)));
       }
     }
+    /*
+    if (dim == 3)
+    {
+      function_map.clear();
+
+      function_map[4] = &zero_function;
+      function_map[5] = &zero_function;
+
+      for (unsigned int crystal_id = 0;
+        crystal_id < crystals_data->get_n_crystals();
+        ++crystal_id)
+      {
+        dealii::VectorTools::interpolate_boundary_values(
+          *mapping,
+          fe_field->get_dof_handler(),
+          function_map,
+          affine_constraints,
+          component_mask);
+      }
+    }*/
 
     if (parameters.solver_parameters.boundary_conditions_at_grain_boundaries ==
           RunTimeParameters::BoundaryConditionsAtGrainBoundaries::Microhard)
@@ -611,6 +664,8 @@ void SimpleShearProblem<dim>::setup_constraints()
   //gCP_solver.set_neumann_boundary_condition(
   //  upper_boundary_id, neumann_boundary_function);
 }
+
+
 
 template<int dim>
 void SimpleShearProblem<dim>::initialize_calls()
