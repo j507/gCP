@@ -454,8 +454,8 @@ void SimpleShearProblem<dim>::setup_constraints()
             affine_constraints,
             component_mask);
         }
-      }
-    }*/
+      }*/
+    }
 
     // Slips' Dirichlet boundary conditions
     {

@@ -260,6 +260,8 @@ private:
 
   void embracing_algorihtm();
 
+  void roll_back_slip_values();
+
   unsigned int solve_linearized_system();
 
 
