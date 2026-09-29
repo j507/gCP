@@ -1202,7 +1202,7 @@ CohesiveLaw<dim>::get_value(
     characteristic_stress *
     (elastic_moduli[0] *
     opening_displacement[0] +
-    elastic_moduli[0] *
+    elastic_moduli[1] *
     opening_displacement[1]);
 
   return value;
@@ -1213,15 +1213,19 @@ CohesiveLaw<dim>::get_value(
 template <int dim>
 dealii::SymmetricTensor<2,dim>
 CohesiveLaw<dim>::get_derivative(
-  const std::vector<double> elastic_moduli
+  const std::vector<double> elastic_moduli,
+  const dealii::Tensor<1,dim> normal_vector
   ) const
 {
   dealii::SymmetricTensor<2,dim> value =
     characteristic_displacement /
     characteristic_stress *
-    (elastic_moduli[0] +
-    elastic_moduli[0]) *
-    dealii::unit_symmetric_tensor<dim>();
+    (elastic_moduli[1] *
+     dealii::unit_symmetric_tensor<dim>()
+     +
+     (elastic_moduli[0] - elastic_moduli[1]) *
+     dealii::symmetrize(
+      dealii::outer_product(normal_vector, normal_vector)));
 
   return value;
 }
@@ -1237,11 +1241,11 @@ CohesiveLaw<dim>::get_free_energy_density(
 {
   double value =
     0.5 *
-    characteristic_displacement * characteristic_displacement /
+    characteristic_displacement /
     characteristic_stress *
     (elastic_moduli[0] *
     opening_displacement[0] * opening_displacement[0] +
-    elastic_moduli[0] *
+    elastic_moduli[1] *
     opening_displacement[1] * opening_displacement[1]);
 
   return value;
@@ -1259,7 +1263,7 @@ CohesiveLaw<dim>::get_local_elastic_moduli(
 {
   std::vector<double> elastic_moduli(2, 0.0);
   elastic_moduli[0] = parameters.perpendicular_elastic_modulus;
-  elastic_moduli[0] = parameters.tangential_elastic_modulus;
+  elastic_moduli[1] = parameters.tangential_elastic_modulus;
 
   std::vector<dealii::Tensor<1,dim>>
     current_crystal_slip_directions =
@@ -1455,6 +1459,7 @@ CohesiveLaw<dim>::get_jacobian(
     jacobian =
       critical_cohesive_traction /
       critical_opening_displacement *
+      characteristic_displacement *
       std::exp(1.0 - characteristic_displacement *
         effective_quantities.opening_displacement /
                      critical_opening_displacement) *
@@ -1478,7 +1483,6 @@ CohesiveLaw<dim>::get_jacobian(
       get_effective_cohesive_traction(
         characteristic_displacement*
         max_effective_opening_displacement) /
-      characteristic_displacement /
       max_effective_opening_displacement *
       effective_quantities.identity_tensor;
   }
@@ -1502,14 +1506,18 @@ double CohesiveLaw<dim>::get_free_energy_density(
 
   const double free_energy_density =
     critical_cohesive_traction *
-    critical_opening_displacement *
+    critical_opening_displacement /
+    characteristic_displacement /
+    characteristic_stress *
     std::exp(1.0) *
     (1.0 -
     (1.0 +
+      characteristic_displacement *
       effective_opening_displacement /
       critical_opening_displacement) *
      std::exp(
-      -effective_opening_displacement /
+      - characteristic_displacement *
+      effective_opening_displacement /
       critical_opening_displacement));
 
   AssertIsFinite(free_energy_density);

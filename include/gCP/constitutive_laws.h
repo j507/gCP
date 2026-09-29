@@ -453,7 +453,8 @@ public:
   ) const;
 
   dealii::SymmetricTensor<2,dim> get_derivative(
-    const std::vector<double> elastic_moduli
+    const std::vector<double> elastic_moduli,
+    const dealii::Tensor<1,dim> normal_vector
   ) const;
 
   double get_free_energy_density(
