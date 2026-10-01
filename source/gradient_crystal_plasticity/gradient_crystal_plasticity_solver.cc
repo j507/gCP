@@ -53,7 +53,9 @@ microtraction_law(
 cohesive_law(
   std::make_shared<ConstitutiveLaws::CohesiveLaw<dim>>(
     crystals_data,
-    parameters.constitutive_laws_parameters.cohesive_law_parameters)),
+    parameters.constitutive_laws_parameters.cohesive_law_parameters,
+    parameters.dimensionless_form_parameters.characteristic_quantities.stress,
+    parameters.dimensionless_form_parameters.characteristic_quantities.displacement)),
 degradation_function(
   std::make_shared<ConstitutiveLaws::DegradationFunction>(
     parameters.constitutive_laws_parameters.degradation_function_parameters)),
@@ -93,7 +95,7 @@ flag_init_was_called(false)
     parameters.constitutive_laws_parameters.
       scalar_microstress_law_parameters.flag_rate_independent;
 
-  const bool flag_decohesion = parameters.allow_decohesion;
+  /*const bool flag_decohesion = parameters.allow_decohesion;
 
   if (flag_dimensionless_formulation && (flag_decohesion ||
         flag_microtraction_boundary_conditions))
@@ -102,7 +104,7 @@ flag_init_was_called(false)
       "The dimensionless formulation has not been implemented for the "
       "polycrystalline case of grain boundaries enhanced by a "
       "constitutive boundary condition and a cohesive law"));
-  }
+  }*/
 
   if (flag_rate_independent && flag_microtraction_boundary_conditions)
   {
