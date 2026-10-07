@@ -418,19 +418,44 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_jacobian(
               local_interface_quadrature_point_history[face_q_point]->
                 get_damage_variable();
 
+            std::vector<double> elastic_moduli =
+              local_interface_quadrature_point_history[face_q_point]->
+                get_elastic_moduli();
+
             const dealii::Tensor<1,dim> opening_displacement =
               scratch.neighbor_cell_displacement_values[face_q_point] -
               scratch.current_cell_displacement_values[face_q_point];
 
-            scratch.cohesive_law_jacobian_values[face_q_point] =
-              cohesive_law->get_jacobian(
-                opening_displacement,
-                scratch.normal_vector_values[face_q_point],
-                local_interface_quadrature_point_history[face_q_point]->
-                  get_max_effective_opening_displacement(),
-                local_interface_quadrature_point_history[face_q_point]->
+
+            switch (parameters.constitutive_laws_parameters.
+                      cohesive_law_parameters.model)
+            {
+              case RunTimeParameters::CohesiveLawModel::OrtizEtAl:
+              {
+                scratch.cohesive_law_jacobian_values[face_q_point] =
+                  cohesive_law->get_jacobian(
+                    opening_displacement,
+                    scratch.normal_vector_values[face_q_point],
+                    local_interface_quadrature_point_history[face_q_point]->
+                      get_max_effective_opening_displacement(),
+                    local_interface_quadrature_point_history[face_q_point]->
                       get_old_effective_opening_displacement(),
-                discrete_time.get_next_step_size());
+                      discrete_time.get_next_step_size());
+                break;
+              }
+
+              case RunTimeParameters::CohesiveLawModel::LaraEtAl:
+              {
+                scratch.cohesive_law_jacobian_values[face_q_point] =
+                  cohesive_law->get_derivative(
+                    elastic_moduli,
+                    scratch.normal_vector_values[face_q_point]);
+                break;
+              }
+
+              default:
+                break;
+            }
 
             scratch.contact_law_jacobian_values[face_q_point] =
               contact_law->get_jacobian(
@@ -1014,19 +1039,49 @@ void GradientCrystalPlasticitySolver<dim>::assemble_local_residual(
               local_interface_quadrature_point_history[face_q_point]->
                 get_damage_variable();
 
+            std::vector<double> elastic_moduli =
+              local_interface_quadrature_point_history[face_q_point]->
+                get_elastic_moduli();
+
             const dealii::Tensor<1,dim> opening_displacement =
               scratch.neighbor_cell_displacement_values[face_q_point] -
               scratch.current_cell_displacement_values[face_q_point];
 
-            scratch.cohesive_traction_values[face_q_point] =
-              cohesive_law->get_cohesive_traction(
-                opening_displacement,
-                scratch.normal_vector_values[face_q_point],
-                local_interface_quadrature_point_history[face_q_point]->
-                  get_max_effective_opening_displacement(),
-                local_interface_quadrature_point_history[face_q_point]->
-                  get_old_effective_opening_displacement(),
-                discrete_time.get_next_step_size());
+            const std::vector<dealii::Tensor<1,dim>>
+              opening_displacements =
+                cohesive_law->get_opening_displacement_components(
+                  opening_displacement,
+                  scratch.normal_vector_values[face_q_point]);
+
+            switch (parameters.constitutive_laws_parameters.
+                      cohesive_law_parameters.model)
+            {
+              case RunTimeParameters::CohesiveLawModel::OrtizEtAl:
+              {
+                scratch.cohesive_traction_values[face_q_point] =
+                  cohesive_law->get_cohesive_traction(
+                    opening_displacement,
+                    scratch.normal_vector_values[face_q_point],
+                    local_interface_quadrature_point_history[face_q_point]->
+                      get_max_effective_opening_displacement(),
+                    local_interface_quadrature_point_history[face_q_point]->
+                      get_old_effective_opening_displacement(),
+                    discrete_time.get_next_step_size());
+                break;
+              }
+
+              case RunTimeParameters::CohesiveLawModel::LaraEtAl:
+              {
+                scratch.cohesive_traction_values[face_q_point] =
+                  cohesive_law->get_value(
+                    opening_displacements,
+                    elastic_moduli);
+                break;
+              }
+
+              default:
+                break;
+            }
 
             scratch.contact_traction_values[face_q_point] =
               contact_law->get_contact_traction(
