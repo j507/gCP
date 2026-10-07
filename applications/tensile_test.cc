@@ -254,6 +254,29 @@ void SimpleShearProblem<dim>::make_grid()
       dealii::Point<dim>(width, height, depth),
     true);
 
+  if (parameters.flag_infinite_strip)
+  {
+    std::vector<dealii::GridTools::PeriodicFacePair<
+      typename dealii::parallel::distributed::Triangulation<dim>::cell_iterator>>
+      periodicity_vector;
+
+    dealii::GridTools::collect_periodic_faces(triangulation,
+                                              0,
+                                              1,
+                                              0,
+                                              periodicity_vector);
+    if (dim == 3)
+    {
+      dealii::GridTools::collect_periodic_faces(triangulation,
+                                                4,
+                                                5,
+                                                2,
+                                                periodicity_vector);
+    }
+    this->triangulation.add_periodicity(periodicity_vector);
+  }
+
+
   // Set material ids
   for (const auto &cell : triangulation.active_cell_iterators())
   {
@@ -365,6 +388,29 @@ void SimpleShearProblem<dim>::setup_constraints()
 
   const unsigned int upper_boundary_id = 3;
 
+  // Initiate the entity needed for periodic boundary conditions
+  std::vector<
+    dealii::GridTools::
+    PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
+      periodicity_vector;
+
+  dealii::GridTools::collect_periodic_faces(
+    fe_field->get_dof_handler(),
+    0,
+    1,
+    0,
+    periodicity_vector);
+
+  if (dim == 3)
+  {
+    dealii::GridTools::collect_periodic_faces(
+      fe_field->get_dof_handler(),
+      4,
+      5,
+      2,
+      periodicity_vector);
+  }
+
   // Initiate the actual constraints – boundary conditions – of the
   // problem
   dealii::AffineConstraints<double> affine_constraints;
@@ -473,6 +519,10 @@ void SimpleShearProblem<dim>::setup_constraints()
         }
       }
     }
+
+    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
+      periodicity_vector,
+      affine_constraints);
   }
   affine_constraints.close();
 
@@ -570,6 +620,10 @@ void SimpleShearProblem<dim>::setup_constraints()
         }
       }
     }
+
+    dealii::DoFTools::make_periodicity_constraints<dim, dim>(
+      periodicity_vector,
+      newton_method_constraints);
   }
   newton_method_constraints.close();
 
@@ -831,7 +885,7 @@ void SimpleShearProblem<dim>::run()
   // Output the triangulation data (Partition, Material id, etc.)
   triangulation_output();
 
-  return;
+
   // Time loop. The current time at the beggining of each loop
   // corresponds to t^{n-1}
   while(discrete_time.get_current_time() < discrete_time.get_end_time())
