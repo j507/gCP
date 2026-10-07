@@ -260,11 +260,12 @@ void MicrotractionLawParameters::parse_parameters(
 
 CohesiveLawParameters::CohesiveLawParameters()
 :
-cohesive_law_model(CohesiveLawModel::OrtizEtAl),
+model(CohesiveLawModel::OrtizEtAl),
 perpendicular_elastic_modulus(1.0),
 tangential_elastic_modulus(1.0),
 perpendicular_exponent(1.0),
 tangential_exponent(1.0),
+flag_rotation_dependent(true),
 critical_cohesive_traction(700.),
 critical_opening_displacement(2.5e-2),
 tangential_to_normal_stiffness_ratio(1.0)
@@ -279,7 +280,27 @@ void CohesiveLawParameters::declare_parameters(
   {
     prm.declare_entry("Cohesive law model",
                       "OrtizEtAl",
-                      dealii::Patterns::Selection("OrtizEtAl"));
+                      dealii::Patterns::Selection("OrtizEtAl|LaraEtAl"));
+
+    prm.declare_entry("Perpendicular elastic modulus",
+                      "1e3",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Tangential exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Tangential elastic modulus",
+                      "1e3",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Tangential exponent",
+                      "1.0",
+                      dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Rotation dependent",
+                      "true",
+                      dealii::Patterns::Bool());
 
     prm.declare_entry("Critical cohesive traction",
                       "700.",
@@ -303,12 +324,15 @@ void CohesiveLawParameters::parse_parameters(
 {
   prm.enter_subsection("Cohesive law's parameters");
   {
-    const std::string string_cohesive_law_model(
-      prm.get("Cohesive law model"));
+    const std::string string_model(prm.get("Cohesive law model"));
 
-    if (string_cohesive_law_model == std::string("OrtizEtAl"))
+    if (string_model == std::string("OrtizEtAl"))
     {
-      cohesive_law_model = CohesiveLawModel::OrtizEtAl;
+      model = CohesiveLawModel::OrtizEtAl;
+    }
+    else if (string_model == std::string("LaraEtAl"))
+    {
+      model = CohesiveLawModel::LaraEtAl;
     }
     else
     {
@@ -2143,7 +2167,8 @@ BasicProblem(),
 control_type(ControlType::Displacement),
 height(1.),
 n_elements_in_y_direction(100),
-n_equal_sized_crystals(1)
+n_equal_sized_crystals(1),
+flag_infinite_strip(true)
 {}
 
 
@@ -2238,6 +2263,12 @@ void InfiniteStripProblem::declare_parameters(dealii::ParameterHandler &prm)
     }
     prm.leave_subsection();
   }
+
+  prm.declare_entry("Infinite strip",
+                    "true",
+                    dealii::Patterns::Bool());
+
+
   prm.leave_subsection();
 }
 
@@ -2295,6 +2326,9 @@ void InfiniteStripProblem::parse_parameters(dealii::ParameterHandler &prm)
     }
     prm.leave_subsection();
   }
+
+  flag_infinite_strip = prm.get_bool("Infinite strip");
+
   prm.leave_subsection();
 }
 

@@ -406,7 +406,7 @@ struct CohesiveLawParameters
    *
    * @todo Docu
    */
-  CohesiveLawModel  cohesive_law_model;
+  CohesiveLawModel model;
 
 
   double perpendicular_elastic_modulus;
@@ -416,6 +416,8 @@ struct CohesiveLawParameters
   double perpendicular_exponent;
 
   double tangential_exponent;
+
+  bool flag_rotation_dependent;
 
   /*!
    * @brief
@@ -1578,6 +1580,8 @@ struct InfiniteStripProblem : public BasicProblem
   unsigned int  n_elements_in_y_direction;
 
   unsigned int  n_equal_sized_crystals;
+
+  bool flag_infinite_strip;
 };
 
 
