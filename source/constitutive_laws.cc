@@ -1466,8 +1466,7 @@ CohesiveLaw<dim>::get_jacobian(
       effective_opening_displacement_rate >= 0.0)
   {
     jacobian =
-      critical_cohesive_traction *
-      characteristic_displacement /
+      critical_cohesive_traction /
       critical_opening_displacement *
       characteristic_displacement *
       std::exp(1.0 - characteristic_displacement *
@@ -1491,10 +1490,9 @@ CohesiveLaw<dim>::get_jacobian(
   {
     jacobian =
       get_effective_cohesive_traction(
-        characteristic_displacement*
+        characteristic_displacement *
         max_effective_opening_displacement) /
       max_effective_opening_displacement *
-      characteristic_displacement *
       effective_quantities.identity_tensor;
   }
   else
