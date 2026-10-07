@@ -179,7 +179,9 @@ simple_shear(
   parameters.simple_loading.duration_loading_and_unloading_phase,
   parameters.simple_loading.loading_type,
   3,
-  1. / parameters.n_elements_in_y_direction),
+  (parameters.flag_infinite_strip ?
+    1. / parameters.n_elements_in_y_direction :
+    1.0)),
 string_width(
   (std::to_string((unsigned int)(
   (parameters.simple_loading.end_time -
@@ -216,24 +218,40 @@ template<int dim>
 void SimpleShearProblem<dim>::make_grid()
 {
   dealii::TimerOutput::Scope  t(*timer_output, "Problem: Triangulation");
-  /*
-  FiniteDomains::plate_with_notches(
-    triangulation,
-    2,
-    0.5);
-  */
 
   std::vector<unsigned int> repetitions(2, 1);
-  repetitions[1] = 2;
 
-  const double width = 1.0,
-               height = 2.0;
+  repetitions[1] = parameters.flag_infinite_strip ?
+                    parameters.n_elements_in_y_direction :
+                    2;
+
+  if (dim == 3)
+  {
+    repetitions.push_back(1);
+  }
+
+  const double
+    width = parameters.flag_infinite_strip ?
+             1. / parameters.n_elements_in_y_direction :
+             1.0,
+    height = parameters.flag_infinite_strip ?
+              (parameters.solver_parameters.
+                dimensionless_form_parameters.
+                  flag_solve_dimensionless_problem ?
+                     1.0 : parameters.height): 2.0,
+    depth = parameters.flag_infinite_strip ?
+             1. / parameters.n_elements_in_y_direction :
+             1.0;
 
   dealii::GridGenerator::subdivided_hyper_rectangle(
     triangulation,
     repetitions,
-    dealii::Point<dim>(0,0),
-    dealii::Point<dim>(width, height),
+    dim == 2 ?
+      dealii::Point<dim>(0,0) :
+      dealii::Point<dim>(0,0,0),
+    dim == 2 ?
+      dealii::Point<dim>(width, height) :
+      dealii::Point<dim>(width, height, depth),
     true);
 
   // Set material ids
@@ -252,8 +270,11 @@ void SimpleShearProblem<dim>::make_grid()
     }
   }
 
-  triangulation.refine_global(
-    parameters.spatial_discretization.n_global_refinements);
+  if (!parameters.flag_infinite_strip)
+  {
+    triangulation.refine_global(
+      parameters.spatial_discretization.n_global_refinements);
+  }
 
   *pcout << "Triangulation:"
               << std::endl
@@ -297,24 +318,11 @@ void SimpleShearProblem<dim>::setup()
 
   // Instantiates the external functions, whose number of components
   // depends on the number of crystals and slips
-  dealii::Tensor<1,dim> load;
-  load[1] = parameters.simple_loading.max_load;
-  {
-  dealii::Tensor<1,dim> tensor(
+  dealii::Tensor<1,dim> load(
     dealii::make_array_view(
       parameters.simple_loading.initial_load.begin(),
       parameters.simple_loading.initial_load.begin() + dim));
 
-  std::cout << tensor << std::endl;
-    }
-  {
-  dealii::Tensor<1,dim> tensor(
-    dealii::make_array_view(
-      parameters.simple_loading.final_load.begin(),
-      parameters.simple_loading.final_load.begin() + dim));
-
-  std::cout << tensor << std::endl;
-    }
   load /= parameters.solver_parameters.dimensionless_form_parameters.
     characteristic_quantities.displacement;
 
