@@ -1,5 +1,6 @@
 SET(SOURCE_FILES
     simple_shear.cc
+    tensile_test.cc
     )
 
 FOREACH(sourcefile ${SOURCE_FILES})

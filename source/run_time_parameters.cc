@@ -1348,7 +1348,8 @@ TemporalDiscretizationParameters::TemporalDiscretizationParameters()
 :
 start_time(0.0),
 end_time(1.0),
-time_step_size(0.25)
+n_time_steps(100),
+time_step_size((end_time - start_time) / n_time_steps)
 {}
 
 
@@ -1365,6 +1366,10 @@ declare_parameters(dealii::ParameterHandler &prm)
     prm.declare_entry("End time",
                       "1.0",
                       dealii::Patterns::Double(0.0));
+
+    prm.declare_entry("Number of time steps",
+                      "100",
+                      dealii::Patterns::Integer(1));
 
     prm.declare_entry("Time step size",
                       "1e-1",
@@ -1384,7 +1389,11 @@ parse_parameters(dealii::ParameterHandler &prm)
 
     end_time              = prm.get_double("End time");
 
-    time_step_size        = prm.get_double("Time step size");
+    n_time_steps = prm.get_integer("Number of time steps");
+
+    time_step_size = (end_time - start_time) /  n_time_steps;
+
+    //prm.get_double("Time step size");
 
     Assert(start_time >= 0.0,
             dealii::ExcLowerRangeType<double>(start_time, 0.0));
@@ -1436,6 +1445,26 @@ void SimpleLoading::declare_parameters(
                         "monotonic",
                         dealii::Patterns::Selection(
                           "monotonic|cyclic"));
+
+      prm.declare_entry(
+        "Initial Load / Mean Load",
+        "0.,0.,0.",
+        dealii::Patterns::List(
+          dealii::Patterns::Anything(),
+          2,
+          3));
+
+      prm.declare_entry(
+        "Final Load / Amplitude",
+        "0.,0.,0.",
+        dealii::Patterns::List(
+          dealii::Patterns::Anything(),
+          2,
+          3));
+
+      prm.declare_entry(" ",
+                        "0.0",
+                        dealii::Patterns::Double(0.0));
 
       prm.declare_entry("Maximum load",
                         "1.0",
@@ -1562,6 +1591,45 @@ void SimpleLoading::parse_parameters(
 
         AssertThrow(false, dealii::ExcMessage(message.str().c_str()));
       }
+
+      auto read_string_list = [&prm]
+        (const std::string string,
+         std::array<double, 3> &array,
+         std::array<bool, 3> &mask)
+        {
+          const std::string string_list(prm.get(string));
+
+          const std::vector<std::string> splitted_string_list =
+            dealii::Utilities::split_string_list(string_list);
+
+          for (unsigned int i = 0; i < splitted_string_list.size(); ++i)
+          {
+            if (splitted_string_list[i] != "NaN")
+            {
+              array[i] =
+                dealii::Utilities::string_to_double(
+                  splitted_string_list[i]);
+
+              mask[i] = true;
+            }
+            else
+            {
+              array[i] = 0.0;
+
+              mask[i] = false;
+            }
+          }
+        };
+
+      read_string_list(
+        "Initial Load / Mean Load",
+        initial_load,
+        initial_load_mask);
+
+      read_string_list(
+        "Final Load / Amplitude",
+        final_load,
+        final_load_mask);
 
       max_load = prm.get_double("Maximum load");
 

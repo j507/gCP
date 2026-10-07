@@ -23,6 +23,39 @@ namespace BoundaryConditions
 
 
 
+namespace DisplacementCtrl
+{
+
+
+
+template <int dim>
+class StaticLoad : public dealii::Function<dim>
+{
+public:
+  StaticLoad(
+    const unsigned int n_components,
+    const dealii::Tensor<1,dim> load,
+    const unsigned int n_crystals = 1,
+    const bool flag_enable_decohesion = false);
+
+  virtual void vector_value(
+    const dealii::Point<dim>  &point,
+    dealii::Vector<double>    &return_vector) const override;
+
+private:
+  const dealii::Tensor<1,dim> load;
+
+  const unsigned int n_crystals;
+
+  const bool flag_enable_decohesion;
+};
+
+
+
+} // namespace DisplacementCtrl
+
+
+
 template <int dim>
 class DisplacementControl : public dealii::Function<dim>
 {

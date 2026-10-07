@@ -528,6 +528,28 @@ private:
 
 
 template <int dim>
+inline std::vector<dealii::Tensor<1,dim>>
+CohesiveLaw<dim>::get_opening_displacement_components(
+    const dealii::Tensor<1,dim> opening_displacement,
+    const dealii::Tensor<1,dim> normal_vector)
+{
+  std::vector<dealii::Tensor<1,dim>> components(2);
+
+  components[0] =
+    (opening_displacement * normal_vector) * normal_vector;
+
+  components[1] =
+    (dealii::unit_symmetric_tensor<dim>() -
+     dealii::symmetrize(
+      dealii::outer_product(normal_vector, normal_vector))) *
+        opening_displacement;
+
+  return (components);
+}
+
+
+
+template <int dim>
 inline double
 CohesiveLaw<dim>::macaulay_brackets(const double value) const
 {

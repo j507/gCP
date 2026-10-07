@@ -48,6 +48,8 @@ enum class CohesiveLawModel
  */
 enum class LoadingType
 {
+  Static,
+
   /*!
    * @brief Monotonic load
    */
@@ -1244,6 +1246,12 @@ struct TemporalDiscretizationParameters
   double      end_time;
 
   /*!
+   * @brief The number of time steps
+   */
+  double      n_time_steps;
+
+
+  /*!
    * @brief The time step size used during the simulation
    */
   double      time_step_size;
@@ -1297,11 +1305,17 @@ struct SimpleLoading : public TemporalDiscretizationParameters
 
   LoadingType   loading_type;
 
+  std::array<double, 3> initial_load;
+
+  std::array<bool, 3> initial_load_mask;
+
+  std::array<double, 3> final_load;
+
+  std::array<bool, 3> final_load_mask;
 
   double        max_load;
 
   double        min_load;
-
 
   double        duration_monotonic_load;
 
@@ -1309,13 +1323,11 @@ struct SimpleLoading : public TemporalDiscretizationParameters
 
   double        time_step_size_monotonic_load;
 
-
   double        duration_loading_and_unloading_phase;
 
   unsigned int  n_steps_loading_and_unloading_phase;
 
   double        time_step_size_loading_and_unloading_phase;
-
 
   unsigned int  n_cycles;
 

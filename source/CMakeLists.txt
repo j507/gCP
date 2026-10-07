@@ -4,6 +4,7 @@ SET(TARGET_SRC
     constitutive_laws.cc
     crystal_data.cc
     fe_field.cc
+    finite_domains.cc
     line_search.cc
     postprocessing.cc
     run_time_parameters.cc

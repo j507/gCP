@@ -1,5 +1,5 @@
 #include <gCP/boundary_conditions.h>
-
+#include <deal.II/base/exceptions.h>
 
 
 namespace gCP
@@ -9,6 +9,64 @@ namespace gCP
 
 namespace BoundaryConditions
 {
+
+
+
+namespace DisplacementCtrl
+{
+
+
+
+template<int dim>
+StaticLoad<dim>::StaticLoad(
+  const unsigned int n_components,
+  const dealii::Tensor<1,dim> load,
+  const unsigned int n_crystals,
+  const bool flag_enable_decohesion)
+:
+dealii::Function<dim>(n_components, 0.0),
+load(load),
+n_crystals(n_crystals),
+flag_enable_decohesion(flag_enable_decohesion)
+{
+  if (flag_enable_decohesion)
+  {
+    AssertThrow(n_crystals > 1,
+      dealii::ExcLowerRange(n_crystals, 2));
+  }
+}
+
+
+
+template<int dim>
+void StaticLoad<dim>::vector_value(
+  const dealii::Point<dim>  &/*point*/,
+  dealii::Vector<double>    &return_vector) const
+{
+  const double time = this->get_time();
+
+  return_vector = 0.0;
+
+  dealii::Tensor<1,dim> current_load = time * load;
+
+  const unsigned int tmp_n_crystals =
+    flag_enable_decohesion ? n_crystals : 1;
+
+  for (unsigned int crystal_id = 0; crystal_id < tmp_n_crystals;
+        ++crystal_id)
+  {
+    for (unsigned int ith_component = 0; ith_component < dim;
+          ith_component++)
+    {
+      return_vector[ith_component + crystal_id*dim] =
+        current_load[ith_component];
+    }
+  }
+}
+
+
+
+} // namespace DisplacementCtrl
 
 
 
@@ -195,6 +253,9 @@ dealii::Tensor<1, dim> LoadControl<dim>::value(
 } // namespace gCP
 
 
+
+template class gCP::BoundaryConditions::DisplacementCtrl::StaticLoad<2>;
+template class gCP::BoundaryConditions::DisplacementCtrl::StaticLoad<3>;
 
 template class gCP::BoundaryConditions::DisplacementControl<2>;
 template class gCP::BoundaryConditions::DisplacementControl<3>;

@@ -1103,7 +1103,8 @@ double MicrotractionLaw<2>::get_free_energy_density(
       AssertIsFinite(burgers_tensor[i]);
 
   const double free_energy_density =
-    0.5 * grain_boundary_modulus *
+    0.5 * grain_boundary_modulus /
+    characteristic_vectorial_microstress *
     dealii::scalar_product(burgers_tensor, burgers_tensor);
 
   AssertIsFinite(free_energy_density);
@@ -1162,7 +1163,8 @@ double MicrotractionLaw<3>::get_free_energy_density(
       AssertIsFinite(burgers_tensor[i][j]);
 
   const double free_energy_density =
-    0.5 * grain_boundary_modulus *
+    0.5 * grain_boundary_modulus /
+    characteristic_vectorial_microstress*
     dealii::scalar_product(burgers_tensor, burgers_tensor);
 
   AssertIsFinite(free_energy_density);
@@ -1397,8 +1399,7 @@ CohesiveLaw<dim>::get_cohesive_traction(
     cohesive_traction *=
       get_effective_cohesive_traction(
         characteristic_displacement *
-        max_effective_opening_displacement) *
-      effective_quantities.opening_displacement /
+        max_effective_opening_displacement) /
       max_effective_opening_displacement;
   }
   else
@@ -1457,7 +1458,8 @@ CohesiveLaw<dim>::get_jacobian(
       effective_opening_displacement_rate >= 0.0)
   {
     jacobian =
-      critical_cohesive_traction /
+      critical_cohesive_traction *
+      characteristic_displacement /
       critical_opening_displacement *
       characteristic_displacement *
       std::exp(1.0 - characteristic_displacement *
@@ -1484,6 +1486,7 @@ CohesiveLaw<dim>::get_jacobian(
         characteristic_displacement*
         max_effective_opening_displacement) /
       max_effective_opening_displacement *
+      characteristic_displacement *
       effective_quantities.identity_tensor;
   }
   else
@@ -1505,10 +1508,10 @@ double CohesiveLaw<dim>::get_free_energy_density(
   AssertIsFinite(effective_opening_displacement);
 
   const double free_energy_density =
-    critical_cohesive_traction *
-    critical_opening_displacement /
-    characteristic_displacement /
+    critical_cohesive_traction /
     characteristic_stress *
+    critical_opening_displacement /
+    characteristic_displacement *
     std::exp(1.0) *
     (1.0 -
     (1.0 +
@@ -1516,7 +1519,7 @@ double CohesiveLaw<dim>::get_free_energy_density(
       effective_opening_displacement /
       critical_opening_displacement) *
      std::exp(
-      - characteristic_displacement *
+      -characteristic_displacement *
       effective_opening_displacement /
       critical_opening_displacement));
 
