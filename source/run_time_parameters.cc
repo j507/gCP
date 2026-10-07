@@ -286,7 +286,7 @@ void CohesiveLawParameters::declare_parameters(
                       "1e3",
                       dealii::Patterns::Double(0.0));
 
-    prm.declare_entry("Tangential exponent",
+    prm.declare_entry("Perpendicular exponent",
                       "1.0",
                       dealii::Patterns::Double(0.0));
 
