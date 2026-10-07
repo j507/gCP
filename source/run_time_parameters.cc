@@ -2263,13 +2263,11 @@ void InfiniteStripProblem::declare_parameters(dealii::ParameterHandler &prm)
     }
     prm.leave_subsection();
   }
+  prm.leave_subsection();
 
   prm.declare_entry("Infinite strip",
                     "true",
                     dealii::Patterns::Bool());
-
-
-  prm.leave_subsection();
 }
 
 
@@ -2326,10 +2324,10 @@ void InfiniteStripProblem::parse_parameters(dealii::ParameterHandler &prm)
     }
     prm.leave_subsection();
   }
+  prm.leave_subsection();
 
   flag_infinite_strip = prm.get_bool("Infinite strip");
 
-  prm.leave_subsection();
 }
 
 
