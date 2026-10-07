@@ -1267,6 +1267,11 @@ CohesiveLaw<dim>::get_local_elastic_moduli(
   elastic_moduli[0] = parameters.perpendicular_elastic_modulus;
   elastic_moduli[1] = parameters.tangential_elastic_modulus;
 
+  if (!parameters.flag_rotation_dependent)
+  {
+    return (elastic_moduli);
+  }
+
   std::vector<dealii::Tensor<1,dim>>
     current_crystal_slip_directions =
       crystals_data->get_slip_directions(current_crystal_id),
@@ -1285,46 +1290,49 @@ CohesiveLaw<dim>::get_local_elastic_moduli(
        ++slip_id_alpha)
   {
     for (unsigned int slip_id_beta = 0;
-         slip_id_beta <= slip_id_alpha;
+         slip_id_beta <= crystals_data->get_n_slips();
          ++slip_id_beta)
     {
-      interaction_module =
-        current_crystal_slip_directions[slip_id_alpha] *
-        neighbor_crystal_slip_directions[slip_id_beta];
-
-      switch (dim)
+      if (slip_id_alpha == slip_id_beta)
       {
-      case 2:
-        interaction_module *=
-          (current_crystal_slip_normals[slip_id_alpha][0] *
-           normal_vector[1]
-           -
-           current_crystal_slip_normals[slip_id_alpha][1] *
-           normal_vector[0]) *
-          (neighbor_crystal_slip_normals[slip_id_beta][0] *
-           normal_vector[1]
-           -
-           neighbor_crystal_slip_normals[slip_id_beta][1] *
-           normal_vector[0]);
+        interaction_module =
+          current_crystal_slip_directions[slip_id_alpha] *
+          neighbor_crystal_slip_directions[slip_id_beta];
 
-        break;
+        switch (dim)
+        {
+        case 2:
+          interaction_module *=
+            (current_crystal_slip_normals[slip_id_alpha][0] *
+            normal_vector[1]
+            -
+            current_crystal_slip_normals[slip_id_alpha][1] *
+            normal_vector[0]) *
+            (neighbor_crystal_slip_normals[slip_id_beta][0] *
+            normal_vector[1]
+            -
+            neighbor_crystal_slip_normals[slip_id_beta][1] *
+            normal_vector[0]);
 
-      case 3:
-        interaction_module *=
-          dealii::cross_product_3d(
-            current_crystal_slip_normals[slip_id_alpha],
-            normal_vector) *
-          dealii::cross_product_3d(
-            neighbor_crystal_slip_normals[slip_id_beta],
-            normal_vector);
-        break;
+          break;
 
-      default:
-        break;
+        case 3:
+          interaction_module *=
+            dealii::cross_product_3d(
+              current_crystal_slip_normals[slip_id_alpha],
+              normal_vector) *
+            dealii::cross_product_3d(
+              neighbor_crystal_slip_normals[slip_id_beta],
+              normal_vector);
+          break;
+
+        default:
+          break;
+        }
+
+        misalignment_measure +=
+          interaction_module * interaction_module;
       }
-
-      misalignment_measure +=
-        interaction_module * interaction_module;
     }
   }
 
