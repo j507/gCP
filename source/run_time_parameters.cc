@@ -350,6 +350,19 @@ void CohesiveLawParameters::parse_parameters(
 
     tangential_to_normal_stiffness_ratio =
       prm.get_double("Tangential to normal stiffness ratio");
+
+    perpendicular_elastic_modulus =
+      prm.get_double("Perpendicular elastic modulus");
+
+    perpendicular_exponent =
+      prm.get_double("Perpendicular exponent");
+
+    tangential_elastic_modulus =
+      prm.get_double("Tangential elastic modulus");
+
+    tangential_exponent =
+      prm.get_double("Tangential exponent");
+
   }
   prm.leave_subsection();
 }
