@@ -700,14 +700,63 @@ flag_init_was_called(false)
   // Setting up columns
   table_handler.declare_column("shear_at_upper_boundary");
   table_handler.declare_column("stress_12_at_upper_boundary");
+  table_handler.declare_column("normal_at_upper_boundary");
+  table_handler.declare_column("stress_11_at_upper_boundary");
 
   // Setting all columns to scientific notation
   table_handler.set_scientific("shear_at_upper_boundary", true);
   table_handler.set_scientific("stress_12_at_upper_boundary", true);
+  table_handler.set_scientific("normal_at_upper_boundary", true);
+  table_handler.set_scientific("stress_11_at_upper_boundary", true);
 
   // Setting columns' precision
   table_handler.set_precision("shear_at_upper_boundary", 6);
   table_handler.set_precision("stress_12_at_upper_boundary", 6);
+  table_handler.set_precision("normal_at_upper_boundary", 6);
+  table_handler.set_precision("stress_11_at_upper_boundary", 6);
+}
+
+
+
+template <int dim>
+SimpleShear<dim>::SimpleShear(
+  std::shared_ptr<FEField<dim>>         &fe_field,
+  std::shared_ptr<dealii::Mapping<dim>> &mapping,
+  const std::array<double, 3>           load_array,
+  const double                          characteristic_displacement,
+  const dealii::types::boundary_id      upper_boundary_id,
+  const double                          width)
+:
+fe_field(fe_field),
+mapping_collection(*mapping),
+upper_boundary_id(upper_boundary_id),
+width(width),
+flag_init_was_called(false)
+{
+  load = dealii::Tensor<1,dim>(
+    dealii::make_array_view(
+      load_array.begin(),
+      load_array.begin() + dim));
+
+  load /= characteristic_displacement;
+
+  // Setting up columns
+  table_handler.declare_column("shear_at_upper_boundary");
+  table_handler.declare_column("stress_12_at_upper_boundary");
+  table_handler.declare_column("normal_at_upper_boundary");
+  table_handler.declare_column("stress_11_at_upper_boundary");
+
+  // Setting all columns to scientific notation
+  table_handler.set_scientific("shear_at_upper_boundary", true);
+  table_handler.set_scientific("stress_12_at_upper_boundary", true);
+  table_handler.set_scientific("normal_at_upper_boundary", true);
+  table_handler.set_scientific("stress_11_at_upper_boundary", true);
+
+  // Setting columns' precision
+  table_handler.set_precision("shear_at_upper_boundary", 6);
+  table_handler.set_precision("stress_12_at_upper_boundary", 6);
+  table_handler.set_precision("normal_at_upper_boundary", 6);
+  table_handler.set_precision("stress_11_at_upper_boundary", 6);
 }
 
 
@@ -735,8 +784,9 @@ void SimpleShear<dim>::compute_data(const double time)
 
   compute_stress_12_at_boundary();
 
-  double displacement_load = 0.0;
+  const dealii::Tensor<1,dim> current_load = time * load;
 
+  /*
   switch (loading_type)
   {
     case RunTimeParameters::LoadingType::Monotonic:
@@ -777,10 +827,12 @@ void SimpleShear<dim>::compute_data(const double time)
       break;
     default:
       Assert(false, dealii::ExcNotImplemented());
-  }
+  }*/
 
-  table_handler.add_value("shear_at_upper_boundary", displacement_load);
+  table_handler.add_value("shear_at_upper_boundary", current_load[0]);
   table_handler.add_value("stress_12_at_upper_boundary", average_stress_12);
+  table_handler.add_value("normal_at_upper_boundary", current_load[1]);
+  table_handler.add_value("stress_11_at_upper_boundary", average_stress_11);
 }
 
 
@@ -825,6 +877,8 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
 
   double stress_12        = 0.0;
   double local_stress_12  = 0.0;
+  double stress_11        = 0.0;
+  double local_stress_11  = 0.0;
 
   for (const auto &cell : fe_field->get_dof_handler().active_cell_iterators())
     if (cell->is_locally_owned() && cell->at_boundary())
@@ -833,6 +887,7 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
         {
           // Reset local face integral values
           local_stress_12 = 0.0;
+          local_stress_11 = 0.0;
 
           // Get the crystal identifier for the current cell
           const unsigned int crystal_id = cell->material_id();
@@ -880,17 +935,25 @@ void SimpleShear<dim>::compute_stress_12_at_boundary()
                 crystal_id,
                 elastic_strain_tensor_values[face_q_point]);
 
+            local_stress_11 +=
+              stress_tensor_values[face_q_point][0][0] *
+              JxW_values[face_q_point];
+
             local_stress_12 +=
               stress_tensor_values[face_q_point][0][1] *
               JxW_values[face_q_point];
+
           }
 
+          stress_11 += local_stress_11;
           stress_12 += local_stress_12;
         }
 
   // Gather the values of each processor
+  stress_11 = dealii::Utilities::MPI::sum(stress_11, MPI_COMM_WORLD);
   stress_12 = dealii::Utilities::MPI::sum(stress_12, MPI_COMM_WORLD);
 
+  average_stress_11 = stress_11 / width;
   average_stress_12 = stress_12 / width;
 }
 

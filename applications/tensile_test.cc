@@ -173,11 +173,9 @@ postprocessor(
 simple_shear(
   fe_field,
   mapping,
-  parameters.simple_loading.max_load,
-  parameters.simple_loading.min_load,
-  parameters.simple_loading.period,
-  parameters.simple_loading.duration_loading_and_unloading_phase,
-  parameters.simple_loading.loading_type,
+  parameters.simple_loading.initial_load,
+  parameters.solver_parameters.dimensionless_form_parameters.
+    characteristic_quantities.displacement,
   3,
   (parameters.flag_infinite_strip ?
     1. / parameters.n_elements_in_y_direction :

@@ -145,6 +145,14 @@ public:
     const dealii::types::boundary_id      upper_boundary_id,
     const double                          width);
 
+  SimpleShear(
+    std::shared_ptr<FEField<dim>>         &fe_field,
+    std::shared_ptr<dealii::Mapping<dim>> &mapping,
+    const std::array<double, 3>           load,
+    const double                          characteristic_displacement,
+    const dealii::types::boundary_id      upper_boundary_id,
+    const double                          width);
+
   void init(
     std::shared_ptr<const Kinematics::ElasticStrain<dim>>   elastic_strain,
     std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law);
@@ -164,19 +172,23 @@ private:
 
   std::shared_ptr<const ConstitutiveLaws::HookeLaw<dim>>  hooke_law;
 
-  const double                                            max_shear_strain_at_upper_boundary;
+  double                                            max_shear_strain_at_upper_boundary;
 
-  const double                                            min_shear_strain_at_upper_boundary;
+  double                                            min_shear_strain_at_upper_boundary;
 
-  const double                                            period;
+  double                                            period;
 
-  const double                                            initial_loading_time;
+  double                                            initial_loading_time;
+
+  dealii::Tensor<1,dim> load;
 
   RunTimeParameters::LoadingType                          loading_type;
 
   const dealii::types::boundary_id                        upper_boundary_id;
 
   double                                                  average_stress_12;
+
+  double                                                  average_stress_11;
 
   const double                                            width;
 
