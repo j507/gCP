@@ -363,6 +363,8 @@ void CohesiveLawParameters::parse_parameters(
     tangential_exponent =
       prm.get_double("Tangential exponent");
 
+    flag_rotation_dependent =
+      prm.get_bool("Rotation dependent");
   }
   prm.leave_subsection();
 }
